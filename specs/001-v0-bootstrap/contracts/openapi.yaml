@@ -1,0 +1,480 @@
+openapi: 3.1.0
+info:
+  title: Bioimage-MCP v0.0 Bootstrap (Conceptual HTTP Contract)
+  version: 0.0.0
+  description: |
+    This OpenAPI contract documents the v0.0 bootstrap surface in familiar REST terms.
+    The production transport is MCP (via the official MCP Python SDK), but the request/
+    response shapes map 1:1 to MCP tool calls.
+
+servers:
+  - url: http://localhost:8000
+
+tags:
+  - name: discovery
+  - name: execution
+  - name: artifacts
+
+paths:
+  /tools:
+    get:
+      tags:
+        - discovery
+      summary: List tools (paginated, summary-first)
+      parameters:
+        - in: query
+          name: cursor
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 20
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ToolListResponse"
+
+  /tools/{tool_id}:
+    get:
+      tags:
+        - discovery
+      summary: Describe a tool and its function summaries
+      parameters:
+        - in: path
+          name: tool_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ToolDescribeResponse"
+        "404":
+          description: Not found
+
+  /functions/search:
+    get:
+      tags:
+        - discovery
+      summary: Search functions (paginated, summary-first)
+      parameters:
+        - in: query
+          name: query
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: tags
+          required: false
+          style: form
+          explode: true
+          schema:
+            type: array
+            items:
+              type: string
+        - in: query
+          name: io_in
+          required: false
+          schema:
+            type: string
+            description: Canonical input artifact type
+        - in: query
+          name: io_out
+          required: false
+          schema:
+            type: string
+            description: Canonical output artifact type
+        - in: query
+          name: cursor
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 20
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FunctionSearchResponse"
+
+  /functions/{fn_id}:
+    get:
+      tags:
+        - discovery
+      summary: Describe a function (full schema)
+      parameters:
+        - in: path
+          name: fn_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FunctionDescribeResponse"
+        "404":
+          description: Not found
+
+  /runs:
+    post:
+      tags:
+        - execution
+      summary: "Run a workflow (v0.0: typically one step)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RunWorkflowRequest"
+      responses:
+        "202":
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunWorkflowResponse"
+
+  /runs/{run_id}:
+    get:
+      tags:
+        - execution
+      summary: Get run status and results
+      parameters:
+        - in: path
+          name: run_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunStatusResponse"
+        "404":
+          description: Not found
+
+  /artifacts/{ref_id}:
+    get:
+      tags:
+        - artifacts
+      summary: Get artifact metadata (never returns binary payload)
+      parameters:
+        - in: path
+          name: ref_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetArtifactResponse"
+        "404":
+          description: Not found
+
+  /artifacts/{ref_id}/export:
+    post:
+      tags:
+        - artifacts
+      summary: Export an artifact to a user-chosen destination
+      parameters:
+        - in: path
+          name: ref_id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExportArtifactRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExportArtifactResponse"
+
+components:
+  schemas:
+    CursorPage:
+      type: object
+      properties:
+        next_cursor:
+          type: string
+          nullable: true
+      required:
+        - next_cursor
+
+    ToolSummary:
+      type: object
+      properties:
+        tool_id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        tool_version:
+          type: string
+      required:
+        - tool_id
+        - name
+        - description
+        - tool_version
+
+    FunctionSummary:
+      type: object
+      properties:
+        fn_id:
+          type: string
+        tool_id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+      required:
+        - fn_id
+        - tool_id
+        - name
+        - description
+        - tags
+
+    ToolListResponse:
+      allOf:
+        - $ref: "#/components/schemas/CursorPage"
+        - type: object
+          properties:
+            tools:
+              type: array
+              items:
+                $ref: "#/components/schemas/ToolSummary"
+          required:
+            - tools
+
+    ToolDescribeResponse:
+      type: object
+      properties:
+        tool:
+          $ref: "#/components/schemas/ToolSummary"
+        functions:
+          type: array
+          items:
+            $ref: "#/components/schemas/FunctionSummary"
+      required:
+        - tool
+        - functions
+
+    FunctionSearchResponse:
+      allOf:
+        - $ref: "#/components/schemas/CursorPage"
+        - type: object
+          properties:
+            functions:
+              type: array
+              items:
+                $ref: "#/components/schemas/FunctionSummary"
+          required:
+            - functions
+
+    JsonSchema:
+      type: object
+      description: JSON Schema object (draft not pinned in v0.0 docs)
+
+    FunctionDescribeResponse:
+      type: object
+      properties:
+        fn_id:
+          type: string
+        schema:
+          $ref: "#/components/schemas/JsonSchema"
+      required:
+        - fn_id
+        - schema
+
+    ArtifactChecksum:
+      type: object
+      properties:
+        algorithm:
+          type: string
+        value:
+          type: string
+      required:
+        - algorithm
+        - value
+
+    ArtifactRef:
+      type: object
+      properties:
+        ref_id:
+          type: string
+        type:
+          type: string
+          enum:
+            - BioImageRef
+            - LabelImageRef
+            - TableRef
+            - ModelRef
+            - LogRef
+        uri:
+          type: string
+        format:
+          type: string
+        mime_type:
+          type: string
+        size_bytes:
+          type: integer
+        checksums:
+          type: array
+          items:
+            $ref: "#/components/schemas/ArtifactChecksum"
+        created_at:
+          type: string
+        metadata:
+          type: object
+      required:
+        - ref_id
+        - type
+        - uri
+        - format
+        - mime_type
+        - size_bytes
+        - checksums
+        - created_at
+        - metadata
+
+    RunWorkflowStep:
+      type: object
+      properties:
+        fn_id:
+          type: string
+        params:
+          type: object
+        inputs:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/ArtifactRef"
+      required:
+        - fn_id
+        - params
+        - inputs
+
+    RunWorkflowRequest:
+      type: object
+      properties:
+        steps:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/RunWorkflowStep"
+        run_opts:
+          type: object
+          properties:
+            timeout_seconds:
+              type: integer
+              minimum: 1
+      required:
+        - steps
+
+    RunWorkflowResponse:
+      type: object
+      properties:
+        run_id:
+          type: string
+        status:
+          type: string
+      required:
+        - run_id
+        - status
+
+    RunError:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+      required:
+        - code
+        - message
+
+    RunStatusResponse:
+      type: object
+      properties:
+        run_id:
+          type: string
+        status:
+          type: string
+        outputs:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/ArtifactRef"
+        log_ref:
+          $ref: "#/components/schemas/ArtifactRef"
+        error:
+          $ref: "#/components/schemas/RunError"
+      required:
+        - run_id
+        - status
+        - log_ref
+
+    GetArtifactResponse:
+      type: object
+      properties:
+        ref:
+          $ref: "#/components/schemas/ArtifactRef"
+      required:
+        - ref
+
+    ExportArtifactRequest:
+      type: object
+      properties:
+        dest_path:
+          type: string
+          description: Absolute path under allowed export roots
+      required:
+        - dest_path
+
+    ExportArtifactResponse:
+      type: object
+      properties:
+        exported_path:
+          type: string
+      required:
+        - exported_path

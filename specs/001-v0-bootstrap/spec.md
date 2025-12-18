@@ -5,6 +5,17 @@
 **Status**: Draft  
 **Input**: User description: "Create spec for v0.0 (Bootstrap) based on @initial_planning/Bioimage-MCP_PRD.md and @initial_planning/Bioimage-MCP_ARCHITECTURE.md"
 
+## Clarifications
+
+### Session 2025-12-18
+- Q: Which platforms must v0.0 support? → A: Linux-only (macOS/Windows deferred to v0.1+)
+- Q: Which trivial built-in function(s) for v0.0? → A: Both Gaussian blur and format conversion to OME-Zarr
+- Q: Reuse MicroscopyLM code directly or reimplement? → A: Copy/adapt patterns (independent codebase)
+- Q: How many readiness checks for v0.0? → A: 8 checks (Python, micromamba, disk, permissions, base env, GPU, conda-lock, network)
+- Q: Configuration strategy? → A: Layered YAML (Global ~/.bioimage-mcp/config.yaml + Local .bioimage-mcp/config.yaml)
+- Q: Package manager preference? → A: Hybrid (Prefer micromamba, fallback to conda/mamba)
+- Q: Tool definition format? → A: YAML file with Pydantic 2 schema validation
+
 This milestone establishes the “minimum usable core” for Bioimage-MCP: install/readiness checks, server startup, tool discovery, and one end-to-end artifact-based execution.
 
 ## User Scenarios & Testing *(mandatory)*
@@ -89,27 +100,38 @@ A user executes a simple, built-in image operation (for example: format conversi
 
 ### Assumptions & Dependencies
 
+- **Platform**: v0.0 targets Linux only; macOS and Windows support deferred to v0.1+.
 - Users have local permissions to install and run the server and to read/write within at least one configured workspace directory.
 - A compatible local AI client exists to connect to the server.
 - Users provide images that are either in a supported microscopy format or can be converted into one by the baseline tooling.
 - The host machine meets published minimum prerequisites (including sufficient disk space for artifacts).
+- **Code Reuse**: Implementation will copy/adapt validated patterns from MicroscopyLM (`miclm.tools.registry`, `miclm.env.manager`, `miclm.executors.python_subproc`) rather than importing it as a dependency.
+- **Storage Backend**: SQLite (stdlib) is the technology choice for local artifact/run indexing in v0.0; this avoids external database dependencies while enabling efficient queries.
 
 ### Functional Requirements
 
 - **FR-001**: System MUST provide a documented installation flow that prepares the core server and at least one baseline tool pack needed for the built-in function.
-- **FR-002**: System MUST provide a readiness check that validates prerequisites (including disk space and optional acceleration availability) and reports actionable remediation steps.
+- **FR-002**: System MUST provide a readiness check (`bioimage-mcp doctor`) that validates 8 prerequisites and reports actionable remediation steps:
+  1. Python version (3.13+)
+  2. micromamba (preferred) or conda/mamba availability
+  3. Disk space (minimum threshold)
+  4. Write permissions on workspace/artifact directories
+  5. Base environment health (bioimage-mcp-base)
+  6. GPU availability (optional capability detection)
+  7. conda-lock availability
+  8. Network connectivity (for package sources)
 - **FR-003**: Users MUST be able to start the server locally and confirm it is accepting client connections.
-- **FR-004**: System MUST discover tool definition files from a local filesystem location and build an index at startup.
+- **FR-004**: System MUST discover tool definition files (YAML format with Pydantic 2 schema) from a local filesystem location and build an index at startup.
 - **FR-005**: System MUST provide a paginated tool listing capability that returns summaries (not full schemas) suitable for browsing.
 - **FR-006**: System MUST provide a function search capability that supports at least keyword search and optional filtering by tags and input/output artifact types.
 - **FR-007**: System MUST provide an on-demand function description capability that returns the full schema for exactly one function.
 - **FR-008**: System MUST ensure discovery responses remain bounded in size by default (for example: via pagination and summary-first responses).
 - **FR-009**: System MUST handle invalid tool definitions gracefully by excluding invalid entries from discovery results and surfacing clear diagnostics.
 - **FR-010**: System MUST provide a local artifact store that persists outputs and logs as files and returns artifact references containing URI, format, size, checksum, and relevant metadata.
-- **FR-011**: System MUST provide a trivial built-in function that reads an input image artifact reference and produces at least one output artifact reference.
+- **FR-011**: System MUST provide two trivial built-in functions for v0.0: (1) Gaussian blur filter and (2) format conversion to OME-Zarr. Each reads an input image artifact reference and produces an output artifact reference.
 - **FR-012**: System MUST produce a run record for each execution with status (at minimum: running/succeeded/failed), start/end timestamps, and a link to a log artifact reference.
 - **FR-013**: System MUST support exporting an artifact reference to a user-specified local destination within configurable allowed filesystem roots.
-- **FR-014**: System MUST enforce configurable filesystem allowlists/denylists for reading inputs and writing outputs/exports.
+- **FR-014**: System MUST enforce filesystem allowlists/denylists for reading inputs and writing outputs/exports, configurable via layered YAML configuration files.
 - **FR-015**: System MUST keep protocol messages compact by returning references and summaries rather than large binary payloads.
 
 ### Key Entities *(include if feature involves data)*
@@ -129,4 +151,4 @@ A user executes a simple, built-in image operation (for example: format conversi
 - **SC-002**: In a catalog of up to 500 functions, 95% of discovery requests (list/search/describe) return results to the client within 2 seconds on a machine meeting published minimum prerequisites.
 - **SC-003**: The built-in function completes successfully on a supported sample image in at least 95% of attempts and produces an output artifact reference plus a log artifact reference.
 - **SC-004**: For 100% of artifact references returned by the system, clients can retrieve artifact metadata (including size and checksums) without transferring the full binary payload through the protocol.
-- **SC-005**: The readiness check detects and reports at least 10 common setup issues (for example: missing prerequisites, insufficient disk space, unsupported platform constraints) with a clear next action for each.
+- **SC-005**: The readiness check detects and reports at least 8 setup issues (Python version, micromamba, disk space, write permissions, base env health, GPU availability, conda-lock, network connectivity) with a clear next action for each.

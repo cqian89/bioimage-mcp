@@ -1,0 +1,29 @@
+# bioimage-mcp Development Guidelines
+
+Auto-generated from all feature plans. Last updated: 2025-12-18
+
+## Active Technologies
+
+- Python 3.13 (core server; tool envs may pin differently) + Official MCP Python SDK (`mcp`), `pydantic` v2 (tool manifest validation), `bioio` (+ `bioio-ome-zarr`, `bioio-ome-tiff`), `ngff-zarr` (OME-NGFF/OME-Zarr writing), `sqlite` (via stdlib) (001-v0-bootstrap)
+
+## Project Structure
+
+```text
+src/
+tests/
+```
+
+## Commands
+
+cd src [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECHNOLOGIES] pytest [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECHNOLOGIES] ruff check .
+
+## Code Style
+
+Python 3.13 (core server; tool envs may pin differently): Follow standard conventions
+
+## Recent Changes
+
+- 001-v0-bootstrap: Added Python 3.13 (core server; tool envs may pin differently) + Official MCP Python SDK (`mcp`), `pydantic` v2 (tool manifest validation), `bioio` (+ `bioio-ome-zarr`, `bioio-ome-tiff`), `ngff-zarr` (OME-NGFF/OME-Zarr writing), `sqlite` (via stdlib)
+
+<!-- MANUAL ADDITIONS START -->
+<!-- MANUAL ADDITIONS END -->

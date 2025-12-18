@@ -1,13 +1,11 @@
 <!--
 Sync Impact Report
-- Version change: 0.1.0 -> 0.2.0
-- Principles updated: None
+- Version change: 0.2.0 -> 0.3.0
+- Principles updated: Added Principle VI (Test-Driven Development)
 - Added sections:
-  - Architecture Constraints: Python version, env naming, platform support, artifact types,
-    CLI bootstrap, reference implementation
-  - Principle V: Clarified subprocess isolation vs sandboxing
+  - Principle VI: TDD (red-green-refactor) methodology
 - Removed sections: None
-- Templates requiring updates: None (additive constraints only)
+- Templates requiring updates: None (additive constraint only)
 - Follow-up TODOs:
   - TODO(COMMAND_TEMPLATES): If `/speckit.*` expects `.specify/templates/commands/`, add it.
 -->
@@ -90,6 +88,22 @@ Non-negotiables:
 Rationale: Local-first tools still execute arbitrary code; safety, logging, and tests
 are the minimum bar for user trust and maintainability.
 
+### VI. Test-Driven Development (Red-Green-Refactor)
+
+All implementation work MUST follow the TDD cycle.
+
+Non-negotiables:
+- **Red**: Write a failing test that captures the expected behavior BEFORE writing
+  implementation code.
+- **Green**: Write the minimum implementation code required to make the test pass.
+- **Refactor**: Improve code structure while keeping tests green.
+- Each task in `tasks.md` MUST have its tests written and failing BEFORE the
+  implementation work begins.
+- PRs that add functionality without accompanying tests (written first) MUST be rejected.
+
+Rationale: TDD ensures robust, regression-resistant code and forces clear thinking about
+interfaces and edge cases before implementation.
+
 ## Architecture Constraints
 
 - **MCP SDK**: Use the official MCP Python SDK for server transports and protocol
@@ -147,4 +161,4 @@ Compliance expectations:
 - Exceptions MUST be documented in the plan with rationale and mitigation, and MUST
   be approved in review.
 
-**Version**: 0.2.0 | **Ratified**: 2025-12-18 | **Last Amended**: 2025-12-18
+**Version**: 0.3.0 | **Ratified**: 2025-12-18 | **Last Amended**: 2025-12-18
