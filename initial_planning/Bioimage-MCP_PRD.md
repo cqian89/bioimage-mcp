@@ -8,7 +8,7 @@ Bioimage-MCP is an MCP server for **bioimage analysis** that exposes a **stable,
 - Run tools in **separate conda envs** for dependency isolation (ML stacks, Java/Fiji).
 - Support **workflow planning and execution** as a **linear plan** with typed I/O and validation.
 - Make the toolset **extendable by user config** (new env + manifest).
-- Standardize I/O via **file-backed artifact references** (OME-Zarr preferred; OME-TIFF supported).
+- Standardize I/O via **file-backed artifact references** (OME-TIFF preferred; OME-Zarr (OME-NGFF) is a future goal).
 
 ## 3. Non-goals (v1)
 - Building a full interactive GUI (napari is integrated as an optional viewer tool instead).
@@ -99,18 +99,20 @@ Each tool env provides a small shim that implements:
 
 ### 6.4 Artifact storage (I/O)
 - Default artifact store: local filesystem + SQLite index (upgrade path to S3/MinIO).
-- Preferred intermediate format: **OME-Zarr (OME-NGFF)** for chunked, scalable, cloud-optimized storage.
+- Preferred intermediate format: **OME-TIFF** for single-file portability and broad downstream tool support.
+- Future goal: **OME-Zarr (OME-NGFF)** for chunked, scalable, cloud-optimized storage when workflows actually need it.
 - Use established libraries:
-  - **bioio** + plugins (`bioio-ome-zarr`, `bioio-ome-tiff`) for reading diverse microscopy formats.
-  - **ngff-zarr** imported as a Python library for OME-Zarr writing, conversion, and validation.
+  - **bioio** + plugins (`bioio-ome-tiff`, optional `bioio-ome-zarr`) for reading diverse microscopy formats.
+  - **bioio-ome-tiff** (and/or `tifffile`) for writing OME-TIFF outputs.
+  - Future: **ngff-zarr** for OME-Zarr writing/conversion if/when enabled.
 
 **Artifact reference contract:**
 All artifacts are passed by reference, never by embedding large payloads in MCP messages:
 ```yaml
 ref:
-  uri: "file:///path/to/output.ome.zarr"  # v0.1: file:// only; S3 in upgrade path
-  mime_type: "application/zarr+ome"
-  format: "OME-Zarr"
+  uri: "file:///path/to/output.ome.tiff"  # v0.1: file:// only; S3 in upgrade path
+  mime_type: "image/tiff"
+  format: "OME-TIFF"
   size: 1048576
   checksums: {sha256: "abc123..."}
   metadata: {axes: "TCZYX", channels: ["DAPI", "GFP"], ...}
@@ -172,7 +174,7 @@ napari-mcp primarily provides MCP-based **remote control of the napari viewer** 
 Bioimage-MCP differentiates by being:
 - **workflow/orchestration-first** (headless pipelines, reproducible linear plan runs)
 - **multi-environment compute plane** (Cellpose/StarDist/Fiji/etc. isolated)
-- **typed artifact/provenance system** (OME-Zarr intermediates, cached nodes)
+- **typed artifact/provenance system** (OME-TIFF intermediates by default; OME-Zarr is a future goal)
 
 napari remains a complementary tool: Bioimage-MCP can optionally expose napari as a viewer endpoint for visualization/QA.
 
@@ -188,7 +190,7 @@ napari remains a complementary tool: Bioimage-MCP can optionally expose napari a
 - Core server skeleton + artifact store (local filesystem + SQLite)
 - Manifest indexing + `list_tools/search_functions/describe_function` working
 - One trivial built-in function (e.g., Gaussian blur or format conversion)
-- Base environment (`bioimage-mcp-base`) with Python 3.13, bioio, ngff-zarr, PhasorPy
+- Base environment (`bioimage-mcp-base`) with Python 3.13, bioio (+ `bioio-ome-tiff`), and a small scientific stack for OME-TIFF I/O (e.g., `tifffile`), PhasorPy
 
 ### v0.1 (First Real Pipeline)
 - Cellpose tool-pack running through artifact refs (read input → segment → write label ref)

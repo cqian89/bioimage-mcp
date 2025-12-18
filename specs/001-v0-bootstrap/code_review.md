@@ -8,6 +8,8 @@
 
 The v0.0 Bootstrap implementation is **fully compliant** with the specifications. All 69 tasks from `tasks.md` have been completed and verified. The codebase has a solid architecture, comprehensive test coverage, and the CLI commands function as designed. Two bugs were identified and fixed during review.
 
+**Format note**: The v0.0 built-ins include `builtin.convert_to_ome_zarr` and produce OME-Zarr outputs. The project’s current format strategy is to prefer OME-TIFF as the default intermediate; OME-Zarr support is a future goal.
+
 ---
 
 ## Architecture Compliance

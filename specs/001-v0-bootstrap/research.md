@@ -124,13 +124,16 @@ Implement two built-in functions as part of a “base tool pack” executed via 
 - Preserves the isolation boundary even for “built-ins”, reducing special-casing.
 - Standardizes artifact I/O and provenance recording for all functions.
 
+**Format strategy note**: The project is pivoting to OME-TIFF as the preferred default intermediate in v0.1.
+
 ### Alternatives considered
 - Run built-ins in-process (core server env): rejected because it couples core env deps to imaging stacks.
 
 ### I/O expectations
 - Inputs and outputs are always `BioImageRef` artifact references.
-- Gaussian blur output SHOULD be OME-Zarr to encourage chunked intermediates.
+- Gaussian blur output SHOULD be OME-Zarr in v0.0.
 - Convert-to-OME-Zarr always outputs OME-Zarr.
+- v0.1: switch default built-in/pipeline outputs to OME-TIFF; keep OME-Zarr as an optional/future format.
 
 ### Validations & common failure modes
 - Validate input file existence/readability and allowlisted roots.

@@ -94,7 +94,7 @@ Typed input or output connector.
 **Fields**
 - `name: str`
 - `artifact_type: str` (canonical: `BioImageRef`, `LabelImageRef`, `TableRef`, `ModelRef`, `LogRef`)
-- `format?: str` (e.g., `OME-Zarr`, `OME-TIFF`)
+- `format?: str` (e.g., `OME-TIFF`, `OME-Zarr`)
 - `required: bool`
 
 ## Entity: ArtifactRef (base)

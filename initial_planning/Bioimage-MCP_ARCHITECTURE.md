@@ -17,7 +17,7 @@
 
 **Data plane (per-tool execution)**
 - Environments use `bioimage-mcp-*` naming convention to avoid conflicts with user envs.
-- Base env (`bioimage-mcp-base`): Python 3.13, bioio, ngff-zarr, PhasorPy, core utilities.
+- Base env (`bioimage-mcp-base`): Python 3.13, bioio (+ `bioio-ome-tiff`), `tifffile`/core scientific stack, PhasorPy, core utilities.
 - Isolated envs: `bioimage-mcp-cellpose` (PyTorch), `bioimage-mcp-stardist` (TensorFlow), `bioimage-mcp-fiji` (Java).
 - Each env includes a small **shim** that implements:
   - `describe()`
@@ -43,7 +43,7 @@
 All tool inputs/outputs are passed by reference, never by embedding large arrays in MCP messages.
 
 Core types:
-- `BioImageRef` (OME-Zarr/OME-TIFF; includes axes, physical pixel sizes, channel names)
+- `BioImageRef` (OME-TIFF by default; OME-Zarr is a future goal; includes axes, physical pixel sizes, channel names)
 - `LabelImageRef`
 - `TableRef` (parquet/csv)
 - `ModelRef`
@@ -52,19 +52,21 @@ Core types:
 **Artifact reference contract:**
 ```yaml
 ref:
-  uri: "file:///path/to/output.ome.zarr"  # v0.1: file:// only; S3 in upgrade path
-  mime_type: "application/zarr+ome"
-  format: "OME-Zarr"
+  uri: "file:///path/to/output.ome.tiff"  # v0.1: file:// only; S3 in upgrade path
+  mime_type: "image/tiff"
+  format: "OME-TIFF"
   size: 1048576
   checksums: {sha256: "abc123..."}
   metadata: {axes: "TCZYX", channels: ["DAPI", "GFP"], ...}
 ```
 
 ### 4.2 Preferred storage
-- OME-Zarr (OME-NGFF) as the default intermediate format for chunked, scalable datasets.
+- Preferred intermediate format: **OME-TIFF** for single-file portability and broad tool support.
+- Future goal: **OME-Zarr (OME-NGFF)** for chunked, cloud-optimized storage when needed.
 - Use proven libraries:
-  - **bioio** + plugins (`bioio-ome-zarr`, `bioio-ome-tiff`) for reading diverse microscopy formats.
-  - **ngff-zarr** imported as a Python library for OME-Zarr writing, conversion, and validation.
+  - **bioio** + plugins (`bioio-ome-tiff`, optional `bioio-ome-zarr`) for reading diverse microscopy formats.
+  - **bioio-ome-tiff** (and/or `tifffile`) for writing OME-TIFF outputs.
+  - Future: **ngff-zarr** for OME-Zarr writing/conversion if/when enabled.
 
 ## 5. Tool & Function Metadata
 Each tool provides a manifest (YAML) containing:

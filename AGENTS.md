@@ -4,7 +4,7 @@ Auto-generated from all feature plans. Last updated: 2025-12-18
 
 ## Active Technologies
 
-- Python 3.13 (core server; tool envs may pin differently) + Official MCP Python SDK (`mcp`), `pydantic` v2 (tool manifest validation), `bioio` (+ `bioio-ome-zarr`, `bioio-ome-tiff`), `ngff-zarr` (OME-NGFF/OME-Zarr writing), `sqlite` (via stdlib) (001-v0-bootstrap)
+- Python 3.13 (core server; tool envs may pin differently) + Official MCP Python SDK (`mcp`), `pydantic` v2 (tool manifest validation), `bioio` (+ `bioio-ome-tiff`, optional `bioio-ome-zarr`), `sqlite` (via stdlib) (001-v0-bootstrap)
 
 ## Project Structure
 
@@ -23,7 +23,7 @@ Python 3.13 (core server; tool envs may pin differently): Follow standard conven
 
 ## Recent Changes
 
-- 001-v0-bootstrap: Added Python 3.13 (core server; tool envs may pin differently) + Official MCP Python SDK (`mcp`), `pydantic` v2 (tool manifest validation), `bioio` (+ `bioio-ome-zarr`, `bioio-ome-tiff`), `ngff-zarr` (OME-NGFF/OME-Zarr writing), `sqlite` (via stdlib)
+- 001-v0-bootstrap: Added Python 3.13 (core server; tool envs may pin differently) + Official MCP Python SDK (`mcp`), `pydantic` v2 (tool manifest validation), `bioio` (+ `bioio-ome-tiff`, optional `bioio-ome-zarr`), `sqlite` (via stdlib)
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->

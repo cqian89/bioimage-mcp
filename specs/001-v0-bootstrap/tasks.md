@@ -124,9 +124,11 @@ Example: - [ ] T000 [P] [USX] Implement doctor command in src/bioimage_mcp/boots
 
 ## Phase 5: User Story 3 — Run a trivial built-in function end-to-end (Priority: P3)
 
-**Goal**: Execute two built-in functions (Gaussian blur + convert-to-OME-Zarr) via artifact references, producing output artifacts, run records, and log artifacts; support artifact metadata and export.
+**Goal**: Execute two built-in functions end-to-end via artifact references, producing output artifacts, run records, and log artifacts; support artifact metadata and export.
 
-**Independent Test**: With allowlisted input/output roots configured, run `builtin.convert_to_ome_zarr` and `builtin.gaussian_blur` on a small sample image and verify (1) run succeeds, (2) output ArtifactRef is returned, (3) artifact metadata is retrievable without pixel transfer, (4) export creates a file/dir matching recorded checksum, (5) failure paths still produce a LogRef.
+**Format note**: The v0.0 implementation uses `builtin.convert_to_ome_zarr` and writes OME-Zarr outputs. The format strategy has since pivoted to OME-TIFF as the default intermediate; the migration is tracked as v0.1 work.
+
+**Independent Test (v0.0)**: With allowlisted input/output roots configured, run `builtin.convert_to_ome_zarr` and `builtin.gaussian_blur` on a small sample image and verify (1) run succeeds, (2) output ArtifactRef is returned, (3) artifact metadata is retrievable without pixel transfer, (4) export creates a file/dir matching recorded checksum, (5) failure paths still produce a LogRef.
 
 ### Tests for User Story 3
 

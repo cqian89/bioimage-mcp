@@ -27,13 +27,14 @@ Also: `replay_workflow(artifact_path)` is mentioned but not exposed in the “st
 * env prefix
 * package name / CLI name
 
-### “Leverage ngff-zarr-mcp” is underspecified
+### OME-Zarr integration is deferred
 
-You say “leverage ngff-zarr’s existing MCP server ngff-zarr-mcp,” but you don’t describe *how* it fits:
+Earlier drafts considered leveraging `ngff-zarr` / `ngff-zarr-mcp` for OME-Zarr support. Based on the current format strategy (OME-TIFF as the default intermediate), treat OME-Zarr as a future goal and keep `ngff-zarr` integration out of the critical path for early milestones.
 
-* Is Bioimage-MCP calling another MCP server (multi-server orchestration)?
-* Or are you importing ngff-zarr as a library and re-exposing functionality through *your* server?  
-  Given ngff-zarr explicitly ships an MCP server and docs for it, you *can* reuse it either way, but you should commit to one integration pattern. ([ngff-zarr.readthedocs.io][1])
+If/when OME-Zarr support is added, decide whether to:
+
+* import `ngff-zarr` as a library and expose its functionality through Bioimage-MCP, or
+* interoperate with an external MCP server.
 
 ### Artifact API semantics are unclear
 
@@ -74,7 +75,7 @@ I’d restructure around “first runnable slice” + “first real tool”:
 * **v0.0 (bootstrap slice)**
 
   * Install/doctor script (see below)
-  * Core server skeleton + artifact store + one trivial built-in function (e.g., “convert to OME-Zarr” or “gaussian blur”)
+  * Core server skeleton + artifact store + one trivial built-in function (e.g., “convert to OME-TIFF” or “gaussian blur”)
   * Manifest indexing + `list/search/describe` working end-to-end
 
 * **v0.1 (first real pipeline)**

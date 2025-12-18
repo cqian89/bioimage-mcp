@@ -6,7 +6,7 @@ isolated conda environments (e.g., Cellpose, StarDist, PhasorPy, Fiji).
 
 Key ideas:
 - Stable discovery-first MCP API (paginated `list/search/describe`; avoids context bloat)
-- File-backed artifact references for I/O (OME-Zarr preferred; OME-TIFF supported)
+- File-backed artifact references for I/O (OME-TIFF preferred; OME-Zarr is a future goal)
 - Per-tool environment isolation and subprocess execution
 - Workflow recording and replay for reproducibility
 

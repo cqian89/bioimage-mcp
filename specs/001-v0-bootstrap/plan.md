@@ -7,6 +7,8 @@
 
 Deliver the v0.0 "minimum usable core" for Bioimage-MCP: a documented install + readiness flow, a local MCP server that supports paginated discovery (list/search/describe), an artifact store + run records (including log artifacts), and two trivial built-in functions executed via artifact references: Gaussian blur and format conversion to OME-Zarr.
 
+**Format strategy note**: The project is pivoting to OME-TIFF as the preferred default intermediate in v0.1.
+
 ## Technical Context
 
 **Language/Version**: Python 3.13 (core server; tool envs may pin differently)
@@ -139,7 +141,7 @@ Status: **PASS**
 - Summary-first responses: enforced in contract and quickstart usage pattern.
 - Tool execution isolated: design keeps tool pack shim in per-tool env and runs built-ins via same boundary.
 - Artifact references only: contracts and data model use ArtifactRef everywhere; no binary payload endpoints.
-- Reproducibility: Run includes provenance, checksums, and run record lifecycle; OME-Zarr outputs are file-backed.
+- Reproducibility: Run includes provenance, checksums, and run record lifecycle; OME-Zarr outputs are file-backed (v0.1 pivots to OME-TIFF as the preferred default).
 - Safety + debuggability: allowlists/denylists in Config; run log artifacts are first-class; tests planned for core paths.
 - TDD: All implementation phases follow red-green-refactor per constitution Principle VI.
 

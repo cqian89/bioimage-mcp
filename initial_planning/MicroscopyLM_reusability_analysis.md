@@ -8,7 +8,7 @@
 | **CLI** (Install, Doctor, Config) | `miclm.cli` (Typer app, `env`, `tools` subcommands) | **Partial** | Rename `miclm` to `bioimage-mcp`. Adapt `miclm env` -> `bioimage-mcp doctor/install`. Remove session-specific commands (`init`, `add`) if not needed for MCP server mode. |
 | **MCP Server** (Stdio/SSE) | *None* | **None** | Implement new `server.py` using `mcp` SDK. Wire it to `miclm.tools` and `miclm.executors`. |
 | **Workflow Planning** (Linear Plan) | `miclm.plan` (Linear planning logic exists) | **Partial** | Adapt `miclm plan` logic to be exposed as `create_workflow` MCP tool. Ensure it produces the specified linear plan format. |
-| **Artifacts** (OME-Zarr Refs) | `miclm.dataio` (Basic I/O) | **Partial** | Enhance `miclm`'s artifact handling to strictly follow the `BioImageRef`/`ref:` schema. Integrate `ngff-zarr`. |
+| **Artifacts** (OME-TIFF Refs) | `miclm.dataio` (Basic I/O) | **Partial** | Enhance `miclm`'s artifact handling to strictly follow the `BioImageRef`/`ref:` schema. Prioritize OME-TIFF; treat OME-Zarr/`ngff-zarr` integration as a future goal. |
 | **Replay Workflow** | `miclm run` (Executes plans) | **Partial** | Wrap `miclm run` logic into `replay_workflow` MCP tool. |
 | **User Config** (`~/.bioimage-mcp`) | `miclm.config` (Loads from `~/.miclm`) | **Full** | Just change the directory name constant to `.bioimage-mcp`. |
 

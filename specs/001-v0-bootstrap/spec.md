@@ -9,7 +9,7 @@
 
 ### Session 2025-12-18
 - Q: Which platforms must v0.0 support? → A: Linux-only (macOS/Windows deferred to v0.1+)
-- Q: Which trivial built-in function(s) for v0.0? → A: Both Gaussian blur and format conversion to OME-Zarr
+- Q: Which trivial built-in function(s) for v0.0? → A: Both Gaussian blur and format conversion to OME-Zarr (v0.0); OME-TIFF becomes the preferred intermediate in v0.1
 - Q: Reuse MicroscopyLM code directly or reimplement? → A: Copy/adapt patterns (independent codebase)
 - Q: How many readiness checks for v0.0? → A: 8 checks (Python, micromamba, disk, permissions, base env, GPU, conda-lock, network)
 - Q: Configuration strategy? → A: Layered YAML (Global ~/.bioimage-mcp/config.yaml + Local .bioimage-mcp/config.yaml)
@@ -86,7 +86,7 @@ A user executes a simple, built-in image operation (for example: format conversi
 ### Constitution Constraints *(mandatory)*
 
 - **MCP API impact**: Establish the initial baseline external interface for discovery and execution; discovery and “describe” capabilities MUST remain stable and backwards-compatible once released.
-- **Artifact I/O**: All function inputs/outputs MUST be represented as artifact references (file-backed) rather than embedding large binary payloads; image artifacts MUST support at least common microscopy image formats and a chunked intermediate format.
+- **Artifact I/O**: All function inputs/outputs MUST be represented as artifact references (file-backed) rather than embedding large binary payloads; image artifacts MUST support at least common microscopy image formats and one standardized intermediate. v0.0 uses OME-Zarr; OME-TIFF becomes the preferred default in v0.1.
 - **Isolation**: Tool execution MUST run in isolated tool runtimes (tool packs) so that adding tools does not destabilize other tools.
 - **Reproducibility**: Each run MUST record sufficient provenance to understand and reproduce results (inputs, parameters, tool identity/version, timestamps, and produced artifacts).
 - **Safety/observability**: The system MUST produce user-accessible logs per run, provide clear error messages, and enforce configurable filesystem read/write boundaries for artifact access and export.

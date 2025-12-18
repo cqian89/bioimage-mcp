@@ -63,9 +63,11 @@ v0.0 includes two built-in functions:
 - `builtin.gaussian_blur`
 - `builtin.convert_to_ome_zarr`
 
+**Format strategy note**: The v0.0 implementation produces OME-Zarr outputs. The project is pivoting to **OME-TIFF** as the default intermediate for maximum interoperability; v0.1 adds `builtin.convert_to_ome_tiff` and updates built-in/pipeline outputs to write OME-TIFF by default.
+
 Inputs and outputs are always artifact references (file-backed), never embedded pixel payloads.
 
-### Example: Convert an input image to OME-Zarr
+### Example: Convert an input image to OME-Zarr (v0.0)
 
 1) Create or reference an input `BioImageRef` pointing at a readable file under `fs_allowlist_read`.
 2) Call `run_workflow` with a 1-step workflow:
@@ -80,7 +82,7 @@ Inputs and outputs are always artifact references (file-backed), never embedded 
 Run `builtin.gaussian_blur` with parameters (example):
 - `sigma`: float or per-axis mapping (implementation-defined in v0.0)
 
-The output is a new `BioImageRef` (recommended: OME-Zarr).
+The output is a new `BioImageRef` (OME-Zarr in v0.0; moving toward OME-TIFF as the default).
 
 ## 5) Export the output artifact
 
