@@ -1,0 +1,1 @@
+"""Bioimage-MCP core package."""

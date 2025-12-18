@@ -90,6 +90,20 @@ Example flow:
 1) Call `export_artifact(ref_id, dest_path)`.
 2) Confirm the exported file/dir exists and matches the artifact’s recorded checksum.
 
+## 6) Validate the quickstart (optional)
+
+A lightweight validation script runs the quickstart flow against a temporary workspace.
+
+```bash
+scripts/validate_quickstart.sh
+```
+
+To validate the end-to-end execution path, provide a sample input image:
+
+```bash
+BIOIMAGE_MCP_SAMPLE_IMAGE=/absolute/path/to/image scripts/validate_quickstart.sh
+```
+
 ## Notes (security + observability)
 
 - Tool code runs with user privileges; subprocess isolation is for crash containment, not a security sandbox.

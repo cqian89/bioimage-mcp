@@ -1,0 +1,46 @@
+manifest_version: "0.0"
+tool_id: tools.builtin
+tool_version: "0.0.0"
+name: Built-ins
+description: Built-in functions
+env_id: bioimage-mcp-base
+entrypoint: bioimage_mcp_builtin/entrypoint.py
+platforms_supported:
+  - linux-64
+functions:
+  - fn_id: builtin.gaussian_blur
+    tool_id: tools.builtin
+    name: Gaussian blur
+    description: Apply a Gaussian blur to an input image and write OME-Zarr output.
+    tags: [image, filter]
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+    outputs:
+      - name: output
+        artifact_type: BioImageRef
+        required: true
+    params_schema:
+      type: object
+      properties:
+        sigma:
+          type: number
+          default: 1.0
+
+  - fn_id: builtin.convert_to_ome_zarr
+    tool_id: tools.builtin
+    name: Convert to OME-Zarr
+    description: Convert an input image to OME-Zarr.
+    tags: [image, convert]
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+    outputs:
+      - name: output
+        artifact_type: BioImageRef
+        required: true
+    params_schema:
+      type: object
+      properties: {}
