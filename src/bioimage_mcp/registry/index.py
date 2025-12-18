@@ -7,8 +7,20 @@ from bioimage_mcp.registry.diagnostics import ManifestDiagnostic
 
 
 class RegistryIndex:
-    def __init__(self, conn: sqlite3.Connection):
+    def __init__(self, conn: sqlite3.Connection, *, owns_conn: bool = False):
         self._conn = conn
+        self._owns_conn = owns_conn
+
+    def close(self) -> None:
+        if self._owns_conn:
+            self._conn.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+        return False
 
     def upsert_tool(
         self,

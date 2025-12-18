@@ -15,20 +15,20 @@ def test_run_store_lifecycle(tmp_path: Path) -> None:
         fs_denylist=[],
     )
 
-    store = RunStore(config)
-    run = store.create_run(
-        workflow_spec={"steps": [{"fn_id": "fn.one"}]},
-        inputs={},
-        params={},
-        provenance={"tool_id": "t", "tool_version": "0", "fn_id": "fn.one", "env_id": "e"},
-        log_ref_id="log1",
-    )
+    with RunStore(config) as store:
+        run = store.create_run(
+            workflow_spec={"steps": [{"fn_id": "fn.one"}]},
+            inputs={},
+            params={},
+            provenance={"tool_id": "t", "tool_version": "0", "fn_id": "fn.one", "env_id": "e"},
+            log_ref_id="log1",
+        )
 
-    assert run.status == "queued"
+        assert run.status == "queued"
 
-    store.set_status(run.run_id, "running")
-    store.set_status(run.run_id, "succeeded", outputs={"out": {"ref_id": "a"}})
+        store.set_status(run.run_id, "running")
+        store.set_status(run.run_id, "succeeded", outputs={"out": {"ref_id": "a"}})
 
-    loaded = store.get(run.run_id)
-    assert loaded.status == "succeeded"
-    assert loaded.outputs and "out" in loaded.outputs
+        loaded = store.get(run.run_id)
+        assert loaded.status == "succeeded"
+        assert loaded.outputs and "out" in loaded.outputs

@@ -23,13 +23,13 @@ def test_artifact_store_persists_file_and_metadata(tmp_path: Path) -> None:
     src = read_root / "in.txt"
     src.write_text("hello")
 
-    store = ArtifactStore(config)
-    ref = store.import_file(src, artifact_type="BioImageRef", format="text")
+    with ArtifactStore(config) as store:
+        ref = store.import_file(src, artifact_type="BioImageRef", format="text")
 
-    loaded = store.get(ref.ref_id)
-    assert loaded.ref_id == ref.ref_id
-    assert loaded.size_bytes == 5
-    assert loaded.checksums[0].algorithm in {"sha256", "sha256-tree"}
+        loaded = store.get(ref.ref_id)
+        assert loaded.ref_id == ref.ref_id
+        assert loaded.size_bytes == 5
+        assert loaded.checksums[0].algorithm in {"sha256", "sha256-tree"}
 
 
 def test_artifact_store_exports_and_verifies_checksum(tmp_path: Path) -> None:
@@ -51,11 +51,11 @@ def test_artifact_store_exports_and_verifies_checksum(tmp_path: Path) -> None:
     src = read_root / "in.txt"
     src.write_text("hello")
 
-    store = ArtifactStore(config)
-    ref = store.import_file(src, artifact_type="LogRef", format="text")
+    with ArtifactStore(config) as store:
+        ref = store.import_file(src, artifact_type="LogRef", format="text")
 
-    dest = export_root / "out.txt"
-    exported_path = store.export(ref.ref_id, dest)
+        dest = export_root / "out.txt"
+        exported_path = store.export(ref.ref_id, dest)
 
-    assert exported_path == dest
-    assert dest.read_text() == "hello"
+        assert exported_path == dest
+        assert dest.read_text() == "hello"

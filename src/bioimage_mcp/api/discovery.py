@@ -10,9 +10,21 @@ from bioimage_mcp.registry.search import any_tag_matches, io_type_matches
 
 
 class DiscoveryService:
-    def __init__(self, conn: sqlite3.Connection):
+    def __init__(self, conn: sqlite3.Connection, *, owns_conn: bool = False):
         self._conn = conn
+        self._owns_conn = owns_conn
         self._index = RegistryIndex(conn)
+
+    def close(self) -> None:
+        if self._owns_conn:
+            self._conn.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+        return False
 
     # Convenience methods used by tests and loader.
     def upsert_tool(self, **kwargs) -> None:  # type: ignore[no-untyped-def]

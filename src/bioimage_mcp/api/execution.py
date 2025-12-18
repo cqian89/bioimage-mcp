@@ -58,8 +58,21 @@ class ExecutionService:
         run_store: RunStore | None = None,
     ):
         self._config = config
+        self._owns_stores = artifact_store is None and run_store is None
         self._artifact_store = artifact_store or ArtifactStore(config)
         self._run_store = run_store or RunStore(config)
+
+    def close(self) -> None:
+        if self._owns_stores:
+            self._artifact_store.close()
+            self._run_store.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+        return False
 
     def run_workflow(self, spec: dict) -> dict:
         steps = spec.get("steps") or []

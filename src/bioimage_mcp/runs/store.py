@@ -16,7 +16,19 @@ def _now() -> str:
 class RunStore:
     def __init__(self, config: Config, *, conn: sqlite3.Connection | None = None):
         self._config = config
-        self._conn = conn or connect(config)
+        self._owns_conn = conn is None
+        self._conn: sqlite3.Connection = conn or connect(config)
+
+    def close(self) -> None:
+        if self._owns_conn:
+            self._conn.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+        return False
 
     def create_run(
         self,

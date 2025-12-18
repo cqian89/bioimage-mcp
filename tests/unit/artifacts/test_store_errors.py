@@ -27,20 +27,20 @@ def test_import_file_disk_full_persists_log_ref(tmp_path: Path, monkeypatch) -> 
     src = read_root / "in.txt"
     src.write_text("hello")
 
-    store = ArtifactStore(config)
+    with ArtifactStore(config) as store:
 
-    def _copy2(_src: Path, _dest: Path) -> None:
-        raise OSError(errno.ENOSPC, "No space left on device")
+        def _copy2(_src: Path, _dest: Path) -> None:
+            raise OSError(errno.ENOSPC, "No space left on device")
 
-    monkeypatch.setattr("bioimage_mcp.artifacts.store.shutil.copy2", _copy2)
+        monkeypatch.setattr("bioimage_mcp.artifacts.store.shutil.copy2", _copy2)
 
-    with pytest.raises(ArtifactStoreError) as excinfo:
-        store.import_file(src, artifact_type="BioImageRef", format="text")
+        with pytest.raises(ArtifactStoreError) as excinfo:
+            store.import_file(src, artifact_type="BioImageRef", format="text")
 
-    details = excinfo.value.details
-    assert isinstance(details, dict)
-    assert details.get("cause") == "ENOSPC"
-    assert details.get("log_ref_id")
+        details = excinfo.value.details
+        assert isinstance(details, dict)
+        assert details.get("cause") == "ENOSPC"
+        assert details.get("log_ref_id")
 
-    log_ref = store.get(str(details["log_ref_id"]))
-    assert log_ref.type == "LogRef"
+        log_ref = store.get(str(details["log_ref_id"]))
+        assert log_ref.type == "LogRef"

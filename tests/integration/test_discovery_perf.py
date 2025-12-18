@@ -9,7 +9,6 @@ from bioimage_mcp.api.discovery import DiscoveryService
 from bioimage_mcp.config.schema import Config
 from bioimage_mcp.storage.sqlite import connect
 
-
 pytestmark = pytest.mark.skipif(
     os.getenv("BIOIMAGE_MCP_RUN_PERF") != "1",
     reason="perf test (set BIOIMAGE_MCP_RUN_PERF=1 to run)",

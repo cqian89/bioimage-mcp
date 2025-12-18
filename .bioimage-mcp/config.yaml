@@ -1,0 +1,9 @@
+artifact_store_root: /home/qianchen/.bioimage-mcp/artifacts
+tool_manifest_roots:
+  - /home/qianchen/.bioimage-mcp/tools
+fs_allowlist_read: []
+fs_allowlist_write:
+  - /home/qianchen/.bioimage-mcp
+fs_denylist:
+  - /etc
+  - /proc

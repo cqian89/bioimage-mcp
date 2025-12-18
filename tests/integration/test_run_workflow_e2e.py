@@ -73,16 +73,15 @@ functions:
     # Avoid calling micromamba/conda in tests.
     monkeypatch.setattr("bioimage_mcp.runtimes.executor.detect_env_manager", lambda: None)
 
-    svc = ExecutionService(config)
-
     # Ensure registry can load the tool manifest.
     manifests, diags = load_manifests(config.tool_manifest_roots)
     assert not diags
     assert manifests
 
-    resp = svc.run_workflow({"steps": [{"fn_id": "fn.test", "params": {}, "inputs": {}}]})
-    assert resp["status"] in {"queued", "running", "succeeded"}
+    with ExecutionService(config) as svc:
+        resp = svc.run_workflow({"steps": [{"fn_id": "fn.test", "params": {}, "inputs": {}}]})
+        assert resp["status"] in {"queued", "running", "succeeded"}
 
-    status = svc.get_run_status(resp["run_id"])
-    assert status["status"] in {"running", "succeeded", "failed"}
-    assert "log_ref" in status
+        status = svc.get_run_status(resp["run_id"])
+        assert status["status"] in {"running", "succeeded", "failed"}
+        assert "log_ref" in status

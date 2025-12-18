@@ -49,11 +49,28 @@ def check_env_manager() -> CheckResult:
 
 def check_disk(min_free_gb: float = 1.0) -> CheckResult:
     config = load_config()
-    usage = shutil.disk_usage(config.artifact_store_root)
-    free_gb = usage.free / (1024**3)
-    ok = free_gb >= min_free_gb
-    remediation = [] if ok else [f"Free at least {min_free_gb:.0f}GB on the artifact store volume"]
-    return CheckResult(name="disk", ok=ok, remediation=remediation, details={"free_gb": free_gb})
+    root = Path(config.artifact_store_root)
+    # Find existing parent for disk_usage check (the path may not exist yet)
+    check_path = root
+    while not check_path.exists() and check_path.parent != check_path:
+        check_path = check_path.parent
+    try:
+        usage = shutil.disk_usage(check_path)
+        free_gb = usage.free / (1024**3)
+        ok = free_gb >= min_free_gb
+        remediation = (
+            [] if ok else [f"Free at least {min_free_gb:.0f}GB on the artifact store volume"]
+        )
+        return CheckResult(
+            name="disk", ok=ok, remediation=remediation, details={"free_gb": free_gb}
+        )
+    except OSError as exc:
+        return CheckResult(
+            name="disk",
+            ok=False,
+            remediation=["Unable to check disk space for artifact store"],
+            details={"error": str(exc)},
+        )
 
 
 def check_permissions() -> CheckResult:
