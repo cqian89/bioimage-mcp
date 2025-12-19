@@ -5,60 +5,10 @@ from typing import Any
 
 import numpy as np
 
-
-AXIS_ALIASES = {
-    "z": 0,
-    "y": -2,
-    "x": -1,
-    "c": -1,
-    "t": 0,
-}
-
-
-def _uri_to_path(uri: str) -> Path:
-    if uri.startswith("file://"):
-        path_str = uri[7:]
-        if len(path_str) > 2 and path_str[0] == "/" and path_str[2] == ":":
-            path_str = path_str[1:]
-        return Path(path_str)
-    return Path(uri)
-
-
-def _load_image(path: Path) -> np.ndarray:
-    from bioio import BioImage  # type: ignore
-
-    img = BioImage(str(path))
-    return img.get_image_data()  # type: ignore[attr-defined]
-
-
-def _save_zarr(data: np.ndarray, work_dir: Path, name: str) -> Path:
-    import zarr
-
-    out_dir = work_dir / name
-    if out_dir.exists():
-        raise FileExistsError(out_dir)
-    root = zarr.open_group(str(out_dir), mode="w")
-    root.create_dataset("0", data=data, chunks=True)
-    return out_dir
-
-
-def _resolve_axis(axis: Any, ndim: int) -> int:
-    if isinstance(axis, str):
-        idx = AXIS_ALIASES.get(axis.lower())
-        if idx is None:
-            raise ValueError(f"Unknown axis: {axis}")
-        axis = idx
-    axis = int(axis)
-    if axis < 0:
-        axis += ndim
-    if axis < 0 or axis >= ndim:
-        raise ValueError(f"Axis {axis} out of bounds for ndim={ndim}")
-    return axis
+from bioimage_mcp_base.utils import load_image, resolve_axis, save_zarr, uri_to_path
 
 
 def normalize_intensity(*, inputs: dict, params: dict, work_dir: Path) -> Path:
-    from skimage import exposure
-
     image_ref = inputs.get("image") or {}
     uri = image_ref.get("uri")
     if not uri:
@@ -68,12 +18,12 @@ def normalize_intensity(*, inputs: dict, params: dict, work_dir: Path) -> Path:
     pmax = float(params.get("pmax", 99.8))
     clip = bool(params.get("clip", True))
 
-    data = _load_image(_uri_to_path(str(uri))).astype("float32")
+    data = load_image(uri_to_path(str(uri))).astype("float32")
     vmin, vmax = np.percentile(data, (pmin, pmax))
     scaled = (data - vmin) / (vmax - vmin) if vmax != vmin else data
     if clip:
         scaled = np.clip(scaled, 0, 1)
-    return _save_zarr(scaled, work_dir, "normalized.ome.zarr")
+    return save_zarr(scaled, work_dir, "normalized.ome.zarr")
 
 
 def gaussian(*, inputs: dict, params: dict, work_dir: Path) -> Path:
@@ -87,9 +37,9 @@ def gaussian(*, inputs: dict, params: dict, work_dir: Path) -> Path:
     sigma = params.get("sigma", 1.0)
     preserve_range = bool(params.get("preserve_range", True))
 
-    data = _load_image(_uri_to_path(str(uri)))
+    data = load_image(uri_to_path(str(uri)))
     blurred = sk_gaussian(data, sigma=sigma, preserve_range=preserve_range)
-    return _save_zarr(blurred, work_dir, "gaussian.ome.zarr")
+    return save_zarr(blurred, work_dir, "gaussian.ome.zarr")
 
 
 def median(*, inputs: dict, params: dict, work_dir: Path) -> Path:
@@ -102,10 +52,10 @@ def median(*, inputs: dict, params: dict, work_dir: Path) -> Path:
         raise ValueError("Input 'image' must include uri")
 
     radius = int(params.get("radius", 1))
-    data = _load_image(_uri_to_path(str(uri)))
+    data = load_image(uri_to_path(str(uri)))
     footprint = disk(radius) if data.ndim == 2 else ball(radius)
     filtered = sk_median(data, footprint=footprint)
-    return _save_zarr(filtered, work_dir, "median.ome.zarr")
+    return save_zarr(filtered, work_dir, "median.ome.zarr")
 
 
 def bilateral(*, inputs: dict, params: dict, work_dir: Path) -> Path:
@@ -120,14 +70,14 @@ def bilateral(*, inputs: dict, params: dict, work_dir: Path) -> Path:
     sigma_spatial = params.get("sigma_spatial", 15)
     channel_axis = params.get("channel_axis", None)
 
-    data = _load_image(_uri_to_path(str(uri))).astype("float32")
+    data = load_image(uri_to_path(str(uri))).astype("float32")
     filtered = denoise_bilateral(
         data,
         sigma_color=sigma_color,
         sigma_spatial=sigma_spatial,
         channel_axis=channel_axis,
     )
-    return _save_zarr(filtered, work_dir, "bilateral.ome.zarr")
+    return save_zarr(filtered, work_dir, "bilateral.ome.zarr")
 
 
 def sobel(*, inputs: dict, params: dict, work_dir: Path) -> Path:
@@ -139,13 +89,13 @@ def sobel(*, inputs: dict, params: dict, work_dir: Path) -> Path:
         raise ValueError("Input 'image' must include uri")
 
     axis = params.get("axis", None)
-    data = _load_image(_uri_to_path(str(uri)))
+    data = load_image(uri_to_path(str(uri)))
     if axis is not None:
-        idx = _resolve_axis(axis, data.ndim)
+        idx = resolve_axis(axis, data.ndim)
         edges = sk_sobel(data, axis=idx)
     else:
         edges = sk_sobel(data)
-    return _save_zarr(edges, work_dir, "sobel.ome.zarr")
+    return save_zarr(edges, work_dir, "sobel.ome.zarr")
 
 
 def denoise_nl_means(*, inputs: dict, params: dict, work_dir: Path) -> Path:
@@ -160,7 +110,7 @@ def denoise_nl_means(*, inputs: dict, params: dict, work_dir: Path) -> Path:
     patch_distance = int(params.get("patch_distance", 6))
     h = params.get("h", 0.1)
 
-    data = _load_image(_uri_to_path(str(uri))).astype("float32")
+    data = load_image(uri_to_path(str(uri))).astype("float32")
     denoised = denoise_nl_means(
         data,
         patch_size=patch_size,
@@ -169,7 +119,7 @@ def denoise_nl_means(*, inputs: dict, params: dict, work_dir: Path) -> Path:
         fast_mode=True,
         channel_axis=None,
     )
-    return _save_zarr(denoised, work_dir, "denoise_nl_means.ome.zarr")
+    return save_zarr(denoised, work_dir, "denoise_nl_means.ome.zarr")
 
 
 def unsharp_mask(*, inputs: dict, params: dict, work_dir: Path) -> Path:
@@ -184,9 +134,9 @@ def unsharp_mask(*, inputs: dict, params: dict, work_dir: Path) -> Path:
     amount = float(params.get("amount", 1.0))
     preserve_range = bool(params.get("preserve_range", True))
 
-    data = _load_image(_uri_to_path(str(uri)))
+    data = load_image(uri_to_path(str(uri)))
     sharpened = sk_unsharp(data, radius=radius, amount=amount, preserve_range=preserve_range)
-    return _save_zarr(sharpened, work_dir, "unsharp_mask.ome.zarr")
+    return save_zarr(sharpened, work_dir, "unsharp_mask.ome.zarr")
 
 
 def equalize_adapthist(*, inputs: dict, params: dict, work_dir: Path) -> Path:
@@ -200,9 +150,9 @@ def equalize_adapthist(*, inputs: dict, params: dict, work_dir: Path) -> Path:
     kernel_size = params.get("kernel_size", None)
     clip_limit = params.get("clip_limit", 0.01)
 
-    data = _load_image(_uri_to_path(str(uri))).astype("float32")
+    data = load_image(uri_to_path(str(uri))).astype("float32")
     eq = sk_equalize(data, kernel_size=kernel_size, clip_limit=clip_limit)
-    return _save_zarr(eq, work_dir, "equalize_adapthist.ome.zarr")
+    return save_zarr(eq, work_dir, "equalize_adapthist.ome.zarr")
 
 
 def threshold_otsu(*, inputs: dict, params: dict, work_dir: Path) -> Path:
@@ -214,10 +164,10 @@ def threshold_otsu(*, inputs: dict, params: dict, work_dir: Path) -> Path:
         raise ValueError("Input 'image' must include uri")
 
     apply = bool(params.get("apply", True))
-    data = _load_image(_uri_to_path(str(uri)))
+    data = load_image(uri_to_path(str(uri)))
     thresh = sk_otsu(data)
     result = (data > thresh).astype("uint8") if apply else data
-    return _save_zarr(result, work_dir, "threshold_otsu.ome.zarr")
+    return save_zarr(result, work_dir, "threshold_otsu.ome.zarr")
 
 
 def threshold_yen(*, inputs: dict, params: dict, work_dir: Path) -> Path:
@@ -229,10 +179,10 @@ def threshold_yen(*, inputs: dict, params: dict, work_dir: Path) -> Path:
         raise ValueError("Input 'image' must include uri")
 
     apply = bool(params.get("apply", True))
-    data = _load_image(_uri_to_path(str(uri)))
+    data = load_image(uri_to_path(str(uri)))
     thresh = sk_yen(data)
     result = (data > thresh).astype("uint8") if apply else data
-    return _save_zarr(result, work_dir, "threshold_yen.ome.zarr")
+    return save_zarr(result, work_dir, "threshold_yen.ome.zarr")
 
 
 def morph_opening(*, inputs: dict, params: dict, work_dir: Path) -> Path:
@@ -244,10 +194,10 @@ def morph_opening(*, inputs: dict, params: dict, work_dir: Path) -> Path:
         raise ValueError("Input 'image' must include uri")
 
     radius = int(params.get("radius", 1))
-    data = _load_image(_uri_to_path(str(uri)))
+    data = load_image(uri_to_path(str(uri)))
     selem = disk(radius) if data.ndim == 2 else ball(radius)
     opened = opening(data, selem)
-    return _save_zarr(opened, work_dir, "morph_opening.ome.zarr")
+    return save_zarr(opened, work_dir, "morph_opening.ome.zarr")
 
 
 def morph_closing(*, inputs: dict, params: dict, work_dir: Path) -> Path:
@@ -259,10 +209,10 @@ def morph_closing(*, inputs: dict, params: dict, work_dir: Path) -> Path:
         raise ValueError("Input 'image' must include uri")
 
     radius = int(params.get("radius", 1))
-    data = _load_image(_uri_to_path(str(uri)))
+    data = load_image(uri_to_path(str(uri)))
     selem = disk(radius) if data.ndim == 2 else ball(radius)
     closed = closing(data, selem)
-    return _save_zarr(closed, work_dir, "morph_closing.ome.zarr")
+    return save_zarr(closed, work_dir, "morph_closing.ome.zarr")
 
 
 def remove_small_objects(*, inputs: dict, params: dict, work_dir: Path) -> Path:
@@ -276,6 +226,6 @@ def remove_small_objects(*, inputs: dict, params: dict, work_dir: Path) -> Path:
     min_size = int(params.get("min_size", 64))
     connectivity = params.get("connectivity", 1)
 
-    data = _load_image(_uri_to_path(str(uri)))
+    data = load_image(uri_to_path(str(uri)))
     cleaned = sk_remove(data.astype(bool), min_size=min_size, connectivity=connectivity)
-    return _save_zarr(cleaned.astype("uint8"), work_dir, "remove_small_objects.ome.zarr")
+    return save_zarr(cleaned.astype("uint8"), work_dir, "remove_small_objects.ome.zarr")

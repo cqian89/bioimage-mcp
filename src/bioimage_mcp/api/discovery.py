@@ -156,7 +156,8 @@ class DiscoveryService:
                 "introspection_source": cached.get("introspection_source"),
             }
             return FunctionResponse.model_validate(enriched).model_dump(
-                exclude_none=True
+                exclude_none=True,
+                by_alias=True,
             )
 
         entrypoint = manifest.entrypoint
@@ -199,5 +200,6 @@ class DiscoveryService:
             "introspection_source": introspection_source,
         }
         return FunctionResponse.model_validate(enriched).model_dump(
-            exclude_none=True
+            exclude_none=True,
+            by_alias=True,
         )

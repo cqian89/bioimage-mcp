@@ -102,6 +102,14 @@ class RunStore:
         )
         self._conn.commit()
 
+    def set_log_ref(self, run_id: str, ref_id: str) -> None:
+        """Update the log reference for a run."""
+        self._conn.execute(
+            "UPDATE runs SET log_ref_id = ? WHERE run_id = ?",
+            (ref_id, run_id),
+        )
+        self._conn.commit()
+
     def set_status(
         self, run_id: str, status: str, *, outputs: dict | None = None, error: dict | None = None
     ) -> None:

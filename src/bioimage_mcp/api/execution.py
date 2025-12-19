@@ -176,8 +176,20 @@ class ExecutionService:
         inputs = step.get("inputs") or {}
         timeout_seconds = (spec.get("run_opts") or {}).get("timeout_seconds")
 
-        work_dir = self._config.artifact_store_root / "work" / "runs"
+        # Create the run early so we can use its ID to isolate outputs (FR-009).
+        log_ref = self._artifact_store.write_log("workflow started")
+        run = self._run_store.create_run(
+            workflow_spec=spec,
+            inputs=inputs,
+            params=params,
+            provenance={"fn_id": fn_id},
+            log_ref_id=log_ref.ref_id,
+        )
+
+        work_dir = self._config.artifact_store_root / "work" / "runs" / run.run_id
         work_dir.mkdir(parents=True, exist_ok=True)
+
+        self._run_store.set_status(run.run_id, "running")
 
         response, log_text, exit_code = execute_step(
             config=self._config,
@@ -189,13 +201,8 @@ class ExecutionService:
         )
 
         log_ref = self._artifact_store.write_log(log_text or str(response))
-        run = self._run_store.create_run(
-            workflow_spec=spec,
-            inputs=inputs,
-            params=params,
-            provenance={"fn_id": fn_id},
-            log_ref_id=log_ref.ref_id,
-        )
+        run.log_ref_id = log_ref.ref_id
+        self._run_store.set_log_ref(run.run_id, log_ref.ref_id)
 
         if not response.get("ok"):
             self._run_store.set_status(

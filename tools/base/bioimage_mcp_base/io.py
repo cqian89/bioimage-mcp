@@ -2,14 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-
-def _uri_to_path(uri: str) -> Path:
-    if uri.startswith("file://"):
-        path_str = uri[7:]
-        if len(path_str) > 2 and path_str[0] == "/" and path_str[2] == ":":
-            path_str = path_str[1:]
-        return Path(path_str)
-    return Path(uri)
+from bioimage_mcp_base.utils import uri_to_path
 
 
 def convert_to_ome_zarr(*, inputs: dict, params: dict, work_dir: Path) -> Path:
@@ -19,7 +12,7 @@ def convert_to_ome_zarr(*, inputs: dict, params: dict, work_dir: Path) -> Path:
     if not uri:
         raise ValueError("Input 'image' must include uri")
 
-    in_path = _uri_to_path(str(uri))
+    in_path = uri_to_path(str(uri))
 
     try:
         import zarr
@@ -45,7 +38,7 @@ def export_ome_tiff(*, inputs: dict, params: dict, work_dir: Path) -> Path:
     if not uri:
         raise ValueError("Input 'image' must include uri")
 
-    in_path = _uri_to_path(str(uri))
+    in_path = uri_to_path(str(uri))
     compression = params.get("compression")
 
     try:

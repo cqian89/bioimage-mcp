@@ -73,14 +73,14 @@ class ToolManifest(BaseModel):
 
 class FunctionResponse(BaseModel):
     """Function details returned to clients via describe_function."""
-    model_config = {"protected_namespaces": ()}
+    model_config = {"populate_by_name": True}
     fn_id: str
-    schema: dict
+    params_schema: dict = Field(alias="schema")
     introspection_source: str | None = None
 
     @model_validator(mode="after")
     def _validate_schema(self) -> FunctionResponse:
-        schema = self.schema or {}
+        schema = self.params_schema or {}
         if not isinstance(schema, dict) or schema.get("type") != "object":
             raise ValueError("schema must be a JSON object schema")
         return self
