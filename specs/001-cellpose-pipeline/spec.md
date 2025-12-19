@@ -5,6 +5,16 @@
 **Status**: Draft  
 **Input**: User description: "Create the spec for v0.1 (First Real Pipeline) from @initial_planning/Bioimage-MCP_PRD.md and @initial_planning/Bioimage-MCP_ARCHITECTURE.md"
 
+## Clarifications
+
+### Session 2025-12-18
+
+- Q: What is the canonical wire format for an Artifact Reference returned by MCP tools in v0.1? → A: Structured object with `schema_version` + `uri` as a `file://...` URI plus metadata.
+- Q: What isolation mechanism should v0.1 use to run the segmentation tool pack? → A: Separate local subprocess (Python) in a dedicated conda/micromamba env (`bioimage-mcp-*`).
+- Q: Which segmentation engine is the required v0.1 implementation target? → A: Cellpose.
+- Q: What file format should the workflow record artifact use in v0.1? → A: JSON document (single file).
+- Q: What is the required label image representation produced by the v0.1 pipeline? → A: Instance label image (single-channel integer labels, `0=background`, `1..N=instances`).
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Run a Cell Segmentation Pipeline (Priority: P1)
@@ -17,14 +27,14 @@ A microscopy researcher can run a simple, end-to-end segmentation workflow on a 
 
 **Acceptance Scenarios**:
 
-1. **Given** a valid input image reference to a supported microscopy image, **When** the user runs the segmentation workflow with valid parameters, **Then** the system returns (a) a label image reference, (b) a run log reference, and (c) a workflow record reference.
+1. **Given** a valid input image reference to a supported microscopy image, **When** the user runs the segmentation workflow with valid parameters, **Then** the system returns (a) a label image reference, (b) a run log reference, and (c) a `NativeOutputRef` (format: `workflow-record-json`) for workflow replay.
 2. **Given** an input image reference whose file cannot be read (missing or permission denied), **When** the user attempts to run the workflow, **Then** the system fails fast with a clear error message and returns a run log reference describing the failure.
 
 ---
 
 ### User Story 2 - Replay a Recorded Workflow (Priority: P2)
 
-A platform engineer or analyst can reproduce a prior run by replaying a saved workflow record, without manually re-authoring steps.
+A platform engineer or analyst can reproduce a prior run by replaying a saved workflow record (`NativeOutputRef` with format `workflow-record-json`), without manually re-authoring steps.
 
 **Why this priority**: Reproducibility is a core differentiator for bioimage analysis pipelines; replay turns “one-off” LLM runs into auditable, repeatable analysis.
 
@@ -32,8 +42,8 @@ A platform engineer or analyst can reproduce a prior run by replaying a saved wo
 
 **Acceptance Scenarios**:
 
-1. **Given** a workflow record reference produced by a prior successful run, **When** the user requests a replay, **Then** the system starts a new run and produces output artifacts of the same types as the original workflow.
-2. **Given** a workflow record reference that points to a record with missing required inputs, **When** the user requests a replay, **Then** the system rejects the request with a clear explanation of what is missing.
+1. **Given** a workflow record (`NativeOutputRef` with format `workflow-record-json`) produced by a prior successful run, **When** the user requests a replay, **Then** the system starts a new run and produces output artifacts of the same types as the original workflow.
+2. **Given** a workflow record artifact that points to a record with missing required inputs, **When** the user requests a replay, **Then** the system rejects the request with a clear explanation of what is missing.
 
 ---
 
@@ -53,53 +63,66 @@ A maintainer can validate that the v0.1 pipeline continues to work by running an
 
 ### Edge Cases
 
-- What happens when the input image reference points to an unsupported format?
-- What happens when the segmentation step produces an empty result (no detected objects)?
-- How does the system handle a segmentation tool failure while still producing useful logs?
-- How does the system handle timeouts for long-running segmentation on large images?
-- What happens when the workflow attempts to read/write outside configured allowed filesystem locations?
+- **Unsupported format**: The workflow MUST fail fast before tool execution with an actionable error; a run log artifact reference MUST still be produced.
+- **Empty result**: The workflow MUST still succeed and produce a valid label image reference whose pixel values are all `0` (background); logs MUST note that zero instances were detected.
+- **Tool failure**: The run MUST be marked failed; a run log artifact reference MUST be produced; no label output reference is returned.
+- **Timeouts**: Tool execution MUST be bounded by configured limits; timeouts MUST yield a clear error and a run log artifact reference.
+- **Forbidden paths**: If any step would read/write outside configured allowlisted roots, the workflow MUST be rejected before execution with an authorization error and a run log artifact reference.
 
 ## Requirements *(mandatory)*
 
 ### Constitution Constraints *(mandatory)*
 
 - **MCP API impact**: Additive capability only. No breaking changes to existing discovery behavior; v0.1 introduces the ability to execute a linear workflow, record it as an artifact, and replay it for reproducibility.
-- **Artifact I/O**: All pipeline inputs/outputs MUST be passed as artifact references (file-backed). Minimum artifacts for the v0.1 pipeline: input image reference, output label image reference, run log reference, workflow record reference. Exports MUST support local filesystem destinations only.
-- **Isolation**: Segmentation MUST execute in an isolated runtime that is independent from the core server runtime, so tool dependencies do not destabilize the server.
-- **Reproducibility**: Each successful run MUST produce a workflow record artifact that captures: ordered steps, input/output artifact references, user-supplied parameters, tool identity/version, and an environment fingerprint sufficient to explain differences between runs.
+- **Artifact I/O**: All pipeline inputs/outputs MUST be passed as artifact references (file-backed; structured object form with `uri` as a `file://...` URI). Minimum artifacts for the v0.1 pipeline: input image reference, output label image reference, run log reference, and workflow record (`NativeOutputRef` with format `workflow-record-json`). Exports MUST support local filesystem destinations only. (See FR-002 for payload discipline acceptance criteria.)
+- **Isolation**: Segmentation MUST execute in an isolated runtime that is independent from the core server runtime, so tool dependencies do not destabilize the server. **v0.1 mechanism**: run segmentation via a separate local Python subprocess in a dedicated conda/micromamba environment (`bioimage-mcp-*`).
+- **Reproducibility**: Each successful run MUST produce a workflow record artifact (JSON document) that captures: ordered steps, input/output artifact references, user-supplied parameters, tool identity/version, and an environment fingerprint sufficient to explain differences between runs.
 - **Safety/observability**: Each run MUST produce logs as an artifact reference. The system MUST provide user-friendly errors for invalid references and MUST enforce configured filesystem allowlists for workflow reads/writes.
 
 ### Functional Requirements
 
-- **FR-001**: The system MUST support executing an end-to-end v0.1 workflow that reads one microscopy image (by reference), runs a cell segmentation step, and writes a label image (by reference). **Acceptance**: Running the predefined sample workflow produces a label image reference.
+- **FR-001**: The system MUST support executing an end-to-end v0.1 workflow that reads one microscopy image (by reference), runs a Cellpose-based cell segmentation step, and writes an instance label image (single-channel integer labels, `0=background`, `1..N=instances`) (by reference). **Acceptance**: Running the predefined sample workflow produces a label image reference.
 - **FR-002**: The system MUST NOT embed large image or label payloads directly in messages; it MUST pass data via artifact references. **Acceptance**: A successful run returns only references/metadata, not pixel arrays.
 - **FR-003**: For each workflow run (success or failure), the system MUST produce a run log artifact reference that is retrievable by the user. **Acceptance**: A failed run still yields a log reference that contains an error summary.
-- **FR-004**: For each successful workflow run, the system MUST produce a workflow record artifact reference that can be used later to reproduce the run. **Acceptance**: The run results include a workflow record reference.
-- **FR-005**: The system MUST support replaying a workflow record to start a new run without requiring manual re-entry of all steps. **Acceptance**: Replaying a saved record starts a new run and yields new output references.
+- **FR-004**: For each successful workflow run, the system MUST produce a workflow record artifact (`NativeOutputRef` with format `workflow-record-json`) that can be used later to reproduce the run. **Acceptance**: The run results include a workflow record `NativeOutputRef`.
+- **FR-005**: The system MUST support replaying a workflow record (`NativeOutputRef` with format `workflow-record-json`) to start a new run without requiring manual re-entry of all steps. **Acceptance**: Replaying a saved record starts a new run and yields new output references.
 - **FR-006**: The system MUST validate workflow step compatibility before execution, ensuring that each step’s produced artifact types satisfy the next step’s required inputs. **Acceptance**: An incompatible workflow is rejected before any tool execution begins.
 - **FR-007**: The system MUST provide clear, actionable error messages when an artifact reference cannot be accessed (missing file, permission denied, unsupported format). **Acceptance**: The error identifies the problematic reference and the reason.
 - **FR-008**: The system MUST allow users to export any artifact reference produced by a run to a local filesystem destination. **Acceptance**: Exporting a label artifact creates a local file at the requested path.
 - **FR-009**: The system MUST enforce configured filesystem allowlists such that workflows cannot read or write outside permitted locations. **Acceptance**: A workflow referencing a forbidden path is rejected with an authorization error.
 - **FR-010**: The system MUST include a minimal automated validation that runs the v0.1 pipeline on 1–2 small sample datasets and confirms that label outputs are produced. **Acceptance**: The validation run reports success and produces label references for each dataset.
 
+### Non-Functional Requirements
+
+- **NFR-001 (Discovery payload discipline)**: `list_tools` and other discovery listing endpoints MUST remain summary-only and paginated; detailed function schemas (including dynamic `params_schema`) MUST be fetched on-demand (e.g., `describe_function`) and MUST NOT be embedded into listing responses.
+- **NFR-002 (Schema versioning)**: Artifact reference schemas MUST be versioned (e.g., via a `schema_version` field) so clients can validate and migrate deterministically.
+- **NFR-003 (Reproducible tool environments)**: Tool environments MUST be pinned via lockfiles and provenance MUST record enough information (tool version + lockfile hash) to reproduce installs.
+- **NFR-004 (Sample data bounds)**: Included sample datasets MUST be small enough for routine validation (target: ≤ 25 MB per dataset) and the validation workflow SHOULD complete within 10 minutes on a typical CPU-only developer machine.
+- **NFR-005 (Platform support & docs)**: The core server MUST run on Linux/macOS/Windows; tool environment install steps MUST document platform-specific constraints and recommended workarounds where needed.
+
 ### Assumptions & Dependencies
 
 - The product is local-first for v0.1; inputs and outputs are stored on the local filesystem.
 - The v0.1 “first real pipeline” scope is a linear, single-image segmentation workflow; it does not include parallel execution, batch scheduling, or an interactive GUI.
-- The default intermediate artifact format is **OME-TIFF** for maximum interoperability; OME-Zarr support is deferred as a future goal.
+- The default intermediate artifact format is **OME-TIFF** for maximum interoperability; OME-Zarr support is deferred as a future goal (explicit v0.1 exception to Constitution Principle III default preference; revisit as v0.2+).
 - The project provides 1–2 small sample datasets suitable for routine validation.
 - Users have permission to read the input image location and write to the configured artifact/output locations.
 
 ### Implementation Tasks (v0.1)
 
-- Implement the OME-TIFF pivot: add `builtin.convert_to_ome_tiff` and update built-in/pipeline outputs to write OME-TIFF by default; keep OME-Zarr as a future goal.
+- Implementation tasks live in `specs/001-cellpose-pipeline/tasks.md`.
+- v0.1 scope is OME-TIFF-only; OME-Zarr is explicitly deferred.
+- The `meta.describe` protocol for dynamic parameter schema extraction is specified in `specs/001-cellpose-pipeline/meta-describe-protocol.md`.
 
 ### Key Entities *(include if feature involves data)*
 
-- **Artifact Reference**: A metadata-rich pointer to a file-backed artifact, including a URI/location, format/mime information, size/checksum, and relevant image metadata (e.g., axes, pixel sizes, channels) when applicable.
+- **Artifact Reference**: A metadata-rich pointer to a file-backed artifact. **Canonical v0.1 wire format**: a structured object with `schema_version`, `uri` using the `file://...` scheme, a stable `type` (e.g., `BioImageRef`, `LabelImageRef`, `LogRef`, `NativeOutputRef`), plus metadata (format/mime, optional size/checksum, and relevant image metadata such as axes/pixel sizes/channels when applicable).
 - **Workflow**: An ordered set of steps representing a linear analysis plan, including step identifiers, required input artifact types, produced output artifact types, and user-provided parameters.
+- **Workflow Record Artifact**: A file-backed JSON document (referenced via an Artifact Reference) that captures the executed workflow steps, parameters, tool identity/version, environment fingerprint, and run linkage for replay.
+- **Label Image**: An instance label image artifact: single-channel integer labels with `0=background` and `1..N=instances`.
 - **Run**: A single execution instance of a workflow, including status (running/succeeded/failed), timestamps, produced artifact references, and a log reference.
-- **Tool Pack**: A discoverable analysis capability (e.g., segmentation) that can be executed in an isolated runtime and exposes one or more functions usable in workflows.
+- **Tool Pack**: A discoverable analysis capability (e.g., segmentation) that can be executed in an isolated runtime and exposes one or more functions usable in workflows. Tool packs expose a `meta.describe` function for dynamic parameter schema introspection (see `meta-describe-protocol.md`).
+- **Function Parameter Schema**: A JSON Schema describing the parameters accepted by a function. For v0.1, schemas are dynamically introspected on-demand (e.g., via `describe_function`) via the `meta.describe` protocol, combining automatic structure extraction with curated descriptions.
 
 ## Success Criteria *(mandatory)*
 

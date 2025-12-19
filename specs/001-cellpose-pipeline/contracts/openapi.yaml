@@ -1,0 +1,178 @@
+openapi: 3.0.3
+info:
+  title: Bioimage-MCP v0.1 Pipeline Contracts
+  version: 0.1.0
+  description: |
+    Design-time contracts for the v0.1 "first real pipeline" feature.
+    This is not necessarily exposed as HTTP; it describes stable request/response schemas
+    for the MCP-facing service methods and tool protocol payloads.
+
+components:
+  schemas:
+    ArtifactChecksum:
+      type: object
+      required: [algorithm, value]
+      properties:
+        algorithm:
+          type: string
+          example: sha256
+        value:
+          type: string
+
+    ArtifactRef:
+      type: object
+      required: [ref_id, type, uri, format, mime_type, size_bytes, created_at, metadata]
+      properties:
+        ref_id:
+          type: string
+        type:
+          type: string
+          description: |
+            Canonical artifact type (semantic role).
+            Examples: BioImageRef, LabelImageRef, LogRef, NativeOutputRef.
+            NativeOutputRef is used for tool-native outputs and system records (e.g., workflow records).
+        uri:
+          type: string
+          description: file:// URI to artifact payload.
+        format:
+          type: string
+          description: |
+            Logical format name. This field is OPEN and EXTENSIBLE - values are tool-dependent.
+            Examples: OME-TIFF, OME-Zarr, workflow-record-json, cellpose-seg-npy, imagej-roi-zip.
+            The core server does not hardcode format handling; format-specific logic is resolved dynamically.
+        mime_type:
+          type: string
+        size_bytes:
+          type: integer
+          format: int64
+        checksums:
+          type: array
+          items:
+            $ref: "#/components/schemas/ArtifactChecksum"
+        created_at:
+          type: string
+          description: ISO 8601 timestamp
+        metadata:
+          type: object
+          additionalProperties: true
+
+    WorkflowStepSpec:
+      type: object
+      required: [fn_id]
+      properties:
+        fn_id:
+          type: string
+        inputs:
+          type: object
+          additionalProperties: true
+          description: Mapping input port name -> ArtifactRef payload.
+        params:
+          type: object
+          additionalProperties: true
+
+    WorkflowRunSpec:
+      type: object
+      required: [steps]
+      properties:
+        steps:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/WorkflowStepSpec"
+        run_opts:
+          type: object
+          additionalProperties: true
+          properties:
+            timeout_seconds:
+              type: integer
+              minimum: 1
+
+    RunStatus:
+      type: object
+      required: [run_id, status, outputs, log_ref]
+      properties:
+        run_id:
+          type: string
+        status:
+          type: string
+          enum: [queued, running, succeeded, failed, cancelled]
+        outputs:
+          type: object
+          additionalProperties: true
+          description: Mapping output name -> ArtifactRef payload.
+        log_ref:
+          $ref: "#/components/schemas/ArtifactRef"
+        error:
+          type: object
+          additionalProperties: true
+
+    ToolProtocolRequest:
+      type: object
+      required: [fn_id, params, inputs, work_dir]
+      properties:
+        fn_id:
+          type: string
+        params:
+          type: object
+          additionalProperties: true
+        inputs:
+          type: object
+          additionalProperties: true
+          description: Mapping input port name -> ArtifactRef payload.
+        work_dir:
+          type: string
+
+    ToolProtocolResponse:
+      type: object
+      required: [ok, outputs, log]
+      properties:
+        ok:
+          type: boolean
+        outputs:
+          type: object
+          additionalProperties:
+            type: object
+            required: [type, format, path]
+            properties:
+              type:
+                type: string
+              format:
+                type: string
+              path:
+                type: string
+        log:
+          type: string
+        error:
+          type: object
+          additionalProperties: true
+
+    # NOTE: CellposeSegmentParams is provided as an EXAMPLE for documentation purposes.
+    # The actual schema is dynamically introspected at runtime via the meta.describe protocol.
+    # See specs/001-cellpose-pipeline/meta-describe-protocol.md for details.
+    # This example shows the expected shape; the authoritative schema comes from CellposeModel.eval().
+    CellposeSegmentParams:
+      type: object
+      description: |
+        Example schema for Cellpose segmentation parameters.
+        The actual schema is dynamically generated via meta.describe and may include additional parameters.
+      additionalProperties: true  # Allow additional params from introspection
+      properties:
+        model_type:
+          type: string
+          description: Cellpose built-in model name (e.g., 'cyto3', 'nuclei').
+          default: cyto3
+        diameter:
+          type: number
+          nullable: true
+          description: Estimated cell diameter in pixels. Use 0 or null for automatic estimation.
+        flow_threshold:
+          type: number
+          default: 0.4
+          description: Flow error threshold for mask reconstruction (0.0-1.0).
+        cellprob_threshold:
+          type: number
+          default: 0.0
+          description: Cell probability threshold (-6.0 to 6.0).
+
+paths: {}
+
