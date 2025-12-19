@@ -59,6 +59,7 @@ cover/
 .codex/
 .gemini/
 .opencode/
+.agent/
 # .specify/
 
 
@@ -192,6 +193,11 @@ cython_debug/
 # User-defined
 # initial_planning/
 datasets/
+
+# Cellpose model caches
+.cellpose/
+*.npy
+!tools/cellpose/**/__init__.py
 
 # OS / editor
 .DS_Store

@@ -9,9 +9,10 @@ from bioimage_mcp.config.schema import Config
 
 def _assert_no_pixel_arrays(payload: object) -> None:
     if isinstance(payload, dict):
+        forbidden_keys = {"pixels", "pixel_data", "image", "label_image", "array", "ndarray"}
         for key, value in payload.items():
             key_str = str(key).lower()
-            assert key_str not in {"pixels", "pixel_data", "image", "label_image", "array", "ndarray"}
+            assert key_str not in forbidden_keys
             _assert_no_pixel_arrays(value)
         return
 
@@ -38,7 +39,11 @@ def test_run_workflow_payload_contains_refs_only(tmp_path: Path, monkeypatch) ->
             {
                 "ok": True,
                 "outputs": {
-                    "labels": {"type": "LabelImageRef", "format": "ome-tiff", "path": str(tmp_path / "x.tif")}
+                    "labels": {
+                        "type": "LabelImageRef",
+                        "format": "ome-tiff",
+                        "path": str(tmp_path / "x.tif"),
+                    }
                 },
             },
             "log",

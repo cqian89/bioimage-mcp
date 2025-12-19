@@ -25,21 +25,21 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T000a [P] Unit test for introspect_python_api() utility in tests/unit/runtimes/test_introspect.py
-- [ ] T000b [P] Unit test for introspect_argparse() utility in tests/unit/runtimes/test_introspect.py
-- [ ] T000c [P] Contract test for meta.describe request/response schema in tests/contract/test_meta_describe_contract.py
-- [ ] T000c2 [P] Contract test that discovery listings remain summary-only (no `params_schema` blobs) in tests/contract/test_discovery_summary_first.py
-- [ ] T000c3 [P] Contract test for discovery pagination/cursor stability in tests/contract/test_discovery_pagination_contract.py
+- [X] T000a [P] Unit test for introspect_python_api() utility in tests/unit/runtimes/test_introspect.py
+- [X] T000b [P] Unit test for introspect_argparse() utility in tests/unit/runtimes/test_introspect.py
+- [X] T000c [P] Contract test for meta.describe request/response schema in tests/contract/test_meta_describe_contract.py
+- [X] T000c2 [P] Contract test that discovery listings remain summary-only (no `params_schema` blobs) in tests/contract/test_discovery_summary_first.py
+- [X] T000c3 [P] Contract test for discovery pagination/cursor stability in tests/contract/test_discovery_pagination_contract.py
 
 ### Implementation for Phase 0
 
-- [ ] T000d Create introspection utilities module at src/bioimage_mcp/runtimes/introspect.py with introspect_python_api() and introspect_argparse()
-- [ ] T000e [P] Add introspection_source field to Function model in src/bioimage_mcp/registry/manifest_schema.py
-- [ ] T000f [P] Add schema_cache table to SQLite schema in src/bioimage_mcp/storage/sqlite.py (tool_id, tool_version, fn_id, params_schema_json, introspection_source)
-- [ ] T000g Implement on-demand schema enrichment in ToolRegistry.describe_function() at src/bioimage_mcp/registry/index.py (call meta.describe only when `describe_function` is invoked; cache results)
-- [ ] T000g2 [P] Implement schema cache lookup/validation logic in ToolRegistry at src/bioimage_mcp/registry/index.py (check tool_version before calling meta.describe; invalidate stale cache)
-- [ ] T000h Update DiscoveryService.describe_function() to include introspection_source in response at src/bioimage_mcp/api/discovery.py
-- [ ] T000i Implement meta.describe handler in builtin tool pack at tools/builtin/bioimage_mcp_builtin/entrypoint.py
+- [X] T000d Create introspection utilities module at src/bioimage_mcp/runtimes/introspect.py with introspect_python_api() and introspect_argparse()
+- [X] T000e [P] Add introspection_source field to Function model in src/bioimage_mcp/registry/manifest_schema.py
+- [X] T000f [P] Add schema_cache table to SQLite schema in src/bioimage_mcp/storage/sqlite.py (tool_id, tool_version, fn_id, params_schema_json, introspection_source)
+- [X] T000g Implement on-demand schema enrichment in ToolRegistry.describe_function() at src/bioimage_mcp/registry/index.py (call meta.describe only when `describe_function` is invoked; cache results)
+- [X] T000g2 [P] Implement schema cache lookup/validation logic in ToolRegistry at src/bioimage_mcp/registry/index.py (check tool_version before calling meta.describe; invalidate stale cache)
+- [X] T000h Update DiscoveryService.describe_function() to include introspection_source in response at src/bioimage_mcp/api/discovery.py
+- [X] T000i Implement meta.describe handler in builtin tool pack at tools/builtin/bioimage_mcp_builtin/entrypoint.py
 
 **Checkpoint**: meta.describe protocol ready - tool packs can expose dynamic schemas
 
@@ -53,21 +53,21 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T001a [P] Contract test that env definition pins Cellpose version in tests/contract/test_cellpose_env_contract.py
-- [ ] T001b [P] Contract test that Cellpose env lockfile exists at envs/bioimage-mcp-cellpose.lock.yml in tests/contract/test_cellpose_env_lock_contract.py
-- [ ] T003a [P] Contract test validating Cellpose tool manifest schema and env_id in tests/contract/test_cellpose_manifest_contract.py
-- [ ] T006a [P] Contract test ensuring .gitignore ignores Cellpose caches in tests/contract/test_gitignore_cellpose_contract.py
+- [X] T001a [P] Contract test that env definition pins Cellpose version in tests/contract/test_cellpose_env_contract.py
+- [X] T001b [P] Contract test that Cellpose env lockfile exists at envs/bioimage-mcp-cellpose.lock.yml in tests/contract/test_cellpose_env_lock_contract.py
+- [X] T003a [P] Contract test validating Cellpose tool manifest schema and env_id in tests/contract/test_cellpose_manifest_contract.py
+- [X] T006a [P] Contract test ensuring .gitignore ignores Cellpose caches in tests/contract/test_gitignore_cellpose_contract.py
 
 ### Implementation for Phase 1
 
-- [ ] T001 Create Cellpose environment definition at envs/bioimage-mcp-cellpose.yaml with cellpose, numpy, torch dependencies (pin cellpose version)
-- [ ] T001c Generate conda-lock file at envs/bioimage-mcp-cellpose.lock.yml for reproducible installs (use conda-lock; include lockfile hash in workflow provenance)
-- [ ] T002 [P] Create Cellpose tool pack directory structure at tools/cellpose/
-- [ ] T003 [P] Create Cellpose tool manifest at tools/cellpose/manifest.yaml with minimal params_schema (full schema fetched on-demand via meta.describe)
-- [ ] T004 Create Cellpose entrypoint scaffold at tools/cellpose/bioimage_mcp_cellpose/entrypoint.py implementing JSON stdin/stdout protocol including meta.describe handler
-- [ ] T005 [P] Create Cellpose ops module at tools/cellpose/bioimage_mcp_cellpose/ops/segment.py with placeholder segmentation logic
-- [ ] T005a [P] Create Cellpose curated descriptions at tools/cellpose/bioimage_mcp_cellpose/descriptions.py for key CellposeModel.eval() parameters
-- [ ] T006 [P] Add tools/cellpose cache ignore patterns to .gitignore
+- [X] T001 Create Cellpose environment definition at envs/bioimage-mcp-cellpose.yaml with cellpose, numpy, torch dependencies (pin cellpose version)
+- [X] T001c Generate conda-lock file at envs/bioimage-mcp-cellpose.lock.yml for reproducible installs (use conda-lock; include lockfile hash in workflow provenance)
+- [X] T002 [P] Create Cellpose tool pack directory structure at tools/cellpose/
+- [X] T003 [P] Create Cellpose tool manifest at tools/cellpose/manifest.yaml with minimal params_schema (full schema fetched on-demand via meta.describe)
+- [X] T004 Create Cellpose entrypoint scaffold at tools/cellpose/bioimage_mcp_cellpose/entrypoint.py implementing JSON stdin/stdout protocol including meta.describe handler
+- [X] T005 [P] Create Cellpose ops module at tools/cellpose/bioimage_mcp_cellpose/ops/segment.py with placeholder segmentation logic
+- [X] T005a [P] Create Cellpose curated descriptions at tools/cellpose/bioimage_mcp_cellpose/descriptions.py for key CellposeModel.eval() parameters
+- [X] T006 [P] Add tools/cellpose cache ignore patterns to .gitignore
 
 ---
 
@@ -81,24 +81,24 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T007a [P] Unit test that Run model exposes native_output_ref_id in tests/unit/runs/test_run_model.py
-- [ ] T008b [P] Unit test that ArtifactRef includes schema_version in tests/unit/artifacts/test_artifactref_schema_version.py
-- [ ] T011a [P] Integration test for artifact import allowlist enforcement in tests/integration/test_artifact_import_allowlist.py
-- [ ] T011b [P] Integration test for workflow read/write allowlist enforcement in tests/integration/test_workflow_allowlists.py
-- [ ] T012b [P] Unit test that default tool manifest roots include tools/cellpose in tests/unit/config/test_default_manifest_roots.py
+- [X] T007a [P] Unit test that Run model exposes native_output_ref_id in tests/unit/runs/test_run_model.py
+- [X] T008b [P] Unit test that ArtifactRef includes schema_version in tests/unit/artifacts/test_artifactref_schema_version.py
+- [X] T011a [P] Integration test for artifact import allowlist enforcement in tests/integration/test_artifact_import_allowlist.py
+- [X] T011b [P] Integration test for workflow read/write allowlist enforcement in tests/integration/test_workflow_allowlists.py
+- [X] T012b [P] Unit test that default tool manifest roots include tools/cellpose in tests/unit/config/test_default_manifest_roots.py
 
 ### Implementation for Phase 2
 
-- [ ] T007 Extend Run model to include native_output_ref_id field in src/bioimage_mcp/runs/models.py
-- [ ] T008 [P] Add NativeOutputRef artifact type constant and validation in src/bioimage_mcp/artifacts/models.py (note: `format` field is open/extensible; values like `workflow-record-json`, `cellpose-seg-npy` are tool-dependent)
-- [ ] T008a [P] Document NativeOutputRef usage for vendor bundle outputs (format: e.g., `cellpose-seg-npy`) in src/bioimage_mcp/artifacts/models.py
-- [ ] T008c [P] Add schema_version field to ArtifactRef model and validate serialization in src/bioimage_mcp/artifacts/models.py
-- [ ] T009 [P] Add workflow compatibility validation helper in src/bioimage_mcp/runtimes/protocol.py for I/O port type matching (FR-006)
-- [ ] T010 Add validate_workflow_compatibility() to ExecutionService that checks step I/O types before execution in src/bioimage_mcp/api/execution.py
-- [ ] T011 [P] Add LabelImageRef artifact type handling in ArtifactStore.import_file() in src/bioimage_mcp/artifacts/store.py
-- [ ] T011c Enforce filesystem allowlists for artifact imports and workflow/tool I/O in src/bioimage_mcp/artifacts/store.py and src/bioimage_mcp/api/execution.py
-- [ ] T012 Register tools/cellpose as a manifest root in default config or document configuration in src/bioimage_mcp/config/schema.py
-- [ ] T012a Ensure ToolRegistry fetches dynamic params_schema only on-demand via describe_function (no schema enrichment during list_tools) in src/bioimage_mcp/registry/index.py
+- [X] T007 Extend Run model to include native_output_ref_id field in src/bioimage_mcp/runs/models.py
+- [X] T008 [P] Add NativeOutputRef artifact type constant and validation in src/bioimage_mcp/artifacts/models.py (note: `format` field is open/extensible; values like `workflow-record-json`, `cellpose-seg-npy` are tool-dependent)
+- [X] T008a [P] Document NativeOutputRef usage for vendor bundle outputs (format: e.g., `cellpose-seg-npy`) in src/bioimage_mcp/artifacts/models.py
+- [X] T008c [P] Add schema_version field to ArtifactRef model and validate serialization in src/bioimage_mcp/artifacts/models.py
+- [X] T009 [P] Add workflow compatibility validation helper in src/bioimage_mcp/runtimes/protocol.py for I/O port type matching (FR-006)
+- [X] T010 Add validate_workflow_compatibility() to ExecutionService that checks step I/O types before execution in src/bioimage_mcp/api/execution.py
+- [X] T011 [P] Add LabelImageRef artifact type handling in ArtifactStore.import_file() in src/bioimage_mcp/artifacts/store.py
+- [X] T011c Enforce filesystem allowlists for artifact imports and workflow/tool I/O in src/bioimage_mcp/artifacts/store.py and src/bioimage_mcp/api/execution.py
+- [X] T012 Register tools/cellpose as a manifest root in default config or document configuration in src/bioimage_mcp/config/schema.py
+- [X] T012a Ensure ToolRegistry fetches dynamic params_schema only on-demand via describe_function (no schema enrichment during list_tools) in src/bioimage_mcp/registry/index.py
 
 **Checkpoint**: Foundation ready - user story implementation can now begin
 
@@ -124,16 +124,16 @@
 
 ### Implementation for User Story 1
 
-- [ ] T017 [US1] Implement Cellpose segmentation logic in tools/cellpose/bioimage_mcp_cellpose/ops/segment.py using cellpose.models.CellposeModel (NOT models.Cellpose which is removed in v4)
-- [ ] T018 [US1] Wire segment function in entrypoint dispatcher at tools/cellpose/bioimage_mcp_cellpose/entrypoint.py
-- [ ] T019 [US1] Add OME-TIFF label image output writing using tifffile in tools/cellpose/bioimage_mcp_cellpose/ops/segment.py
-- [ ] T019a [US1] Add NativeOutputRef (format: cellpose-seg-npy) output writing for full-fidelity Cellpose output (_seg.npy) in tools/cellpose/bioimage_mcp_cellpose/ops/segment.py (dual-output strategy per research.md Section 9)
-- [ ] T020 [US1] Add NativeOutputRef (format: workflow-record-json) generation logic to ExecutionService.run_workflow() in src/bioimage_mcp/api/execution.py
-- [ ] T021 [US1] Create write_native_output() helper in ArtifactStore at src/bioimage_mcp/artifacts/store.py (accepts format parameter for workflow records, vendor bundles, etc.)
-- [ ] T022 [US1] Update ExecutionService.run_workflow() to call validate_workflow_compatibility() before execution in src/bioimage_mcp/api/execution.py
-- [ ] T023 [US1] Add clear error messages for unsupported format/missing file in src/bioimage_mcp/artifacts/store.py (FR-007)
-- [ ] T023a [US1] Ensure ExecutionService.run_workflow() persists and returns LogRef on failure paths in src/bioimage_mcp/api/execution.py (FR-003)
-- [ ] T024 [US1] Ensure ExecutionService.run_workflow() returns native_output_ref (workflow record) in outputs in src/bioimage_mcp/api/execution.py
+- [X] T017 [US1] Implement Cellpose segmentation logic in tools/cellpose/bioimage_mcp_cellpose/ops/segment.py using cellpose.models.CellposeModel (NOT models.Cellpose which is removed in v4)
+- [X] T018 [US1] Wire segment function in entrypoint dispatcher at tools/cellpose/bioimage_mcp_cellpose/entrypoint.py
+- [X] T019 [US1] Add OME-TIFF label image output writing using tifffile in tools/cellpose/bioimage_mcp_cellpose/ops/segment.py
+- [X] T019a [US1] Add NativeOutputRef (format: cellpose-seg-npy) output writing for full-fidelity Cellpose output (_seg.npy) in tools/cellpose/bioimage_mcp_cellpose/ops/segment.py (dual-output strategy per research.md Section 9)
+- [X] T020 [US1] Add NativeOutputRef (format: workflow-record-json) generation logic to ExecutionService.run_workflow() in src/bioimage_mcp/api/execution.py
+- [X] T021 [US1] Create write_native_output() helper in ArtifactStore at src/bioimage_mcp/artifacts/store.py (accepts format parameter for workflow records, vendor bundles, etc.)
+- [X] T022 [US1] Update ExecutionService.run_workflow() to call validate_workflow_compatibility() before execution in src/bioimage_mcp/api/execution.py
+- [X] T023 [US1] Add clear error messages for unsupported format/missing file in src/bioimage_mcp/artifacts/store.py (FR-007)
+- [X] T023a [US1] Ensure ExecutionService.run_workflow() persists and returns LogRef on failure paths in src/bioimage_mcp/api/execution.py (FR-003)
+- [X] T024 [US1] Ensure ExecutionService.run_workflow() returns native_output_ref (workflow record) in outputs in src/bioimage_mcp/api/execution.py
 
 **Checkpoint**: User Story 1 complete - single-image Cellpose segmentation works end-to-end
 

@@ -13,6 +13,12 @@ class Port(BaseModel):
 
 
 class Function(BaseModel):
+    """Function definition within a tool manifest.
+
+    The params_schema can be minimal in the manifest; full schema is
+    fetched on-demand via the meta.describe protocol.
+    """
+
     fn_id: str
     tool_id: str
     name: str
@@ -22,6 +28,13 @@ class Function(BaseModel):
     outputs: list[Port] = Field(default_factory=list)
     params_schema: dict = Field(default_factory=dict)
     resource_hints: dict | None = None
+    introspection_source: str | None = Field(
+        default=None,
+        description=(
+            "How params_schema was derived: "
+            "'python_api', 'argparse', 'manual', or None if from manifest"
+        ),
+    )
 
 
 class ToolManifest(BaseModel):

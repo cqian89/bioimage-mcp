@@ -1,0 +1,22 @@
+# Cellpose environment for bioimage-mcp
+# Pin cellpose version for reproducibility
+# NOTE: Uses conda-forge cellpose package for cross-platform lockfile compatibility
+# For GPU support, install pytorch-cuda separately after env creation
+name: bioimage-mcp-cellpose
+
+channels:
+  - conda-forge
+  - pytorch
+  - defaults
+
+dependencies:
+  - python=3.10
+  - pip
+  - numpy>=1.20
+  - scipy
+  - tifffile
+  # Use conda pytorch-cpu to avoid CUDA dependency resolution issues
+  - pytorch>=2.0
+  - cpuonly
+  # Cellpose from conda-forge (better dependency resolution)
+  - cellpose>=3.0,<4.0

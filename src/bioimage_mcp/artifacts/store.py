@@ -59,6 +59,11 @@ class ArtifactStore:
 
     def import_file(self, src: Path, *, artifact_type: str, format: str) -> ArtifactRef:
         src = src.expanduser().absolute()
+
+        # Clear error for missing files (T023)
+        if not src.exists():
+            raise FileNotFoundError(f"Cannot import artifact: source file not found at {src}")
+
         if not _is_within(src, self._config.artifact_store_root):
             assert_path_allowed("read", src, self._config)
 
@@ -94,7 +99,10 @@ class ArtifactStore:
         checksum = sha256_file(dest)
         checksums = [ArtifactChecksum(algorithm="sha256", value=checksum)]
 
-        meta = extract_image_metadata(dest) if artifact_type == "BioImageRef" else {}
+        # Extract image metadata for image artifact types
+        meta = {}
+        if artifact_type in {"BioImageRef", "LabelImageRef"}:
+            meta = extract_image_metadata(dest)
 
         ref = ArtifactRef(
             ref_id=ref_id,
@@ -255,6 +263,64 @@ class ArtifactStore:
             checksums=checksums,
             created_at=ArtifactRef.now(),
             metadata={},
+        )
+        self._persist(ref)
+        return ref
+
+    def write_native_output(
+        self,
+        content: str | bytes | dict,
+        *,
+        format: str,
+        metadata: dict | None = None,
+    ) -> ArtifactRef:
+        """Write a native output artifact (NativeOutputRef).
+
+        This helper is used for:
+        - Workflow record JSON (format: workflow-record-json)
+        - Tool-specific bundles (format: cellpose-seg-npy, etc.)
+
+        Args:
+            content: The content to write (str/bytes/dict - dict will be JSON-encoded)
+            format: The format identifier (open/extensible, tool-dependent)
+            metadata: Optional metadata dict
+
+        Returns:
+            ArtifactRef with type=NativeOutputRef
+        """
+        ref_id = uuid.uuid4().hex
+        dest = self._artifact_path(ref_id)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+
+        # Handle different content types
+        if isinstance(content, dict):
+            dest.write_text(json.dumps(content, indent=2, default=str))
+        elif isinstance(content, bytes):
+            dest.write_bytes(content)
+        else:
+            dest.write_text(str(content))
+
+        size = dest.stat().st_size
+        checksum = sha256_file(dest)
+        checksums = [ArtifactChecksum(algorithm="sha256", value=checksum)]
+
+        # Determine mime type from format
+        mime_type = "application/octet-stream"
+        if "json" in format.lower():
+            mime_type = "application/json"
+        elif "npy" in format.lower():
+            mime_type = "application/x-npy"
+
+        ref = ArtifactRef(
+            ref_id=ref_id,
+            type="NativeOutputRef",
+            uri=dest.absolute().as_uri(),
+            format=format,
+            mime_type=mime_type,
+            size_bytes=size,
+            checksums=checksums,
+            created_at=ArtifactRef.now(),
+            metadata=metadata or {},
         )
         self._persist(ref)
         return ref

@@ -27,7 +27,7 @@ def test_run_workflow_contract_shape(tmp_path: Path, monkeypatch) -> None:
     svc = ExecutionService(config, artifact_store=store)
     response = svc.run_workflow({"steps": [{"fn_id": "fn.one", "params": {}, "inputs": {}}]})
 
-    assert set(response.keys()) == {"run_id", "status"}
+    assert set(response.keys()) == {"run_id", "status", "workflow_record_ref_id"}
 
 
 def test_get_artifact_contract_shape(tmp_path: Path) -> None:

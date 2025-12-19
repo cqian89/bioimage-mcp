@@ -44,7 +44,8 @@ def init_schema(conn: sqlite3.Connection) -> None:
             tags_json TEXT NOT NULL,
             inputs_json TEXT NOT NULL,
             outputs_json TEXT NOT NULL,
-            params_schema_json TEXT NOT NULL
+            params_schema_json TEXT NOT NULL,
+            introspection_source TEXT
         );
 
         CREATE TABLE IF NOT EXISTS artifacts (
@@ -71,7 +72,8 @@ def init_schema(conn: sqlite3.Connection) -> None:
             outputs_json TEXT,
             log_ref_id TEXT NOT NULL,
             error_json TEXT,
-            provenance_json TEXT NOT NULL
+            provenance_json TEXT NOT NULL,
+            native_output_ref_id TEXT
         );
 
         CREATE TABLE IF NOT EXISTS diagnostics (
@@ -79,6 +81,16 @@ def init_schema(conn: sqlite3.Connection) -> None:
             manifest_path TEXT NOT NULL,
             tool_id TEXT,
             errors_json TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS schema_cache (
+            tool_id TEXT NOT NULL,
+            tool_version TEXT NOT NULL,
+            fn_id TEXT NOT NULL,
+            params_schema_json TEXT NOT NULL,
+            introspection_source TEXT NOT NULL,
+            introspected_at TEXT NOT NULL,
+            PRIMARY KEY (tool_id, fn_id)
         );
         """
     )

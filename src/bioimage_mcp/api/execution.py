@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from bioimage_mcp.artifacts.store import ArtifactStore
 from bioimage_mcp.config.schema import Config
 from bioimage_mcp.registry.loader import load_manifests
 from bioimage_mcp.runs.store import RunStore
 from bioimage_mcp.runtimes.executor import execute_tool
+from bioimage_mcp.runtimes.protocol import validate_workflow_compatibility
 
 
 def execute_step(
@@ -49,6 +51,53 @@ def execute_step(
     raise KeyError(fn_id)
 
 
+def _get_function_ports(
+    config: Config,
+    fn_ids: list[str],
+) -> dict[str, dict[str, list[dict[str, Any]]]]:
+    """Get input/output port definitions for the given function IDs.
+
+    Returns a mapping of fn_id -> {"inputs": [...], "outputs": [...]}
+    """
+    manifests, _diagnostics = load_manifests(config.tool_manifest_roots)
+    result: dict[str, dict[str, list[dict[str, Any]]]] = {}
+
+    for fn_id in fn_ids:
+        for manifest in manifests:
+            for fn in manifest.functions:
+                if fn.fn_id == fn_id:
+                    result[fn_id] = {
+                        "inputs": [
+                            {
+                                "name": inp.name,
+                                "artifact_type": inp.artifact_type,
+                                "format": inp.format,
+                                "required": inp.required,
+                            }
+                            for inp in (fn.inputs or [])
+                        ],
+                        "outputs": [
+                            {
+                                "name": out.name,
+                                "artifact_type": out.artifact_type,
+                                "format": out.format,
+                            }
+                            for out in (fn.outputs or [])
+                        ],
+                    }
+                    break
+
+    return result
+
+
+class WorkflowValidationError(ValueError):
+    """Raised when workflow validation fails before execution."""
+
+    def __init__(self, message: str, errors: list[dict]):
+        super().__init__(message)
+        self.errors = errors
+
+
 class ExecutionService:
     def __init__(
         self,
@@ -74,10 +123,49 @@ class ExecutionService:
         self.close()
         return False
 
-    def run_workflow(self, spec: dict) -> dict:
+    def validate_workflow(self, spec: dict) -> list[dict]:
+        """Validate workflow step I/O type compatibility before execution.
+
+        Returns a list of validation errors (empty if workflow is valid).
+        Raises WorkflowValidationError if validation fails.
+        """
+        steps = spec.get("steps") or []
+        if not steps:
+            return []
+
+        # Collect all fn_ids from steps
+        fn_ids = [step.get("fn_id", "") for step in steps]
+
+        # Get function port definitions
+        function_ports = _get_function_ports(self._config, fn_ids)
+
+        # Validate compatibility
+        errors = validate_workflow_compatibility(spec, function_ports)
+
+        return [
+            {
+                "step_index": err.step_index,
+                "port_name": err.port_name,
+                "expected_type": err.expected_type,
+                "actual_type": err.actual_type,
+                "message": err.message,
+            }
+            for err in errors
+        ]
+
+    def run_workflow(self, spec: dict, *, skip_validation: bool = False) -> dict:
         steps = spec.get("steps") or []
         if len(steps) != 1:
             raise ValueError("v0.0 supports exactly 1 step")
+
+        # Validate workflow compatibility before execution (FR-006)
+        if not skip_validation:
+            validation_errors = self.validate_workflow(spec)
+            if validation_errors:
+                raise WorkflowValidationError(
+                    f"Workflow validation failed: {len(validation_errors)} error(s)",
+                    validation_errors,
+                )
 
         step = steps[0]
         fn_id = step["fn_id"]
@@ -110,7 +198,7 @@ class ExecutionService:
             self._run_store.set_status(
                 run.run_id, "failed", error=response.get("error") or {"exit_code": exit_code}
             )
-            return {"run_id": run.run_id, "status": "failed"}
+            return {"run_id": run.run_id, "status": "failed", "log_ref_id": log_ref.ref_id}
 
         outputs_payload: dict = {}
         outputs = response.get("outputs") or {}
@@ -132,8 +220,30 @@ class ExecutionService:
                     ref = self._artifact_store.import_file(p, artifact_type=out_type, format=fmt)
                 outputs_payload[name] = ref.model_dump()
 
+        # Generate workflow record artifact (T020, T024)
+        workflow_record = {
+            "schema_version": "0.1",
+            "run_id": run.run_id,
+            "created_at": run.created_at,
+            "workflow_spec": spec,
+            "inputs": inputs,
+            "params": params,
+            "outputs": outputs_payload,
+            "provenance": run.provenance,
+        }
+        workflow_record_ref = self._artifact_store.write_native_output(
+            workflow_record,
+            format="workflow-record-json",
+            metadata={"run_id": run.run_id},
+        )
+        outputs_payload["workflow_record"] = workflow_record_ref.model_dump()
+
         self._run_store.set_status(run.run_id, "succeeded", outputs=outputs_payload)
-        return {"run_id": run.run_id, "status": "succeeded"}
+        return {
+            "run_id": run.run_id,
+            "status": "succeeded",
+            "workflow_record_ref_id": workflow_record_ref.ref_id,
+        }
 
     def get_run_status(self, run_id: str) -> dict:
         run = self._run_store.get(run_id)
