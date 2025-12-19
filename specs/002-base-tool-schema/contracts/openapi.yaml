@@ -1,0 +1,119 @@
+openapi: 3.0.3
+info:
+  title: Bioimage-MCP Base Toolkit + Schema Enrichment Contracts
+  version: 0.2.0
+  description: |
+    Design-time contracts for the "base tool schema expansion" feature.
+    This is not necessarily exposed as HTTP; it documents stable request/response
+    payload shapes for MCP-facing methods and the tool-side `meta.describe` protocol.
+
+components:
+  schemas:
+    ToolSummary:
+      type: object
+      required: [tool_id, name, description, tool_version]
+      properties:
+        tool_id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        tool_version: { type: string }
+
+    FunctionSummary:
+      type: object
+      required: [fn_id, tool_id, name, description, tags]
+      properties:
+        fn_id: { type: string }
+        tool_id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+
+    JsonSchemaObject:
+      type: object
+      description: |
+        JSON Schema object describing function parameters.
+        The system uses an object-schema style payload with properties/required.
+      additionalProperties: true
+
+    DescribeFunctionResponse:
+      type: object
+      required: [fn_id, schema]
+      properties:
+        fn_id: { type: string }
+        schema:
+          $ref: "#/components/schemas/JsonSchemaObject"
+        introspection_source:
+          type: string
+          description: "How schema was derived (e.g. python_api, argparse, manual)."
+
+    ToolProtocolRequest:
+      type: object
+      required: [fn_id, params]
+      properties:
+        fn_id:
+          type: string
+          description: "Function identifier invoked within the tool pack."
+        params:
+          type: object
+          additionalProperties: true
+        inputs:
+          type: object
+          additionalProperties: true
+        work_dir:
+          type: string
+
+    MetaDescribeResult:
+      type: object
+      required: [params_schema, tool_version, introspection_source]
+      properties:
+        params_schema:
+          $ref: "#/components/schemas/JsonSchemaObject"
+        tool_version:
+          type: string
+        introspection_source:
+          type: string
+
+    ToolProtocolResponse:
+      type: object
+      required: [ok]
+      properties:
+        ok: { type: boolean }
+        result:
+          $ref: "#/components/schemas/MetaDescribeResult"
+        error:
+          description: "Error details when ok=false."
+          oneOf:
+            - type: string
+            - type: object
+              additionalProperties: true
+
+    SchemaCacheFile:
+      type: object
+      required: [schema_version, tools]
+      properties:
+        schema_version:
+          type: string
+          example: "0.1"
+        tools:
+          type: object
+          additionalProperties:
+            type: object
+            required: [functions]
+            properties:
+              functions:
+                type: object
+                additionalProperties:
+                  type: object
+                  required: [params_schema, introspection_source, introspected_at]
+                  properties:
+                    params_schema:
+                      $ref: "#/components/schemas/JsonSchemaObject"
+                    introspection_source:
+                      type: string
+                    introspected_at:
+                      type: string
+                      description: ISO 8601 timestamp
+
+paths: {}

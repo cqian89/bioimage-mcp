@@ -1,7 +1,7 @@
-# Specification Quality Checklist: Cellpose Pipeline
+# Specification Quality Checklist: Base Tool Schema Expansion
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning
-**Created**: 2025-12-19
+**Purpose**: Validate specification completeness and quality before proceeding to planning  
+**Created**: 2025-12-19  
 **Feature**: [spec.md](../spec.md)
 
 ## Content Quality
@@ -31,5 +31,5 @@
 
 ## Notes
 
-- Updated `spec.md` to include FR-011 through FR-014 incorporating finding from `cellpose_issues.md`.
-- FRs mention specific parameter names (e.g. `min_size`), which are specific to the tool being wrapped, but necessary to define the interface compliance.
+- Items marked incomplete require spec updates before `/speckit.clarify` or `/speckit.plan`
+- Validation run 2025-12-19: all checks passed

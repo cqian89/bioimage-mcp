@@ -91,6 +91,10 @@ A maintainer can validate that the v0.1 pipeline continues to work by running an
 - **FR-008**: The system MUST allow users to export any artifact reference produced by a run to a local filesystem destination. **Acceptance**: Exporting a label artifact creates a local file at the requested path.
 - **FR-009**: The system MUST enforce configured filesystem allowlists such that workflows cannot read or write outside permitted locations. **Acceptance**: A workflow referencing a forbidden path is rejected with an authorization error.
 - **FR-010**: The system MUST include a minimal automated validation that runs the v0.1 pipeline on 1–2 small sample datasets and confirms that label outputs are produced. **Acceptance**: The validation run reports success and produces label references for each dataset.
+- **FR-011**: The system MUST expose and respect advanced Cellpose parameters for tuning segmentation, including `min_size`, `flow_threshold`, `cellprob_threshold`, `resample`, `normalize`, `invert`, `tile`, `tile_overlap`, and `augment`. **Acceptance**: A workflow run with specific tuning parameters yields results different from defaults (e.g., `min_size` filtering small masks).
+- **FR-012**: The system MUST support explicit channel selection via a `channels` parameter for multi-channel input images. **Acceptance**: A workflow run specifying `channels` correctly segments the target structure (e.g. Nuclei vs Cyto).
+- **FR-013**: The system MUST support configuring GPU acceleration preferences (e.g. allow/force/deny). **Acceptance**: Logs confirm the requested compute device was used (or warn if unavailable).
+- **FR-014**: The system MUST support 3D segmentation configuration, including `do_3D`, `stitch_threshold`, and `anisotropy` to correctly handle volumetric data. **Acceptance**: 3D workflow runs respect the anisotropy setting.
 
 ### Non-Functional Requirements
 
