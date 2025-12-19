@@ -5,14 +5,14 @@ description: "Executable task list for v0.0 Bootstrap"
 
 # Tasks: v0.0 Bootstrap
 
-**Input**: Design documents from `specs/001-v0-bootstrap/`
+**Input**: Design documents from `specs/000-v0-bootstrap/`
 
-- `specs/001-v0-bootstrap/plan.md`
-- `specs/001-v0-bootstrap/spec.md`
-- `specs/001-v0-bootstrap/research.md`
-- `specs/001-v0-bootstrap/data-model.md`
-- `specs/001-v0-bootstrap/contracts/openapi.yaml`
-- `specs/001-v0-bootstrap/quickstart.md`
+- `specs/000-v0-bootstrap/plan.md`
+- `specs/000-v0-bootstrap/spec.md`
+- `specs/000-v0-bootstrap/research.md`
+- `specs/000-v0-bootstrap/data-model.md`
+- `specs/000-v0-bootstrap/contracts/openapi.yaml`
+- `specs/000-v0-bootstrap/quickstart.md`
 
 **Tests**: Required (spec.md includes mandatory user scenarios & testing).
 
@@ -54,7 +54,7 @@ Example: - [ ] T000 [P] [USX] Implement doctor command in src/bioimage_mcp/boots
 
 - [x] T007 Implement structured logging setup in src/bioimage_mcp/logging.py (module-level get_logger(), consistent formatting, CLI-friendly output)
 - [x] T008 Implement shared error types in src/bioimage_mcp/errors.py (user-facing vs internal errors; include error codes for doctor/run failures)
-- [x] T009 Implement Config schema models in src/bioimage_mcp/config/schema.py (fields from specs/001-v0-bootstrap/data-model.md: artifact_store_root, tool_manifest_roots, fs_allowlist_read/write, fs_denylist, default/max pagination limits)
+- [x] T009 Implement Config schema models in src/bioimage_mcp/config/schema.py (fields from specs/000-v0-bootstrap/data-model.md: artifact_store_root, tool_manifest_roots, fs_allowlist_read/write, fs_denylist, default/max pagination limits)
 - [x] T010 Implement layered YAML config loader in src/bioimage_mcp/config/loader.py (load ~/.bioimage-mcp/config.yaml then .bioimage-mcp/config.yaml; local overrides global; validate with Pydantic; normalize absolute paths)
 - [x] T011 Implement filesystem allow/deny enforcement helpers in src/bioimage_mcp/config/fs_policy.py (denylist overrides; validate read/write roots; helper: assert_path_allowed(operation, path, config))
 - [x] T012 Implement opaque cursor pagination helpers in src/bioimage_mcp/api/pagination.py (encode/decode cursor; enforce default and max limits from config)
@@ -102,13 +102,13 @@ Example: - [ ] T000 [P] [USX] Implement doctor command in src/bioimage_mcp/boots
 
 ### Tests for User Story 2
 
-- [x] T028 [P] [US2] Add contract-shape tests for discovery responses in tests/contract/test_discovery_contract.py (align with specs/001-v0-bootstrap/contracts/openapi.yaml)
+- [x] T028 [P] [US2] Add contract-shape tests for discovery responses in tests/contract/test_discovery_contract.py (align with specs/000-v0-bootstrap/contracts/openapi.yaml)
 - [x] T029 [P] [US2] Add unit tests for manifest validation and invalid-manifest diagnostics in tests/unit/registry/test_manifest_validation.py
 - [x] T030 [P] [US2] Add unit tests for registry pagination and search behavior in tests/unit/registry/test_registry_queries.py
 
 ### Implementation for User Story 2
 
-- [x] T031 [P] [US2] Implement ToolManifest + Function schema models in src/bioimage_mcp/registry/manifest_schema.py (Pydantic v2; fields from specs/001-v0-bootstrap/data-model.md)
+- [x] T031 [P] [US2] Implement ToolManifest + Function schema models in src/bioimage_mcp/registry/manifest_schema.py (Pydantic v2; fields from specs/000-v0-bootstrap/data-model.md)
 - [x] T032 [P] [US2] Implement manifest diagnostics model in src/bioimage_mcp/registry/diagnostics.py (path, tool_id?, errors[])
 - [x] T033 [US2] Implement YAML manifest loader in src/bioimage_mcp/registry/loader.py (discover under Config.tool_manifest_roots; validate; compute manifest checksum; emit diagnostics for invalid)
 - [x] T034 [US2] Implement registry indexer backed by SQLite in src/bioimage_mcp/registry/index.py (upsert tools/functions; enforce unique tool_id and fn_id; store diagnostics)
@@ -132,7 +132,7 @@ Example: - [ ] T000 [P] [USX] Implement doctor command in src/bioimage_mcp/boots
 
 ### Tests for User Story 3
 
-- [x] T040 [P] [US3] Add contract-shape tests for execution + artifact responses in tests/contract/test_execution_artifacts_contract.py (align with specs/001-v0-bootstrap/contracts/openapi.yaml)
+- [x] T040 [P] [US3] Add contract-shape tests for execution + artifact responses in tests/contract/test_execution_artifacts_contract.py (align with specs/000-v0-bootstrap/contracts/openapi.yaml)
 - [x] T041 [P] [US3] Add unit tests for ArtifactRef checksum calculation in tests/unit/artifacts/test_checksums.py (file and directory tree-hash)
 - [x] T042 [P] [US3] Add unit tests for artifact store persistence and metadata extraction in tests/unit/artifacts/test_store.py
 - [x] T043 [P] [US3] Add unit tests for run record lifecycle and log refs in tests/unit/runs/test_run_store.py
@@ -140,7 +140,7 @@ Example: - [ ] T000 [P] [USX] Implement doctor command in src/bioimage_mcp/boots
 
 ### Implementation for User Story 3
 
-- [x] T045 [P] [US3] Implement ArtifactRef models in src/bioimage_mcp/artifacts/models.py (BioImageRef + LogRef minimum metadata per specs/001-v0-bootstrap/research.md)
+- [x] T045 [P] [US3] Implement ArtifactRef models in src/bioimage_mcp/artifacts/models.py (BioImageRef + LogRef minimum metadata per specs/000-v0-bootstrap/research.md)
 - [x] T046 [P] [US3] Implement checksum utilities in src/bioimage_mcp/artifacts/checksums.py (sha256 for files; deterministic sha256-tree for directories)
 - [x] T047 [US3] Implement artifact store in src/bioimage_mcp/artifacts/store.py (persist artifacts + metadata; assign ref_id; enforce fs_policy; store index rows in SQLite)
 - [x] T048 [P] [US3] Implement image metadata extraction in src/bioimage_mcp/artifacts/metadata.py (axes/shape/dtype/channel names/physical pixel sizes via bioio)
@@ -165,11 +165,11 @@ Example: - [ ] T000 [P] [USX] Implement doctor command in src/bioimage_mcp/boots
 
 **Purpose**: Hardening, observability, performance, and documentation that spans multiple stories.
 
-- [x] T061 [P] Add end-to-end quickstart validation script in scripts/validate_quickstart.sh (runs the commands in specs/001-v0-bootstrap/quickstart.md against a local temp workspace)
+- [x] T061 [P] Add end-to-end quickstart validation script in scripts/validate_quickstart.sh (runs the commands in specs/000-v0-bootstrap/quickstart.md against a local temp workspace)
 - [x] T062 [P] Improve user-facing error messages and exit codes across CLI commands in src/bioimage_mcp/cli.py
 - [x] T063 [P] Add bounded diagnostics surfacing (invalid manifests, registry stats) to doctor output in src/bioimage_mcp/bootstrap/doctor.py
 - [x] T064 [P] Add performance sanity checks for discovery queries in tests/integration/test_discovery_perf.py (skip by default; document thresholds)
-- [x] T065 Update specs/001-v0-bootstrap/quickstart.md examples if CLI flags or names differ after implementation
+- [x] T065 Update specs/000-v0-bootstrap/quickstart.md examples if CLI flags or names differ after implementation
 - [x] T066 [P] [US1] Add test for GPU detection on headless/no-GPU machines in tests/unit/bootstrap/test_checks.py (verify graceful degradation and clear messaging)
 - [x] T067 [P] [US3] Add test for disk-full error handling in tests/unit/artifacts/test_store_errors.py (simulate ENOSPC; verify graceful error and log persistence)
 - [x] T068 [P] [US3] Add test for tool timeout enforcement in tests/unit/runtimes/test_executor_timeout.py (verify timeout triggers, process killed, LogRef still produced)
@@ -215,9 +215,9 @@ Rationale:
 
 1. Complete Setup + Foundational.
 2. Complete US1 (install/configure/doctor).
-3. **Stop and validate**: Run US1 independent test scenarios from `specs/001-v0-bootstrap/spec.md`.
+3. **Stop and validate**: Run US1 independent test scenarios from `specs/000-v0-bootstrap/spec.md`.
 
 ### Incremental Delivery
 
 - Add US2 (server + discovery) next and validate pagination and invalid-manifest handling.
-- Add US3 last (artifacts + runs + execution) and validate end-to-end with `specs/001-v0-bootstrap/quickstart.md`.
+- Add US3 last (artifacts + runs + execution) and validate end-to-end with `specs/000-v0-bootstrap/quickstart.md`.

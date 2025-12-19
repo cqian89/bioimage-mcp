@@ -1,6 +1,6 @@
 # Feature Specification: v0.0 Bootstrap
 
-**Feature Branch**: `[001-v0-bootstrap]`  
+**Feature Branch**: `[000-v0-bootstrap]`  
 **Created**: 2025-12-18  
 **Status**: Draft  
 **Input**: User description: "Create spec for v0.0 (Bootstrap) based on @initial_planning/Bioimage-MCP_PRD.md and @initial_planning/Bioimage-MCP_ARCHITECTURE.md"

@@ -1,6 +1,6 @@
 # Phase 1 Data Model: v0.0 Bootstrap
 
-This document identifies core entities needed to satisfy `specs/001-v0-bootstrap/spec.md` for v0.0.
+This document identifies core entities needed to satisfy `specs/000-v0-bootstrap/spec.md` for v0.0.
 
 ## Entity: Config
 

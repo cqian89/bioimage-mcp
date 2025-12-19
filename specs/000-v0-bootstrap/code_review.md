@@ -2,7 +2,7 @@
 
 **Review Date:** 2025-12-18  
 **Reviewer:** OpenCode  
-**Spec Reference:** `specs/001-v0-bootstrap/tasks.md`
+**Spec Reference:** `specs/000-v0-bootstrap/tasks.md`
 
 ## Executive Summary
 

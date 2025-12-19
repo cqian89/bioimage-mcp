@@ -1,7 +1,7 @@
 # Phase 0 Research: v0.0 Bootstrap
 
 This document consolidates key design decisions for v0.0 using only repository context:
-- `specs/001-v0-bootstrap/spec.md`
+- `specs/000-v0-bootstrap/spec.md`
 - `initial_planning/Bioimage-MCP_PRD.md`
 - `initial_planning/Bioimage-MCP_ARCHITECTURE.md`
 - `.specify/memory/constitution.md`

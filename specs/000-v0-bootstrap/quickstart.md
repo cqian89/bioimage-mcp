@@ -1,6 +1,6 @@
 # Quickstart: v0.0 Bootstrap
 
-This quickstart demonstrates the v0.0 user stories in `specs/001-v0-bootstrap/spec.md`:
+This quickstart demonstrates the v0.0 user stories in `specs/000-v0-bootstrap/spec.md`:
 - install + readiness checks
 - start server and discover tools on demand
 - run two trivial built-ins end-to-end using artifact references

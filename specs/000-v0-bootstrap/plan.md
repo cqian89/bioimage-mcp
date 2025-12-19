@@ -1,7 +1,7 @@
 # Implementation Plan: v0.0 Bootstrap
 
-**Branch**: `[001-v0-bootstrap]` | **Date**: 2025-12-18 | **Spec**: `specs/001-v0-bootstrap/spec.md`
-**Input**: Feature specification from `specs/001-v0-bootstrap/spec.md`
+**Branch**: `[000-v0-bootstrap]` | **Date**: 2025-12-18 | **Spec**: `specs/000-v0-bootstrap/spec.md`
+**Input**: Feature specification from `specs/000-v0-bootstrap/spec.md`
 
 ## Summary
 
@@ -68,7 +68,7 @@ Rationale:
 ### Documentation (this feature)
 
 ```text
-specs/001-v0-bootstrap/
+specs/000-v0-bootstrap/
 ├── plan.md              # This file
 ├── research.md          # Phase 0 output
 ├── data-model.md        # Phase 1 output
@@ -113,7 +113,7 @@ tests/
 ## Phase 0: Outline & Research (documentation-only)
 
 Outputs:
-- `specs/001-v0-bootstrap/research.md`
+- `specs/000-v0-bootstrap/research.md`
 
 Research goals:
 - Confirm the minimal v0.0 MCP surface and pagination patterns.
@@ -124,9 +124,9 @@ Research goals:
 ## Phase 1: Design & Contracts (documentation-only)
 
 Outputs:
-- `specs/001-v0-bootstrap/data-model.md`
-- `specs/001-v0-bootstrap/contracts/openapi.yaml`
-- `specs/001-v0-bootstrap/quickstart.md`
+- `specs/000-v0-bootstrap/data-model.md`
+- `specs/000-v0-bootstrap/contracts/openapi.yaml`
+- `specs/000-v0-bootstrap/quickstart.md`
 
 Design goals:
 - Identify core entities (ToolManifest/Tool/Function/ArtifactRef/Run/Config) with fields, relationships, and validation.
