@@ -25,12 +25,30 @@ def _is_within(path: Path, root: Path) -> bool:
 
 
 def _guess_mime_type(artifact_type: str, fmt: str) -> str:
+    """Guess MIME type from artifact type and format.
+    
+    For NativeOutputRef and unknown formats, falls back to application/octet-stream
+    to support the open/extensible format field (T048/T049).
+    """
     if artifact_type == "LogRef":
         return "text/plain"
-    if fmt.lower() in {"ome-zarr", "zarr"}:
+    
+    fmt_lower = fmt.lower()
+    
+    # Handle common image formats
+    if fmt_lower in {"ome-zarr", "zarr"}:
         return "application/zarr+ome"
-    if fmt.lower() in {"ome-tiff", "tiff", "tif"}:
+    if fmt_lower in {"ome-tiff", "tiff", "tif"}:
         return "image/tiff"
+    
+    # Handle NativeOutputRef format hints (extensible)
+    if artifact_type == "NativeOutputRef":
+        if "json" in fmt_lower:
+            return "application/json"
+        if "npy" in fmt_lower:
+            return "application/x-npy"
+    
+    # Default fallback for unknown formats
     return "application/octet-stream"
 
 
@@ -220,7 +238,46 @@ class ArtifactStore:
         )
 
     def get_payload(self, ref_id: str) -> dict:
+        """Get artifact payload as a dict with ref metadata.
+
+        Returns dict with 'ref' key containing the ArtifactRef data.
+        """
         return {"ref": self.get(ref_id).model_dump()}
+
+    def get_raw_content(self, ref_id: str) -> bytes:
+        """Read and return the raw content of an artifact file.
+
+        Returns bytes for the artifact file content.
+        Raises ValueError for directory artifacts.
+        """
+        ref = self.get(ref_id)
+        src_path = Path(ref.uri.replace("file://", ""))
+        if src_path.is_dir():
+            raise ValueError(f"Cannot get raw content for directory artifact: {ref_id}")
+        return src_path.read_bytes()
+
+    def parse_native_output(self, ref_id: str) -> dict:
+        """Parse a NativeOutputRef JSON artifact (T028).
+
+        Loads and parses a workflow-record-json or similar JSON artifact.
+        Used primarily for workflow replay functionality.
+
+        Args:
+            ref_id: Reference ID of the NativeOutputRef artifact
+
+        Returns:
+            Parsed JSON content as a dict
+
+        Raises:
+            KeyError: If artifact not found
+            ValueError: If artifact is not a valid JSON NativeOutputRef
+        """
+        ref = self.get(ref_id)
+        if ref.type != "NativeOutputRef":
+            raise ValueError(f"Expected NativeOutputRef, got {ref.type}")
+
+        content = self.get_raw_content(ref_id).decode("utf-8")
+        return json.loads(content)
 
     def export(self, ref_id: str, dest_path: Path) -> Path:
         dest_path = assert_path_allowed("write", dest_path, self._config)

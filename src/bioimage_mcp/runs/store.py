@@ -146,3 +146,19 @@ class RunStore:
             error=json.loads(row["error_json"]) if row["error_json"] else None,
             provenance=json.loads(row["provenance_json"]),
         )
+
+    def update_provenance(self, run_id: str, provenance: dict) -> None:
+        """Update the provenance field for a run (T031).
+
+        Used to link replayed runs to their original run_id.
+
+        Args:
+            run_id: The run to update
+            provenance: New provenance dict to store
+        """
+        self._conn.execute(
+            "UPDATE runs SET provenance_json = ? WHERE run_id = ?",
+            (json.dumps(provenance), run_id),
+        )
+        self._conn.commit()
+

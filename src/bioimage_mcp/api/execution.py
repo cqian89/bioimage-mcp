@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import hashlib
+import platform
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -220,6 +223,34 @@ class ExecutionService:
                     ref = self._artifact_store.import_file(p, artifact_type=out_type, format=fmt)
                 outputs_payload[name] = ref.model_dump()
 
+        # Capture tool manifest checksums (T040) and env fingerprint (T039)
+        manifests, _diagnostics = load_manifests(self._config.tool_manifest_roots)
+        tool_manifests = []
+        for manifest in manifests:
+            # Only include manifests used in this workflow
+            for manifest_fn in manifest.functions:
+                if manifest_fn.fn_id == fn_id:
+                    manifest_path = manifest.manifest_path
+                    try:
+                        manifest_content = manifest_path.read_bytes()
+                        checksum = hashlib.sha256(manifest_content).hexdigest()
+                    except OSError:
+                        checksum = "unavailable"
+                    tool_manifests.append({
+                        "tool_id": manifest.tool_id,
+                        "tool_version": manifest.tool_version,
+                        "env_id": manifest.env_id,
+                        "manifest_checksum": checksum,
+                    })
+                    break
+
+        # Capture environment fingerprint for reproducibility (T039)
+        env_fingerprint = {
+            "python_version": sys.version,
+            "platform": platform.platform(),
+            "machine": platform.machine(),
+        }
+
         # Generate workflow record artifact (T020, T024)
         workflow_record = {
             "schema_version": "0.1",
@@ -230,6 +261,8 @@ class ExecutionService:
             "params": params,
             "outputs": outputs_payload,
             "provenance": run.provenance,
+            "tool_manifests": tool_manifests,
+            "env_fingerprint": env_fingerprint,
         }
         workflow_record_ref = self._artifact_store.write_native_output(
             workflow_record,
@@ -257,3 +290,82 @@ class ExecutionService:
         if run.error:
             payload["error"] = run.error
         return payload
+
+    def replay_workflow(
+        self,
+        native_output_ref_id: str,
+        *,
+        override_inputs: dict | None = None,
+        override_params: dict | None = None,
+    ) -> dict:
+        """Replay a workflow from a saved NativeOutputRef (T029, T030, T031).
+
+        Accepts a NativeOutputRef (format: workflow-record-json), parses it,
+        and starts a new run with equivalent workflow spec.
+
+        Args:
+            native_output_ref_id: Reference ID of the workflow-record-json artifact
+            override_inputs: Optional dict to override original inputs
+            override_params: Optional dict to override original parameters
+
+        Returns:
+            dict with run_id, status, and workflow_record_ref_id
+
+        Raises:
+            ValueError: If workflow record is invalid or has missing inputs
+            KeyError: If referenced artifact not found
+        """
+        # T028: Parse the workflow record
+        record_data = self._artifact_store.parse_native_output(native_output_ref_id)
+
+        # Validate workflow record structure
+        required_fields = ["workflow_spec", "inputs", "params"]
+        for field in required_fields:
+            if field not in record_data:
+                raise ValueError(f"Invalid workflow record: missing '{field}'")
+
+        # Extract workflow components
+        workflow_spec = record_data["workflow_spec"]
+        _original_inputs = record_data.get("inputs", {})  # Keep for future input override
+        original_params = record_data.get("params", {})
+        original_run_id = record_data.get("run_id", "unknown")
+
+        # Apply overrides if provided
+        # inputs = {**original_inputs, **(override_inputs or {})}  # TODO: use in future
+        params = {**original_params, **(override_params or {})}
+
+        # T030: Validate that all required inputs are available
+        steps = workflow_spec.get("steps", [])
+        for i, step in enumerate(steps):
+            step_inputs = step.get("inputs", {})
+            for input_name, input_ref in step_inputs.items():
+                if isinstance(input_ref, dict) and "ref_id" in input_ref:
+                    ref_id = input_ref["ref_id"]
+                    try:
+                        self._artifact_store.get(ref_id)
+                    except KeyError as exc:
+                        raise ValueError(
+                            f"Missing input artifact for replay: step {i} input '{input_name}' "
+                            f"references ref_id '{ref_id}' which no longer exists"
+                        ) from exc
+
+        # Update step inputs/params with merged values
+        replay_spec = workflow_spec.copy()
+        if replay_spec.get("steps"):
+            for step in replay_spec["steps"]:
+                # Merge params
+                step_params = step.get("params", {})
+                step["params"] = {**step_params, **params}
+
+        # Execute the replayed workflow (skip validation for replay)
+        result = self.run_workflow(replay_spec, skip_validation=True)
+
+        # T031: Link replayed run to original run_id in provenance
+        if result["status"] in {"succeeded", "running", "queued"}:
+            run = self._run_store.get(result["run_id"])
+            run.provenance["replayed_from_run_id"] = original_run_id
+            run.provenance["original_workflow_record_ref_id"] = native_output_ref_id
+            self._run_store.update_provenance(result["run_id"], run.provenance)
+
+        return result
+

@@ -15,6 +15,34 @@ Project docs:
 - `initial_planning/Bioimage-MCP_ARCHITECTURE.md`
 - `.specify/memory/constitution.md`
 
+## Cellpose Pipeline Quickstart (v0.1)
+
+Run a Cellpose segmentation pipeline on a microscopy image:
+
+```bash
+# 1. Install the Cellpose environment
+bioimage-mcp install --env bioimage-mcp-cellpose
+
+# 2. Import an image into the artifact store
+bioimage-mcp artifacts import /path/to/image.tif --type BioImageRef --format OME-TIFF
+
+# 3. Run segmentation via the API (example using Python)
+from bioimage_mcp.api.execution import ExecutionService
+from bioimage_mcp.config.schema import Config
+
+with ExecutionService(Config.from_file()) as svc:
+    result = svc.run_workflow({
+        "steps": [{
+            "fn_id": "segmentation.cellpose_segment",
+            "params": {"model_type": "cyto3", "diameter": 30.0},
+            "inputs": {"image": {"ref_id": "<your-image-ref-id>"}}
+        }]
+    })
+    print(result)  # Contains run_id, status, workflow_record_ref_id
+```
+
+See [Cellpose Pipeline Quickstart](specs/001-cellpose-pipeline/quickstart.md) for the full guide.
+
 ## Install (v0.0 bootstrap)
 
 Editable install from repo root:

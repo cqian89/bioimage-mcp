@@ -114,13 +114,13 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T013 [P] [US1] Contract test for ToolProtocolRequest/Response schema validation in tests/contract/test_cellpose_protocol.py
-- [ ] T014 [P] [US1] Contract test verifying introspected Cellpose schema contains expected key params (diameter, flow_threshold) via meta.describe in tests/contract/test_cellpose_params_contract.py
-- [ ] T014a [P] [US1] Contract test for cellpose.segment meta.describe response format (ok, result, tool_version) in tests/contract/test_cellpose_meta_describe.py
-- [ ] T015 [P] [US1] Integration test for run_workflow with Cellpose in tests/integration/test_cellpose_e2e.py (requires sample image)
-- [ ] T015a [P] [US1] Integration test that failed run_workflow still returns LogRef in tests/integration/test_run_logs.py
-- [ ] T015b [P] [US1] Integration test that OME-Zarr input fails fast with clear error in tests/integration/test_unsupported_formats.py
-- [ ] T016 [P] [US1] Unit test for workflow compatibility validation in tests/unit/runtimes/test_workflow_validation.py
+- [X] T013 [P] [US1] Contract test for ToolProtocolRequest/Response schema validation in tests/contract/test_cellpose_protocol.py
+- [X] T014 [P] [US1] Contract test verifying introspected Cellpose schema contains expected key params (diameter, flow_threshold) via meta.describe in tests/contract/test_cellpose_params_contract.py
+- [X] T014a [P] [US1] Contract test for cellpose.segment meta.describe response format (ok, result, tool_version) in tests/contract/test_cellpose_meta_describe.py
+- [X] T015 [P] [US1] Integration test for run_workflow with Cellpose in tests/integration/test_cellpose_e2e.py (requires sample image)
+- [X] T015a [P] [US1] Integration test that failed run_workflow still returns LogRef in tests/integration/test_run_logs.py
+- [X] T015b [P] [US1] Integration test that OME-Zarr input fails fast with clear error in tests/integration/test_unsupported_formats.py
+- [X] T016 [P] [US1] Unit test for workflow compatibility validation in tests/unit/runtimes/test_workflow_validation.py
 
 ### Implementation for User Story 1
 
@@ -149,16 +149,16 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T025 [P] [US2] Contract test for WorkflowRecord JSON schema in tests/contract/test_workflow_record_contract.py
-- [ ] T026 [P] [US2] Integration test for replay_workflow() in tests/integration/test_replay_workflow.py
+- [X] T025 [P] [US2] Contract test for WorkflowRecord JSON schema in tests/contract/test_workflow_record_contract.py
+- [X] T026 [P] [US2] Integration test for replay_workflow() in tests/integration/test_replay_workflow.py
 
 ### Implementation for User Story 2
 
-- [ ] T027 [P] [US2] Define WorkflowRecord pydantic model with schema_version, steps, tool_manifests, env_fingerprint in src/bioimage_mcp/runs/models.py
-- [ ] T028 [US2] Implement parse_native_output() helper to load NativeOutputRef JSON (format: workflow-record-json) in src/bioimage_mcp/artifacts/store.py
-- [ ] T029 [US2] Implement replay_workflow(native_output_ref_id) method in ExecutionService at src/bioimage_mcp/api/execution.py
-- [ ] T030 [US2] Add validation for missing inputs in workflow record with clear error message in src/bioimage_mcp/api/execution.py
-- [ ] T031 [US2] Link replayed run to original run_id in provenance field in src/bioimage_mcp/api/execution.py
+- [X] T027 [P] [US2] Define WorkflowRecord pydantic model with schema_version, steps, tool_manifests, env_fingerprint in src/bioimage_mcp/runs/models.py
+- [X] T028 [US2] Implement parse_native_output() helper to load NativeOutputRef JSON (format: workflow-record-json) in src/bioimage_mcp/artifacts/store.py
+- [X] T029 [US2] Implement replay_workflow(native_output_ref_id) method in ExecutionService at src/bioimage_mcp/api/execution.py
+- [X] T030 [US2] Add validation for missing inputs in workflow record with clear error message in src/bioimage_mcp/api/execution.py
+- [X] T031 [US2] Link replayed run to original run_id in provenance field in src/bioimage_mcp/api/execution.py
 
 **Checkpoint**: User Story 2 complete - workflow replay from saved record works
 
@@ -174,14 +174,14 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T032 [P] [US3] Integration test for validation script success in tests/integration/test_validate_pipeline.py
+- [X] T032 [P] [US3] Integration test for validation script success in tests/integration/test_validate_pipeline.py
 
 ### Implementation for User Story 3
 
-- [ ] T033 [P] [US3] Add sample microscopy image(s) to datasets/samples/ directory (1–2 images, ≤ 25 MB each, Creative Commons; record source + license)
-- [ ] T034 [US3] Create validation script at scripts/validate_pipeline.py that runs segmentation on sample datasets
-- [ ] T035 [US3] Add validation script invocation to pytest as a marker in pytest.ini (e.g., @pytest.mark.pipeline_validation)
-- [ ] T036 [US3] Document sample dataset sources and licenses in datasets/README.md
+- [X] T033 [P] [US3] Add sample microscopy image(s) to datasets/samples/ directory (1–2 images, ≤ 25 MB each, Creative Commons; record source + license)
+- [X] T034 [US3] Create validation script at scripts/validate_pipeline.py that runs segmentation on sample datasets
+- [X] T035 [US3] Add validation script invocation to pytest as a marker in pytest.ini (e.g., @pytest.mark.pipeline_validation)
+- [X] T036 [US3] Document sample dataset sources and licenses in datasets/README.md
 
 **Checkpoint**: User Story 3 complete - automated pipeline validation passes on sample data
 
@@ -191,14 +191,14 @@
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T037 [P] Update README.md with quickstart instructions for Cellpose pipeline
-- [ ] T038 [P] Verify and update specs/001-cellpose-pipeline/quickstart.md with actual CLI commands (include platform-specific Cellpose install notes/constraints)
-- [ ] T039 [P] Add provenance env_fingerprint capture (Python version, env_id, platform, conda-lock hash) in ExecutionService at src/bioimage_mcp/api/execution.py
-- [ ] T040 [P] Add tool manifest checksum capture to workflow record in src/bioimage_mcp/api/execution.py
-- [ ] T041 [P] Unit test for WorkflowRecord model serialization in tests/unit/runs/test_workflow_record.py
-- [ ] T042 Run full test suite via pytest (see pytest.ini) and fix any failures
-- [ ] T043 Run ruff check (see ruff.toml) and fix any linting issues
-- [ ] T044 Validate quickstart.md end-to-end using scripts/validate_quickstart.sh
+- [X] T037 [P] Update README.md with quickstart instructions for Cellpose pipeline
+- [X] T038 [P] Verify and update specs/001-cellpose-pipeline/quickstart.md with actual CLI commands (include platform-specific Cellpose install notes/constraints)
+- [X] T039 [P] Add provenance env_fingerprint capture (Python version, env_id, platform, conda-lock hash) in ExecutionService at src/bioimage_mcp/api/execution.py
+- [X] T040 [P] Add tool manifest checksum capture to workflow record in src/bioimage_mcp/api/execution.py
+- [X] T041 [P] Unit test for WorkflowRecord model serialization in tests/unit/runs/test_workflow_record.py
+- [X] T042 Run full test suite via pytest (see pytest.ini) and fix any failures
+- [X] T043 Run ruff check (see ruff.toml) and fix any linting issues
+- [X] T044 Validate quickstart.md end-to-end using scripts/validate_quickstart.sh
 
 ---
 
@@ -206,9 +206,9 @@
 
 **Purpose**: Close requirements/test gaps identified by `/speckit.analyze` output (payload size discipline, export allowlists).
 
-- [ ] T045a [P] [US1] Integration test for artifact export success to local filesystem path in tests/integration/test_artifact_export.py
-- [ ] T045 [P] [US1] Contract/integration test for artifact export allowlist enforcement in tests/integration/test_artifact_export.py
-- [ ] T046 [P] [US1] Contract test asserting workflow/run responses contain only refs/metadata (no pixel arrays) in tests/contract/test_payload_size_discipline.py
+- [X] T045a [P] [US1] Integration test for artifact export success to local filesystem path in tests/integration/test_artifact_export.py
+- [X] T045 [P] [US1] Contract/integration test for artifact export allowlist enforcement in tests/integration/test_artifact_export.py
+- [X] T046 [P] [US1] Contract test asserting workflow/run responses contain only refs/metadata (no pixel arrays) in tests/contract/test_payload_size_discipline.py
 
 ---
 
@@ -216,10 +216,10 @@
 
 **Purpose**: Ensure `ArtifactRef.format` is treated as an open, extensible field with dynamic runtime handling (per research.md Section 10).
 
-- [ ] T047 [P] Update ArtifactRef model docstring in src/bioimage_mcp/artifacts/models.py to clarify that `format` values are open/extensible and tool-dependent
-- [ ] T048 [P] Update _guess_mime_type() in src/bioimage_mcp/artifacts/store.py to handle unknown formats gracefully (fallback to `application/octet-stream` for NativeOutputRef)
-- [ ] T049 [P] Ensure ArtifactStore does not hardcode format-specific logic; use registry/lookup pattern for any format-dependent behavior in src/bioimage_mcp/artifacts/store.py
-- [ ] T050 [P] Add unit tests for NativeOutputRef with various format values (workflow-record-json, cellpose-seg-npy, generic) in tests/unit/artifacts/test_store.py
+- [X] T047 [P] Update ArtifactRef model docstring in src/bioimage_mcp/artifacts/models.py to clarify that `format` values are open/extensible and tool-dependent
+- [X] T048 [P] Update _guess_mime_type() in src/bioimage_mcp/artifacts/store.py to handle unknown formats gracefully (fallback to `application/octet-stream` for NativeOutputRef)
+- [X] T049 [P] Ensure ArtifactStore does not hardcode format-specific logic; use registry/lookup pattern for any format-dependent behavior in src/bioimage_mcp/artifacts/store.py
+- [X] T050 [P] Add unit tests for NativeOutputRef with various format values (workflow-record-json, cellpose-seg-npy, generic) in tests/unit/artifacts/test_store.py
 
 ---
 

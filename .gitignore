@@ -59,7 +59,7 @@ cover/
 .codex/
 .gemini/
 .opencode/
-.agent/
+# .agent/
 # .specify/
 
 
