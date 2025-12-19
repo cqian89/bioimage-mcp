@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 import sqlite3
+from pathlib import Path
 from typing import Any
 
 from bioimage_mcp.api.pagination import decode_cursor, encode_cursor, resolve_limit
 from bioimage_mcp.config.loader import load_config
 from bioimage_mcp.registry.index import RegistryIndex
+from bioimage_mcp.registry.loader import load_manifests
+from bioimage_mcp.registry.manifest_schema import FunctionResponse
+from bioimage_mcp.registry.schema_cache import SchemaCache
 from bioimage_mcp.registry.search import any_tag_matches, io_type_matches
+from bioimage_mcp.runtimes.executor import execute_tool
 
 
 class DiscoveryService:
@@ -121,4 +126,78 @@ class DiscoveryService:
         payload = self._index.get_function(fn_id)
         if payload is None:
             raise KeyError(fn_id)
-        return payload
+
+        config = load_config()
+        manifests, _diagnostics = load_manifests(config.tool_manifest_roots)
+        manifest = next(
+            (
+                m
+                for m in manifests
+                if any(fn.fn_id == fn_id for fn in m.functions)
+            ),
+            None,
+        )
+        if manifest is None:
+            return payload
+
+        schema_cache_path = config.schema_cache_path or (
+            config.artifact_store_root / "state" / "schema_cache.json"
+        )
+        cache = SchemaCache(schema_cache_path)
+        cached = cache.get(
+            tool_id=manifest.tool_id,
+            tool_version=manifest.tool_version,
+            fn_id=fn_id,
+        )
+        if cached:
+            enriched = {
+                "fn_id": fn_id,
+                "schema": cached["params_schema"],
+                "introspection_source": cached.get("introspection_source"),
+            }
+            return FunctionResponse.model_validate(enriched).model_dump(
+                exclude_none=True
+            )
+
+        entrypoint = manifest.entrypoint
+        entry_path = Path(entrypoint)
+        if not entry_path.is_absolute():
+            candidate = manifest.manifest_path.parent / entry_path
+            if candidate.exists():
+                entrypoint = str(candidate)
+
+        request = {
+            "fn_id": "meta.describe",
+            "params": {"target_fn": fn_id},
+            "inputs": {},
+            "work_dir": str(config.artifact_store_root / "work" / "describe"),
+        }
+        response, _log_text, _exit_code = execute_tool(
+            entrypoint=entrypoint,
+            request=request,
+            env_id=manifest.env_id,
+        )
+        if not response.get("ok"):
+            return payload
+
+        result = response.get("result") or {}
+        params_schema = result.get("params_schema")
+        if not isinstance(params_schema, dict):
+            return payload
+
+        introspection_source = str(result.get("introspection_source") or "manual")
+        cache.set(
+            tool_id=manifest.tool_id,
+            tool_version=manifest.tool_version,
+            fn_id=fn_id,
+            params_schema=params_schema,
+            introspection_source=introspection_source,
+        )
+        enriched = {
+            "fn_id": fn_id,
+            "schema": params_schema,
+            "introspection_source": introspection_source,
+        }
+        return FunctionResponse.model_validate(enriched).model_dump(
+            exclude_none=True
+        )

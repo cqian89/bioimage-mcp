@@ -12,13 +12,14 @@ This guide explains how to add a new base image-processing function (typically b
 
 Create a new op module under the base tool pack ops directory.
 
-**Proposed structure**:
+**Structure**:
 
 ```text
 tools/base/
 ├── bioimage_mcp_base/
-│   ├── ops/
-│   │   └── gaussian.py
+│   ├── io.py
+│   ├── transforms.py
+│   ├── preprocess.py
 │   ├── descriptions.py
 │   └── entrypoint.py
 └── manifest.yaml

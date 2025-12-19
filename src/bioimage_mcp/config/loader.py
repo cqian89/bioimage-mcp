@@ -67,6 +67,10 @@ def load_config(*, global_path: Path | None = None, local_path: Path | None = No
 
     # Provide minimal defaults to keep early phases runnable.
     merged.setdefault("artifact_store_root", str(Path.home() / ".bioimage-mcp" / "artifacts"))
+    merged.setdefault(
+        "schema_cache_path",
+        str(Path(merged["artifact_store_root"]) / "state" / "schema_cache.json"),
+    )
     # Use discovered tool manifest roots if not explicitly configured
     merged.setdefault("tool_manifest_roots", _discover_tool_manifest_roots())
     merged.setdefault("fs_allowlist_read", [])

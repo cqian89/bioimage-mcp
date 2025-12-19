@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import warnings
+
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 
@@ -66,4 +68,19 @@ class ToolManifest(BaseModel):
             self.name = self.tool_id
         if not self.description:
             self.description = self.tool_id
+        return self
+
+
+class FunctionResponse(BaseModel):
+    """Function details returned to clients via describe_function."""
+    model_config = {"protected_namespaces": ()}
+    fn_id: str
+    schema: dict
+    introspection_source: str | None = None
+
+    @model_validator(mode="after")
+    def _validate_schema(self) -> FunctionResponse:
+        schema = self.schema or {}
+        if not isinstance(schema, dict) or schema.get("type") != "object":
+            raise ValueError("schema must be a JSON object schema")
         return self

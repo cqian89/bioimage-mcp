@@ -56,9 +56,10 @@ class RunStore:
                 outputs_json,
                 log_ref_id,
                 error_json,
-                provenance_json
+                provenance_json,
+                native_output_ref_id
             )
-            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 run_id,
@@ -73,6 +74,7 @@ class RunStore:
                 log_ref_id,
                 None,
                 json.dumps(provenance),
+                None,
             ),
         )
         self._conn.commit()
@@ -91,6 +93,14 @@ class RunStore:
             error=None,
             provenance=provenance,
         )
+
+    def set_native_output_ref(self, run_id: str, ref_id: str | None) -> None:
+        """Store the workflow record ref_id for a run."""
+        self._conn.execute(
+            "UPDATE runs SET native_output_ref_id = ? WHERE run_id = ?",
+            (ref_id, run_id),
+        )
+        self._conn.commit()
 
     def set_status(
         self, run_id: str, status: str, *, outputs: dict | None = None, error: dict | None = None
@@ -123,7 +133,7 @@ class RunStore:
         row = self._conn.execute(
             "SELECT run_id, status, created_at, started_at, ended_at, "
             "workflow_spec_json, inputs_json, params_json, outputs_json, "
-            "log_ref_id, error_json, provenance_json "
+            "log_ref_id, error_json, provenance_json, native_output_ref_id "
             "FROM runs WHERE run_id = ?",
             (run_id,),
         ).fetchone()
@@ -145,6 +155,7 @@ class RunStore:
             log_ref_id=row["log_ref_id"],
             error=json.loads(row["error_json"]) if row["error_json"] else None,
             provenance=json.loads(row["provenance_json"]),
+            native_output_ref_id=row["native_output_ref_id"],
         )
 
     def update_provenance(self, run_id: str, provenance: dict) -> None:
@@ -161,4 +172,3 @@ class RunStore:
             (json.dumps(provenance), run_id),
         )
         self._conn.commit()
-

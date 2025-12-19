@@ -1,0 +1,452 @@
+manifest_version: "0.0"
+tool_id: tools.base
+tool_version: "0.1.0"
+name: Base Image Processing Toolkit
+description: Common image I/O, transforms, and pre-processing functions (primarily scikit-image).
+
+env_id: bioimage-mcp-base
+entrypoint: bioimage_mcp_base/entrypoint.py
+python_version: "3.13"
+platforms_supported:
+  - linux-64
+  - osx-arm64
+  - win-64
+
+functions:
+  # I/O / format
+  - fn_id: base.convert_to_ome_zarr
+    tool_id: tools.base
+    name: Convert to OME-Zarr
+    description: Convert an input image to OME-Zarr for file-backed pipeline processing.
+    tags: [image, io, convert]
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+    outputs:
+      - name: output
+        artifact_type: BioImageRef
+        format: OME-Zarr
+        required: true
+    params_schema:
+      type: object
+      properties: {}
+
+  - fn_id: base.export_ome_tiff
+    tool_id: tools.base
+    name: Export OME-TIFF
+    description: Export an input image to OME-TIFF for compatibility.
+    tags: [image, io, export]
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+    outputs:
+      - name: output
+        artifact_type: BioImageRef
+        format: OME-TIFF
+        required: true
+    params_schema:
+      type: object
+      properties: {}
+
+  # Axis/dim handling
+  - fn_id: base.project_sum
+    tool_id: tools.base
+    name: Sum projection
+    description: Reduce a stack to an intensity image by summing over a selected axis.
+    tags: [image, transform, projection]
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+    outputs:
+      - name: output
+        artifact_type: BioImageRef
+        format: OME-Zarr
+        required: true
+    params_schema:
+      type: object
+      properties: {}
+
+  - fn_id: base.project_max
+    tool_id: tools.base
+    name: Max projection
+    description: Reduce a stack to an intensity image by max projection over a selected axis.
+    tags: [image, transform, projection]
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+    outputs:
+      - name: output
+        artifact_type: BioImageRef
+        format: OME-Zarr
+        required: true
+    params_schema:
+      type: object
+      properties: {}
+
+  # Transforms
+  - fn_id: base.resize
+    tool_id: tools.base
+    name: Resize
+    description: Resize an image to a target shape.
+    tags: [image, transform, resize]
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+    outputs:
+      - name: output
+        artifact_type: BioImageRef
+        format: OME-Zarr
+        required: true
+    params_schema:
+      type: object
+      properties: {}
+
+  - fn_id: base.rescale
+    tool_id: tools.base
+    name: Rescale
+    description: Rescale image by a scalar factor.
+    tags: [image, transform, resize]
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+    outputs:
+      - name: output
+        artifact_type: BioImageRef
+        format: OME-Zarr
+        required: true
+    params_schema:
+      type: object
+      properties: {}
+
+  - fn_id: base.rotate
+    tool_id: tools.base
+    name: Rotate
+    description: Rotate an image by an angle.
+    tags: [image, transform, rotate]
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+    outputs:
+      - name: output
+        artifact_type: BioImageRef
+        format: OME-Zarr
+        required: true
+    params_schema:
+      type: object
+      properties: {}
+
+  - fn_id: base.flip
+    tool_id: tools.base
+    name: Flip
+    description: Flip an image along an axis.
+    tags: [image, transform, flip]
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+    outputs:
+      - name: output
+        artifact_type: BioImageRef
+        format: OME-Zarr
+        required: true
+    params_schema:
+      type: object
+      properties: {}
+
+  - fn_id: base.crop
+    tool_id: tools.base
+    name: Crop
+    description: Crop an image using pixel coordinates.
+    tags: [image, transform, crop]
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+    outputs:
+      - name: output
+        artifact_type: BioImageRef
+        format: OME-Zarr
+        required: true
+    params_schema:
+      type: object
+      properties: {}
+
+  - fn_id: base.pad
+    tool_id: tools.base
+    name: Pad
+    description: Pad an image to a target shape.
+    tags: [image, transform, pad]
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+    outputs:
+      - name: output
+        artifact_type: BioImageRef
+        format: OME-Zarr
+        required: true
+    params_schema:
+      type: object
+      properties: {}
+
+  # Pre-processing
+  - fn_id: base.normalize_intensity
+    tool_id: tools.base
+    name: Normalize intensity
+    description: Normalize intensities (e.g., percentile-based) for downstream processing.
+    tags: [image, preprocessing, normalize]
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+    outputs:
+      - name: output
+        artifact_type: BioImageRef
+        format: OME-Zarr
+        required: true
+    params_schema:
+      type: object
+      properties: {}
+
+  - fn_id: base.gaussian
+    tool_id: tools.base
+    name: Gaussian filter
+    description: Apply an N-D Gaussian filter.
+    tags: [image, preprocessing, filter]
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+    outputs:
+      - name: output
+        artifact_type: BioImageRef
+        format: OME-Zarr
+        required: true
+    params_schema:
+      type: object
+      properties: {}
+
+  - fn_id: base.median
+    tool_id: tools.base
+    name: Median filter
+    description: Apply an N-D median filter.
+    tags: [image, preprocessing, filter]
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+    outputs:
+      - name: output
+        artifact_type: BioImageRef
+        format: OME-Zarr
+        required: true
+    params_schema:
+      type: object
+      properties: {}
+
+  - fn_id: base.bilateral
+    tool_id: tools.base
+    name: Bilateral filter
+    description: Apply an edge-preserving bilateral filter.
+    tags: [image, preprocessing, denoise]
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+    outputs:
+      - name: output
+        artifact_type: BioImageRef
+        format: OME-Zarr
+        required: true
+    params_schema:
+      type: object
+      properties: {}
+
+  - fn_id: base.denoise_nl_means
+    tool_id: tools.base
+    name: Non-local means denoise
+    description: Denoise using non-local means.
+    tags: [image, preprocessing, denoise]
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+    outputs:
+      - name: output
+        artifact_type: BioImageRef
+        format: OME-Zarr
+        required: true
+    params_schema:
+      type: object
+      properties: {}
+
+  - fn_id: base.unsharp_mask
+    tool_id: tools.base
+    name: Unsharp mask
+    description: Sharpen using an unsharp mask.
+    tags: [image, preprocessing, sharpen]
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+    outputs:
+      - name: output
+        artifact_type: BioImageRef
+        format: OME-Zarr
+        required: true
+    params_schema:
+      type: object
+      properties: {}
+
+  - fn_id: base.equalize_adapthist
+    tool_id: tools.base
+    name: Adaptive histogram equalization
+    description: Improve local contrast using adaptive histogram equalization (CLAHE).
+    tags: [image, preprocessing, contrast]
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+    outputs:
+      - name: output
+        artifact_type: BioImageRef
+        format: OME-Zarr
+        required: true
+    params_schema:
+      type: object
+      properties: {}
+
+  - fn_id: base.sobel
+    tool_id: tools.base
+    name: Sobel edges
+    description: Compute Sobel edge magnitude.
+    tags: [image, preprocessing, edges]
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+    outputs:
+      - name: output
+        artifact_type: BioImageRef
+        format: OME-Zarr
+        required: true
+    params_schema:
+      type: object
+      properties: {}
+
+  - fn_id: base.threshold_otsu
+    tool_id: tools.base
+    name: Otsu threshold
+    description: Compute an Otsu threshold and optionally apply it.
+    tags: [image, preprocessing, threshold]
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+    outputs:
+      - name: output
+        artifact_type: BioImageRef
+        format: OME-Zarr
+        required: true
+    params_schema:
+      type: object
+      properties: {}
+
+  - fn_id: base.threshold_yen
+    tool_id: tools.base
+    name: Yen threshold
+    description: Compute a Yen threshold and optionally apply it.
+    tags: [image, preprocessing, threshold]
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+    outputs:
+      - name: output
+        artifact_type: BioImageRef
+        format: OME-Zarr
+        required: true
+    params_schema:
+      type: object
+      properties: {}
+
+  - fn_id: base.morph_opening
+    tool_id: tools.base
+    name: Morphological opening
+    description: Apply morphological opening to remove small bright artifacts.
+    tags: [image, preprocessing, morphology]
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+    outputs:
+      - name: output
+        artifact_type: BioImageRef
+        format: OME-Zarr
+        required: true
+    params_schema:
+      type: object
+      properties: {}
+
+  - fn_id: base.morph_closing
+    tool_id: tools.base
+    name: Morphological closing
+    description: Apply morphological closing to fill small dark holes.
+    tags: [image, preprocessing, morphology]
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+    outputs:
+      - name: output
+        artifact_type: BioImageRef
+        format: OME-Zarr
+        required: true
+    params_schema:
+      type: object
+      properties: {}
+
+  - fn_id: base.remove_small_objects
+    tool_id: tools.base
+    name: Remove small objects
+    description: Remove connected components smaller than a threshold.
+    tags: [image, preprocessing, morphology]
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+    outputs:
+      - name: output
+        artifact_type: BioImageRef
+        format: OME-Zarr
+        required: true
+    params_schema:
+      type: object
+      properties: {}
+
+  # Required for on-demand schema enrichment
+  - fn_id: meta.describe
+    tool_id: tools.base
+    name: Describe function
+    description: Return a complete parameter schema for a target function.
+    tags: [meta]
+    inputs: []
+    outputs: []
+    params_schema:
+      type: object
+      properties:
+        target_fn:
+          type: string
+          description: The fn_id to describe.
+      required: [target_fn]
+
+# NOTE:
+# - Function params_schema values above are intentionally minimal.
+# - The authoritative detailed schema is returned via `meta.describe` on-demand and cached locally.

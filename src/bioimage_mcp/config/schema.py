@@ -18,6 +18,7 @@ class Config(BaseModel):
 
     artifact_store_root: Path
     tool_manifest_roots: list[Path]
+    schema_cache_path: Path | None = None
 
     fs_allowlist_read: list[Path] = Field(default_factory=list)
     fs_allowlist_write: list[Path] = Field(default_factory=list)
@@ -29,6 +30,7 @@ class Config(BaseModel):
     @field_validator(
         "artifact_store_root",
         "tool_manifest_roots",
+        "schema_cache_path",
         "fs_allowlist_read",
         "fs_allowlist_write",
         "fs_denylist",

@@ -270,6 +270,7 @@ class ExecutionService:
             metadata={"run_id": run.run_id},
         )
         outputs_payload["workflow_record"] = workflow_record_ref.model_dump()
+        self._run_store.set_native_output_ref(run.run_id, workflow_record_ref.ref_id)
 
         self._run_store.set_status(run.run_id, "succeeded", outputs=outputs_payload)
         return {
@@ -368,4 +369,3 @@ class ExecutionService:
             self._run_store.update_provenance(result["run_id"], run.provenance)
 
         return result
-
