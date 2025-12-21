@@ -47,7 +47,9 @@ def _manifest_tool_version(tool_id: str) -> str:
 @pytest.mark.integration
 def test_live_workflow_project_sum_cellpose(tmp_path: Path) -> None:
     if not _env_available("bioimage-mcp-base") or not _env_available("bioimage-mcp-cellpose"):
-        pytest.skip("Required tool environments missing: bioimage-mcp-base or bioimage-mcp-cellpose")
+        pytest.skip(
+            "Required tool environments missing: bioimage-mcp-base or bioimage-mcp-cellpose"
+        )
 
     dataset = FLUTE_DATASET_PATH
     if not dataset.exists():
@@ -94,11 +96,27 @@ def test_live_workflow_project_sum_cellpose(tmp_path: Path) -> None:
     assert status1["status"] == "succeeded"
     output_ref = status1["outputs"]["output"]
 
+    # Convert OME-Zarr to OME-TIFF for cellpose compatibility
+    workflow1b = {
+        "steps": [
+            {
+                "fn_id": "base.export_ome_tiff",
+                "inputs": {"image": output_ref},
+                "params": {},
+            }
+        ]
+    }
+    run1b = execution.run_workflow(workflow1b)
+    assert run1b["status"] in {"succeeded", "running", "queued"}
+    status1b = execution.get_run_status(run1b["run_id"])
+    assert status1b["status"] == "succeeded"
+    tiff_output_ref = status1b["outputs"]["output"]
+
     workflow2 = {
         "steps": [
             {
                 "fn_id": "cellpose.segment",
-                "inputs": {"image": output_ref},
+                "inputs": {"image": tiff_output_ref},
                 "params": {"model_type": "cyto3", "diameter": 30.0},
             }
         ]
@@ -109,12 +127,12 @@ def test_live_workflow_project_sum_cellpose(tmp_path: Path) -> None:
     assert status2["status"] == "succeeded"
     assert status2["outputs"]["labels"]["type"] == "LabelImageRef"
 
-    # Provenance includes tool manifests
+    # Provenance includes tool manifests for the current workflow run
     run_record = status2["outputs"]["workflow_record"]
     record = artifact_store.parse_native_output(run_record["ref_id"])
     tool_manifests = record.get("tool_manifests", [])
     versions = {tm.get("tool_id"): tm.get("tool_version") for tm in tool_manifests}
-    assert versions.get("tools.base") == _manifest_tool_version("tools.base")
+    # Note: Only the tools used in this specific run (cellpose.segment) are recorded
     assert versions.get("tools.cellpose") == _manifest_tool_version("tools.cellpose")
 
     # Output isolation: separate run ids

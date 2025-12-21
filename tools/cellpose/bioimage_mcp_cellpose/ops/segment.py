@@ -118,15 +118,17 @@ def run_segment(
 
     # Write Cellpose native bundle (T019a)
     # This preserves flows, styles, and other Cellpose-specific data
+    # masks_flows_to_seg appends _seg.npy to the base filename
+    base_name = str(bundle_path.with_suffix(""))
     cellpose_io.masks_flows_to_seg(
         images=img,
         masks=masks,
         flows=flows,
-        file_names=[str(bundle_path.with_suffix(""))],
+        file_names=base_name,
         diams=diams if isinstance(diams, (int, float)) else diameter,
     )
-    # masks_flows_to_seg creates a *_seg.npy file
-    actual_bundle_path = bundle_path.with_suffix("").with_suffix("_seg.npy")
+    # masks_flows_to_seg creates a file named {base_name}_seg.npy
+    actual_bundle_path = Path(base_name + "_seg.npy")
     if actual_bundle_path.exists():
         actual_bundle_path.rename(bundle_path)
 

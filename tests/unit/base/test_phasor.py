@@ -19,8 +19,8 @@ def test_phasor_outputs_artifact_refs_and_intensity_sum(monkeypatch, tmp_path: P
     metadata: dict = {}
     captured: dict[str, list[tuple[str, np.ndarray, str]]] = {"writes": []}
 
-    def _load_flim_data(_image_ref: dict) -> tuple[np.ndarray, str, dict, int]:
-        return data, axes, metadata, data.nbytes
+    def _load_flim_data(_image_ref: dict) -> tuple[np.ndarray, str, dict, int, list]:
+        return data, axes, metadata, data.nbytes, []
 
     def _compute_phasor(
         signal: np.ndarray,
@@ -75,8 +75,8 @@ def test_phasor_requires_time_axis(monkeypatch, tmp_path: Path) -> None:
     axes = "CYX"
     metadata: dict = {}
 
-    def _load_flim_data(_image_ref: dict) -> tuple[np.ndarray, str, dict, int]:
-        return data, axes, metadata, data.nbytes
+    def _load_flim_data(_image_ref: dict) -> tuple[np.ndarray, str, dict, int, list]:
+        return data, axes, metadata, data.nbytes, []
 
     monkeypatch.setattr(transforms, "_load_flim_data", _load_flim_data)
 
@@ -95,8 +95,8 @@ def test_phasor_preserves_channel_dimension(monkeypatch, tmp_path: Path) -> None
     captured: dict[str, list[tuple[str, np.ndarray, str]]] = {"writes": []}
     seen: dict[str, int] = {}
 
-    def _load_flim_data(_image_ref: dict) -> tuple[np.ndarray, str, dict, int]:
-        return data, axes, metadata, data.nbytes
+    def _load_flim_data(_image_ref: dict) -> tuple[np.ndarray, str, dict, int, list]:
+        return data, axes, metadata, data.nbytes, []
 
     def _compute_phasor(
         signal: np.ndarray,
@@ -140,8 +140,8 @@ def test_phasor_warns_on_large_input(monkeypatch, tmp_path: Path) -> None:
     axes = "TYX"
     metadata: dict = {}
 
-    def _load_flim_data(_image_ref: dict) -> tuple[np.ndarray, str, dict, int]:
-        return data, axes, metadata, 5 * 1024**3
+    def _load_flim_data(_image_ref: dict) -> tuple[np.ndarray, str, dict, int, list]:
+        return data, axes, metadata, 5 * 1024**3, []
 
     def _compute_phasor(
         signal: np.ndarray,

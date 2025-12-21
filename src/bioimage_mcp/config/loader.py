@@ -27,6 +27,11 @@ def _find_repo_root() -> Path | None:
     return None
 
 
+def find_repo_root() -> Path | None:
+    """Public wrapper for repo root discovery."""
+    return _find_repo_root()
+
+
 def _discover_tool_manifest_roots() -> list[str]:
     """Discover default tool manifest roots.
 
@@ -57,6 +62,25 @@ def _discover_tool_manifest_roots() -> list[str]:
     return roots
 
 
+def _merge_manifest_roots(configured: list[str]) -> list[str]:
+    roots = list(configured)
+    repo_root = _find_repo_root()
+    if not repo_root:
+        return roots
+
+    tools_dir = repo_root / "tools"
+    if not tools_dir.exists():
+        return roots
+
+    for tool_dir in tools_dir.iterdir():
+        if tool_dir.is_dir() and (tool_dir / "manifest.yaml").exists():
+            path = str(tool_dir)
+            if path not in roots:
+                roots.append(path)
+
+    return roots
+
+
 def load_config(*, global_path: Path | None = None, local_path: Path | None = None) -> Config:
     global_path = global_path or (Path.home() / ".bioimage-mcp" / "config.yaml")
     local_path = local_path or (Path.cwd() / ".bioimage-mcp" / "config.yaml")
@@ -73,6 +97,8 @@ def load_config(*, global_path: Path | None = None, local_path: Path | None = No
     )
     # Use discovered tool manifest roots if not explicitly configured
     merged.setdefault("tool_manifest_roots", _discover_tool_manifest_roots())
+    if "tool_manifest_roots" in merged:
+        merged["tool_manifest_roots"] = _merge_manifest_roots(list(merged["tool_manifest_roots"]))
     merged.setdefault("fs_allowlist_read", [])
     merged.setdefault("fs_allowlist_write", [str(Path.home() / ".bioimage-mcp")])
     merged.setdefault("fs_denylist", [])

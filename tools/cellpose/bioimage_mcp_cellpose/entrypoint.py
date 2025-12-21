@@ -13,9 +13,11 @@ import sys
 from pathlib import Path
 from typing import Any
 
-# Note: These imports only work when running in the cellpose environment
-# The meta.describe handler will import cellpose lazily to avoid errors
-# during schema generation
+# Add parent directory to path so bioimage_mcp_cellpose can be imported
+BASE_DIR = Path(__file__).resolve().parent
+TOOLS_ROOT = BASE_DIR.parent
+if str(TOOLS_ROOT) not in sys.path:
+    sys.path.insert(0, str(TOOLS_ROOT))
 
 
 # Tool pack version

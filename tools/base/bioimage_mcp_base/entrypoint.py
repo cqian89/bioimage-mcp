@@ -128,8 +128,6 @@ def main() -> int:
             else:
                 out_path = result
                 fmt = "OME-Zarr"
-                if fn_id == "base.export_ome_tiff":
-                    fmt = "OME-TIFF"
                 response = {
                     "ok": True,
                     "outputs": {

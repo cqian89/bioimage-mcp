@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-
 from bioimage_mcp_base.utils import load_image, resolve_axis, save_zarr, uri_to_path
 
 
@@ -109,7 +108,7 @@ def crop(*, inputs: dict, params: dict, work_dir: Path) -> Path:
     if len(start) != data.ndim or len(stop) != data.ndim:
         raise ValueError("'start' and 'stop' must match image dimensions")
 
-    slices = tuple(slice(int(s), int(e)) for s, e in zip(start, stop))
+    slices = tuple(slice(int(s), int(e)) for s, e in zip(start, stop, strict=True))
     cropped = data[slices]
     return save_zarr(cropped, work_dir, "cropped.ome.zarr")
 
@@ -196,7 +195,13 @@ def _extract_time_increment(image: Any) -> float | None:
         return None
 
 
-def _load_flim_data(image_ref: dict) -> tuple[np.ndarray, str, dict, int]:
+def _load_flim_data(image_ref: dict) -> tuple[np.ndarray, str, dict, int, list[dict[str, str]]]:
+    """Load FLIM data from an image reference.
+
+    Returns:
+        Tuple of (data, axes, metadata, size_bytes, warnings) where warnings
+        is a list of warning dicts with 'code' and 'message' keys.
+    """
     uri = image_ref.get("uri")
     if not uri:
         raise ValueError("Input 'dataset' must include uri")
@@ -215,26 +220,107 @@ def _load_flim_data(image_ref: dict) -> tuple[np.ndarray, str, dict, int]:
     if not fmt and path.suffix.lower() not in {".tif", ".tiff"}:
         raise ValueError("Input must be an OME-TIFF (.tif/.tiff) file")
 
+    # Try BioImage first, fallback to tifffile for datasets with problematic OME-XML
+    img = None
+    data = None
+    axes = ""
+    metadata: dict[str, Any] = {}
+    load_warnings: list[dict[str, str]] = []
+    used_tifffile_fallback = False
+
     try:
         from bioio import BioImage  # type: ignore
+
+        img = BioImage(str(path))
+        data = img.get_image_data()  # type: ignore[attr-defined]
+        axes = getattr(img, "axes", "") or getattr(getattr(img, "dims", None), "order", "")
+        time_increment = _extract_time_increment(img)
+        if time_increment is not None:
+            metadata["time_increment"] = time_increment
     except Exception as exc:
-        raise RuntimeError("Missing dependencies for phasor_from_flim") from exc
+        # Fallback: use tifffile for datasets with incompatible OME-XML metadata
+        import tifffile
 
-    img = BioImage(str(path))
-    data = img.get_image_data()  # type: ignore[attr-defined]
-    axes = getattr(img, "axes", "") or getattr(getattr(img, "dims", None), "order", "")
-    axes = axes or (image_ref.get("metadata") or {}).get("axes", "")
+        used_tifffile_fallback = True
+        load_warnings.append(
+            {
+                "code": "TIFFFILE_FALLBACK",
+                "message": (
+                    f"BioImage failed to load file ({type(exc).__name__}); "
+                    "using tifffile fallback. Metadata may be incomplete."
+                ),
+            }
+        )
 
+        data = tifffile.imread(str(path))
+        # Try to extract axes from tifffile metadata
+        with tifffile.TiffFile(str(path)) as tif:
+            if tif.pages and hasattr(tif.pages[0], "axes"):
+                axes = tif.pages[0].axes or ""
+            # Check OME metadata if available
+            if hasattr(tif, "ome_metadata") and tif.ome_metadata:
+                try:
+                    import xml.etree.ElementTree as ET
+
+                    root = ET.fromstring(tif.ome_metadata)
+                    ns = {"ome": "http://www.openmicroscopy.org/Schemas/OME/2016-06"}
+                    pixels = root.find(".//ome:Pixels", ns)
+                    if pixels is not None:
+                        dim_order = pixels.get("DimensionOrder", "")
+                        if dim_order:
+                            # DimensionOrder is like XYZCT, need to reverse for array order
+                            axes = dim_order[::-1]
+                except Exception:
+                    pass
+
+    # Override axes from image_ref metadata if provided
+    axes_from_ref = (image_ref.get("metadata") or {}).get("axes", "")
+    if axes_from_ref:
+        axes = axes_from_ref
+    elif not axes:
+        axes = ""
+
+    axes_inferred = False
+    inferred_axes = ""
     if not axes or len(axes) != data.ndim:
-        raise ValueError("Input dataset must include axis metadata matching the data")
+        # Attempt to infer axes based on common FLIM data patterns
+        # Typical FLIM: TCZYX or TCYX where T is time bins
+        axes_inferred = True
+        if data.ndim == 5:
+            inferred_axes = "TCZYX"
+        elif data.ndim == 4:
+            inferred_axes = "TCYX"
+        elif data.ndim == 3:
+            inferred_axes = "TYX"
+        elif data.ndim == 2:
+            inferred_axes = "YX"
+        else:
+            raise ValueError(
+                f"Cannot infer axes for {data.ndim}D data. "
+                "Provide explicit axis metadata via input metadata or time_axis parameter."
+            )
+        load_warnings.append(
+            {
+                "code": "AXES_INFERRED",
+                "message": (
+                    f"Axis metadata missing or mismatched; "
+                    f"inferred '{inferred_axes}' from shape {data.shape}. "
+                    "This may be incorrect for non-standard FLIM layouts. "
+                    "Provide explicit 'time_axis' parameter or input metadata "
+                    "to ensure correct interpretation."
+                ),
+            }
+        )
+        axes = inferred_axes
 
-    metadata: dict[str, Any] = {}
-    time_increment = _extract_time_increment(img)
-    if time_increment is not None:
-        metadata["time_increment"] = time_increment
+    # Record provenance about loading method
+    metadata["_load_method"] = "tifffile" if used_tifffile_fallback else "bioio"
+    if axes_inferred:
+        metadata["_axes_inferred"] = True
+        metadata["_inferred_axes"] = inferred_axes
 
     size_bytes = int(image_ref.get("size_bytes") or path.stat().st_size or data.nbytes)
-    return data, axes.upper(), metadata, size_bytes
+    return data, axes.upper(), metadata, size_bytes, load_warnings
 
 
 def _resolve_time_axis(
@@ -288,6 +374,7 @@ def _compute_phasor(
 ) -> tuple[np.ndarray, np.ndarray]:
     try:
         import inspect
+
         from phasorpy.phasor import phasor_from_signal
     except Exception as exc:
         raise RuntimeError("Missing dependencies for phasor_from_flim") from exc
@@ -333,7 +420,7 @@ def _write_ome_tiff(
 
 def phasor_from_flim(*, inputs: dict, params: dict, work_dir: Path) -> dict[str, Any]:
     dataset_ref = inputs.get("dataset") or {}
-    data, axes, metadata, size_bytes = _load_flim_data(dataset_ref)
+    data, axes, metadata, size_bytes, load_warnings = _load_flim_data(dataset_ref)
 
     if "X" not in axes or "Y" not in axes:
         raise ValueError("Input dataset must include spatial X/Y axes")
@@ -344,7 +431,7 @@ def phasor_from_flim(*, inputs: dict, params: dict, work_dir: Path) -> dict[str,
     if not np.isfinite(data).all():
         raise ValueError("Input dataset contains NaN or Inf values")
 
-    warnings: list[dict[str, str]] = []
+    warnings: list[dict[str, str]] = list(load_warnings)  # Start with load warnings
     if size_bytes > OVERSIZED_INPUT_THRESHOLD_BYTES:
         warnings.append(
             {
@@ -377,7 +464,13 @@ def phasor_from_flim(*, inputs: dict, params: dict, work_dir: Path) -> dict[str,
             "harmonic": harmonic,
         },
         "mapping_mode": mapping_mode,
+        "load_method": metadata.get("_load_method", "unknown"),
     }
+
+    # Record axes inference in provenance if heuristics were used
+    if metadata.get("_axes_inferred"):
+        provenance["axes_inferred"] = True
+        provenance["inferred_axes"] = metadata.get("_inferred_axes", "")
 
     return {
         "outputs": {

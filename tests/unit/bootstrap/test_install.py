@@ -43,11 +43,13 @@ def test_install_raises_when_env_file_missing(tmp_path: Path, monkeypatch) -> No
 
 def test_install_calls_env_manager_with_correct_args(tmp_path: Path, monkeypatch) -> None:
     """Test that install calls the environment manager with correct arguments."""
-    # Create the env file
+    # Create the env files
     envs_dir = tmp_path / "envs"
     envs_dir.mkdir()
-    env_file = envs_dir / "bioimage-mcp-base.yaml"
-    env_file.write_text("name: bioimage-mcp-base\n")
+    base_env = envs_dir / "bioimage-mcp-base.yaml"
+    base_env.write_text("name: bioimage-mcp-base\n")
+    cellpose_env = envs_dir / "bioimage-mcp-cellpose.yaml"
+    cellpose_env.write_text("name: bioimage-mcp-cellpose\n")
 
     monkeypatch.chdir(tmp_path)
 
@@ -68,22 +70,25 @@ def test_install_calls_env_manager_with_correct_args(tmp_path: Path, monkeypatch
     result = install(profile="cpu")
 
     assert result == 0
-    assert len(called_commands) == 1
-    cmd = called_commands[0]
-    assert cmd[0] == "/usr/bin/mamba"
-    assert "env" in cmd
-    assert "update" in cmd
-    assert "bioimage-mcp-base" in cmd
-    assert "--prune" in cmd
+    assert len(called_commands) == 2
+    for cmd in called_commands:
+        assert cmd[0] == "/usr/bin/mamba"
+        assert "env" in cmd
+        assert "update" in cmd
+        assert "--prune" in cmd
+    assert any("bioimage-mcp-base" in cmd for cmd in called_commands)
+    assert any("bioimage-mcp-cellpose" in cmd for cmd in called_commands)
 
 
 def test_install_calls_micromamba_without_prune(tmp_path: Path, monkeypatch) -> None:
     """Test that install calls micromamba without the --prune flag."""
-    # Create the env file
+    # Create the env files
     envs_dir = tmp_path / "envs"
     envs_dir.mkdir()
-    env_file = envs_dir / "bioimage-mcp-base.yaml"
-    env_file.write_text("name: bioimage-mcp-base\n")
+    base_env = envs_dir / "bioimage-mcp-base.yaml"
+    base_env.write_text("name: bioimage-mcp-base\n")
+    cellpose_env = envs_dir / "bioimage-mcp-cellpose.yaml"
+    cellpose_env.write_text("name: bioimage-mcp-cellpose\n")
 
     monkeypatch.chdir(tmp_path)
 
@@ -104,8 +109,11 @@ def test_install_calls_micromamba_without_prune(tmp_path: Path, monkeypatch) -> 
     result = install(profile="gpu")
 
     assert result == 0
-    assert len(called_commands) == 1
-    cmd = called_commands[0]
-    assert cmd[0] == "/usr/bin/micromamba"
-    # micromamba should NOT have --prune
-    assert "--prune" not in cmd
+    assert len(called_commands) == 4
+    for cmd in called_commands:
+        assert cmd[0] == "/usr/bin/micromamba"
+        assert "--prune" not in cmd
+    assert any("bioimage-mcp-base" in cmd for cmd in called_commands)
+    assert any("bioimage-mcp-cellpose" in cmd for cmd in called_commands)
+    assert any("remove" in cmd and "cpuonly" in cmd for cmd in called_commands)
+    assert any("install" in cmd and "pytorch-cuda=11.8" in cmd for cmd in called_commands)
