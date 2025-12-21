@@ -29,6 +29,8 @@ EXPECTED_BASE_FUNCTIONS = {
     "base.morph_opening",
     "base.morph_closing",
     "base.remove_small_objects",
+    "base.phasor_from_flim",
+    "base.denoise_image",
     "meta.describe",
 }
 

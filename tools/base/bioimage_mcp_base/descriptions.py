@@ -111,3 +111,16 @@ REMOVE_SMALL_OBJECTS_DESCRIPTIONS = {
     "min_size": "Minimum object size (in pixels) to keep.",
     "connectivity": "Connectivity for labeling (1 or 2 in 2D).",
 }
+
+PHASOR_FROM_FLIM_DESCRIPTIONS = {
+    "time_axis": "Time/bin axis name or index for the FLIM signal (e.g., 'T' or 0).",
+    "harmonic": "Phasor harmonic to compute (default 1).",
+}
+
+DENOISE_IMAGE_DESCRIPTIONS = {
+    "filter_type": "Filter type to apply: median, gaussian, mean, or bilateral.",
+    "radius": "Radius for median/mean filters.",
+    "sigma": "Sigma for Gaussian filter.",
+    "sigma_spatial": "Spatial sigma for bilateral filter.",
+    "sigma_color": "Color/range sigma for bilateral filter.",
+}

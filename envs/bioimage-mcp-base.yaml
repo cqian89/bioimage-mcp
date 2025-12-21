@@ -9,7 +9,6 @@ dependencies:
   - bioio
   - bioio-ome-zarr
   - bioio-ome-tiff
-  - ngff-zarr
   - numpy
   - scipy
   - scikit-image

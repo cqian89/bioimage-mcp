@@ -8,12 +8,18 @@ import sys
 from pathlib import Path
 from typing import Any
 
+BASE_DIR = Path(__file__).resolve().parent
+TOOLS_ROOT = BASE_DIR.parent
+if str(TOOLS_ROOT) not in sys.path:
+    sys.path.insert(0, str(TOOLS_ROOT))
+
 from bioimage_mcp.runtimes.introspect import introspect_python_api
 
 from bioimage_mcp_base import descriptions as desc
 from bioimage_mcp_base.io import convert_to_ome_zarr, export_ome_tiff
 from bioimage_mcp_base.preprocess import (
     bilateral,
+    denoise_image,
     denoise_nl_means,
     equalize_adapthist,
     gaussian,
@@ -31,6 +37,7 @@ from bioimage_mcp_base.transforms import (
     crop,
     flip,
     pad,
+    phasor_from_flim,
     project_max,
     project_sum,
     rescale,
@@ -65,6 +72,8 @@ FN_MAP = {
     "base.morph_opening": (morph_opening, desc.MORPH_OPENING_DESCRIPTIONS),
     "base.morph_closing": (morph_closing, desc.MORPH_CLOSING_DESCRIPTIONS),
     "base.remove_small_objects": (remove_small_objects, desc.REMOVE_SMALL_OBJECTS_DESCRIPTIONS),
+    "base.phasor_from_flim": (phasor_from_flim, desc.PHASOR_FROM_FLIM_DESCRIPTIONS),
+    "base.denoise_image": (denoise_image, desc.DENOISE_IMAGE_DESCRIPTIONS),
 }
 
 
@@ -74,7 +83,9 @@ def handle_meta_describe(params: dict[str, Any]) -> dict[str, Any]:
         return {"ok": False, "error": f"Unknown function: {target_fn}"}
 
     func, descriptions = FN_MAP[target_fn]
-    schema = introspect_python_api(func, descriptions, exclude_params={"inputs", "params", "work_dir"})
+    schema = introspect_python_api(
+        func, descriptions, exclude_params={"inputs", "params", "work_dir"}
+    )
 
     return {
         "ok": True,
@@ -100,21 +111,36 @@ def main() -> int:
             response = handle_meta_describe(params)
         elif fn_id in FN_MAP:
             func, _descriptions = FN_MAP[fn_id]
-            out_path = func(inputs=inputs, params=params, work_dir=work_dir)
-            fmt = "OME-Zarr"
-            if fn_id == "base.export_ome_tiff":
-                fmt = "OME-TIFF"
-            response = {
-                "ok": True,
-                "outputs": {
-                    "output": {
-                        "type": "BioImageRef",
-                        "format": fmt,
-                        "path": str(out_path),
-                    }
-                },
-                "log": "ok",
-            }
+            result = func(inputs=inputs, params=params, work_dir=work_dir)
+            if isinstance(result, dict):
+                outputs = result.get("outputs")
+                if outputs is None:
+                    raise ValueError(f"{fn_id} did not return outputs")
+                response = {
+                    "ok": True,
+                    "outputs": outputs,
+                    "log": result.get("log", "ok"),
+                }
+                if "warnings" in result:
+                    response["warnings"] = result["warnings"]
+                if "provenance" in result:
+                    response["provenance"] = result["provenance"]
+            else:
+                out_path = result
+                fmt = "OME-Zarr"
+                if fn_id == "base.export_ome_tiff":
+                    fmt = "OME-TIFF"
+                response = {
+                    "ok": True,
+                    "outputs": {
+                        "output": {
+                            "type": "BioImageRef",
+                            "format": fmt,
+                            "path": str(out_path),
+                        }
+                    },
+                    "log": "ok",
+                }
         else:
             response = {"ok": False, "error": f"Unknown fn_id: {fn_id}"}
     except Exception as exc:  # noqa: BLE001

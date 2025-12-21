@@ -30,14 +30,13 @@ functions:
     params_schema:
       type: object
       properties:
+        time_axis:
+          type: [string, integer]
+          description: Axis name or index for the time/bin dimension.
         harmonic:
           type: integer
           default: 1
           description: The harmonic to compute (default 1).
-        threshold:
-          type: number
-          default: 0.0
-          description: Intensity threshold for computing phasors (pixels below this are masked).
 
   - fn_id: base.denoise_image
     tool_id: tools.base
@@ -56,13 +55,13 @@ functions:
     params_schema:
       type: object
       properties:
-        method:
+        filter_type:
           type: string
           enum: [median, gaussian, mean, bilateral]
           default: median
         radius:
           type: integer
-          default: 2
+          default: 1
           description: Radius for median/mean filters.
         sigma:
           type: number
@@ -76,4 +75,3 @@ functions:
           type: number
           default: 0.1
           description: Color/range sigma for bilateral filter.
-      required: [method]

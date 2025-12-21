@@ -230,6 +230,11 @@ class ExecutionService:
                     ref = self._artifact_store.import_file(p, artifact_type=out_type, format=fmt)
                 outputs_payload[name] = ref.model_dump()
 
+        tool_provenance = response.get("provenance") or {}
+        if tool_provenance:
+            run.provenance.update(tool_provenance)
+            self._run_store.update_provenance(run.run_id, run.provenance)
+
         # Capture tool manifest checksums (T040) and env fingerprint (T039)
         manifests, _diagnostics = load_manifests(self._config.tool_manifest_roots)
         tool_manifests = []
@@ -243,12 +248,14 @@ class ExecutionService:
                         checksum = hashlib.sha256(manifest_content).hexdigest()
                     except OSError:
                         checksum = "unavailable"
-                    tool_manifests.append({
-                        "tool_id": manifest.tool_id,
-                        "tool_version": manifest.tool_version,
-                        "env_id": manifest.env_id,
-                        "manifest_checksum": checksum,
-                    })
+                    tool_manifests.append(
+                        {
+                            "tool_id": manifest.tool_id,
+                            "tool_version": manifest.tool_version,
+                            "env_id": manifest.env_id,
+                            "manifest_checksum": checksum,
+                        }
+                    )
                     break
 
         # Capture environment fingerprint for reproducibility (T039)
@@ -267,6 +274,7 @@ class ExecutionService:
             "inputs": inputs,
             "params": params,
             "outputs": outputs_payload,
+            "log_ref": log_ref.model_dump(),
             "provenance": run.provenance,
             "tool_manifests": tool_manifests,
             "env_fingerprint": env_fingerprint,
