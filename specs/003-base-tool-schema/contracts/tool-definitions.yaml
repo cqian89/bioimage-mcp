@@ -1,0 +1,79 @@
+# Tool Definitions for FLIM Phasor Analysis
+# format: partial manifest.yaml
+
+functions:
+  - fn_id: base.phasor_from_flim
+    tool_id: tools.base
+    name: Phasor transform
+    description: Convert a time-resolved FLIM dataset to phasor coordinates (G, S) and intensity.
+    tags: [image, transform, flim, phasor]
+    inputs:
+      - name: dataset
+        artifact_type: BioImageRef
+        required: true
+    outputs:
+      - name: g_image
+        artifact_type: BioImageRef
+        format: OME-TIFF
+        required: true
+        description: Real component (G) of the phasor transform.
+      - name: s_image
+        artifact_type: BioImageRef
+        format: OME-TIFF
+        required: true
+        description: Imaginary component (S) of the phasor transform.
+      - name: intensity_image
+        artifact_type: BioImageRef
+        format: OME-TIFF
+        required: true
+        description: Integrated intensity (sum over time) derived from the dataset.
+    params_schema:
+      type: object
+      properties:
+        harmonic:
+          type: integer
+          default: 1
+          description: The harmonic to compute (default 1).
+        threshold:
+          type: number
+          default: 0.0
+          description: Intensity threshold for computing phasors (pixels below this are masked).
+
+  - fn_id: base.denoise_image
+    tool_id: tools.base
+    name: Denoise image
+    description: Apply a denoising filter to an image.
+    tags: [image, preprocessing, denoise]
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+    outputs:
+      - name: output
+        artifact_type: BioImageRef
+        format: OME-TIFF
+        required: true
+    params_schema:
+      type: object
+      properties:
+        method:
+          type: string
+          enum: [median, gaussian, mean, bilateral]
+          default: median
+        radius:
+          type: integer
+          default: 2
+          description: Radius for median/mean filters.
+        sigma:
+          type: number
+          default: 1.0
+          description: Sigma for Gaussian filter.
+        sigma_spatial:
+          type: number
+          default: 1.0
+          description: Spatial sigma for bilateral filter.
+        sigma_color:
+          type: number
+          default: 0.1
+          description: Color/range sigma for bilateral filter.
+      required: [method]
