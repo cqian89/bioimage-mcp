@@ -230,3 +230,9 @@ python scripts/validate_pipeline.py
 - Specs: `specs/<milestone>/spec.md` for feature requirements
 - Constitution: `.specify/memory/constitution.md` for non-negotiable rules
 - PRD: `initial_planning/Bioimage-MCP_PRD.md` for product vision
+
+## Active Technologies
+- Python 3.13 (core server; tool envs may differ) (004-interactive-tool-calling)
+
+## Recent Changes
+- 004-interactive-tool-calling: Added Python 3.13 (core server; tool envs may differ)

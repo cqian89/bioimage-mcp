@@ -1,0 +1,148 @@
+openapi: 3.0.3
+info:
+  title: Bioimage-MCP Interactive Tool Calling Contracts
+  version: 0.4.0
+  description: |
+    Design-time contracts for the interactive tool calling feature.
+    This is not necessarily exposed as HTTP; it documents stable request/response schemas
+    for MCP-facing tools and payloads.
+
+components:
+  schemas:
+    SessionId:
+      type: string
+      description: Stable interactive session identifier.
+
+    ArtifactRef:
+      type: object
+      required: [ref_id, type, uri, format, mime_type, size_bytes, created_at, metadata]
+      properties:
+        ref_id: { type: string }
+        type: { type: string }
+        uri: { type: string }
+        format: { type: string }
+        mime_type: { type: string }
+        size_bytes: { type: integer, format: int64 }
+        checksums:
+          type: array
+          items:
+            type: object
+            required: [algorithm, value]
+            properties:
+              algorithm: { type: string }
+              value: { type: string }
+        created_at: { type: string }
+        metadata:
+          type: object
+          additionalProperties: true
+
+    OutputSummary:
+      type: object
+      description: Lightweight, non-payload output summary for fast feedback.
+      additionalProperties: true
+      properties:
+        dtype: { type: string }
+        shape:
+          type: array
+          items: { type: integer }
+        approx_size_bytes: { type: integer, format: int64 }
+
+    ActivateFunctionsRequest:
+      type: object
+      required: [fn_ids]
+      properties:
+        fn_ids:
+          type: array
+          items: { type: string }
+
+    ActivateFunctionsResponse:
+      type: object
+      required: [session_id, active_fn_ids]
+      properties:
+        session_id: { $ref: "#/components/schemas/SessionId" }
+        active_fn_ids:
+          type: array
+          items: { type: string }
+
+    DeactivateFunctionsRequest:
+      type: object
+      required: [fn_ids]
+      properties:
+        fn_ids:
+          type: array
+          items: { type: string }
+
+    DeactivateFunctionsResponse:
+      type: object
+      required: [session_id, active_fn_ids]
+      properties:
+        session_id: { $ref: "#/components/schemas/SessionId" }
+        active_fn_ids:
+          type: array
+          items: { type: string }
+
+    CallToolRequest:
+      type: object
+      required: [fn_id, inputs, params]
+      properties:
+        fn_id: { type: string }
+        inputs:
+          type: object
+          additionalProperties: true
+          description: Mapping input port name -> ArtifactRef payload.
+        params:
+          type: object
+          additionalProperties: true
+        dry_run:
+          type: boolean
+          default: false
+        timeout_seconds:
+          type: integer
+          minimum: 1
+
+    CallToolResponse:
+      type: object
+      required: [session_id]
+      properties:
+        session_id: { $ref: "#/components/schemas/SessionId" }
+        run_id:
+          type: string
+          description: Internal run identifier; may be used as taskId when MCP Tasks are requested.
+        status:
+          type: string
+          enum: [queued, running, succeeded, failed, cancelled]
+        outputs:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/ArtifactRef"
+        outputs_summary:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/OutputSummary"
+        log_ref:
+          $ref: "#/components/schemas/ArtifactRef"
+        error:
+          type: object
+          additionalProperties: true
+
+    ExportSessionResponse:
+      type: object
+      required: [session_id, workflow_record]
+      properties:
+        session_id: { $ref: "#/components/schemas/SessionId" }
+        workflow_record:
+          $ref: "#/components/schemas/ArtifactRef"
+
+    ResumeSessionRequest:
+      type: object
+      required: [session_id]
+      properties:
+        session_id: { $ref: "#/components/schemas/SessionId" }
+
+    ResumeSessionResponse:
+      type: object
+      required: [session_id]
+      properties:
+        session_id: { $ref: "#/components/schemas/SessionId" }
+
+paths: {}
