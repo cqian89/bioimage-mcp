@@ -59,8 +59,10 @@ cover/
 .codex/
 .gemini/
 .opencode/
+.worktrees/
 # .agent/
 # .specify/
+
 
 
 # Sphinx documentation
