@@ -26,6 +26,7 @@ class Config(BaseModel):
 
     default_pagination_limit: int = 20
     max_pagination_limit: int = 200
+    session_ttl_hours: int = 24
 
     @field_validator(
         "artifact_store_root",
@@ -52,4 +53,6 @@ class Config(BaseModel):
             raise ValueError("max_pagination_limit must be >= 1")
         if self.default_pagination_limit > self.max_pagination_limit:
             raise ValueError("default_pagination_limit must be <= max_pagination_limit")
+        if self.session_ttl_hours < 1:
+            raise ValueError("session_ttl_hours must be >= 1")
         return self

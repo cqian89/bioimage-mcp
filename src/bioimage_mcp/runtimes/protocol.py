@@ -73,7 +73,23 @@ def validate_workflow_compatibility(
         input_defs = {p.get("name"): p for p in fn_ports.get("inputs", [])}
         output_defs = {p.get("name"): p for p in fn_ports.get("outputs", [])}
 
-        # Validate inputs
+        # print(f"DEBUG: fn_id={fn_id}, input_defs={input_defs}, step_inputs={step_inputs}")
+
+        # Check for missing required inputs
+        for input_name, input_def in input_defs.items():
+            if input_def.get("required", False) and input_name not in step_inputs:
+                msg = f"Step {step_idx} missing required input '{input_name}'"
+                errors.append(
+                    WorkflowCompatibilityError(
+                        step_index=step_idx,
+                        port_name=str(input_name),
+                        expected_type=str(input_def.get("artifact_type", "") or ""),
+                        actual_type="missing",
+                        message=msg,
+                    )
+                )
+
+        # Validate provided inputs
         for input_name, input_value in step_inputs.items():
             if input_name not in input_defs:
                 continue  # Unknown input - might be optional

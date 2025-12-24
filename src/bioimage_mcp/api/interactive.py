@@ -1,0 +1,252 @@
+from __future__ import annotations
+
+import uuid
+from datetime import UTC, datetime
+from typing import Any
+
+from bioimage_mcp.api.execution import ExecutionService
+from bioimage_mcp.api.interactive_summaries import summarize_artifact
+from bioimage_mcp.artifacts.models import ArtifactRef
+from bioimage_mcp.sessions.manager import SessionManager
+
+
+class InteractiveExecutionService:
+    def __init__(
+        self,
+        session_manager: SessionManager,
+        execution: ExecutionService,
+    ) -> None:
+        self.session_manager = session_manager
+        self.execution = execution
+
+    def call_tool(
+        self,
+        session_id: str,
+        fn_id: str,
+        inputs: dict[str, Any],
+        params: dict[str, Any],
+        ordinal: int | None = None,
+        connection_hint: str | None = None,
+        dry_run: bool = False,
+    ) -> dict[str, Any]:
+        """Execute a tool call within a session step.
+
+        Args:
+            session_id: The session ID.
+            fn_id: The function ID to call.
+            inputs: Input artifact references.
+            params: Function parameters.
+            ordinal: Optional step ordinal. If None, appends to end.
+            connection_hint: Optional client connection hint (e.g. 'stdio', 'sse').
+            dry_run: If True, validate inputs only without execution.
+
+        Returns:
+            A dictionary containing the execution result, including:
+            - session_id
+            - step_id
+            - run_id (if not dry_run)
+            - status
+            - outputs (including summaries)
+            - error (if any)
+            - log_ref (if available)
+            - dry_run (if True)
+        """
+        # Ensure session exists
+        self.session_manager.ensure_session(session_id, connection_hint=connection_hint)
+
+        # Calculate ordinal
+        if ordinal is None:
+            steps = self.session_manager.store.list_step_attempts(session_id)
+            if steps:
+                ordinal = max(s.ordinal for s in steps) + 1
+            else:
+                ordinal = 0
+
+        # Create step ID
+        step_id = f"step-{uuid.uuid4()}"
+
+        # Construct workflow spec
+        spec = {
+            "steps": [
+                {
+                    "fn_id": fn_id,
+                    "inputs": inputs,
+                    "params": params,
+                }
+            ],
+            # Pass timeout via run_opts if needed, but not exposed in call_tool API yet
+            "run_opts": {},
+        }
+
+        if dry_run:
+            validation_errors = self.execution.validate_workflow(spec)
+            if validation_errors:
+                return {
+                    "session_id": session_id,
+                    "step_id": step_id,
+                    "status": "failed",
+                    "dry_run": True,
+                    "error": {
+                        "message": "Workflow validation failed",
+                        "code": "VALIDATION_FAILED",
+                        "details": validation_errors,
+                    },
+                    "outputs": {},
+                }
+            return {
+                "session_id": session_id,
+                "step_id": step_id,
+                "status": "success",
+                "dry_run": True,
+                "outputs": {},
+            }
+
+        # Record start time
+        started_at = datetime.now(UTC).isoformat()
+
+        # Run workflow
+        # ExecutionService.run_workflow returns dict with run_id, status, etc.
+        # It handles DB entries for RunStore and ArtifactStore.
+        result = self.execution.run_workflow(spec)
+
+        # Record end time
+        ended_at = datetime.now(UTC).isoformat()
+
+        # Retrieve full run details to get outputs and error
+        run_status = self.execution.get_run_status(result["run_id"])
+        status = run_status["status"]
+        outputs = run_status.get("outputs")
+        error = run_status.get("error")
+        log_ref = run_status.get("log_ref")
+        log_ref_id = log_ref["ref_id"] if log_ref else None
+
+        # Determine canonical status
+        # Only successful runs become canonical.
+        # This allows retries without overwriting a successful history with a failure.
+        canonical = status == "succeeded"
+
+        # Store step attempt
+        self.session_manager.store.add_step_attempt(
+            session_id=session_id,
+            step_id=step_id,
+            ordinal=ordinal,
+            fn_id=fn_id,
+            inputs=inputs,
+            params=params,
+            status=status,
+            started_at=started_at,
+            ended_at=ended_at,
+            run_id=result["run_id"],
+            outputs=outputs,
+            error=error,
+            log_ref_id=log_ref_id,
+            canonical=canonical,
+        )
+
+        # If this attempt is canonical, ensure it's the ONLY canonical one for this ordinal
+        if canonical:
+            self.session_manager.store.set_canonical(session_id, step_id, ordinal)
+
+        # Generate summaries for outputs
+        # The result outputs are ArtifactRef dictionaries.
+        # We need to wrap them and add summaries.
+        response_outputs = {}
+        if outputs:
+            for name, out_data in outputs.items():
+                # out_data is the serialized ArtifactRef
+                ref = ArtifactRef(**out_data)
+                summary = summarize_artifact(ref)
+
+                extra = {}
+                # Inline content for LogRef (needed for interactive feedback)
+                if ref.type == "LogRef":
+                    try:
+                        # Accessing internal store to fetch content
+                        store = self.execution.artifact_store
+                        if store:
+                            content_bytes = store.get_raw_content(ref.ref_id)
+                            extra["content"] = content_bytes.decode("utf-8")
+                    except Exception:  # noqa: BLE001
+                        pass  # Best effort
+
+                response_outputs[name] = out_data | {"summary": summary} | extra
+
+        response = {
+            "session_id": session_id,
+            "step_id": step_id,
+            "run_id": result["run_id"],
+            "status": status,
+            "outputs": response_outputs,
+        }
+
+        if status == "failed":
+            response["isError"] = True
+            # Ensure error is present if failed
+            if not error:
+                response["error"] = {"message": "Tool execution failed", "code": "EXECUTION_FAILED"}
+
+        if error:
+            response["error"] = error
+        if log_ref:
+            response["log_ref"] = log_ref
+
+        return response
+
+    def export_session(self, session_id: str) -> dict[str, Any]:
+        """Export session to a reproducible workflow artifact.
+
+        Filters session steps to only include canonical (successful) executions,
+        preserving the execution order. The resulting artifact can be used to
+        replay the workflow.
+
+        Args:
+            session_id: The ID of the session to export.
+
+        Returns:
+            The serialized NativeOutputRef pointing to the workflow record.
+
+        Raises:
+            ValueError: If the session has no steps.
+        """
+        # Ensure session exists
+        self.session_manager.ensure_session(session_id)
+        steps = self.session_manager.store.list_step_attempts(session_id)
+
+        if not steps:
+            raise ValueError("Cannot export empty session")
+
+        # Filter for canonical steps
+        canonical_steps = [s for s in steps if s.canonical]
+        # Sort by ordinal (list_step_attempts usually does this, but be safe)
+        canonical_steps.sort(key=lambda s: s.ordinal)
+
+        workflow_spec = {
+            "steps": [
+                {
+                    "fn_id": s.fn_id,
+                    "inputs": s.inputs,
+                    "params": s.params,
+                }
+                for s in canonical_steps
+            ]
+        }
+
+        # Wrap in record structure
+        record = {
+            "session_id": session_id,
+            "workflow_spec": workflow_spec,
+            "exported_at": datetime.now(UTC).isoformat(),
+        }
+
+        # Write to artifact store
+        store = self.execution.artifact_store
+        ref = store.write_native_output(
+            content=record,
+            format="workflow-record-json",
+            metadata={"session_id": session_id},
+        )
+
+        # Update session status
+        self.session_manager.store.update_session_status(session_id, "exported")
+
+        return ref.model_dump()

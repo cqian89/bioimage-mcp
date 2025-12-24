@@ -3,11 +3,14 @@ from __future__ import annotations
 from bioimage_mcp.api.artifacts import ArtifactsService
 from bioimage_mcp.api.discovery import DiscoveryService
 from bioimage_mcp.api.execution import ExecutionService
+from bioimage_mcp.api.interactive import InteractiveExecutionService
 from bioimage_mcp.api.server import create_server
 from bioimage_mcp.artifacts.store import ArtifactStore
 from bioimage_mcp.config.loader import load_config
 from bioimage_mcp.registry.loader import load_manifests
 from bioimage_mcp.runs.store import RunStore
+from bioimage_mcp.sessions.manager import SessionManager
+from bioimage_mcp.sessions.store import SessionStore
 from bioimage_mcp.storage.sqlite import connect
 
 
@@ -52,9 +55,18 @@ def serve(*, stdio: bool) -> int:
 
     artifact_store = ArtifactStore(config, conn=conn)
     run_store = RunStore(config, conn=conn)
+    session_store = SessionStore(config)
+    session_manager = SessionManager(session_store, config)
     execution = ExecutionService(config, artifact_store=artifact_store, run_store=run_store)
+    interactive = InteractiveExecutionService(session_manager, execution)
     artifacts = ArtifactsService(artifact_store)
 
-    mcp = create_server(service, execution=execution, artifacts=artifacts)
+    mcp = create_server(
+        service,
+        execution=execution,
+        interactive=interactive,
+        artifacts=artifacts,
+        session_manager=session_manager,
+    )
     mcp.run(transport="stdio")
     return 0

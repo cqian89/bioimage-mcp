@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import hashlib
 import platform
 import sys
@@ -62,6 +63,7 @@ def _get_function_ports(
 
     Returns a mapping of fn_id -> {"inputs": [...], "outputs": [...]}
     """
+    # print(f"DEBUG: loading manifests from {config.tool_manifest_roots}")
     manifests, _diagnostics = load_manifests(config.tool_manifest_roots)
     result: dict[str, dict[str, list[dict[str, Any]]]] = {}
 
@@ -113,6 +115,10 @@ class ExecutionService:
         self._owns_stores = artifact_store is None and run_store is None
         self._artifact_store = artifact_store or ArtifactStore(config)
         self._run_store = run_store or RunStore(config)
+
+    @property
+    def artifact_store(self) -> ArtifactStore:
+        return self._artifact_store
 
     def close(self) -> None:
         if self._owns_stores:
@@ -335,16 +341,14 @@ class ExecutionService:
         record_data = self._artifact_store.parse_native_output(native_output_ref_id)
 
         # Validate workflow record structure
-        required_fields = ["workflow_spec", "inputs", "params"]
-        for field in required_fields:
-            if field not in record_data:
-                raise ValueError(f"Invalid workflow record: missing '{field}'")
+        if "workflow_spec" not in record_data:
+            raise ValueError("Invalid workflow record: missing 'workflow_spec'")
 
         # Extract workflow components
         workflow_spec = record_data["workflow_spec"]
         _original_inputs = record_data.get("inputs", {})  # Keep for future input override
         original_params = record_data.get("params", {})
-        original_run_id = record_data.get("run_id", "unknown")
+        original_run_id = record_data.get("run_id") or record_data.get("session_id", "unknown")
 
         # Apply overrides if provided
         # inputs = {**original_inputs, **(override_inputs or {})}  # TODO: use in future
@@ -366,21 +370,33 @@ class ExecutionService:
                         ) from exc
 
         # Update step inputs/params with merged values
-        replay_spec = workflow_spec.copy()
+        replay_spec = copy.deepcopy(workflow_spec)
         if replay_spec.get("steps"):
             for step in replay_spec["steps"]:
                 # Merge params
                 step_params = step.get("params", {})
                 step["params"] = {**step_params, **params}
 
-        # Execute the replayed workflow (skip validation for replay)
-        result = self.run_workflow(replay_spec, skip_validation=True)
+        # Execute the replayed workflow (iterate over steps)
+        last_result = {"status": "succeeded", "run_id": None}
 
-        # T031: Link replayed run to original run_id in provenance
-        if result["status"] in {"succeeded", "running", "queued"}:
-            run = self._run_store.get(result["run_id"])
-            run.provenance["replayed_from_run_id"] = original_run_id
-            run.provenance["original_workflow_record_ref_id"] = native_output_ref_id
-            self._run_store.update_provenance(result["run_id"], run.provenance)
+        for step in replay_spec.get("steps", []):
+            step_spec = replay_spec.copy()
+            step_spec["steps"] = [step]
 
-        return result
+            result = self.run_workflow(step_spec, skip_validation=True)
+
+            # T031: Link replayed run to original run_id in provenance
+            if result["status"] in {"succeeded", "running", "queued"}:
+                run = self._run_store.get(result["run_id"])
+                run.provenance["replayed_from_run_id"] = original_run_id
+                run.provenance["original_workflow_record_ref_id"] = native_output_ref_id
+                self._run_store.update_provenance(result["run_id"], run.provenance)
+
+            last_result = result
+
+            # Stop on failure
+            if result["status"] == "failed":
+                break
+
+        return last_result

@@ -52,3 +52,59 @@ def test_load_config_rejects_non_absolute_roots(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="absolute"):
         load_config(global_path=global_cfg, local_path=tmp_path / "missing.yaml")
+
+
+def test_load_config_session_ttl_hours_defaults_to_24(tmp_path: Path) -> None:
+    """session_ttl_hours should default to 24 when not configured."""
+    config = load_config(
+        global_path=tmp_path / "nope" / "config.yaml",
+        local_path=tmp_path / "also_nope" / "config.yaml",
+    )
+
+    assert config.session_ttl_hours == 24
+
+
+def test_load_config_session_ttl_hours_from_config(tmp_path: Path) -> None:
+    """session_ttl_hours should be configurable via YAML."""
+    global_cfg = tmp_path / "home" / ".bioimage-mcp" / "config.yaml"
+    global_cfg.parent.mkdir(parents=True)
+    global_cfg.write_text(
+        """\
+artifact_store_root: /abs/artifacts
+session_ttl_hours: 48
+"""
+    )
+
+    config = load_config(global_path=global_cfg, local_path=tmp_path / "missing.yaml")
+
+    assert config.session_ttl_hours == 48
+
+
+def test_load_config_session_ttl_hours_rejects_zero(tmp_path: Path) -> None:
+    """session_ttl_hours must be >= 1."""
+    global_cfg = tmp_path / "home" / ".bioimage-mcp" / "config.yaml"
+    global_cfg.parent.mkdir(parents=True)
+    global_cfg.write_text(
+        """\
+artifact_store_root: /abs/artifacts
+session_ttl_hours: 0
+"""
+    )
+
+    with pytest.raises(ValueError, match="session_ttl_hours must be >= 1"):
+        load_config(global_path=global_cfg, local_path=tmp_path / "missing.yaml")
+
+
+def test_load_config_session_ttl_hours_rejects_negative(tmp_path: Path) -> None:
+    """session_ttl_hours must be >= 1."""
+    global_cfg = tmp_path / "home" / ".bioimage-mcp" / "config.yaml"
+    global_cfg.parent.mkdir(parents=True)
+    global_cfg.write_text(
+        """\
+artifact_store_root: /abs/artifacts
+session_ttl_hours: -5
+"""
+    )
+
+    with pytest.raises(ValueError, match="session_ttl_hours must be >= 1"):
+        load_config(global_path=global_cfg, local_path=tmp_path / "missing.yaml")

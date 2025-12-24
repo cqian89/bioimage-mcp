@@ -92,6 +92,39 @@ def init_schema(conn: sqlite3.Connection) -> None:
             introspected_at TEXT NOT NULL,
             PRIMARY KEY (tool_id, fn_id)
         );
+
+        CREATE TABLE IF NOT EXISTS sessions (
+            session_id TEXT PRIMARY KEY,
+            created_at TEXT NOT NULL,
+            last_activity_at TEXT NOT NULL,
+            status TEXT NOT NULL,
+            connection_hint TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS session_steps (
+            step_id TEXT PRIMARY KEY,
+            session_id TEXT NOT NULL,
+            ordinal INTEGER NOT NULL,
+            fn_id TEXT NOT NULL,
+            inputs_json TEXT NOT NULL,
+            params_json TEXT NOT NULL,
+            status TEXT NOT NULL,
+            started_at TEXT NOT NULL,
+            ended_at TEXT,
+            run_id TEXT,
+            error_json TEXT,
+            outputs_json TEXT,
+            log_ref_id TEXT,
+            canonical INTEGER NOT NULL DEFAULT 1,
+            FOREIGN KEY (session_id) REFERENCES sessions(session_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS session_active_functions (
+            session_id TEXT NOT NULL,
+            fn_id TEXT NOT NULL,
+            PRIMARY KEY (session_id, fn_id),
+            FOREIGN KEY (session_id) REFERENCES sessions(session_id)
+        );
         """
     )
     conn.commit()
