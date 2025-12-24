@@ -31,7 +31,7 @@ Where:
 - [x] T002 [P] Add session models module stub in `src/bioimage_mcp/sessions/models.py`
 - [x] T003 [P] Add session store module stub in `src/bioimage_mcp/sessions/store.py`
 - [x] T004 [P] Add session manager module stub in `src/bioimage_mcp/sessions/manager.py`
-- [ ] T005 [P] Add unit test scaffolding for sessions in `tests/unit/sessions/test_session_store.py`
+- [x] T005 [P] Add unit test scaffolding for sessions in `tests/unit/sessions/test_session_store.py`
 
 ---
 
@@ -43,28 +43,28 @@ Where:
 
 ### Storage + Models
 
-- [ ] T006 Extend SQLite schema with `sessions`, `session_steps`, `session_active_functions` in `src/bioimage_mcp/storage/sqlite.py`
-- [ ] T007 [P] Implement `Session` and `SessionStep` Pydantic models in `src/bioimage_mcp/sessions/models.py`
-- [ ] T008 Implement `SessionStore` CRUD (sessions, step attempts, active functions) in `src/bioimage_mcp/sessions/store.py`
-- [ ] T009 [P] Add store CRUD unit tests in `tests/unit/sessions/test_session_store.py`
+- [x] T006 Extend SQLite schema with `sessions`, `session_steps`, `session_active_functions` in `src/bioimage_mcp/storage/sqlite.py`
+- [x] T007 [P] Implement `Session` and `SessionStep` Pydantic models in `src/bioimage_mcp/sessions/models.py`
+- [x] T008 Implement `SessionStore` CRUD (sessions, step attempts, active functions) in `src/bioimage_mcp/sessions/store.py`
+- [x] T009 [P] Add store CRUD unit tests in `tests/unit/sessions/test_session_store.py`
 
 ### Session Lifecycle + TTL
 
-- [ ] T010 Implement `SessionManager` (implicit per-connection creation, resume, activity update) in `src/bioimage_mcp/sessions/manager.py`
-- [ ] T011 [P] Add `SessionManager` unit tests in `tests/unit/sessions/test_session_manager.py`
-- [ ] T012 Add session TTL configuration (e.g., `session_ttl_hours`) to `src/bioimage_mcp/config/schema.py`
-- [ ] T013 Add default `session_ttl_hours` loading to `src/bioimage_mcp/config/loader.py`
-- [ ] T014 [P] Add config unit test for TTL defaults in `tests/unit/config/test_session_ttl_config.py`
+- [x] T010 Implement `SessionManager` (implicit per-connection creation, resume, activity update) in `src/bioimage_mcp/sessions/manager.py`
+- [x] T011 [P] Add `SessionManager` unit tests in `tests/unit/sessions/test_session_manager.py`
+- [x] T012 Add session TTL configuration (e.g., `session_ttl_hours`) to `src/bioimage_mcp/config/schema.py`
+- [x] T013 Add default `session_ttl_hours` loading to `src/bioimage_mcp/config/loader.py`
+- [x] T014 [P] Add config unit test for TTL defaults in `tests/unit/config/test_session_ttl_config.py`
 
 ### Server Wiring
 
-- [ ] T015 Wire a shared `SessionStore`/`SessionManager` into server startup in `src/bioimage_mcp/bootstrap/serve.py`
-- [ ] T016 Add a helper to obtain current MCP connection/session context in `src/bioimage_mcp/api/server.py`
+- [x] T015 Wire a shared `SessionStore`/`SessionManager` into server startup in `src/bioimage_mcp/bootstrap/serve.py`
+- [x] T016 Add a helper to obtain current MCP connection/session context in `src/bioimage_mcp/api/server.py`
 
 ### Output Summaries
 
-- [ ] T017 Implement lightweight output summary helper (dtype/shape/approx bytes from ArtifactRef metadata) in `src/bioimage_mcp/api/interactive_summaries.py`
-- [ ] T018 [P] Add unit tests for output summaries in `tests/unit/api/test_interactive_summaries.py`
+- [x] T017 Implement lightweight output summary helper (dtype/shape/approx bytes from ArtifactRef metadata) in `src/bioimage_mcp/api/interactive_summaries.py`
+- [x] T018 [P] Add unit tests for output summaries in `tests/unit/api/test_interactive_summaries.py`
 
 **Checkpoint**: Foundation ready — user story implementation can now begin.
 
@@ -78,14 +78,14 @@ Where:
 
 ### Tests (write first)
 
-- [ ] T019 [P] [US1] Add integration test for step-by-step `call_tool` success path in `tests/integration/test_interactive_call_tool.py`
+- [x] T019 [P] [US1] Add integration test for step-by-step `call_tool` success path in `tests/integration/test_interactive_call_tool.py`
 
 ### Implementation
 
-- [ ] T020 [US1] Implement `InteractiveExecutionService.call_tool()` (create run, persist step attempt, return summaries, support async polling via `run_id`/`taskId`) in `src/bioimage_mcp/api/interactive.py`
-- [ ] T021 [US1] Add MCP tool `call_tool` that routes to `InteractiveExecutionService` in `src/bioimage_mcp/api/server.py`
-- [ ] T022 [US1] Persist successful interactive step attempts (including `run_id`, outputs, log ref) in `src/bioimage_mcp/sessions/store.py`
-- [ ] T023 [US1] Ensure `call_tool` responses include `session_id` in `src/bioimage_mcp/api/server.py`
+- [x] T020 [US1] Implement `InteractiveExecutionService.call_tool()` (create run, persist step attempt, return summaries, support async polling via `run_id`/`taskId`) in `src/bioimage_mcp/api/interactive.py`
+- [x] T021 [US1] Add MCP tool `call_tool` that routes to `InteractiveExecutionService` in `src/bioimage_mcp/api/server.py`
+- [x] T022 [US1] Persist successful interactive step attempts (including `run_id`, outputs, log ref) in `src/bioimage_mcp/sessions/store.py`
+- [x] T023 [US1] Ensure `call_tool` responses include `session_id` in `src/bioimage_mcp/api/server.py`
 
 **Checkpoint**: US1 is independently functional and testable.
 
@@ -99,15 +99,15 @@ Where:
 
 ### Tests (write first)
 
-- [ ] T024 [P] [US2] Add integration tests for invalid params vs runtime error transport in `tests/integration/test_interactive_errors.py`
-- [ ] T025 [P] [US2] Add integration test for retry semantics and canonical selection in `tests/integration/test_interactive_retry_canonical.py`
+- [x] T024 [P] [US2] Add integration tests for invalid params vs runtime error transport in `tests/integration/test_interactive_errors.py`
+- [x] T025 [P] [US2] Add integration test for retry semantics and canonical selection in `tests/integration/test_interactive_retry_canonical.py`
 
 ### Implementation
 
-- [ ] T026 [US2] Implement preflight validation errors as JSON-RPC invalid params (`-32602`) for `call_tool` in `src/bioimage_mcp/api/server.py`
-- [ ] T027 [US2] Implement runtime execution errors as tool result with `isError: true` and `log_ref` in `src/bioimage_mcp/api/interactive.py`
-- [ ] T028 [US2] Record failed attempts (with structured `error_json`) in `src/bioimage_mcp/sessions/store.py`
-- [ ] T029 [US2] Implement canonical attempt selection (last successful attempt per logical step) in `src/bioimage_mcp/sessions/store.py`
+- [x] T026 [US2] Implement preflight validation errors as JSON-RPC invalid params (`-32602`) for `call_tool` in `src/bioimage_mcp/api/server.py`
+- [x] T027 [US2] Implement runtime execution errors as tool result with `isError: true` and `log_ref` in `src/bioimage_mcp/api/interactive.py`
+- [x] T028 [US2] Record failed attempts (with structured `error_json`) in `src/bioimage_mcp/sessions/store.py`
+- [x] T029 [US2] Implement canonical attempt selection (last successful attempt per logical step) in `src/bioimage_mcp/sessions/store.py`
 
 **Checkpoint**: US2 is independently functional and testable.
 
@@ -121,15 +121,15 @@ Where:
 
 ### Tests (write first)
 
-- [ ] T030 [P] [US3] Add integration test for activation state persistence in `tests/integration/test_interactive_activation_store.py`
-- [ ] T031 [P] [US3] Add integration test for tool list filtering + list_changed notification in `tests/integration/test_interactive_tool_activation.py`
+- [x] T030 [P] [US3] Add integration test for activation state persistence in `tests/integration/test_interactive_activation_store.py`
+- [x] T031 [P] [US3] Add integration test for tool list filtering + list_changed notification in `tests/integration/test_interactive_tool_activation.py`
 
 ### Implementation
 
-- [ ] T032 [US3] Add `activate_functions` MCP tool (persist set, update last_activity, emit list_changed, include `session_id` in response) in `src/bioimage_mcp/api/server.py`
-- [ ] T033 [US3] Add `deactivate_functions` MCP tool (persist set, emit list_changed, include `session_id` in response) in `src/bioimage_mcp/api/server.py`
-- [ ] T034 [US3] Implement per-session active function persistence APIs in `src/bioimage_mcp/sessions/store.py`
-- [ ] T035 [US3] Filter per-session tool discovery to active functions in `src/bioimage_mcp/api/server.py`
+- [x] T032 [US3] Add `activate_functions` MCP tool (persist set, update last_activity, emit list_changed, include `session_id` in response) in `src/bioimage_mcp/api/server.py`
+- [x] T033 [US3] Add `deactivate_functions` MCP tool (persist set, emit list_changed, include `session_id` in response) in `src/bioimage_mcp/api/server.py`
+- [x] T034 [US3] Implement per-session active function persistence APIs in `src/bioimage_mcp/sessions/store.py`
+- [x] T035 [US3] Filter per-session tool discovery to active functions in `src/bioimage_mcp/api/server.py`
 
 **Checkpoint**: US3 is independently functional and testable.
 
@@ -143,15 +143,15 @@ Where:
 
 ### Tests (write first)
 
-- [ ] T036 [P] [US4] Add integration test for `export_session` canonical-only export in `tests/integration/test_export_session.py`
-- [ ] T037 [P] [US4] Add integration test for replaying exported session workflow in `tests/integration/test_replay_exported_session.py`
-- [ ] T051 [P] [US4] Add integration test for replay failure when session artifacts are missing in `tests/integration/test_replay_exported_session.py`
+- [x] T036 [P] [US4] Add integration test for `export_session` canonical-only export in `tests/integration/test_export_session.py`
+- [x] T037 [P] [US4] Add integration test for replaying exported session workflow in `tests/integration/test_replay_exported_session.py`
+- [x] T051 [P] [US4] Add integration test for replay failure when session artifacts are missing in `tests/integration/test_replay_exported_session.py`
 
 ### Implementation
 
-- [ ] T038 [US4] Add MCP tool `export_session` (write `workflow-record-json` NativeOutputRef, include `session_id` in response) in `src/bioimage_mcp/api/server.py`
-- [ ] T039 [US4] Build exported workflow spec from canonical session steps in `src/bioimage_mcp/api/interactive.py`
-- [ ] T040 [US4] Persist export state/metadata (e.g., `exported_at`) in `src/bioimage_mcp/sessions/store.py`
+- [x] T038 [US4] Add MCP tool `export_session` (write `workflow-record-json` NativeOutputRef, include `session_id` in response) in `src/bioimage_mcp/api/server.py`
+- [x] T039 [US4] Build exported workflow spec from canonical session steps in `src/bioimage_mcp/api/interactive.py`
+- [x] T040 [US4] Persist export state/metadata (e.g., `exported_at`) in `src/bioimage_mcp/sessions/store.py`
 
 **Checkpoint**: US4 is independently functional and testable.
 
@@ -165,12 +165,12 @@ Where:
 
 ### Tests (write first)
 
-- [ ] T041 [P] [US5] Add integration test for `call_tool(dry_run=true)` validation-only behavior in `tests/integration/test_call_tool_dry_run.py`
+- [x] T041 [P] [US5] Add integration test for `call_tool(dry_run=true)` validation-only behavior in `tests/integration/test_call_tool_dry_run.py`
 
 ### Implementation
 
-- [ ] T042 [US5] Implement `dry_run` parameter handling (validate only; no run created) in `src/bioimage_mcp/api/interactive.py`
-- [ ] T043 [US5] Ensure calling non-activated functions works via wrapper (clear messaging if direct call blocked) in `src/bioimage_mcp/api/server.py`
+- [x] T042 [US5] Implement `dry_run` parameter handling (validate only; no run created) in `src/bioimage_mcp/api/interactive.py`
+- [x] T043 [US5] Ensure calling non-activated functions works via wrapper (clear messaging if direct call blocked) in `src/bioimage_mcp/api/server.py`
 
 **Checkpoint**: US5 is independently functional and testable.
 
@@ -180,13 +180,13 @@ Where:
 
 **Purpose**: Requirements that cut across stories (persistence robustness, tasks support, docs alignment, performance discipline).
 
-- [ ] T044 [P] Add `resume_session(session_id)` MCP tool to reattach persisted sessions (include `session_id` in response) in `src/bioimage_mcp/api/server.py`
-- [ ] T045 Add session cleanup (TTL expiry) execution path via periodic sweep in `src/bioimage_mcp/sessions/manager.py`
-- [ ] T046 [P] Add integration test for resume after restart semantics in `tests/integration/test_resume_session.py`
+- [x] T044 [P] Add `resume_session(session_id)` MCP tool to reattach persisted sessions (include `session_id` in response) in `src/bioimage_mcp/api/server.py`
+- [x] T045 Add session cleanup (TTL expiry) execution path via periodic sweep in `src/bioimage_mcp/sessions/manager.py`
+- [x] T046 [P] Add integration test for resume after restart semantics in `tests/integration/test_resume_session.py`
 - [ ] T047 Add MCP Tasks support (map `taskId` to `run_id` for interactive calls) in `src/bioimage_mcp/api/server.py`
-- [ ] T048 [P] Add contract test coverage for interactive contracts in `tests/contract/test_interactive_tool_calling_contract.py`
-- [ ] T049 [P] Update quickstart for interactive calling with examples in `specs/004-interactive-tool-calling/quickstart.md`
-- [ ] T050 Run full test suite and fix any interactive-feature regressions in `tests/`
+- [x] T048 [P] Add contract test coverage for interactive contracts in `tests/contract/test_interactive_tool_calling_contract.py`
+- [x] T049 [P] Update quickstart for interactive calling with examples in `specs/004-interactive-tool-calling/quickstart.md`
+- [x] T050 Run full test suite and fix any interactive-feature regressions in `tests/`
 
 ---
 
