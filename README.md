@@ -93,4 +93,4 @@ bioimage-mcp doctor --json
 - Missing env manager: install `micromamba` (preferred) or `conda`.
 - Failing permissions: choose an `artifact_store_root` you can write to.
 - Low disk: free space or point `artifact_store_root` to a larger volume.
-- Missing `conda-lock`: install via pip or conda-forge.
+- Missing `conda-lock`: install via pip (`pip install "conda-lock>=4.0.0"`) or conda-forge.

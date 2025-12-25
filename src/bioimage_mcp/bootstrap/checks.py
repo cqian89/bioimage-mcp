@@ -130,7 +130,7 @@ def check_conda_lock() -> CheckResult:
         return CheckResult(
             name="conda_lock",
             ok=False,
-            remediation=["Install conda-lock (used for reproducible env locks)"],
+            remediation=["Install conda-lock>=4.0.0 (used for reproducible env locks)"],
         )
     return CheckResult(name="conda_lock", ok=True, details={"executable": exe})
 

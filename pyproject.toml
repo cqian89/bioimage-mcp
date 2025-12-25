@@ -24,6 +24,7 @@ dependencies = [
 dev = [
   "pytest>=8",
   "ruff>=0.6",
+  "conda-lock>=4.0.0",
 ]
 
 [project.scripts]
