@@ -233,6 +233,8 @@ python scripts/validate_pipeline.py
 
 ## Active Technologies
 - Python 3.13 (core server; tool envs may differ) (004-interactive-tool-calling)
+- Python 3.13 (core server; tool envs may differ) + MCP Python SDK (`mcp`), `pydantic`, `bioio`, `ngff-zarr` (005-dynamic-function-registry)
+- Local filesystem artifact store + SQLite index (MVP) (005-dynamic-function-registry)
 
 ## Recent Changes
 - 004-interactive-tool-calling: Added Python 3.13 (core server; tool envs may differ)

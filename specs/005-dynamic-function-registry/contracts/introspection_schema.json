@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "IntrospectionResult",
+  "type": "object",
+  "description": "Output of the introspection script run in tool environments.",
+  "properties": {
+    "module": {
+      "type": "string",
+      "description": "Name of the inspected module"
+    },
+    "functions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "qualified_name": { "type": "string" },
+          "description": { "type": "string" },
+          "parameters": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "type": { "type": "string" },
+                "description": { "type": "string" },
+                "default": {},
+                "required": { "type": "boolean" }
+              }
+            }
+          }
+        },
+        "required": ["name", "qualified_name", "parameters"]
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "error": { "type": "string" }
+        }
+      }
+    }
+  },
+  "required": ["module", "functions"]
+}
