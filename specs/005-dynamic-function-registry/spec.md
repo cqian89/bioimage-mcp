@@ -126,6 +126,7 @@ The manifest MUST support configuration equivalent to:
 
 dynamic_sources:
   - adapter: skimage
+    prefix: skimage
     modules:
       - skimage.filters
       - skimage.morphology
@@ -138,11 +139,13 @@ dynamic_sources:
     exclude_patterns: ["_*", "test_*", "*_coords"]
 
   - adapter: phasorpy
+    prefix: phasorpy
     modules: ["phasorpy.phasor", "phasorpy.io", "phasorpy.cluster"]
     include_patterns: ["phasor_*", "signal_from_*", "*_cluster_*"]
     exclude_patterns: ["parse_*", "number_threads"]
 
   - adapter: scipy_ndimage
+    prefix: scipy
     modules: ["scipy.ndimage"]
     include_patterns: ["*_filter", "binary_*", "label", "find_objects", "distance_transform_*", "zoom", "rotate"]
 ```

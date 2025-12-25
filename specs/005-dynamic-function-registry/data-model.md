@@ -7,7 +7,8 @@ Configuration for a library to be dynamically exposed. Added to `ToolManifest`.
 
 | Field | Type | Description |
 |---|---|---|
-| `adapter` | `str` | Name of the adapter to use (e.g., "skimage", "phasorpy"). |
+| `adapter` | `str` | Name of the adapter implementation to use (e.g., "skimage", "phasorpy", "scipy_ndimage"). |
+| `prefix` | `str` | The fn_id namespace prefix for tools (e.g., "skimage", "phasorpy", "scipy"). May differ from adapter. |
 | `modules` | `List[str]` | List of python module paths to inspect (e.g., "skimage.filters"). |
 | `include_patterns` | `List[str]` | Glob patterns for functions to include (default: `["*"]`). |
 | `exclude_patterns` | `List[str]` | Glob patterns for functions to exclude. |
@@ -49,12 +50,16 @@ Result of introspecting a single function.
 ## Adapter Models
 
 ### IOPattern (Enum)
-Categorization of function I/O behavior.
+Categorization of function I/O behavior. Must match patterns defined in `plan.md`.
 
-| Value | Inputs | Outputs |
-|---|---|---|
-| `image_to_image` | `[BioImageRef]` | `[BioImageRef]` |
-| `image_to_labels` | `[BioImageRef]` | `[LabelImageRef]` |
-| `labels_to_table` | `[LabelImageRef]` | `[TableRef]` |
-| `phasor_transform` | `[BioImageRef]` | `[BioImageRef]` |
-| `generic` | `[BioImageRef]` | `[BioImageRef]` |
+| Value | Inputs | Outputs | Description |
+|---|---|---|---|
+| `IMAGE_TO_IMAGE` | `[BioImageRef]` | `[BioImageRef]` | Standard image filters/transforms |
+| `IMAGE_TO_LABELS` | `[BioImageRef]` | `[LabelImageRef]` | Segmentation, labeling |
+| `LABELS_TO_TABLE` | `[LabelImageRef]` | `[TableRef]` | Region property extraction |
+| `SIGNAL_TO_PHASOR` | `[BioImageRef]` | `[BioImageRef, BioImageRef, BioImageRef]` | FLIM signal to (intensity, G, S) |
+| `PHASOR_TRANSFORM` | `[BioImageRef, BioImageRef]` | `[BioImageRef, BioImageRef]` | (G, S) -> (G', S') calibration |
+| `PHASOR_TO_OTHER` | `[BioImageRef, BioImageRef]` | varies | Phasor to polar/signal conversion |
+| `ARRAY_TO_ARRAY` | `[BioImageRef]` | `[BioImageRef]` | Generic array transform |
+| `ARRAY_TO_SCALAR` | `[BioImageRef]` | `[NativeOutputRef]` | Threshold computation, etc. |
+| `FILE_TO_SIGNAL` | `[str]` | `[BioImageRef]` | File path to signal array |
