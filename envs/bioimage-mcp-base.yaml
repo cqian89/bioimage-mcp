@@ -14,3 +14,7 @@ dependencies:
   - scikit-image
   - phasorpy
   - numpydoc
+  - pydantic>=2.0
+  - pip:
+    # Install bioimage_mcp in editable mode for access to adapters
+    - -e .

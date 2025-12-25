@@ -76,3 +76,34 @@ functions: []
 
     joined = "\n".join(diagnostic.errors)
     assert "env_id" in joined
+
+
+def test_manifest_rejects_duplicate_dynamic_source_prefixes(tmp_path: Path) -> None:
+    """ToolManifest should reject duplicate prefixes in dynamic_sources."""
+    path = tmp_path / "manifest.yaml"
+    path.write_text(
+        """
+manifest_version: "0.0"
+tool_id: tools.test
+tool_version: "0.0.0"
+env_id: bioimage-mcp-test
+entrypoint: test.entrypoint
+platforms_supported: [linux-64]
+functions: []
+dynamic_sources:
+  - adapter: python_api
+    prefix: skimage
+    modules: [skimage.filters]
+  - adapter: python_api
+    prefix: skimage
+    modules: [skimage.transform]
+""".lstrip()
+    )
+
+    manifest, diagnostic = load_manifest_file(path)
+    assert manifest is None
+    assert diagnostic is not None
+
+    joined = "\n".join(diagnostic.errors)
+    assert "prefix" in joined.lower()
+    assert "duplicate" in joined.lower() or "unique" in joined.lower()

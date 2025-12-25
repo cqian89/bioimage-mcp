@@ -39,6 +39,16 @@ class Function(BaseModel):
     )
 
 
+class DynamicSource(BaseModel):
+    """Configuration for dynamically discovering functions from a library."""
+
+    adapter: str
+    prefix: str
+    modules: list[str]
+    include_patterns: list[str] = Field(default_factory=lambda: ["*"])
+    exclude_patterns: list[str] = Field(default_factory=lambda: ["_*", "test_*"])
+
+
 class ToolManifest(BaseModel):
     manifest_version: str
     tool_id: str
@@ -51,6 +61,7 @@ class ToolManifest(BaseModel):
     python_version: str | None = None
     platforms_supported: list[str] = Field(default_factory=list)
     functions: list[Function] = Field(default_factory=list)
+    dynamic_sources: list[DynamicSource] = Field(default_factory=list)
 
     manifest_path: Path
     manifest_checksum: str
@@ -63,6 +74,24 @@ class ToolManifest(BaseModel):
         return value
 
     @model_validator(mode="after")
+    def _validate_unique_prefixes(self) -> ToolManifest:
+        """Ensure dynamic_sources have unique prefixes."""
+        if self.dynamic_sources:
+            prefixes = [ds.prefix for ds in self.dynamic_sources]
+            seen = set()
+            duplicates = set()
+            for prefix in prefixes:
+                if prefix in seen:
+                    duplicates.add(prefix)
+                seen.add(prefix)
+            if duplicates:
+                raise ValueError(
+                    f"Dynamic source prefixes must be unique. "
+                    f"Duplicate prefix(es): {', '.join(sorted(duplicates))}"
+                )
+        return self
+
+    @model_validator(mode="after")
     def _fill_defaults(self) -> ToolManifest:
         if not self.name:
             self.name = self.tool_id
@@ -73,6 +102,7 @@ class ToolManifest(BaseModel):
 
 class FunctionResponse(BaseModel):
     """Function details returned to clients via describe_function."""
+
     model_config = {"populate_by_name": True}
     fn_id: str
     params_schema: dict = Field(alias="schema")

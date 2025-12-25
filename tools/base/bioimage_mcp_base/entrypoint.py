@@ -13,8 +13,6 @@ TOOLS_ROOT = BASE_DIR.parent
 if str(TOOLS_ROOT) not in sys.path:
     sys.path.insert(0, str(TOOLS_ROOT))
 
-from bioimage_mcp.runtimes.introspect import introspect_python_api
-
 from bioimage_mcp_base import descriptions as desc
 from bioimage_mcp_base.io import convert_to_ome_zarr, export_ome_tiff
 from bioimage_mcp_base.preprocess import (
@@ -83,6 +81,13 @@ def handle_meta_describe(params: dict[str, Any]) -> dict[str, Any]:
         return {"ok": False, "error": f"Unknown function: {target_fn}"}
 
     func, descriptions = FN_MAP[target_fn]
+
+    # Import introspect_python_api only when needed (for meta.describe)
+    try:
+        from bioimage_mcp.runtimes.introspect import introspect_python_api
+    except ImportError:
+        return {"ok": False, "error": "Introspection not available in this environment"}
+
     schema = introspect_python_api(
         func, descriptions, exclude_params={"inputs", "params", "work_dir"}
     )
@@ -140,12 +145,76 @@ def main() -> int:
                     "log": "ok",
                 }
         else:
-            response = {"ok": False, "error": f"Unknown fn_id: {fn_id}"}
+            # Dynamic dispatch for functions not in FN_MAP
+            from bioimage_mcp_base.dynamic_dispatch import dispatch_dynamic
+
+            result = dispatch_dynamic(
+                fn_id=fn_id,
+                inputs=inputs,
+                params=params,
+                work_dir=work_dir,
+            )
+            response = {
+                "ok": True,
+                "outputs": result.get("outputs", {}),
+                "log": "ok (dynamic dispatch)",
+            }
     except Exception as exc:  # noqa: BLE001
-        response = {"ok": False, "error": {"message": str(exc)}, "outputs": {}, "log": "failed"}
+        response = {
+            "ok": False,
+            "error": {"message": str(exc)},
+            "outputs": {},
+            "log": "failed",
+        }
 
     print(json.dumps(response))
     return 0 if response.get("ok") else 1
+
+
+def _dispatch_dynamic_mock(fn_id: str | None, work_dir: Path) -> dict[str, Any]:
+    if not fn_id:
+        raise ValueError("fn_id is required")
+
+    if not fn_id.startswith("phasorpy.phasor."):
+        raise ValueError(f"Dynamic dispatch not implemented for: {fn_id}")
+
+    from datetime import datetime, UTC
+
+    func_name = fn_id.split(".")[-1]
+    work_dir.mkdir(parents=True, exist_ok=True)
+
+    if func_name == "phasor_from_signal":
+        mean_path = work_dir / "phasor_mean.tif"
+        real_path = work_dir / "phasor_real.tif"
+        imag_path = work_dir / "phasor_imag.tif"
+        mean_path.touch()
+        real_path.touch()
+        imag_path.touch()
+        return {
+            "ok": True,
+            "outputs": {
+                "mean": {"type": "BioImageRef", "format": "OME-TIFF", "path": str(mean_path)},
+                "real": {"type": "BioImageRef", "format": "OME-TIFF", "path": str(real_path)},
+                "imag": {"type": "BioImageRef", "format": "OME-TIFF", "path": str(imag_path)},
+            },
+            "log": "ok (mock)",
+        }
+
+    if func_name == "phasor_transform":
+        real_path = work_dir / "phasor_real_calibrated.tif"
+        imag_path = work_dir / "phasor_imag_calibrated.tif"
+        real_path.touch()
+        imag_path.touch()
+        return {
+            "ok": True,
+            "outputs": {
+                "real": {"type": "BioImageRef", "format": "OME-TIFF", "path": str(real_path)},
+                "imag": {"type": "BioImageRef", "format": "OME-TIFF", "path": str(imag_path)},
+            },
+            "log": "ok (mock)",
+        }
+
+    raise ValueError(f"Unknown phasorpy function: {func_name}")
 
 
 if __name__ == "__main__":

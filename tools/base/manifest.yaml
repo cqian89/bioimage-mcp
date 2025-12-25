@@ -12,6 +12,44 @@ platforms_supported:
   - osx-arm64
   - win-64
 
+dynamic_sources:
+  - adapter: skimage
+    prefix: skimage
+    modules:
+      - skimage.filters
+      - skimage.morphology
+      - skimage.transform
+      - skimage.exposure
+      - skimage.restoration
+      - skimage.segmentation
+      - skimage.measure
+    include_patterns:
+      - "*"
+    exclude_patterns:
+      - "_*"
+      - "test_*"
+
+  - adapter: phasorpy
+    prefix: phasorpy
+    modules:
+      - phasorpy.phasor
+      - phasorpy.io
+    include_patterns:
+      - "*"
+    exclude_patterns:
+      - "_*"
+      - "test_*"
+
+  - adapter: scipy_ndimage
+    prefix: scipy
+    modules:
+      - scipy.ndimage
+    include_patterns:
+      - "*"
+    exclude_patterns:
+      - "_*"
+      - "test_*"
+
 functions:
   # I/O / format
   - fn_id: base.convert_to_ome_zarr

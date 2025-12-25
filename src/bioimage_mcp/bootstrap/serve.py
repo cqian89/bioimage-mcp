@@ -51,6 +51,7 @@ def serve(*, stdio: bool) -> int:
                 inputs=[p.model_dump() for p in fn.inputs],
                 outputs=[p.model_dump() for p in fn.outputs],
                 params_schema=fn.params_schema,
+                introspection_source=fn.introspection_source,
             )
 
     artifact_store = ArtifactStore(config, conn=conn)
