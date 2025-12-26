@@ -117,7 +117,7 @@ class Introspector:
 
             # Check if parameter has a default value
             has_default = param.default is not inspect.Parameter.empty
-            default_value = param.default if has_default else None
+            default_value = self._make_json_serializable(param.default) if has_default else None
 
             # Parameter is required if it has no default
             is_required = not has_default
@@ -134,6 +134,55 @@ class Introspector:
             )
 
         return parameters
+
+    def _make_json_serializable(self, value: Any) -> Any:
+        """Convert non-JSON-serializable objects to serializable equivalents.
+
+        Args:
+            value: Any Python object from parameter default values
+
+        Returns:
+            A JSON-serializable representation of the value
+        """
+        # Return value as-is if it's a basic JSON type (check first for performance)
+        if value is None or isinstance(value, (bool, int, float, str)):
+            return value
+
+        # Handle range objects (common in scientific functions)
+        if isinstance(value, range):
+            return list(value)
+
+        # Handle numpy arrays and similar - must be an instance, not a type
+        # and the tolist method must be callable without arguments
+        if hasattr(value, "tolist") and not isinstance(value, type):
+            try:
+                return value.tolist()
+            except TypeError:
+                # Unbound method or other issues - fall through to string conversion
+                pass
+
+        # Handle sets
+        if isinstance(value, (set, frozenset)):
+            return list(value)
+
+        # Handle bytes
+        if isinstance(value, bytes):
+            try:
+                return value.decode("utf-8")
+            except UnicodeDecodeError:
+                return f"<bytes: {len(value)} bytes>"
+
+        # Handle nested structures
+        if isinstance(value, dict):
+            return {k: self._make_json_serializable(v) for k, v in value.items()}
+        if isinstance(value, (list, tuple)):
+            return [self._make_json_serializable(item) for item in value]
+
+        # For other complex objects, convert to string representation
+        try:
+            return str(value)
+        except Exception:
+            return f"<{type(value).__name__}>"
 
     def _map_type_to_json_schema(self, annotation: Any) -> str:
         """Map Python type annotation to JSON Schema type string."""

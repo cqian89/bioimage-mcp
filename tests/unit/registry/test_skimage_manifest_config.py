@@ -4,6 +4,7 @@ Unit tests for SkimageAdapter manifest configuration.
 
 import sys
 from pathlib import Path
+from types import ModuleType
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -33,21 +34,20 @@ def test_skimage_adapter_discovery_via_manifest(tmp_path):
     }
     manifest_path.write_text(yaml.dump(manifest_data))
 
-    # Mock importlib to simulate skimage installed
-    mock_module = MagicMock()
-    # Add a dummy function to the mock module
-    mock_gaussian = MagicMock()
-    mock_gaussian.__name__ = "gaussian"
-    # Ensure introspector can read signature (or mock introspector)
-    # But adapter uses introspector. simpler to mock introspection?
-    # Let's mock importlib.import_module to return our mock
+    # Create a real mock module with a real function attribute
+    mock_module = ModuleType("skimage.filters")
+    mock_module.__name__ = "skimage.filters"
+
+    # Create a real function (not a MagicMock) to avoid __name__ access issues
+    def gaussian(image, sigma=1.0):
+        """Apply Gaussian filter to image."""
+        pass
+
+    # Set the function's module attribute
+    gaussian.__module__ = "skimage.filters"
+    mock_module.gaussian = gaussian
 
     with patch("importlib.import_module", return_value=mock_module) as mock_import:
-        # We need dir(module) to return ['gaussian']
-        mock_module.__dir__ = MagicMock(return_value=["gaussian"])
-        # And getattr(module, 'gaussian') -> mock_gaussian
-        mock_module.gaussian = mock_gaussian
-
         # We also need to ensure 'skimage' adapter is in registry.
         # Since it is NOT, discovery should fail/skip (and we verify that failure).
         # Actually, loader.py catches exceptions.

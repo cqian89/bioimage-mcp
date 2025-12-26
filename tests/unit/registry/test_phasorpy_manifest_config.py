@@ -4,6 +4,7 @@ Unit tests for PhasorPy adapter manifest configuration.
 
 import sys
 from pathlib import Path
+from types import ModuleType
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -33,18 +34,20 @@ def test_phasorpy_adapter_discovery_via_manifest(tmp_path):
     }
     manifest_path.write_text(yaml.dump(manifest_data))
 
-    # Mock importlib to simulate phasorpy installed
-    mock_module = MagicMock()
-    # Add a dummy function to the mock module
-    mock_phasor_from_signal = MagicMock()
-    mock_phasor_from_signal.__name__ = "phasor_from_signal"
+    # Create a real mock module with a real function attribute
+    mock_module = ModuleType("phasorpy.phasor")
+    mock_module.__name__ = "phasorpy.phasor"
+
+    # Create a real function (not a MagicMock) to avoid __name__ access issues
+    def phasor_from_signal(signal):
+        """Convert signal to phasor coordinates."""
+        pass
+
+    # Set the function's module attribute
+    phasor_from_signal.__module__ = "phasorpy.phasor"
+    mock_module.phasor_from_signal = phasor_from_signal
 
     with patch("importlib.import_module", return_value=mock_module) as mock_import:
-        # We need dir(module) to return a sample function
-        mock_module.__dir__ = MagicMock(return_value=["phasor_from_signal"])
-        # And getattr(module, 'phasor_from_signal') -> mock_phasor_from_signal
-        mock_module.phasor_from_signal = mock_phasor_from_signal
-
         # Manifest loading will succeed, but functions discovered depends on adapter registration
         manifest, diag = load_manifest_file(manifest_path)
 
