@@ -1,5 +1,5 @@
 """
-Adapter for scikit-image functions.
+Adapter for scipy.ndimage functions.
 """
 
 from __future__ import annotations
@@ -25,8 +25,8 @@ except ImportError:
     tifffile = None
 
 
-class SkimageAdapter(BaseAdapter):
-    """Adapter for exposing scikit-image functions dynamically."""
+class ScipyNdimageAdapter(BaseAdapter):
+    """Adapter for exposing scipy.ndimage functions dynamically."""
 
     def __init__(self) -> None:
         self.introspector = Introspector()
@@ -43,7 +43,7 @@ class SkimageAdapter(BaseAdapter):
             # OR DynamicSource dict.
             # discovery.py iterates modules.
             # Let's check discovery.py: it calls adapter.discover(source.model_dump()).
-            # source.model_dump() has "modules": ["skimage.filters", ...]
+            # source.model_dump() has "modules": ["scipy.ndimage", ...]
             # So we iterate here.
             modules = module_config["modules"]
         else:
@@ -81,7 +81,7 @@ class SkimageAdapter(BaseAdapter):
                 io_pattern = self.determine_io_pattern(mod_name, name)
                 meta = self.introspector.introspect(
                     func=obj,
-                    source_adapter="skimage",
+                    source_adapter="scipy_ndimage",
                     io_pattern=io_pattern,
                 )
                 meta.module = mod_name
@@ -92,21 +92,8 @@ class SkimageAdapter(BaseAdapter):
 
     def determine_io_pattern(self, module_name: str, func_name: str) -> IOPattern:
         """Determine I/O pattern based on module and function name."""
-        # Function-level overrides
-        if func_name.startswith("threshold_"):
-            return IOPattern.ARRAY_TO_SCALAR
-        if func_name.startswith("is_"):
-            return IOPattern.ARRAY_TO_SCALAR
-
-        # Module-level defaults
-        if "segmentation" in module_name:
-            return IOPattern.IMAGE_TO_LABELS
-        if "measure" in module_name:
-            return IOPattern.LABELS_TO_TABLE
-        if "filters" in module_name:
-            return IOPattern.IMAGE_TO_IMAGE
-
-        # Generic default
+        # scipy.ndimage functions are predominantly image-to-image transformations
+        # (filters, morphology, interpolation, etc.)
         return IOPattern.IMAGE_TO_IMAGE
 
     def resolve_io_pattern(self, func_name: str, signature: Any) -> IOPattern:
@@ -173,7 +160,7 @@ class SkimageAdapter(BaseAdapter):
         work_dir: Path | None = None,
     ) -> list[dict]:
         """Execute the function."""
-        # fn_id = skimage.filters.gaussian
+        # fn_id = scipy.ndimage.gaussian_filter
         parts = fn_id.split(".")
         if len(parts) < 3:
             raise ValueError(f"Invalid fn_id: {fn_id}")

@@ -1,5 +1,5 @@
 """
-Integration test for dynamic discovery and execution of skimage functions.
+Integration test for dynamic discovery and execution of scipy functions.
 """
 
 from pathlib import Path
@@ -14,8 +14,8 @@ from bioimage_mcp.storage.sqlite import connect
 
 
 @pytest.mark.integration
-def test_skimage_dynamic_execution_gaussian(tmp_path: Path):
-    """Test dynamic discovery and execution of skimage.filters.gaussian."""
+def test_scipy_dynamic_execution_gaussian_filter(tmp_path: Path):
+    """Test dynamic discovery and execution of scipy.ndimage.gaussian_filter."""
     # Setup directories
     artifacts_root = tmp_path / "artifacts"
     artifacts_root.mkdir()
@@ -41,14 +41,15 @@ def test_skimage_dynamic_execution_gaussian(tmp_path: Path):
     execution = ExecutionService(config, artifact_store=artifact_store)  # run_store optional
 
     # Define workflow
+    # Note: The I/O pattern IMAGE_TO_IMAGE maps to input port named "image"
     workflow = {
         "steps": [
             {
-                "fn_id": "skimage.filters.gaussian",
+                "fn_id": "scipy.ndimage.gaussian_filter",
                 "inputs": {
                     "image": {
                         "type": "BioImageRef",
-                        "format": "OME-TIFF",  # SkimageAdapter currently doesn't check format strictly
+                        "format": "OME-TIFF",
                         "uri": f"file://{input_path.absolute()}",
                     }
                 },
@@ -76,20 +77,10 @@ def test_skimage_dynamic_execution_gaussian(tmp_path: Path):
     assert "run_id" in result
 
     # Check outputs
-    # We need to inspect the run result or status?
-    # execution.run_workflow returns run_id.
-    # Wait, run_workflow returns dict with run_id.
-    # Let's get status to see outputs.
     status = execution.get_run_status(result["run_id"])
     assert status["status"] == "succeeded"
 
     # Check output artifact existence
-    # We assume it writes to a file in work_dir or artifact store.
-    # SkimageAdapter.execute currently returns a dummy URI "file:///tmp/result.tif".
-    # In integration test, we want to see it work.
-    # BUT SkimageAdapter is returning a dummy ref!
-    # T014 implementation: uri="file:///tmp/result.tif"
-    # So this test will verify that it runs, but the output file might not exist or be valid yet.
-    # This is fine for now (Task T017 goal is verification).
-    # If we want real execution, T014 needs to actually save the file.
-    # Let's see if it passes as is.
+    # ScipyAdapter.execute currently returns a dummy URI "file:///tmp/result.tif".
+    # This test verifies that it runs, but the output file might not exist or be valid yet.
+    # This is fine for now - the goal is to verify dynamic execution works.

@@ -158,10 +158,14 @@ def load_manifest_file(path: Path) -> tuple[ToolManifest | None, ManifestDiagnos
                     introspection_source=meta.source_adapter,
                 )
                 manifest.functions.append(function)
-        except Exception:  # noqa: BLE001
+        except Exception as e:  # noqa: BLE001
             # If discovery fails (e.g., adapter not registered), continue with
             # manifest loading. This allows manifests to be loaded before adapters
             # are fully implemented, and enables graceful degradation.
+            print(f"Discovery failed for {manifest.manifest_path}: {e}")
+            import traceback
+
+            traceback.print_exc()
             pass
 
     return manifest, None

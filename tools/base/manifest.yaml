@@ -40,7 +40,7 @@ dynamic_sources:
       - "_*"
       - "test_*"
 
-  - adapter: scipy_ndimage
+  - adapter: scipy
     prefix: scipy
     modules:
       - scipy.ndimage
