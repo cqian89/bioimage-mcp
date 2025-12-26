@@ -210,3 +210,6 @@ Thumbs.db
 *.swp
 .vscode/
 .idea/
+
+# Analysis outputs
+datasets/FLUTE_FLIM_data_tif/phasor/

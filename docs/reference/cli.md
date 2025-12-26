@@ -10,8 +10,9 @@ The `bioimage-mcp` command-line interface.
 
 ### `serve`
 Start the MCP server.
-*   **Usage**: `bioimage-mcp serve`
-*   **Transport**: Currently stdio.
+*   **Usage**: `bioimage-mcp serve --stdio`
+*   `--stdio`: **Required**. Use standard input/output for transport.
+*   **Transport**: Currently only stdio is supported.
 
 ### `install`
 Install tool environments.

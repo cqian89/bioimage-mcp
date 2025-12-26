@@ -26,8 +26,11 @@ bioimage-mcp artifacts export <ref_id> /path/to/destination/output.tif
 
 Start the MCP server (stdio mode):
 ```bash
-python -m bioimage_mcp serve
+python -m bioimage_mcp serve --stdio
 ```
+
+For instructions on configuring AI clients (OpenCode, Claude, Cursor) to connect to this server, see the [MCP Client Setup Guide](tutorials/mcp-client-setup.md).
+
 
 ## Python API
 
