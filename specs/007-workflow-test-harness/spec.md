@@ -270,6 +270,10 @@ When an image is loaded or processed, the artifact reference includes rich metad
   - What happens: OME-XML is very large (>10KB)
   - Expected: file_metadata.ome_xml_summary is truncated with "..." and byte count
 
+- **Auto-materialization failure**:
+  - What happens: Orchestrator attempts to materialize zarr-temp to OME-TIFF for a tool that only supports file storage, but conversion fails (e.g., unsupported dtype, corrupted data)
+  - Expected: System returns error with `hints.diagnosis` explaining materialization failure and `hints.suggested_fix` recommending manual export or format check
+
 ## Requirements *(mandatory)*
 
 ### Constitution Constraints *(mandatory)*
@@ -387,7 +391,7 @@ When an image is loaded or processed, the artifact reference includes rich metad
   - `call_tool(fn_id, inputs, params)`: Executes a tool and returns output refs
 
 - **FR-010**: System MUST support mock execution mode to test orchestration without installed tool environments
-  - Mock mode configurable per test or per tool call
+  - Mock mode configured via `MCPTestClient(mock=True)` constructor parameter or `@pytest.mark.mock_execution` decorator
   - Mocks return predefined artifact references with correct types
   - Validation and parameter checking still performed
   - Clear indication in logs when running in mock mode
@@ -398,9 +402,9 @@ When an image is loaded or processed, the artifact reference includes rich metad
   - `mock_executor`: Mock subprocess executor for testing without tool environments
 
 - **FR-012**: System MUST support defining test cases in YAML format for data-driven testing
-  - YAML schema: test name, description, steps (list of tool calls), assertions
+  - YAML schema: test name, description, steps (list of tool calls), assertions (see `specs/007-workflow-test-harness/contracts/workflow-testcase.yaml` for full schema)
   - Each step: fn_id, inputs (artifact paths or refs from previous steps), params
-  - Assertions: output_type, artifact_exists, metadata_contains
+  - Assertions: `output_type` (string), `artifact_exists` (ref_id), `metadata_contains` (dict with key-value pairs to match against artifact metadata)
   - Support for parametrized tests from single YAML file
 
 - **FR-013**: System MUST provide parametrized tests that validate all registered functions have valid schemas
@@ -438,7 +442,7 @@ When an image is loaded or processed, the artifact reference includes rich metad
   - next_step_hints, error_hints, and input_requirements defined in function schema
   - Input requirements MAY include per-input `supported_storage_types` (e.g., `["zarr-temp", "file"]`)
   - `describe_function` MUST surface the manifest-defined `supported_storage_types` to callers (LLMs and test harness)
-  - System can auto-generate some hints from docstrings and type signatures
+  - Auto-generation: If manifest omits `description` for an input/output, system MAY extract it from the function's docstring (Google-style `Args:` / `Returns:` sections). All other hint fields (`next_step_hints`, `error_hints`, `expected_axes`, `preprocessing_hint`) MUST be explicitly defined in manifest.
 
 #### Rich Artifact Metadata
 

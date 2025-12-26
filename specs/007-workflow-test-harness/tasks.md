@@ -35,7 +35,7 @@ description: "Task list for Axis Manipulation Tools, LLM Guidance Hints & Workfl
 - [ ] T038 [P] Extend image metadata extraction in `src/bioimage_mcp/artifacts/metadata.py` to populate `axes_inferred`, `physical_pixel_sizes`, and `file_metadata` (FR-020..FR-023)
 - [ ] T039 [P] Ensure artifact metadata is attached to both success and error tool responses in the API layer (FR-023)
 
-- [ ] T004 [P] Create `LLMHints` and related pydantic models in `src/bioimage_mcp/api/schemas.py` (US6/7/8)
+- [ ] T004 [P] Create `src/bioimage_mcp/api/schemas.py` with `LLMHints` and related pydantic models (US6/7/8)
 - [ ] T005 [P] Create `AxisMapping` and `AxisToolParams` models in `tools/base/bioimage_mcp_base/axis_ops.py` (US1/2/3)
 
 **Checkpoint**: Foundational models + contracts exist; tests are in place.
@@ -50,12 +50,12 @@ description: "Task list for Axis Manipulation Tools, LLM Guidance Hints & Workfl
 
 ### Tests for User Story 4 ⚠️ (Red)
 
-- [ ] T010 [P] [US4] Write failing workflow harness tests in `tests/integration/test_workflows.py` (import/use `MCPTestClient` and assert discovery→execution sequence)
+- [ ] T010 [P] [US4] Write failing workflow harness tests in `tests/integration/test_workflows.py` including FR-014 golden path sequence: `search_functions("phasor FLIM")` → `activate_functions([...])` → `describe_function("base.relabel_axes")` → `call_tool("base.relabel_axes")` → `call_tool("base.phasor_from_flim")`
 - [ ] T040 [P] [US4] Add failing contract tests validating YAML workflow testcase schema in `tests/contract/test_workflow_testcase_schema.py` (schema source: `specs/007-workflow-test-harness/contracts/workflow-testcase.yaml`)
 
 ### Implementation for User Story 4 (Green)
 
-- [ ] T006 [P] [US4] Create `MCPTestClient` class in `tests/integration/mcp_test_client.py`
+- [ ] T006 [P] [US4] Create `MCPTestClient` class in `tests/integration/mcp_test_client.py` implementing all 5 FR-009 operations: `list_tools()`, `search_functions()`, `activate_functions()`, `describe_function()`, `call_tool()`
 - [ ] T007 [P] [US4] Implement `MockExecutor` logic in `tests/integration/mcp_test_client.py`
 - [ ] T008 [P] [US4] Implement YAML test case loader in `tests/integration/conftest.py` (validate cases against the workflow testcase schema)
 - [ ] T009 [US4] Register `mcp_test_client` and `mock_executor` fixtures in `tests/integration/conftest.py`
@@ -123,7 +123,7 @@ description: "Task list for Axis Manipulation Tools, LLM Guidance Hints & Workfl
 
 ---
 
-## Phase 7: User Stories 6, 7, 8 - LLM Hints Integration (P1)
+## Phase 7: User Stories 6, 7, 8 - LLM Hints Integration (P1/P2)
 
 **Goal**: Provide structured guidance (inputs, next steps, errors) to LLMs.
 
@@ -135,10 +135,10 @@ description: "Task list for Axis Manipulation Tools, LLM Guidance Hints & Workfl
 
 ### Implementation for LLM Hints (Green)
 
-- [ ] T027 [US6] Update `DiscoveryService.describe_function` in `src/bioimage_mcp/api/discovery.py` to inject hints
+- [ ] T027 [US6] Update `DiscoveryService.describe_function` in `src/bioimage_mcp/api/discovery.py` to inject hints and include FR-016 outputs schema (type, description for each output)
 - [ ] T028 [US7] Update `ToolService.call_tool` in `src/bioimage_mcp/api/tools.py` to return success hints
-- [ ] T029 [US8] Update `ToolService.call_tool` in `src/bioimage_mcp/api/tools.py` to handle error hints
-- [ ] T030 [US6] Add hints to tool definitions in `tools/base/manifest.yaml`
+- [ ] T029 [US8] Update `ToolService.call_tool` in `src/bioimage_mcp/api/tools.py` to handle error hints including SC-010 requirement: axis errors return `suggested_fix` with `fn_id=base.relabel_axes`
+- [ ] T030 [US6] Add hints to tool definitions in `tools/base/manifest.yaml` including `supported_storage_types` per FR-015/FR-019
 
 ---
 
@@ -154,8 +154,9 @@ description: "Task list for Axis Manipulation Tools, LLM Guidance Hints & Workfl
 
 - [ ] T032 [P] Update documentation in `docs/reference/tools.md` with new axis tools
 - [ ] T041 [P] Add/verify `replay_workflow` workflow harness coverage (integration test proving record→replay succeeds) (Constitution IV)
-- [ ] T042 [P] Verify NFR-002 time budgets for workflow tests in both mock and real modes (document measurement approach)
-- [ ] T043 [P] Verify NFR-003 orchestration coverage target (>=80% in mock mode) (document measurement approach)
+- [ ] T042 [P] Verify NFR-002 time budgets for workflow tests in both mock and real modes using `pytest --durations=20`; add pytest markers `@pytest.mark.timeout(10)` for mock, `@pytest.mark.timeout(60)` for real
+- [ ] T043 [P] Verify NFR-003 orchestration coverage target (>=80% in mock mode) using `pytest --cov=src/bioimage_mcp/api --cov-report=term-missing` and assert coverage >= 80%
+- [ ] T044 [P] Implement `storage_type` handling in orchestrator: detect per-tool supported storage types from manifest, auto-materialize zarr-temp to OME-TIFF when tool requires `file` storage (per spec.md "Cross-Environment Artifact Handling" MVP scope)
 - [ ] T033 Run full validation suite (all tests, linting)
 - [ ] T034 [P] Verify performance criteria (<1s for axis tools) (NFR-001)
 
