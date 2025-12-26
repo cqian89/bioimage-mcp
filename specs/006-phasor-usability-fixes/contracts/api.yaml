@@ -1,0 +1,273 @@
+# API Contract: Phasor Workflow Usability Fixes
+# Version: 006
+# This contract documents the API behavior expectations for this feature
+
+openapi: "3.0.0"
+info:
+  title: Bioimage-MCP Phasor Fixes API Contract
+  version: "0.1.0"
+  description: |
+    Contract for the phasor workflow usability fixes.
+    These are the behavioral expectations that tests will verify.
+
+# Note: This is not a REST API but documents MCP tool contracts
+
+components:
+  schemas:
+    # Session Identifier - internal but documented for clarity
+    SessionIdentifier:
+      type: string
+      description: |
+        A session identifier derived from the MCP connection.
+        Format: "session_{memory_address}" for stdio, or query param for SSE.
+      pattern: "^session_[0-9]+$"
+      example: "session_140234567890"
+
+    # Discovery Response Schemas
+    ListToolsResponse:
+      type: object
+      required:
+        - tools
+      properties:
+        tools:
+          type: array
+          items:
+            $ref: '#/components/schemas/ToolSummary'
+        next_cursor:
+          type: string
+          nullable: true
+
+    ToolSummary:
+      type: object
+      required:
+        - tool_id
+        - name
+        - description
+      properties:
+        tool_id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+
+    SearchFunctionsResponse:
+      type: object
+      required:
+        - functions
+      properties:
+        functions:
+          type: array
+          items:
+            $ref: '#/components/schemas/FunctionSummary'
+        next_cursor:
+          type: string
+          nullable: true
+
+    FunctionSummary:
+      type: object
+      required:
+        - fn_id
+        - tool_id
+        - name
+        - description
+        - tags
+      properties:
+        fn_id:
+          type: string
+        tool_id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+
+    DescribeFunctionResponse:
+      type: object
+      required:
+        - fn_id
+      properties:
+        fn_id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        inputs:
+          type: array
+          items:
+            $ref: '#/components/schemas/InputSpec'
+        outputs:
+          type: array
+          items:
+            $ref: '#/components/schemas/OutputSpec'
+        params_schema:
+          type: object
+          description: Complete JSON Schema for function parameters
+          properties:
+            type:
+              type: string
+              enum: [object]
+            properties:
+              type: object
+            required:
+              type: array
+              items:
+                type: string
+        introspection_source:
+          type: string
+          enum: [pydantic, docstring, manual]
+
+    InputSpec:
+      type: object
+      required:
+        - name
+        - artifact_type
+      properties:
+        name:
+          type: string
+        artifact_type:
+          type: string
+          enum: [BioImageRef, LabelImageRef, TableRef]
+        required:
+          type: boolean
+          default: true
+
+    OutputSpec:
+      type: object
+      required:
+        - name
+        - artifact_type
+      properties:
+        name:
+          type: string
+        artifact_type:
+          type: string
+        format:
+          type: string
+          enum: [OME-TIFF, OME-Zarr]
+
+    # Phasor Calibration Schemas
+    PhasorCalibrateParams:
+      type: object
+      required:
+        - lifetime
+        - frequency
+      properties:
+        lifetime:
+          type: number
+          description: Known lifetime of reference standard in nanoseconds
+          minimum: 0
+          exclusiveMinimum: true
+          example: 4.04
+        frequency:
+          type: number
+          description: Laser repetition frequency in Hz
+          minimum: 0
+          exclusiveMinimum: true
+          example: 80000000
+        harmonic:
+          type: integer
+          description: Harmonic number
+          default: 1
+          minimum: 1
+
+    PhasorCalibrateInputs:
+      type: object
+      required:
+        - sample_phasors
+        - reference_phasors
+      properties:
+        sample_phasors:
+          type: string
+          description: Reference to 2-channel BioImageRef (G in ch0, S in ch1)
+        reference_phasors:
+          type: string
+          description: Reference to 2-channel BioImageRef from calibration standard
+
+    PhasorCalibrateOutputs:
+      type: object
+      required:
+        - calibrated_phasors
+      properties:
+        calibrated_phasors:
+          type: string
+          description: Reference to 2-channel BioImageRef with calibrated G/S
+
+# Contract Assertions (test scenarios)
+x-contract-assertions:
+  discovery:
+    - id: DISC-001
+      description: list_tools returns without ServerSession error
+      given: Fresh MCP session
+      when: Call list_tools()
+      then: Returns ListToolsResponse without AttributeError
+
+    - id: DISC-002
+      description: search_functions returns matching results
+      given: Base toolkit loaded
+      when: Call search_functions(query="phasor")
+      then: Returns functions containing "phasor" in fn_id or description
+
+    - id: DISC-003
+      description: describe_function returns complete schema
+      given: Base toolkit loaded
+      when: Call describe_function(fn_id="base.phasor_from_flim")
+      then: |
+        Returns params_schema with properties:
+        - time_axis (string|integer)
+        - harmonic (integer, default: 1)
+
+    - id: DISC-004
+      description: describe_function returns error for invalid function ID
+      given: Valid MCP session
+      when: Call describe_function(fn_id="nonexistent.function")
+      then: Returns error response with clear "function not found" message
+
+  calibration:
+    - id: CAL-001
+      description: phasor_calibrate accepts required parameters
+      given: Raw sample and reference phasors available
+      when: Call base.phasor_calibrate with lifetime=4.04, frequency=80e6
+      then: Returns calibrated 2-channel BioImageRef
+
+    - id: CAL-002
+      description: phasor_calibrate rejects invalid lifetime
+      given: Valid phasor inputs
+      when: Call base.phasor_calibrate with lifetime=-1.0
+      then: Returns error with INVALID_LIFETIME code
+
+    - id: CAL-003
+      description: phasor_calibrate records provenance
+      given: Successful calibration
+      when: Inspect output artifact metadata
+      then: Contains reference_lifetime, reference_frequency, reference_harmonic
+
+    - id: CAL-004
+      description: phasor_calibrate rejects dimension mismatch
+      given: Sample phasors with shape (100, 100) and reference with shape (50, 50)
+      when: Call base.phasor_calibrate with incompatible inputs
+      then: Returns error with DIMENSION_MISMATCH code
+
+  io_fallback:
+    - id: IO-001
+      description: OME-TIFF loads with bioio-ome-tiff first
+      given: Valid OME-TIFF without problematic tags
+      when: Call load_image_fallback(path)
+      then: Uses bioio-ome-tiff reader
+
+    - id: IO-002
+      description: Fallback to bioio-bioformats on ome-tiff failure
+      given: OME-TIFF with AnnotationRef tags
+      when: bioio-ome-tiff raises exception
+      then: Falls back to bioio-bioformats successfully
+
+    - id: IO-003
+      description: Final fallback to tifffile with warning
+      given: File unreadable by bioio readers
+      when: Both bioio readers fail
+      then: Falls back to tifffile with TIFFFILE_FALLBACK warning
