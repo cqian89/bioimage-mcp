@@ -1,0 +1,181 @@
+# Workflow Test Case YAML Schema
+
+# JSON Schema for YAML-defined workflow test cases
+# These test cases enable data-driven testing of MCP tool sequences
+
+$defs:
+  StepAssertion:
+    type: object
+    required: [type]
+    properties:
+      type:
+        type: string
+        enum: [artifact_exists, output_type, metadata_check]
+        description: "Type of assertion to perform"
+      key:
+        type: string
+        description: "Metadata key to check (for metadata_check type)"
+      value:
+        description: "Expected value for the assertion"
+
+  WorkflowStep:
+    type: object
+    required: [step_id, fn_id]
+    properties:
+      step_id:
+        type: string
+        pattern: "^[a-z_][a-z0-9_]*$"
+        description: "Unique step identifier (lowercase with underscores)"
+      fn_id:
+        type: string
+        pattern: "^[a-z_]+\\.[a-z_]+$"
+        description: "Tool function ID (e.g., 'base.relabel_axes')"
+      inputs:
+        type: object
+        additionalProperties:
+          oneOf:
+            - type: string
+              description: "File path or {step_id.output} reference"
+            - type: object
+              description: "Inline artifact reference"
+        description: "Input artifacts (keyed by input name)"
+      params:
+        type: object
+        description: "Tool parameters"
+      assertions:
+        type: array
+        items:
+          $ref: "#/$defs/StepAssertion"
+        description: "Assertions to check after step execution"
+
+# Main test case schema
+WorkflowTestCase:
+  type: object
+  required: [test_name, description, steps]
+  properties:
+    test_name:
+      type: string
+      pattern: "^[a-z_][a-z0-9_]*$"
+      description: "Unique test identifier (lowercase with underscores)"
+    description:
+      type: string
+      description: "Human-readable test description"
+    mock_mode:
+      type: boolean
+      default: false
+      description: "Run in mock mode (no real tool execution)"
+    steps:
+      type: array
+      items:
+        $ref: "#/$defs/WorkflowStep"
+      minItems: 1
+      description: "Ordered list of workflow steps"
+
+# Reference syntax for passing artifacts between steps
+reference_syntax:
+  description: |
+    Use {step_id.output} syntax to reference output from a previous step.
+    The reference is resolved at runtime before the step executes.
+    
+    Examples:
+    - {relabel.output} -> output artifact from step with id "relabel"
+    - {compute_phasor.g_image} -> specific output named "g_image"
+    
+    Literal file paths are passed directly without braces:
+    - datasets/FLUTE_FLIM_data_tif/Embryo.tif
+
+# Example test cases
+
+examples:
+  - test_name: "flim_phasor_golden_path"
+    description: "End-to-end FLIM phasor workflow with axis relabeling"
+    steps:
+      - step_id: "fix_axes"
+        fn_id: "base.relabel_axes"
+        inputs:
+          image: "datasets/FLUTE_FLIM_data_tif/Embryo.tif"
+        params:
+          axis_mapping:
+            Z: "T"
+            T: "Z"
+        assertions:
+          - type: "output_type"
+            value: "BioImageRef"
+          - type: "metadata_check"
+            key: "axes"
+            value: "TCZYX"
+      
+      - step_id: "compute_phasor"
+        fn_id: "base.phasor_from_flim"
+        inputs:
+          dataset: "{fix_axes.output}"
+        params:
+          harmonic: 1
+        assertions:
+          - type: "artifact_exists"
+          - type: "output_type"
+            value: "BioImageRef"
+
+  - test_name: "squeeze_expand_roundtrip"
+    description: "Verify squeeze followed by expand_dims is reversible"
+    steps:
+      - step_id: "add_dim"
+        fn_id: "base.expand_dims"
+        inputs:
+          image: "datasets/synthetic/test.tif"
+        params:
+          axis: 0
+          new_axis_name: "Z"
+        assertions:
+          - type: "metadata_check"
+            key: "axes"
+            value: "ZYX"
+      
+      - step_id: "remove_dim"
+        fn_id: "base.squeeze"
+        inputs:
+          image: "{add_dim.output}"
+        params:
+          axis: 0
+        assertions:
+          - type: "metadata_check"
+            key: "axes"
+            value: "YX"
+
+  - test_name: "axis_swap"
+    description: "Verify swap_axes correctly exchanges two axes"
+    mock_mode: true
+    steps:
+      - step_id: "swap"
+        fn_id: "base.swap_axes"
+        inputs:
+          image: "datasets/sample.tif"
+        params:
+          axis1: "Z"
+          axis2: "Y"
+        assertions:
+          - type: "output_type"
+            value: "BioImageRef"
+
+# Assertion type specifications
+
+assertion_specs:
+  artifact_exists:
+    description: "Verify the output artifact file exists"
+    fields: []
+  
+  output_type:
+    description: "Verify output artifact has expected type"
+    fields:
+      - name: value
+        type: string
+        enum: [BioImageRef, LabelImageRef, TableRef, LogRef, NativeOutputRef]
+  
+  metadata_check:
+    description: "Verify a metadata field has expected value"
+    fields:
+      - name: key
+        type: string
+        description: "Dot-separated path to metadata field (e.g., 'axes', 'shape.0')"
+      - name: value
+        description: "Expected value (supports exact match)"

@@ -1,0 +1,147 @@
+# Axis Tools Parameter Schemas
+
+# JSON Schema definitions for axis manipulation tool parameters
+# These schemas define the contract for tool inputs
+
+$defs:
+  AxisMapping:
+    type: object
+    additionalProperties:
+      type: string
+      pattern: "^[A-Z]$"
+    description: "Mapping from old axis names to new names"
+    example:
+      Z: "T"
+      T: "Z"
+
+  AxisSpec:
+    oneOf:
+      - type: integer
+        description: "Axis index (0-based, negative allowed)"
+      - type: string
+        pattern: "^[A-Z]$"
+        description: "Axis name (single uppercase letter)"
+
+schemas:
+  # base.relabel_axes
+  relabel_axes:
+    type: object
+    required: [axis_mapping]
+    properties:
+      axis_mapping:
+        $ref: "#/$defs/AxisMapping"
+        description: "Mapping from old axis names to new names. Applied atomically."
+    additionalProperties: false
+    examples:
+      - axis_mapping: {"Z": "T", "T": "Z"}
+      - axis_mapping: {"Y": "Z", "Z": "Y"}
+
+  # base.squeeze
+  squeeze:
+    type: object
+    properties:
+      axis:
+        $ref: "#/$defs/AxisSpec"
+        description: "Axis to squeeze. If null, squeeze all singleton axes."
+        nullable: true
+    additionalProperties: false
+    examples:
+      - axis: 0
+      - axis: "Z"
+      - {} # Squeeze all singletons
+
+  # base.expand_dims
+  expand_dims:
+    type: object
+    required: [axis, new_axis_name]
+    properties:
+      axis:
+        type: integer
+        description: "Position to insert new axis (0=first, -1=before last)"
+      new_axis_name:
+        type: string
+        pattern: "^[A-Z]$"
+        description: "Name for new axis (single uppercase letter)"
+    additionalProperties: false
+    examples:
+      - axis: 0
+        new_axis_name: "Z"
+      - axis: -1
+        new_axis_name: "C"
+
+  # base.moveaxis
+  moveaxis:
+    type: object
+    required: [source, destination]
+    properties:
+      source:
+        $ref: "#/$defs/AxisSpec"
+        description: "Source axis to move"
+      destination:
+        type: integer
+        description: "Destination position (index)"
+    additionalProperties: false
+    examples:
+      - source: 0
+        destination: 2
+      - source: "C"
+        destination: -1
+
+  # base.swap_axes
+  swap_axes:
+    type: object
+    required: [axis1, axis2]
+    properties:
+      axis1:
+        $ref: "#/$defs/AxisSpec"
+        description: "First axis to swap"
+      axis2:
+        $ref: "#/$defs/AxisSpec"
+        description: "Second axis to swap"
+    additionalProperties: false
+    examples:
+      - axis1: "Z"
+        axis2: "Y"
+      - axis1: 0
+        axis2: 2
+
+# Input/Output contracts for all axis tools
+io_contracts:
+  common_input:
+    - name: image
+      artifact_type: BioImageRef
+      required: true
+      description: "Input image to manipulate"
+  
+  common_output:
+    - name: output
+      artifact_type: BioImageRef
+      format: OME-TIFF
+      required: true
+      description: "Image with modified axis configuration"
+
+# Error codes
+error_codes:
+  AXIS_NOT_FOUND:
+    message_template: "Axis {axis} not found in image with axes {axes}"
+    http_status: 400
+  
+  AXIS_DUPLICATE:
+    message_template: "Cannot relabel {old} to {new}: axis {new} already exists"
+    http_status: 400
+  
+  SQUEEZE_NON_SINGLETON:
+    message_template: "Cannot squeeze axis {name} (index {idx}) with size {size} > 1"
+    http_status: 400
+  
+  NO_SINGLETON_AXES:
+    message_template: "No singleton axes to squeeze"
+    http_status: 400
+  
+  AXIS_OUT_OF_BOUNDS:
+    message_template: "Axis position {axis} out of bounds for {ndim}D array"
+    http_status: 400
+  
+  INVALID_AXIS_NAME:
+    message_template: "Invalid axis name '{name}': must be single uppercase letter"
+    http_status: 400

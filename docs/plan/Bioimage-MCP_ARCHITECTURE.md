@@ -68,7 +68,14 @@ ref:
   - **bioio-ome-tiff** (and/or `tifffile`) for writing OME-TIFF outputs.
   - Future: **ngff-zarr** for OME-Zarr writing/conversion if/when enabled.
 
-## 5. Tool & Function Metadata
+### 4.3 In-Memory Session Cache (Performance Optimization)
+To reduce I/O latency in iterative workflows, artifacts may be cached in memory:
+- **SessionArtifactCache**: LRU cache holding `numpy` arrays for active session artifacts.
+- **Spilling**: Large artifacts spill to memory-mapped OME-Zarr temp files when memory limit is reached.
+- **Transparency**: Tools interact with `ArtifactRef`s; the cache transparently serves data from memory or disk.
+- **Metadata**: Artifact refs include rich metadata (shape, dtype, inferred axes) to aid LLM reasoning without full data load.
+
+## 5. Tool, Function & Dynamic Registry
 Each tool provides a manifest (YAML) containing:
 - Tool identity: `tool_id`, `env_id`, version, entrypoint
 - `python_version` (required Python for this tool)
@@ -82,7 +89,14 @@ Each tool provides a manifest (YAML) containing:
 The core server indexes these manifests for fast `search_functions(...)`.
 - **Reference**: `MicroscopyLM/src/miclm/tools/registry.py` implements the layered registry (builtin/user/project).
 
-### 5.1 Shim Execution Model (MVP)
+### 5.1 Dynamic Function Registry (Auto-Discovery)
+To expose comprehensive library capabilities (e.g., `skimage`, `scipy`, `phasorpy`) without manual wrapper maintenance:
+- **Library Adapters**: Protocol-based adapters introspect Python modules to discover functions.
+- **Signature Parsing**: `griffe` and `docstring_parser` extract schemas and descriptions from code/docstrings.
+- **Allow-lists**: `manifest.yaml` defines allowed modules/patterns to prevent accidental exposure of internal or unsafe functions.
+- **Lazy Loading**: Modules are imported only when their functions are called.
+
+### 5.2 Shim Execution Model (MVP)
 - **Subprocess per call**: core server spawns a Python subprocess in the tool's conda env
 - **Logs**: written to artifact store as `LogRef`
 - **Timeout/cancellation**: SIGTERM after configurable timeout, SIGKILL after grace period
@@ -162,6 +176,12 @@ bioimage-mcp serve --stdio
 - The LLM fetches full schemas only via `describe_function(fn_id)` for the specific functions it needs.
 - Workflow execution returns opaque IDs (`workflow_id`, `run_id`, `artifact_ref`) and lets the client fetch details on demand.
 
+### 9.1 LLM Guidance Hints
+To guide the LLM through complex workflows:
+- **Input Schemas**: `describe_function` returns semantic input requirements (e.g., "expected_axes: TYX").
+- **Next-Step Hints**: Tool execution results include `hints.next_steps` (suggested follow-up functions) and `hints.common_issues`.
+- **Error Hints**: Failures provide specific diagnosis and fix suggestions (e.g., "Axis mismatch: try swapping Z and T").
+
 ## 10. napari-mcp Integration
 - napari-mcp focuses on controlling napari interactively through MCP.
 - Bioimage-MCP treats napari as an optional "viewer plane":
@@ -196,6 +216,7 @@ datasets/               # Git LFS-tracked test data
   - Tool envs may pin Python independently per project requirements
 - **Linting**: `ruff` (fast Python linter and formatter)
 - **Testing**: `pytest`, `pytest-cov` (coverage targets: 80%+)
+  - **Workflow Test Harness**: Specialized harness (`MCPTestClient`) for end-to-end simulation of LLM tool interactions.
 - **Environment**: `conda-lock`, `micromamba` (fast reproducible envs)
 - **Data versioning**: Git LFS for test datasets
 - **Type checking**: `pyright`

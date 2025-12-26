@@ -1,13 +1,11 @@
 <!--
 Sync Impact Report
-- Version change: 0.2.0 -> 0.3.0
-- Principles updated: Added Principle VI (Test-Driven Development)
-- Added sections:
-  - Principle VI: TDD (red-green-refactor) methodology
+- Version change: 0.3.0 -> 0.4.0
+- Principles updated: Principle III (Artifact References Only)
+- Added sections: None
 - Removed sections: None
-- Templates requiring updates: None (additive constraint only)
-- Follow-up TODOs:
-  - TODO(COMMAND_TEMPLATES): If `/speckit.*` expects `.specify/templates/commands/`, add it.
+- Templates requiring updates: None
+- Follow-up TODOs: None
 -->
 
 # Bioimage-MCP Constitution
@@ -44,20 +42,23 @@ Non-negotiables:
 Rationale: Dependency conflicts are the norm across imaging stacks; isolation keeps the
 core server reliable and reduces install/debug churn.
 
-### III. Artifact References Only (Typed, File-Backed I/O)
-All inter-tool data exchange MUST use typed, file-backed artifact references.
+### III. Artifact References Only (Typed I/O)
+All inter-tool data exchange MUST use typed artifact references.
 
 Non-negotiables:
 - Tool inputs/outputs MUST be passed by reference (URI + metadata), never by embedding
   arrays/binaries in MCP messages.
+- Artifacts MAY be backed by files (OME-TIFF/OME-Zarr) or managed session memory (for 
+  performance), provided they are addressable via a stable Reference URI.
 - Intermediate image artifacts SHOULD use OME-Zarr (OME-NGFF) by default; OME-TIFF MAY
   be supported for compatibility.
 - Artifact references MUST carry enough metadata to validate I/O compatibility
   (axes, pixel sizes, channels, checksums, etc.).
 - Artifact formats and reference schemas MUST be stable and versioned.
 
-Rationale: File-backed artifacts enable scale (large volumes), allow replay/debugging,
-and prevent protocol-level context bloat.
+Rationale: Reference-based I/O enables scale (large volumes), allows replay/debugging,
+and prevents protocol-level context bloat. Memory-backed options reduce latency for 
+iterative workflows.
 
 ### IV. Reproducibility & Provenance (Record + Replay)
 The system MUST make analysis runs reproducible and auditable.
@@ -161,4 +162,4 @@ Compliance expectations:
 - Exceptions MUST be documented in the plan with rationale and mitigation, and MUST
   be approved in review.
 
-**Version**: 0.3.0 | **Ratified**: 2025-12-18 | **Last Amended**: 2025-12-18
+**Version**: 0.4.0 | **Ratified**: 2025-12-26 | **Last Amended**: 2025-12-26

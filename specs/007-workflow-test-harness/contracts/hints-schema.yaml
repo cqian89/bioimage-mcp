@@ -1,0 +1,218 @@
+# LLM Guidance Hints Schema
+
+# JSON Schema definitions for LLM guidance hints
+# These schemas define the contract for hints in describe_function and call_tool responses
+
+$defs:
+  InputRequirement:
+    type: object
+    required: [type, required, description]
+    properties:
+      type:
+        type: string
+        enum: [BioImageRef, LabelImageRef, TableRef, LogRef, NativeOutputRef]
+        description: "Artifact type expected for this input"
+      required:
+        type: boolean
+        description: "Whether this input is required"
+      description:
+        type: string
+        description: "Human-readable description of the input"
+      expected_axes:
+        type: array
+        items:
+          type: string
+          pattern: "^[A-Z]$"
+        description: "Expected axis configuration (e.g., ['T', 'Y', 'X'])"
+      preprocessing_hint:
+        type: string
+        description: "Hint for data preparation if format issues are common"
+      supported_storage_types:
+        type: array
+        items:
+          type: string
+          enum: [file, zarr-temp]
+        description: "Storage types this input can read from"
+
+  OutputDescription:
+    type: object
+    required: [type, description]
+    properties:
+      type:
+        type: string
+        enum: [BioImageRef, LabelImageRef, TableRef, LogRef, NativeOutputRef]
+      description:
+        type: string
+
+  NextStepHint:
+    type: object
+    required: [fn_id, reason]
+    properties:
+      fn_id:
+        type: string
+        description: "Function ID of suggested next step"
+      reason:
+        type: string
+        description: "Why this is a logical next step"
+      required_inputs:
+        type: array
+        items:
+          type: string
+        description: "Additional inputs needed for next step"
+
+  SuggestedFix:
+    type: object
+    required: [fn_id, params, explanation]
+    properties:
+      fn_id:
+        type: string
+        description: "Function to call to fix the error"
+      params:
+        type: object
+        description: "Parameters to pass to the fix function"
+      explanation:
+        type: string
+        description: "Why this fixes the problem"
+
+# Schema for describe_function response with hints
+describe_function_response:
+  type: object
+  required: [fn_id, name, description, schema]
+  properties:
+    fn_id:
+      type: string
+    name:
+      type: string
+    description:
+      type: string
+    schema:
+      type: object
+      description: "JSON Schema for params (existing field)"
+    
+    # NEW: Structured inputs with requirements
+    inputs:
+      type: object
+      additionalProperties:
+        $ref: "#/$defs/InputRequirement"
+      description: "Structured input requirements with LLM guidance"
+    
+    # NEW: Structured outputs with descriptions
+    outputs:
+      type: object
+      additionalProperties:
+        $ref: "#/$defs/OutputDescription"
+      description: "Structured output descriptions"
+
+# Schema for call_tool success response with hints
+call_tool_success_response:
+  type: object
+  required: [status, outputs]
+  properties:
+    status:
+      type: string
+      enum: [succeeded]
+    outputs:
+      type: object
+      description: "Artifact references for outputs"
+    
+    # NEW: Success hints
+    hints:
+      type: object
+      properties:
+        next_steps:
+          type: array
+          items:
+            $ref: "#/$defs/NextStepHint"
+          description: "Suggested next steps in workflow"
+        common_issues:
+          type: array
+          items:
+            type: string
+          description: "Potential issues with the output"
+
+# Schema for call_tool error response with hints
+call_tool_error_response:
+  type: object
+  required: [status, error]
+  properties:
+    status:
+      type: string
+      enum: [failed]
+    error:
+      type: object
+      required: [message, code]
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+    
+    # NEW: Error hints
+    hints:
+      type: object
+      properties:
+        diagnosis:
+          type: string
+          description: "Explanation of what likely caused the error"
+        suggested_fix:
+          $ref: "#/$defs/SuggestedFix"
+          description: "How to fix the error (null if no fix available)"
+        related_metadata:
+          type: object
+          properties:
+            detected_axes:
+              type: string
+            shape:
+              type: array
+              items:
+                type: integer
+            ome_hint:
+              type: string
+          description: "Metadata that may help diagnose the issue"
+
+# Manifest hint definitions
+manifest_function_hints:
+  type: object
+  properties:
+    inputs:
+      type: object
+      additionalProperties:
+        type: object
+        properties:
+          expected_axes:
+            type: array
+            items:
+              type: string
+          preprocessing_hint:
+            type: string
+          supported_storage_types:
+            type: array
+            items:
+              type: string
+    outputs:
+      type: object
+      additionalProperties:
+        type: object
+        properties:
+          description:
+            type: string
+    success_hints:
+      type: object
+      properties:
+        next_steps:
+          type: array
+          items:
+            $ref: "#/$defs/NextStepHint"
+        common_issues:
+          type: array
+          items:
+            type: string
+    error_hints:
+      type: object
+      additionalProperties:
+        type: object
+        properties:
+          diagnosis:
+            type: string
+          suggested_fix:
+            $ref: "#/$defs/SuggestedFix"
