@@ -7,11 +7,14 @@ dependencies:
   - python=3.13
   - pip
   - bioio
+  - bioio-bioformats
   - bioio-ome-zarr
   - bioio-ome-tiff
   - numpy
+  - openjdk
   - scipy
   - scikit-image
+  - scyjava
   - phasorpy
   - numpydoc
   - pydantic>=2.0

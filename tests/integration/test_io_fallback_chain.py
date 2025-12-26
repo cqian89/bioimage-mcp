@@ -27,7 +27,7 @@ class TestIOFallbackChain:
         Then: Uses bioio-ome-tiff reader
         """
         import tifffile
-        from bioimage_mcp_base.io import load_image_fallback
+        from bioimage_mcp_base.utils import load_image_fallback
 
         # Create a simple valid TIFF
         test_data = np.random.randint(0, 255, (10, 10), dtype=np.uint8)
@@ -51,7 +51,7 @@ class TestIOFallbackChain:
         Then: Falls back to bioio-bioformats successfully (or tifffile)
         """
         import tifffile
-        from bioimage_mcp_base.io import load_image_fallback
+        from bioimage_mcp_base.utils import load_image_fallback
 
         # Create a simple TIFF
         test_data = np.random.randint(0, 255, (10, 10), dtype=np.uint8)
@@ -59,7 +59,7 @@ class TestIOFallbackChain:
         tifffile.imwrite(str(test_path), test_data)
 
         # Mock bioio-ome-tiff to fail
-        with patch("bioimage_mcp_base.io._try_bioio_ome_tiff") as mock_ome:
+        with patch("bioimage_mcp_base.utils._try_bioio_ome_tiff") as mock_ome:
             mock_ome.side_effect = Exception("AnnotationRef error")
 
             data, warnings, reader_used = load_image_fallback(test_path)
@@ -76,7 +76,7 @@ class TestIOFallbackChain:
         Then: Falls back to tifffile with TIFFFILE_FALLBACK warning
         """
         import tifffile
-        from bioimage_mcp_base.io import load_image_fallback
+        from bioimage_mcp_base.utils import load_image_fallback
 
         # Create a simple TIFF
         test_data = np.random.randint(0, 255, (10, 10), dtype=np.uint8)
@@ -85,8 +85,8 @@ class TestIOFallbackChain:
 
         # Mock both bioio readers to fail
         with (
-            patch("bioimage_mcp_base.io._try_bioio_ome_tiff") as mock_ome,
-            patch("bioimage_mcp_base.io._try_bioio_bioformats") as mock_bf,
+            patch("bioimage_mcp_base.utils._try_bioio_ome_tiff") as mock_ome,
+            patch("bioimage_mcp_base.utils._try_bioio_bioformats") as mock_bf,
         ):
             mock_ome.side_effect = Exception("ome-tiff error")
             mock_bf.side_effect = Exception("bioformats error")

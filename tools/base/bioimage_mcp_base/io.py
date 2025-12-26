@@ -3,87 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
-from bioimage_mcp_base.utils import uri_to_path
-
-
-def _try_bioio_ome_tiff(path: Path) -> np.ndarray:
-    """Try loading with bioio-ome-tiff reader."""
-    try:
-        from bioio import BioImage
-        from bioio_ome_tiff import Reader as OmeTiffReader
-
-        img = BioImage(str(path), reader=OmeTiffReader)
-        return img.get_image_data()
-    except ImportError:
-        raise RuntimeError("bioio-ome-tiff not available")
-
-
-def _try_bioio_bioformats(path: Path) -> np.ndarray:
-    """Try loading with bioio-bioformats reader."""
-    try:
-        from bioio import BioImage
-        from bioio_bioformats import Reader as BioformatsReader
-
-        img = BioImage(str(path), reader=BioformatsReader)
-        return img.get_image_data()
-    except ImportError:
-        raise RuntimeError("bioio-bioformats not available")
-
-
-def load_image_fallback(path: Path) -> tuple[np.ndarray, list[dict[str, str]], str]:
-    """Load image with explicit fallback chain.
-
-    Tries readers in order:
-    1. bioio-ome-tiff (fast, pure Python)
-    2. bioio-bioformats (heavier, Java-based, more compatible)
-    3. tifffile (minimal fallback, raw pixels only)
-
-    Args:
-        path: Path to the image file
-
-    Returns:
-        Tuple of (data, warnings, reader_used) where:
-        - data: numpy array of image data
-        - warnings: list of warning dicts with 'code' and 'message' keys
-        - reader_used: string identifying which reader succeeded
-    """
-    import tifffile
-
-    warnings: list[dict[str, str]] = []
-
-    # 1. Try bioio-ome-tiff
-    try:
-        data = _try_bioio_ome_tiff(path)
-        return data, warnings, "bioio-ome-tiff"
-    except Exception as e:
-        warnings.append(
-            {
-                "code": "OME_TIFF_FALLBACK",
-                "message": f"bioio-ome-tiff failed: {e}",
-            }
-        )
-
-    # 2. Try bioio-bioformats
-    try:
-        data = _try_bioio_bioformats(path)
-        return data, warnings, "bioio-bioformats"
-    except Exception as e:
-        warnings.append(
-            {
-                "code": "BIOFORMATS_FALLBACK",
-                "message": f"bioio-bioformats failed: {e}",
-            }
-        )
-
-    # 3. Final fallback to tifffile
-    warnings.append(
-        {
-            "code": "TIFFFILE_FALLBACK",
-            "message": "Using tifffile - metadata may be incomplete",
-        }
-    )
-    data = tifffile.imread(str(path))
-    return data, warnings, "tifffile"
+from bioimage_mcp_base.utils import load_image_fallback, uri_to_path
 
 
 def convert_to_ome_zarr(*, inputs: dict, params: dict, work_dir: Path) -> Path:
@@ -184,25 +104,8 @@ def export_ome_tiff(*, inputs: dict, params: dict, work_dir: Path) -> dict:
 
     # Try BioImage for other formats
     if data is None:
-        try:
-            from bioio import BioImage  # type: ignore
-
-            img = BioImage(str(in_path))
-            data = img.get_image_data()  # type: ignore[attr-defined]
-        except Exception:
-            # Fallback to tifffile for TIFF files with incompatible OME-XML metadata
-            import tifffile
-
-            warnings.append(
-                {
-                    "code": "TIFFFILE_FALLBACK",
-                    "message": (
-                        "BioImage failed to load file; using tifffile fallback. "
-                        "Metadata may be incomplete."
-                    ),
-                }
-            )
-            data = tifffile.imread(str(in_path))
+        data, fallback_warnings, _ = load_image_fallback(in_path)
+        warnings.extend(fallback_warnings)
 
     out_path = work_dir / "export.ome.tiff"
     if out_path.exists():

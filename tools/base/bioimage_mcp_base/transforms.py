@@ -590,15 +590,3 @@ def phasor_calibrate(*, inputs: dict, params: dict, work_dir: Path) -> dict[str,
         "provenance": provenance,
         "log": f"phasor_calibrate completed (lifetime={lifetime}ns, frequency={frequency / 1e6}MHz)",
     }
-
-    return {
-        "outputs": {
-            "calibrated_phasors": {
-                "type": "BioImageRef",
-                "format": "OME-TIFF",
-                "path": str(out_path),
-            },
-        },
-        "provenance": provenance,
-        "log": f"phasor_calibrate completed (lifetime={lifetime}ns, frequency={frequency / 1e6}MHz)",
-    }
