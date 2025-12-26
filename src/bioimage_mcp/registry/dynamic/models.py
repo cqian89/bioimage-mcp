@@ -6,7 +6,7 @@ discovered functions from Python libraries.
 """
 
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -32,9 +32,9 @@ class ParameterSchema(BaseModel):
     name: str
     type: str
     description: str = ""
-    default: Optional[Any] = None
+    default: Any | None = None
     required: bool = True
-    enum: Optional[List[Any]] = None
+    enum: list[Any] | None = None
 
 
 class FunctionMetadata(BaseModel):
@@ -46,6 +46,6 @@ class FunctionMetadata(BaseModel):
     fn_id: str
     source_adapter: str
     description: str = ""
-    parameters: Dict[str, ParameterSchema] = Field(default_factory=dict)
+    parameters: dict[str, ParameterSchema] = Field(default_factory=dict)
     io_pattern: IOPattern = IOPattern.GENERIC
-    tags: List[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)

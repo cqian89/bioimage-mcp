@@ -30,10 +30,10 @@ description: "Task list for phasor workflow usability fixes"
 
 **Purpose**: Project initialization and branch preparation
 
-- [ ] T001 Verify working directory is clean and on main branch
-- [ ] T002 Create feature branch `006-phasor-usability-fixes`
-- [ ] T003 [P] Verify base environment exists with `python -m bioimage_mcp doctor`
-- [ ] T004 [P] Run existing test suite to establish baseline: `pytest tests/`
+- [X] T001 Verify working directory is clean and on main branch
+- [X] T002 Create feature branch `006-phasor-usability-fixes`
+- [X] T003 [P] Verify base environment exists with `python -m bioimage_mcp doctor`
+- [X] T004 [P] Run existing test suite to establish baseline: `pytest tests/`
 
 ---
 
@@ -43,7 +43,7 @@ description: "Task list for phasor workflow usability fixes"
 
 **⚠️ CRITICAL**: This feature has minimal foundational work - user stories are largely independent
 
-- [ ] T005 Review `src/bioimage_mcp/api/server.py` to understand current ServerSession usage patterns
+- [X] T005 Review `src/bioimage_mcp/api/server.py` to understand current ServerSession usage patterns
 
 **Checkpoint**: Foundation reviewed - user story implementation can now begin in parallel
 
@@ -59,19 +59,19 @@ description: "Task list for phasor workflow usability fixes"
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T006 [P] [US1] Add unit test for `get_session_identifier()` helper in `tests/unit/api/test_server_session.py` - verify it handles stdio transport (id fallback)
-- [ ] T007 [P] [US1] Add unit test for SSE transport session extraction in `tests/unit/api/test_server_session.py` - verify query param parsing
-- [ ] T008 [US1] Add contract test for DISC-001 in `tests/contract/test_discovery_contract.py` - verify `list_tools()` returns without ServerSession error
-- [ ] T009 [US1] Add contract test for DISC-002 in `tests/contract/test_discovery_contract.py` - verify `search_functions(query="phasor")` returns matching results
-- [ ] T009b [P] [US1] Add contract test for pagination in `tests/contract/test_discovery_contract.py` - verify `list_tools()` returns paginated response with `next_cursor` field when results exceed page limit
-- [ ] T009a [US1] **TDD GATE**: Run `pytest tests/unit/api/test_server_session.py tests/contract/test_discovery_contract.py -v` and verify ALL tests from T006-T009 FAIL (expected: no implementation yet)
+- [X] T006 [P] [US1] Add unit test for `get_session_identifier()` helper in `tests/unit/api/test_server_session.py` - verify it handles stdio transport (id fallback)
+- [X] T007 [P] [US1] Add unit test for SSE transport session extraction in `tests/unit/api/test_server_session.py` - verify query param parsing
+- [X] T008 [US1] Add contract test for DISC-001 in `tests/contract/test_discovery_contract.py` - verify `list_tools()` returns without ServerSession error
+- [X] T009 [US1] Add contract test for DISC-002 in `tests/contract/test_discovery_contract.py` - verify `search_functions(query="phasor")` returns matching results
+- [X] T009b [P] [US1] Add contract test for pagination in `tests/contract/test_discovery_contract.py` - verify `list_tools()` returns paginated response with `next_cursor` field when results exceed page limit
+- [X] T009a [US1] **TDD GATE**: Run `pytest tests/unit/api/test_server_session.py tests/contract/test_discovery_contract.py -v` and verify ALL tests from T006-T009 FAIL (expected: no implementation yet)
 
 ### Implementation for User Story 1
 
-- [ ] T010 [US1] Implement `get_session_identifier(ctx)` helper in `src/bioimage_mcp/api/server.py` - try SSE query params first, fallback to `id(ctx.session)`
-- [ ] T011 [US1] Replace all `ctx.session.id` references with `get_session_identifier(ctx)` in `src/bioimage_mcp/api/server.py`
-- [ ] T012 [US1] Verify unit tests pass for session identifier helper
-- [ ] T013 [US1] Verify contract tests pass for discovery endpoints (DISC-001, DISC-002)
+- [X] T010 [US1] Implement `get_session_identifier(ctx)` helper in `src/bioimage_mcp/api/server.py` - try SSE query params first, fallback to `id(ctx.session)`
+- [X] T011 [US1] Replace all `ctx.session.id` references with `get_session_identifier(ctx)` in `src/bioimage_mcp/api/server.py`
+- [X] T012 [US1] Verify unit tests pass for session identifier helper
+- [X] T013 [US1] Verify contract tests pass for discovery endpoints (DISC-001, DISC-002)
 
 **Checkpoint**: At this point, discovery endpoints should work without errors
 
@@ -85,19 +85,19 @@ description: "Task list for phasor workflow usability fixes"
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T014 [P] [US2] Add contract test for DISC-003 in `tests/contract/test_discovery_contract.py` - verify `describe_function("base.phasor_from_flim")` returns params_schema with time_axis, harmonic properties
-- [ ] T015 [P] [US2] Add unit test for schema extraction in `tests/unit/base/test_entrypoint.py` - verify `meta.describe` returns complete JSON Schema from Pydantic models
-- [ ] T016 [P] [US2] Add integration test in `tests/integration/test_schema_enrichment.py` - verify end-to-end schema enrichment for static and dynamic functions
-- [ ] T016a [US2] **TDD GATE**: Run `pytest tests/unit/base/test_entrypoint.py tests/contract/test_discovery_contract.py tests/integration/test_schema_enrichment.py -v` and verify ALL tests from T014-T016 FAIL (expected: schema extraction incomplete)
+- [X] T014 [P] [US2] Add contract test for DISC-003 in `tests/contract/test_discovery_contract.py` - verify `describe_function("base.phasor_from_flim")` returns params_schema with time_axis, harmonic properties
+- [X] T015 [P] [US2] Add unit test for schema extraction in `tests/unit/base/test_entrypoint.py` - verify `meta.describe` returns complete JSON Schema from Pydantic models
+- [X] T016 [P] [US2] Add integration test in `tests/integration/test_schema_enrichment.py` - verify end-to-end schema enrichment for static and dynamic functions
+- [X] T016a [US2] **TDD GATE**: Run `pytest tests/unit/base/test_entrypoint.py tests/contract/test_discovery_contract.py tests/integration/test_schema_enrichment.py -v` and verify ALL tests from T014-T016 FAIL (expected: schema extraction incomplete)
 
 ### Implementation for User Story 2
 
-- [ ] T017 [US2] Investigate `meta.describe` implementation in `tools/base/bioimage_mcp_base/entrypoint.py` - identify why schema extraction is incomplete
-- [ ] T018 [US2] Fix schema extraction logic in `tools/base/bioimage_mcp_base/entrypoint.py` - ensure it returns complete JSON Schema with all properties from Pydantic model
-- [ ] T019 [US2] Add introspection_source field to describe response indicating "pydantic" or "manual"
-- [ ] T020 [US2] Verify unit tests pass for schema extraction
-- [ ] T021 [US2] Verify contract test passes for DISC-003
-- [ ] T022 [US2] Verify integration test passes for end-to-end schema enrichment
+- [X] T017 [US2] Investigate `meta.describe` implementation in `tools/base/bioimage_mcp_base/entrypoint.py` - identify why schema extraction is incomplete
+- [X] T018 [US2] Fix schema extraction logic in `tools/base/bioimage_mcp_base/entrypoint.py` - ensure it returns complete JSON Schema with all properties from Pydantic model
+- [X] T019 [US2] Add introspection_source field to describe response indicating "pydantic" or "manual"
+- [X] T020 [US2] Verify unit tests pass for schema extraction
+- [X] T021 [US2] Verify contract test passes for DISC-003
+- [X] T022 [US2] Verify integration test passes for end-to-end schema enrichment
 
 **Checkpoint**: At this point, `describe_function` should return complete parameter schemas
 
@@ -111,20 +111,20 @@ description: "Task list for phasor workflow usability fixes"
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T023 [P] [US3] Add contract test for CAL-001 in `tests/contract/test_phasor_calibrate.py` (NEW) - verify calibration accepts sample_phasors, reference_phasors, lifetime, frequency
-- [ ] T024 [P] [US3] Add contract test for CAL-002 in `tests/contract/test_phasor_calibrate.py` - verify rejection of invalid lifetime (negative value)
-- [ ] T025 [P] [US3] Add contract test for CAL-003 in `tests/contract/test_phasor_calibrate.py` - verify provenance recording (reference_lifetime, reference_frequency, reference_harmonic in metadata)
-- [ ] T026 [P] [US3] Add unit test in `tests/unit/base/test_transforms.py` - verify `phasor_calibrate` implementation wraps phasorpy correctly
-- [ ] T026a [US3] **TDD GATE**: Run `pytest tests/contract/test_phasor_calibrate.py tests/unit/base/test_transforms.py -v` and verify ALL tests from T023-T026 FAIL (expected: phasor_calibrate not implemented)
+- [X] T023 [P] [US3] Add contract test for CAL-001 in `tests/contract/test_phasor_calibrate.py` (NEW) - verify calibration accepts sample_phasors, reference_phasors, lifetime, frequency
+- [X] T024 [P] [US3] Add contract test for CAL-002 in `tests/contract/test_phasor_calibrate.py` - verify rejection of invalid lifetime (negative value)
+- [X] T025 [P] [US3] Add contract test for CAL-003 in `tests/contract/test_phasor_calibrate.py` - verify provenance recording (reference_lifetime, reference_frequency, reference_harmonic in metadata)
+- [X] T026 [P] [US3] Add unit test in `tests/unit/base/test_transforms.py` - verify `phasor_calibrate` implementation wraps phasorpy correctly
+- [X] T026a [US3] **TDD GATE**: Run `pytest tests/contract/test_phasor_calibrate.py tests/unit/base/test_transforms.py -v` and verify ALL tests from T023-T026 FAIL (expected: phasor_calibrate not implemented)
 
 ### Implementation for User Story 3
 
-- [ ] T027 [P] [US3] Add `phasor_calibrate` function entry to `tools/base/manifest.yaml` with inputs (sample_phasors: BioImageRef, reference_phasors: BioImageRef), params (lifetime, frequency, harmonic), outputs (calibrated_phasors: BioImageRef)
-- [ ] T028 [US3] Implement `phasor_calibrate()` in `tools/base/bioimage_mcp_base/transforms.py` - load 2-channel inputs, call `phasorpy.lifetime.phasor_calibrate`, return 2-channel BioImageRef
-- [ ] T029 [US3] Add parameter validation for lifetime > 0, frequency > 0 in phasor_calibrate implementation
-- [ ] T030 [US3] Add provenance metadata recording (reference_lifetime, reference_frequency, reference_harmonic) to output artifact
-- [ ] T031 [US3] Verify unit tests pass for phasor_calibrate wrapper
-- [ ] T032 [US3] Verify contract tests pass for CAL-001, CAL-002, CAL-003
+- [X] T027 [P] [US3] Add `phasor_calibrate` function entry to `tools/base/manifest.yaml` with inputs (sample_phasors: BioImageRef, reference_phasors: BioImageRef), params (lifetime, frequency, harmonic), outputs (calibrated_phasors: BioImageRef)
+- [X] T028 [US3] Implement `phasor_calibrate()` in `tools/base/bioimage_mcp_base/transforms.py` - load 2-channel inputs, call `phasorpy.lifetime.phasor_calibrate`, return 2-channel BioImageRef
+- [X] T029 [US3] Add parameter validation for lifetime > 0, frequency > 0 in phasor_calibrate implementation
+- [X] T030 [US3] Add provenance metadata recording (reference_lifetime, reference_frequency, reference_harmonic) to output artifact
+- [X] T031 [US3] Verify unit tests pass for phasor_calibrate wrapper
+- [X] T032 [US3] Verify contract tests pass for CAL-001, CAL-002, CAL-003
 
 **Checkpoint**: At this point, phasor calibration workflow should be fully functional end-to-end
 
@@ -138,21 +138,21 @@ description: "Task list for phasor workflow usability fixes"
 
 ### Tests for User Story 4 ⚠️
 
-- [ ] T033 [P] [US4] Add integration test for IO-001 in `tests/integration/test_io_fallback.py` (NEW) - verify bioio-ome-tiff is tried first for valid OME-TIFF
-- [ ] T034 [P] [US4] Add integration test for IO-002 in `tests/integration/test_io_fallback.py` - verify fallback to bioio-bioformats on ome-tiff failure (mock exception)
-- [ ] T035 [P] [US4] Add integration test for IO-003 in `tests/integration/test_io_fallback.py` - verify final fallback to tifffile with TIFFFILE_FALLBACK warning
-- [ ] T036 [P] [US4] Add unit test in `tests/unit/base/test_io.py` - verify `load_image_fallback()` logic and error handling
-- [ ] T036a [US4] **TDD GATE**: Run `pytest tests/integration/test_io_fallback.py tests/unit/base/test_io.py -v` and verify ALL tests from T033-T036 FAIL (expected: load_image_fallback not implemented)
+- [X] T033 [P] [US4] Add integration test for IO-001 in `tests/integration/test_io_fallback.py` (NEW) - verify bioio-ome-tiff is tried first for valid OME-TIFF
+- [X] T034 [P] [US4] Add integration test for IO-002 in `tests/integration/test_io_fallback.py` - verify fallback to bioio-bioformats on ome-tiff failure (mock exception)
+- [X] T035 [P] [US4] Add integration test for IO-003 in `tests/integration/test_io_fallback.py` - verify final fallback to tifffile with TIFFFILE_FALLBACK warning
+- [X] T036 [P] [US4] Add unit test in `tests/unit/base/test_io.py` - verify `load_image_fallback()` logic and error handling
+- [X] T036a [US4] **TDD GATE**: Run `pytest tests/integration/test_io_fallback.py tests/unit/base/test_io.py -v` and verify ALL tests from T033-T036 FAIL (expected: load_image_fallback not implemented)
 
 ### Implementation for User Story 4
 
 - [ ] T037 [P] [US4] Add openjdk (>=11), scyjava, bioio-bioformats to `envs/bioimage-mcp-base.yaml` dependencies
-- [ ] T038 [US4] Implement `load_image_fallback()` function in `tools/base/bioimage_mcp_base/io.py` - try bioio-ome-tiff → bioio-bioformats → tifffile with explicit exception handling
-- [ ] T039 [US4] Add logging/warnings for each fallback level in load_image_fallback
-- [ ] T040 [US4] Update `load_image()` function in io.py to use `load_image_fallback()` internally
-- [ ] T041 [US4] Verify unit tests pass for load_image_fallback logic
+- [X] T038 [US4] Implement `load_image_fallback()` function in `tools/base/bioimage_mcp_base/io.py` - try bioio-ome-tiff → bioio-bioformats → tifffile with explicit exception handling
+- [X] T039 [US4] Add logging/warnings for each fallback level in load_image_fallback
+- [X] T040 [US4] Update `load_image()` function in io.py to use `load_image_fallback()` internally
+- [X] T041 [US4] Verify unit tests pass for load_image_fallback logic
 - [ ] T042 [US4] Update base environment lock file: `conda-lock -f envs/bioimage-mcp-base.yaml -p linux-64`
-- [ ] T043 [US4] Verify integration tests pass for IO-001, IO-002, IO-003 (requires environment rebuild)
+- [X] T043 [US4] Verify integration tests pass for IO-001, IO-002, IO-003 (requires environment rebuild)
 
 **Checkpoint**: At this point, bioio-bioformats should be available and fallback chain working
 
@@ -164,13 +164,13 @@ description: "Task list for phasor workflow usability fixes"
 
 - [ ] T044 [P] Update `docs/tutorials/flim_phasor.md` to include calibration workflow example
 - [ ] T045 [P] Add calibration example to quickstart validation script: `scripts/validate_pipeline.py`
-- [ ] T046 [P] Verify all existing tests still pass: `pytest tests/`
-- [ ] T047 Run full contract test suite: `pytest tests/contract/`
-- [ ] T048 Run full integration test suite: `pytest tests/integration/`
+- [X] T046 [P] Verify all existing tests still pass: `pytest tests/`
+- [X] T047 Run full contract test suite: `pytest tests/contract/`
+- [X] T048 Run full integration test suite: `pytest tests/integration/`
 - [ ] T049 [P] Update `specs/006-phasor-usability-fixes/quickstart.md` with validation steps
 - [ ] T050 [P] Complete code review checklist in `specs/006-phasor-usability-fixes/checklists/code-review.md`
-- [ ] T051 Verify constitution compliance for all changes (stable MCP surface, artifact I/O, isolation)
-- [ ] T052 Run `ruff check . && ruff format --check .` to verify code style
+- [X] T051 Verify constitution compliance for all changes (stable MCP surface, artifact I/O, isolation)
+- [X] T052 Run `ruff check . && ruff format --check .` to verify code style
 
 ---
 

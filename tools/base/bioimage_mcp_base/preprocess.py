@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-
 from bioimage_mcp_base.utils import load_image, resolve_axis, save_zarr, uri_to_path
 
 
@@ -186,7 +185,7 @@ def threshold_yen(*, inputs: dict, params: dict, work_dir: Path) -> Path:
 
 
 def morph_opening(*, inputs: dict, params: dict, work_dir: Path) -> Path:
-    from skimage.morphology import opening, ball, disk
+    from skimage.morphology import ball, disk, opening
 
     image_ref = inputs.get("image") or {}
     uri = image_ref.get("uri")
@@ -201,7 +200,7 @@ def morph_opening(*, inputs: dict, params: dict, work_dir: Path) -> Path:
 
 
 def morph_closing(*, inputs: dict, params: dict, work_dir: Path) -> Path:
-    from skimage.morphology import closing, ball, disk
+    from skimage.morphology import ball, closing, disk
 
     image_ref = inputs.get("image") or {}
     uri = image_ref.get("uri")

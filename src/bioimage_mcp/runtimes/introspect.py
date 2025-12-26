@@ -26,6 +26,52 @@ TYPE_MAP: dict[type, str] = {
     dict: "object",
 }
 
+# Type inference map for common parameter name patterns
+PARAM_TYPE_PATTERNS = {
+    "axis": "string",  # Can be string name or int index
+    "harmonic": "integer",
+    "radius": "integer",
+    "sigma": "number",
+    "size": "integer",
+    "limit": "number",
+    "clip": "boolean",
+    "apply": "boolean",
+    "preserve_range": "boolean",
+    "anti_aliasing": "boolean",
+}
+
+
+def schema_from_descriptions(descriptions: dict[str, str]) -> dict[str, Any]:
+    """Generate JSON Schema from curated parameter descriptions.
+
+    Used when function signature introspection returns empty properties.
+    Infers types from common parameter naming patterns.
+
+    Args:
+        descriptions: Parameter descriptions {param_name: description}
+
+    Returns:
+        JSON Schema dict with 'type', 'properties', and 'required' fields
+    """
+    schema: dict[str, Any] = {
+        "type": "object",
+        "properties": {},
+        "required": [],
+    }
+
+    for name, desc in descriptions.items():
+        prop: dict[str, Any] = {"description": desc}
+
+        # Infer type from parameter name patterns
+        for pattern, json_type in PARAM_TYPE_PATTERNS.items():
+            if pattern in name.lower():
+                prop["type"] = json_type
+                break
+
+        schema["properties"][name] = prop
+
+    return schema
+
 
 def introspect_python_api(
     func: Callable[..., Any],
@@ -100,6 +146,10 @@ def introspect_python_api(
                 prop["type"] = TYPE_MAP[type_hint]
 
         schema["properties"][name] = prop
+
+    # Fallback to descriptions if introspection yielded no properties
+    if not schema["properties"] and descriptions:
+        return schema_from_descriptions(descriptions)
 
     return schema
 

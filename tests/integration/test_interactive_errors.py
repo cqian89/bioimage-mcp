@@ -1,13 +1,8 @@
-import json
-import sqlite3
 from pathlib import Path
-
-import pytest
 
 from bioimage_mcp.api.execution import ExecutionService
 from bioimage_mcp.api.interactive import InteractiveExecutionService
 from bioimage_mcp.config.schema import Config
-from bioimage_mcp.registry.loader import load_manifests
 from bioimage_mcp.sessions.manager import SessionManager
 from bioimage_mcp.sessions.store import SessionStore
 

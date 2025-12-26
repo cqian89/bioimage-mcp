@@ -4,7 +4,6 @@ from pathlib import Path
 
 from bioimage_mcp.registry.loader import load_manifests
 
-
 EXPECTED_BASE_FUNCTIONS = {
     "base.convert_to_ome_zarr",
     "base.export_ome_tiff",
@@ -31,6 +30,7 @@ EXPECTED_BASE_FUNCTIONS = {
     "base.remove_small_objects",
     "base.phasor_from_flim",
     "base.denoise_image",
+    "base.phasor_calibrate",
     "meta.describe",
 }
 

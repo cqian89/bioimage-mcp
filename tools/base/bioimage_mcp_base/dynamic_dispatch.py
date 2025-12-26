@@ -9,7 +9,7 @@ protocol (dict refs) and internal Artifact objects.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 # Import shared adapter registry populated with default adapters
 from bioimage_mcp.registry.dynamic.adapters import ADAPTER_REGISTRY
@@ -43,7 +43,7 @@ def get_adapter_for_fn_id(fn_id: str) -> Any:
     return ADAPTER_REGISTRY[prefix]
 
 
-def _convert_inputs_to_artifacts(inputs: Dict[str, Any]) -> list[Any]:
+def _convert_inputs_to_artifacts(inputs: dict[str, Any]) -> list[Any]:
     """Convert input dict references to artifact objects.
 
     Args:
@@ -61,7 +61,7 @@ def _convert_inputs_to_artifacts(inputs: Dict[str, Any]) -> list[Any]:
     return list(inputs.values())
 
 
-def _convert_outputs_to_refs(outputs: list[Any]) -> Dict[str, Dict[str, Any]]:
+def _convert_outputs_to_refs(outputs: list[Any]) -> dict[str, dict[str, Any]]:
     """Convert output artifact objects to dict references.
 
     Args:
@@ -97,10 +97,10 @@ def _convert_outputs_to_refs(outputs: list[Any]) -> Dict[str, Dict[str, Any]]:
 
 def dispatch_dynamic(
     fn_id: str,
-    inputs: Dict[str, Any],
-    params: Dict[str, Any],
+    inputs: dict[str, Any],
+    params: dict[str, Any],
     work_dir: Path | None = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Route dynamic function call to appropriate adapter for execution.
 
     Args:

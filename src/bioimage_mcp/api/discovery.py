@@ -130,11 +130,7 @@ class DiscoveryService:
         config = load_config()
         manifests, _diagnostics = load_manifests(config.tool_manifest_roots)
         manifest = next(
-            (
-                m
-                for m in manifests
-                if any(fn.fn_id == fn_id for fn in m.functions)
-            ),
+            (m for m in manifests if any(fn.fn_id == fn_id for fn in m.functions)),
             None,
         )
         if manifest is None:

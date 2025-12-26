@@ -63,9 +63,7 @@ def _mock_execute_step_format_check(
 class TestUnsupportedFormats:
     """Tests for unsupported format handling (OME-Zarr in v0.1)."""
 
-    def test_ome_zarr_input_fails_fast(
-        self, tmp_path: Path, monkeypatch
-    ) -> None:
+    def test_ome_zarr_input_fails_fast(self, tmp_path: Path, monkeypatch) -> None:
         """Test that OME-Zarr input fails with clear error message."""
         config = Config(
             artifact_store_root=tmp_path / "artifacts",
@@ -104,9 +102,7 @@ class TestUnsupportedFormats:
         # Should fail with clear error
         assert result["status"] == "failed"
 
-    def test_ome_zarr_error_message_is_actionable(
-        self, tmp_path: Path, monkeypatch
-    ) -> None:
+    def test_ome_zarr_error_message_is_actionable(self, tmp_path: Path, monkeypatch) -> None:
         """Test that OME-Zarr error message suggests OME-TIFF alternative."""
         config = Config(
             artifact_store_root=tmp_path / "artifacts",
@@ -154,9 +150,7 @@ class TestUnsupportedFormats:
         # Should mention the unsupported format
         assert "OME-Zarr" in error_msg or "zarr" in error_msg.lower() or "UNSUPPORTED" in str(error)
 
-    def test_zarr_lowercase_also_fails(
-        self, tmp_path: Path, monkeypatch
-    ) -> None:
+    def test_zarr_lowercase_also_fails(self, tmp_path: Path, monkeypatch) -> None:
         """Test that 'zarr' in various cases is caught."""
         config = Config(
             artifact_store_root=tmp_path / "artifacts",
@@ -194,9 +188,7 @@ class TestUnsupportedFormats:
 
         assert result["status"] == "failed"
 
-    def test_ome_tiff_still_works(
-        self, tmp_path: Path, monkeypatch
-    ) -> None:
+    def test_ome_tiff_still_works(self, tmp_path: Path, monkeypatch) -> None:
         """Test that OME-TIFF format is properly supported."""
         config = Config(
             artifact_store_root=tmp_path / "artifacts",
@@ -234,9 +226,7 @@ class TestUnsupportedFormats:
 
         assert result["status"] == "succeeded"
 
-    def test_plain_tiff_still_works(
-        self, tmp_path: Path, monkeypatch
-    ) -> None:
+    def test_plain_tiff_still_works(self, tmp_path: Path, monkeypatch) -> None:
         """Test that plain TIFF format is supported."""
         config = Config(
             artifact_store_root=tmp_path / "artifacts",

@@ -4,10 +4,6 @@ This module tests the IntrospectionCache class that caches adapter discovery
 results and invalidates the cache when the environment lockfile changes.
 """
 
-from pathlib import Path
-from typing import Any, Dict, List
-from unittest.mock import Mock, patch
-
 import pytest
 
 from bioimage_mcp.registry.dynamic.cache import IntrospectionCache

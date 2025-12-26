@@ -49,9 +49,7 @@ def _mock_execute_step_validation(
 class TestValidatePipeline:
     """Integration tests for pipeline validation script."""
 
-    def test_validation_script_produces_labels(
-        self, tmp_path: Path, monkeypatch
-    ) -> None:
+    def test_validation_script_produces_labels(self, tmp_path: Path, monkeypatch) -> None:
         """Test that validation produces LabelImageRef outputs."""
         config = Config(
             artifact_store_root=tmp_path / "artifacts",
@@ -92,13 +90,11 @@ class TestValidatePipeline:
         # Verify labels output was produced
         with ExecutionService(config) as svc:
             status = svc.get_run_status(result["run_id"])
-        
+
         assert "labels" in status["outputs"]
         assert status["outputs"]["labels"]["type"] == "LabelImageRef"
 
-    def test_validation_workflow_returns_success(
-        self, tmp_path: Path, monkeypatch
-    ) -> None:
+    def test_validation_workflow_returns_success(self, tmp_path: Path, monkeypatch) -> None:
         """Test that validation workflow returns success status."""
         config = Config(
             artifact_store_root=tmp_path / "artifacts",
@@ -126,7 +122,7 @@ class TestValidatePipeline:
 
     @pytest.mark.skipif(
         not Path("scripts/validate_pipeline.py").exists(),
-        reason="Validation script not yet created"
+        reason="Validation script not yet created",
     )
     def test_validation_script_cli_exit_zero(self, tmp_path: Path) -> None:
         """Test that validation script CLI exits with code 0 on success."""
@@ -139,9 +135,7 @@ class TestValidatePipeline:
         )
         assert result.returncode == 0, f"Script failed: {result.stderr}"
 
-    def test_multiple_sample_validation(
-        self, tmp_path: Path, monkeypatch
-    ) -> None:
+    def test_multiple_sample_validation(self, tmp_path: Path, monkeypatch) -> None:
         """Test validation on multiple sample images."""
         config = Config(
             artifact_store_root=tmp_path / "artifacts",

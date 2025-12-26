@@ -19,7 +19,7 @@ class BaseAdapter(Protocol):
     discovery, execution, and I/O pattern resolution.
     """
 
-    def discover(self, module_config: Dict[str, Any]) -> List[FunctionMetadata]:
+    def discover(self, module_config: dict[str, Any]) -> list[FunctionMetadata]:
         """Discover functions from a module configuration.
 
         Args:
@@ -30,7 +30,7 @@ class BaseAdapter(Protocol):
         """
         ...
 
-    def execute(self, fn_id: str, inputs: List[Artifact], params: Dict[str, Any]) -> List[Artifact]:
+    def execute(self, fn_id: str, inputs: list[Artifact], params: dict[str, Any]) -> list[Artifact]:
         """Execute a discovered function.
 
         Args:
@@ -58,7 +58,7 @@ class BaseAdapter(Protocol):
 
 # Global adapter registry - populated with default adapters
 # This registry is shared across server and tool processes
-ADAPTER_REGISTRY: Dict[str, Any] = {}
+ADAPTER_REGISTRY: dict[str, Any] = {}
 
 
 def _populate_default_adapters() -> None:

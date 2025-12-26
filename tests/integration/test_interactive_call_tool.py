@@ -1,8 +1,4 @@
-import json
-import sqlite3
 from pathlib import Path
-
-import pytest
 
 from bioimage_mcp.api.execution import ExecutionService
 

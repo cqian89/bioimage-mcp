@@ -1,11 +1,12 @@
-import pytest
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from unittest.mock import Mock
 
-from bioimage_mcp.sessions.manager import SessionManager
-from bioimage_mcp.sessions.store import SessionStore
-from bioimage_mcp.sessions.models import Session
+import pytest
+
 from bioimage_mcp.config.schema import Config
+from bioimage_mcp.sessions.manager import SessionManager
+from bioimage_mcp.sessions.models import Session
+from bioimage_mcp.sessions.store import SessionStore
 
 
 class TestSessionManager:

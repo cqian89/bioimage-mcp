@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import warnings
-
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 

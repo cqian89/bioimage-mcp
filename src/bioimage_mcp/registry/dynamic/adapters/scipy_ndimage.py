@@ -14,7 +14,6 @@ from urllib.parse import urlparse
 import numpy as np
 
 from bioimage_mcp.artifacts.base import Artifact
-from bioimage_mcp.artifacts.models import ArtifactRef
 from bioimage_mcp.registry.dynamic.adapters import BaseAdapter
 from bioimage_mcp.registry.dynamic.introspection import Introspector
 from bioimage_mcp.registry.dynamic.models import FunctionMetadata, IOPattern

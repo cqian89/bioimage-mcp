@@ -1,9 +1,8 @@
 import pytest
-from pathlib import Path
 from pydantic import ValidationError
 
-from bioimage_mcp.config.schema import Config
 from bioimage_mcp.config.loader import load_config
+from bioimage_mcp.config.schema import Config
 
 
 def test_config_has_session_ttl_field():

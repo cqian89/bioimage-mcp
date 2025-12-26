@@ -6,10 +6,11 @@ used for dynamic function introspection.
 """
 
 import pytest
+
 from bioimage_mcp.registry.dynamic.models import (
+    FunctionMetadata,
     IOPattern,
     ParameterSchema,
-    FunctionMetadata,
 )
 
 

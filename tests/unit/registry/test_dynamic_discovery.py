@@ -6,12 +6,10 @@ from dynamic_sources in tool manifests.
 """
 
 from pathlib import Path
-from typing import Any, Dict, List
 from unittest.mock import Mock
 
 import pytest
 
-from bioimage_mcp.artifacts.base import Artifact
 from bioimage_mcp.registry.dynamic.models import FunctionMetadata, IOPattern
 from bioimage_mcp.registry.manifest_schema import DynamicSource, ToolManifest
 
@@ -217,8 +215,9 @@ class TestCacheIntegration:
         )
 
         # Pre-populate cache
-        from bioimage_mcp.registry.dynamic.cache import IntrospectionCache
         import hashlib
+
+        from bioimage_mcp.registry.dynamic.cache import IntrospectionCache
 
         cache_dir = tmp_path / ".bioimage-mcp" / "cache"
         cache = IntrospectionCache(cache_dir)
@@ -342,8 +341,9 @@ class TestCacheIntegration:
         )
 
         # Create empty cache
-        from bioimage_mcp.registry.dynamic.cache import IntrospectionCache
         import hashlib
+
+        from bioimage_mcp.registry.dynamic.cache import IntrospectionCache
 
         cache_dir = tmp_path / ".bioimage-mcp" / "cache"
         cache = IntrospectionCache(cache_dir)

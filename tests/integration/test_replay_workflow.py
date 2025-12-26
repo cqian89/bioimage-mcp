@@ -49,9 +49,7 @@ def _mock_execute_step_success(
 class TestReplayWorkflow:
     """Integration tests for workflow replay functionality."""
 
-    def test_replay_workflow_from_record(
-        self, tmp_path: Path, monkeypatch
-    ) -> None:
+    def test_replay_workflow_from_record(self, tmp_path: Path, monkeypatch) -> None:
         """Test that replay_workflow creates new run from saved record."""
         config = Config(
             artifact_store_root=tmp_path / "artifacts",
@@ -99,9 +97,7 @@ class TestReplayWorkflow:
                 # Mark as expected to fail until implementation
                 pytest.skip("replay_workflow not implemented yet")
 
-    def test_replay_produces_same_artifact_types(
-        self, tmp_path: Path, monkeypatch
-    ) -> None:
+    def test_replay_produces_same_artifact_types(self, tmp_path: Path, monkeypatch) -> None:
         """Test that replay produces outputs of same artifact types."""
         config = Config(
             artifact_store_root=tmp_path / "artifacts",
@@ -133,14 +129,11 @@ class TestReplayWorkflow:
 
             original_status = svc.get_run_status(original_result["run_id"])
             original_output_types = {
-                name: out.get("type")
-                for name, out in original_status["outputs"].items()
+                name: out.get("type") for name, out in original_status["outputs"].items()
             }
 
             if hasattr(svc, "replay_workflow"):
-                replay_result = svc.replay_workflow(
-                    original_result["workflow_record_ref_id"]
-                )
+                replay_result = svc.replay_workflow(original_result["workflow_record_ref_id"])
                 replay_status = svc.get_run_status(replay_result["run_id"])
 
                 # Verify same artifact types produced
@@ -150,9 +143,7 @@ class TestReplayWorkflow:
             else:
                 pytest.skip("replay_workflow not implemented yet")
 
-    def test_replay_links_to_original_run(
-        self, tmp_path: Path, monkeypatch
-    ) -> None:
+    def test_replay_links_to_original_run(self, tmp_path: Path, monkeypatch) -> None:
         """Test that replayed run links to original run_id in provenance."""
         config = Config(
             artifact_store_root=tmp_path / "artifacts",
@@ -175,9 +166,7 @@ class TestReplayWorkflow:
             )
 
             if hasattr(svc, "replay_workflow"):
-                replay_result = svc.replay_workflow(
-                    original_result["workflow_record_ref_id"]
-                )
+                replay_result = svc.replay_workflow(original_result["workflow_record_ref_id"])
 
                 # Verify provenance links to original
                 # This would need to check run store for provenance field
@@ -185,9 +174,7 @@ class TestReplayWorkflow:
             else:
                 pytest.skip("replay_workflow not implemented yet")
 
-    def test_replay_with_missing_inputs_fails_clearly(
-        self, tmp_path: Path, monkeypatch
-    ) -> None:
+    def test_replay_with_missing_inputs_fails_clearly(self, tmp_path: Path, monkeypatch) -> None:
         """Test that replay with missing required inputs fails with clear error."""
         config = Config(
             artifact_store_root=tmp_path / "artifacts",
@@ -236,9 +223,7 @@ class TestReplayWorkflow:
             else:
                 pytest.skip("replay_workflow not implemented yet")
 
-    def test_workflow_record_can_be_parsed(
-        self, tmp_path: Path, monkeypatch
-    ) -> None:
+    def test_workflow_record_can_be_parsed(self, tmp_path: Path, monkeypatch) -> None:
         """Test that workflow record artifact can be loaded and parsed."""
         config = Config(
             artifact_store_root=tmp_path / "artifacts",

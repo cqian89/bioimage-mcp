@@ -542,6 +542,41 @@ functions:
           default: 0.1
           description: Color/range sigma for bilateral filter.
 
+  - fn_id: base.phasor_calibrate
+    tool_id: tools.base
+    name: Phasor calibration
+    description: Calibrate raw phasor coordinates using a reference standard with known lifetime.
+    tags: [image, transform, flim, phasor, calibration]
+    inputs:
+      - name: sample_phasors
+        artifact_type: BioImageRef
+        required: true
+        description: 2-channel phasor image (G in channel 0, S in channel 1)
+      - name: reference_phasors
+        artifact_type: BioImageRef
+        required: true
+        description: 2-channel phasor image from reference standard
+    outputs:
+      - name: calibrated_phasors
+        artifact_type: BioImageRef
+        format: OME-TIFF
+        required: true
+        description: 2-channel calibrated phasor image
+    params_schema:
+      type: object
+      properties:
+        lifetime:
+          type: number
+          description: Known lifetime of reference standard in nanoseconds
+        frequency:
+          type: number
+          description: Laser repetition frequency in Hz
+        harmonic:
+          type: integer
+          default: 1
+          description: Harmonic number for multi-harmonic analysis
+      required: [lifetime, frequency]
+
   # Required for on-demand schema enrichment
   - fn_id: meta.describe
     tool_id: tools.base

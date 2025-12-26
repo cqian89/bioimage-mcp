@@ -62,9 +62,7 @@ def _mock_execute_step(
 class TestCellposeE2E:
     """End-to-end integration tests for Cellpose segmentation workflow."""
 
-    def test_run_workflow_produces_label_ref(
-        self, tmp_path: Path, monkeypatch
-    ) -> None:
+    def test_run_workflow_produces_label_ref(self, tmp_path: Path, monkeypatch) -> None:
         """Test that run_workflow with Cellpose produces LabelImageRef output."""
         artifacts_root = tmp_path / "artifacts"
         tools_root = tmp_path / "tools"
@@ -115,9 +113,7 @@ class TestCellposeE2E:
         assert "run_id" in result
         assert "workflow_record_ref_id" in result
 
-    def test_run_workflow_produces_native_output_ref(
-        self, tmp_path: Path, monkeypatch
-    ) -> None:
+    def test_run_workflow_produces_native_output_ref(self, tmp_path: Path, monkeypatch) -> None:
         """Test that run_workflow produces NativeOutputRef (cellpose bundle)."""
         artifacts_root = tmp_path / "artifacts"
         tools_root = tmp_path / "tools"
@@ -170,9 +166,7 @@ class TestCellposeE2E:
         assert outputs["workflow_record"]["type"] == "NativeOutputRef"
         assert outputs["workflow_record"]["format"] == "workflow-record-json"
 
-    def test_run_workflow_returns_workflow_record_ref(
-        self, tmp_path: Path, monkeypatch
-    ) -> None:
+    def test_run_workflow_returns_workflow_record_ref(self, tmp_path: Path, monkeypatch) -> None:
         """Test that run_workflow returns workflow_record_ref_id for replay."""
         artifacts_root = tmp_path / "artifacts"
         tools_root = tmp_path / "tools"
@@ -202,9 +196,7 @@ class TestCellposeE2E:
         assert isinstance(result["workflow_record_ref_id"], str)
         assert len(result["workflow_record_ref_id"]) > 0
 
-    def test_run_workflow_creates_log_ref(
-        self, tmp_path: Path, monkeypatch
-    ) -> None:
+    def test_run_workflow_creates_log_ref(self, tmp_path: Path, monkeypatch) -> None:
         """Test that run_workflow creates LogRef artifact."""
         artifacts_root = tmp_path / "artifacts"
         tools_root = tmp_path / "tools"

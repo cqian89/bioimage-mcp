@@ -2,14 +2,13 @@ from __future__ import annotations
 
 import hashlib
 from pathlib import Path
-from typing import Dict
 
 import yaml
 
 from bioimage_mcp.registry.diagnostics import ManifestDiagnostic
 from bioimage_mcp.registry.dynamic.adapters import ADAPTER_REGISTRY
 from bioimage_mcp.registry.dynamic.discovery import discover_functions
-from bioimage_mcp.registry.dynamic.models import FunctionMetadata, IOPattern, ParameterSchema
+from bioimage_mcp.registry.dynamic.models import IOPattern, ParameterSchema
 from bioimage_mcp.registry.manifest_schema import Function, Port, ToolManifest
 
 
@@ -63,7 +62,7 @@ def _map_io_pattern_to_ports(pattern: IOPattern) -> tuple[list[Port], list[Port]
     return inputs, outputs
 
 
-def _parameters_to_json_schema(params: Dict[str, ParameterSchema]) -> dict:
+def _parameters_to_json_schema(params: dict[str, ParameterSchema]) -> dict:
     """Convert ParameterSchema dict to JSON Schema.
 
     Args:

@@ -35,6 +35,7 @@ from bioimage_mcp_base.transforms import (
     crop,
     flip,
     pad,
+    phasor_calibrate,
     phasor_from_flim,
     project_max,
     project_sum,
@@ -72,6 +73,7 @@ FN_MAP = {
     "base.remove_small_objects": (remove_small_objects, desc.REMOVE_SMALL_OBJECTS_DESCRIPTIONS),
     "base.phasor_from_flim": (phasor_from_flim, desc.PHASOR_FROM_FLIM_DESCRIPTIONS),
     "base.denoise_image": (denoise_image, desc.DENOISE_IMAGE_DESCRIPTIONS),
+    "base.phasor_calibrate": (phasor_calibrate, desc.PHASOR_CALIBRATE_DESCRIPTIONS),
 }
 
 
@@ -177,8 +179,6 @@ def _dispatch_dynamic_mock(fn_id: str | None, work_dir: Path) -> dict[str, Any]:
 
     if not fn_id.startswith("phasorpy.phasor."):
         raise ValueError(f"Dynamic dispatch not implemented for: {fn_id}")
-
-    from datetime import datetime, UTC
 
     func_name = fn_id.split(".")[-1]
     work_dir.mkdir(parents=True, exist_ok=True)

@@ -1,8 +1,9 @@
 import asyncio
 import sqlite3
-import pytest
 from pathlib import Path
 from unittest.mock import MagicMock
+
+import pytest
 
 from bioimage_mcp.api.discovery import DiscoveryService
 from bioimage_mcp.api.server import create_server

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import pytest
 from bioimage_mcp.artifacts.models import ArtifactRef
 
 

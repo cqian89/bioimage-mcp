@@ -124,3 +124,9 @@ DENOISE_IMAGE_DESCRIPTIONS = {
     "sigma_spatial": "Spatial sigma for bilateral filter.",
     "sigma_color": "Color/range sigma for bilateral filter.",
 }
+
+PHASOR_CALIBRATE_DESCRIPTIONS = {
+    "lifetime": "Known lifetime of reference standard in nanoseconds (e.g., 4.04 for Fluorescein).",
+    "frequency": "Laser repetition frequency in Hz (e.g., 80e6 for 80 MHz).",
+    "harmonic": "Harmonic number for multi-harmonic analysis (default: 1).",
+}

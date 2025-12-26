@@ -26,28 +26,28 @@ def _is_within(path: Path, root: Path) -> bool:
 
 def _guess_mime_type(artifact_type: str, fmt: str) -> str:
     """Guess MIME type from artifact type and format.
-    
+
     For NativeOutputRef and unknown formats, falls back to application/octet-stream
     to support the open/extensible format field (T048/T049).
     """
     if artifact_type == "LogRef":
         return "text/plain"
-    
+
     fmt_lower = fmt.lower()
-    
+
     # Handle common image formats
     if fmt_lower in {"ome-zarr", "zarr"}:
         return "application/zarr+ome"
     if fmt_lower in {"ome-tiff", "tiff", "tif"}:
         return "image/tiff"
-    
+
     # Handle NativeOutputRef format hints (extensible)
     if artifact_type == "NativeOutputRef":
         if "json" in fmt_lower:
             return "application/json"
         if "npy" in fmt_lower:
             return "application/x-npy"
-    
+
     # Default fallback for unknown formats
     return "application/octet-stream"
 

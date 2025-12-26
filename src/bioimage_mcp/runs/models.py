@@ -69,4 +69,3 @@ class WorkflowRecord(BaseModel):
 
     # For replayed runs, tracks lineage
     replayed_from_run_id: str | None = None
-

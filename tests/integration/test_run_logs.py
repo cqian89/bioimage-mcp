@@ -62,9 +62,7 @@ def _mock_execute_step_crash(
 class TestFailedRunLogs:
     """Tests that failed workflow runs still produce LogRef artifacts."""
 
-    def test_failed_run_returns_log_ref_id(
-        self, tmp_path: Path, monkeypatch
-    ) -> None:
+    def test_failed_run_returns_log_ref_id(self, tmp_path: Path, monkeypatch) -> None:
         """Test that failed run still includes log_ref_id in response."""
         config = Config(
             artifact_store_root=tmp_path / "artifacts",
@@ -91,9 +89,7 @@ class TestFailedRunLogs:
         assert isinstance(result["log_ref_id"], str)
         assert len(result["log_ref_id"]) > 0
 
-    def test_failed_run_log_ref_contains_error_info(
-        self, tmp_path: Path, monkeypatch
-    ) -> None:
+    def test_failed_run_log_ref_contains_error_info(self, tmp_path: Path, monkeypatch) -> None:
         """Test that log from failed run contains error information."""
         config = Config(
             artifact_store_root=tmp_path / "artifacts",
@@ -121,9 +117,7 @@ class TestFailedRunLogs:
         log_ref = status["log_ref"]
         assert log_ref["type"] == "LogRef"
 
-    def test_crashed_run_returns_log_ref(
-        self, tmp_path: Path, monkeypatch
-    ) -> None:
+    def test_crashed_run_returns_log_ref(self, tmp_path: Path, monkeypatch) -> None:
         """Test that even crashed runs produce log artifacts."""
         config = Config(
             artifact_store_root=tmp_path / "artifacts",
@@ -148,9 +142,7 @@ class TestFailedRunLogs:
         assert result["status"] == "failed"
         assert "log_ref_id" in result
 
-    def test_failed_run_status_includes_error_details(
-        self, tmp_path: Path, monkeypatch
-    ) -> None:
+    def test_failed_run_status_includes_error_details(self, tmp_path: Path, monkeypatch) -> None:
         """Test that get_run_status includes error details for failed runs."""
         config = Config(
             artifact_store_root=tmp_path / "artifacts",
@@ -178,9 +170,7 @@ class TestFailedRunLogs:
         error = status["error"]
         assert "message" in error or isinstance(error, dict)
 
-    def test_failed_run_preserves_run_id(
-        self, tmp_path: Path, monkeypatch
-    ) -> None:
+    def test_failed_run_preserves_run_id(self, tmp_path: Path, monkeypatch) -> None:
         """Test that failed runs are tracked with valid run_id."""
         config = Config(
             artifact_store_root=tmp_path / "artifacts",

@@ -29,6 +29,36 @@ except ImportError as exc:  # noqa: BLE001
             return decorator
 
 
+def get_session_identifier(ctx) -> str:
+    """Get stable session identifier from MCP context.
+
+    The MCP Python SDK v1.25.0+ does not provide a `.id` attribute on ServerSession.
+    This helper provides a stable identifier using:
+    1. If ctx.session has an .id attribute (backward compat for tests), use it
+    2. SSE query param 'session_id' if available
+    3. Fallback to f"session_{id(ctx.session)}" for stdio transport
+
+    Args:
+        ctx: MCP Context object with session information
+
+    Returns:
+        A stable session identifier string
+    """
+    # Backward compatibility: if session has .id attribute, use it directly
+    if hasattr(ctx.session, "id"):
+        return ctx.session.id
+
+    # Try SSE transport session_id from query params first
+    if hasattr(ctx, "request_context") and ctx.request_context:
+        if hasattr(ctx.request_context, "query_params"):
+            query_params = ctx.request_context.query_params
+            if query_params and query_params.get("session_id"):
+                return query_params["session_id"]
+
+    # Fallback to memory-based identifier for stdio transport
+    return f"session_{id(ctx.session)}"
+
+
 def create_server(
     discovery: DiscoveryService,
     *,
@@ -52,7 +82,7 @@ def create_server(
         """Helper to get the current session from the request context."""
         if not ctx.session:
             raise RuntimeError("No session context available")
-        return session_manager.ensure_session(ctx.session.id)
+        return session_manager.ensure_session(get_session_identifier(ctx))
 
     # --- Implementation helpers for testing ---
     def _filter_tools_impl(tools_result: dict, active_ids: list[str]) -> dict:
@@ -92,7 +122,7 @@ def create_server(
         if not ctx or not ctx.session:
             raise RuntimeError("Session context required for activation")
 
-        session_id = ctx.session.id
+        session_id = get_session_identifier(ctx)
         session_manager.ensure_session(session_id)
         session_manager.store.replace_active_functions(session_id, fn_ids)
 
@@ -103,7 +133,7 @@ def create_server(
         if not ctx or not ctx.session:
             raise RuntimeError("Session context required for deactivation")
 
-        session_id = ctx.session.id
+        session_id = get_session_identifier(ctx)
         session_manager.ensure_session(session_id)
         session_manager.store.replace_active_functions(session_id, [])
 
@@ -119,7 +149,7 @@ def create_server(
         tools_result = discovery.list_tools(limit=limit, cursor=cursor)
 
         if ctx and ctx.session:
-            session_id = ctx.session.id
+            session_id = get_session_identifier(ctx)
             active_ids = session_manager.store.get_active_functions(session_id)
             if active_ids:
                 return _filter_tools_impl(tools_result, active_ids)
@@ -150,7 +180,7 @@ def create_server(
         )
 
         if ctx and ctx.session:
-            session_id = ctx.session.id
+            session_id = get_session_identifier(ctx)
             active_ids = session_manager.store.get_active_functions(session_id)
             if active_ids:
                 return _filter_functions_impl(result, active_ids)
@@ -199,7 +229,7 @@ def create_server(
         If session_id is not provided, uses the current MCP connection's session ID.
         """
         if not session_id and ctx and ctx.session:
-            session_id = ctx.session.id
+            session_id = get_session_identifier(ctx)
 
         if not session_id:
             # We could create a new session here, or raise an error.
@@ -233,7 +263,7 @@ def create_server(
         If session_id is not provided, uses the current MCP connection's session ID.
         """
         if not session_id and ctx and ctx.session:
-            session_id = ctx.session.id
+            session_id = get_session_identifier(ctx)
 
         if not session_id:
             raise ValueError("session_id must be provided or available in context")

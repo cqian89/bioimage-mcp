@@ -1,8 +1,9 @@
-import pytest
 from datetime import UTC, datetime, timedelta
 
-from bioimage_mcp.sessions.models import Session, SessionStep
+import pytest
+
 import bioimage_mcp.sessions.store as session_store
+from bioimage_mcp.sessions.models import Session, SessionStep
 
 
 class TestSessionStoreCRUD:

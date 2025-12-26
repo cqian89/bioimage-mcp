@@ -486,3 +486,119 @@ def phasor_from_flim(*, inputs: dict, params: dict, work_dir: Path) -> dict[str,
         "provenance": provenance,
         "log": f"phasor_from_flim completed (mapping_mode={mapping_mode})",
     }
+
+
+def phasor_calibrate(*, inputs: dict, params: dict, work_dir: Path) -> dict[str, Any]:
+    """Calibrate phasor coordinates using a reference standard.
+
+    Uses phasorpy.lifetime.phasor_calibrate to apply phase rotation and
+    modulation correction based on a reference sample with known lifetime.
+
+    Args:
+        inputs: Dict with 'sample_phasors' and 'reference_phasors' BioImageRefs
+        params: Dict with 'lifetime', 'frequency', and optional 'harmonic'
+        work_dir: Working directory for output files
+
+    Returns:
+        Dict with 'outputs', 'provenance', and optional 'warnings'
+    """
+    # Parameter validation
+    lifetime = params.get("lifetime")
+    frequency = params.get("frequency")
+    harmonic = int(params.get("harmonic", 1))
+
+    if lifetime is None or lifetime <= 0:
+        raise ValueError(f"lifetime must be positive, got {lifetime}")
+    if frequency is None or frequency <= 0:
+        raise ValueError(f"frequency must be positive, got {frequency}")
+
+    # Load sample phasors
+    sample_ref = inputs.get("sample_phasors") or {}
+    sample_uri = sample_ref.get("uri")
+    if not sample_uri:
+        raise ValueError("Input 'sample_phasors' must include uri")
+
+    # Load reference phasors
+    ref_ref = inputs.get("reference_phasors") or {}
+    ref_uri = ref_ref.get("uri")
+    if not ref_uri:
+        raise ValueError("Input 'reference_phasors' must include uri")
+
+    sample_path = uri_to_path(str(sample_uri))
+    ref_path = uri_to_path(str(ref_uri))
+
+    sample_data = load_image(sample_path)
+    ref_data = load_image(ref_path)
+
+    # Validate 2-channel structure
+    if sample_data.shape[0] != 2:
+        raise ValueError(f"Expected 2-channel phasor image, got {sample_data.shape[0]} channels")
+    if ref_data.shape[0] != 2:
+        raise ValueError(f"Expected 2-channel reference phasor, got {ref_data.shape[0]} channels")
+
+    # Extract G and S channels
+    sample_g = sample_data[0]
+    sample_s = sample_data[1]
+    ref_g = ref_data[0]
+    ref_s = ref_data[1]
+
+    # Calculate reference intensity (mean across all pixels)
+    ref_mean = np.ones_like(ref_g)  # Uniform intensity
+
+    # Use phasorpy for calibration
+    try:
+        from phasorpy.lifetime import phasor_calibrate as pp_calibrate
+    except ImportError:
+        raise RuntimeError("phasorpy is required for phasor calibration")
+
+    # phasorpy.lifetime.phasor_calibrate(real, imag, ref_mean, ref_real, ref_imag,
+    #                                     frequency, lifetime, harmonic=...)
+    # frequency needs to be in MHz and lifetime in ns for default unit_conversion
+    cal_g, cal_s = pp_calibrate(
+        sample_g,
+        sample_s,
+        ref_mean,
+        ref_g,
+        ref_s,
+        frequency=frequency / 1e6,  # Convert Hz to MHz
+        lifetime=lifetime,
+        harmonic=harmonic,
+    )
+
+    # Stack calibrated channels
+    calibrated = np.stack([cal_g.astype(np.float32), cal_s.astype(np.float32)], axis=0)
+
+    # Write output
+    work_dir.mkdir(parents=True, exist_ok=True)
+    out_path = _write_ome_tiff(calibrated, work_dir, "calibrated_phasors.ome.tiff", "CYX")
+
+    provenance = {
+        "reference_lifetime": lifetime,
+        "reference_frequency": frequency,
+        "reference_harmonic": harmonic,
+        "calibration_method": "phasorpy.lifetime.phasor_calibrate",
+    }
+
+    return {
+        "outputs": {
+            "calibrated_phasors": {
+                "type": "BioImageRef",
+                "format": "OME-TIFF",
+                "path": str(out_path),
+            },
+        },
+        "provenance": provenance,
+        "log": f"phasor_calibrate completed (lifetime={lifetime}ns, frequency={frequency / 1e6}MHz)",
+    }
+
+    return {
+        "outputs": {
+            "calibrated_phasors": {
+                "type": "BioImageRef",
+                "format": "OME-TIFF",
+                "path": str(out_path),
+            },
+        },
+        "provenance": provenance,
+        "log": f"phasor_calibrate completed (lifetime={lifetime}ns, frequency={frequency / 1e6}MHz)",
+    }

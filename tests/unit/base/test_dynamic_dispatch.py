@@ -7,8 +7,8 @@ Tests the dispatch_dynamic function that routes dynamic function calls
 
 from __future__ import annotations
 
-from pathlib import Path
 import sys
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest

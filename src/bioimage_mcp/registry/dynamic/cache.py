@@ -12,7 +12,7 @@ Caches adapter discovery results in nested JSON structure:
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from bioimage_mcp.registry.dynamic.models import FunctionMetadata
 
@@ -36,7 +36,7 @@ class IntrospectionCache:
 
     def get(
         self, adapter_name: str, prefix: str, lockfile_hash: str
-    ) -> Optional[List[FunctionMetadata]]:
+    ) -> list[FunctionMetadata] | None:
         """Retrieve cached introspection results.
 
         Args:
@@ -51,7 +51,7 @@ class IntrospectionCache:
             return None
 
         try:
-            with open(self.cache_file, "r") as f:
+            with open(self.cache_file) as f:
                 cache_data = json.load(f)
 
             # Navigate nested structure
@@ -74,7 +74,7 @@ class IntrospectionCache:
         adapter_name: str,
         prefix: str,
         lockfile_hash: str,
-        results: List[FunctionMetadata],
+        results: list[FunctionMetadata],
     ) -> None:
         """Store introspection results in cache.
 
@@ -85,10 +85,10 @@ class IntrospectionCache:
             results: List of FunctionMetadata to cache.
         """
         # Load existing cache or start fresh
-        cache_data: Dict[str, Any] = {}
+        cache_data: dict[str, Any] = {}
         if self.cache_file.exists():
             try:
-                with open(self.cache_file, "r") as f:
+                with open(self.cache_file) as f:
                     cache_data = json.load(f)
             except (json.JSONDecodeError, ValueError):
                 cache_data = {}

@@ -5,12 +5,11 @@ Tests the Introspector class that analyzes Python functions to generate
 FunctionMetadata and ParameterSchema automatically.
 """
 
-import pytest
 from bioimage_mcp.registry.dynamic.introspection import Introspector
 from bioimage_mcp.registry.dynamic.models import (
     FunctionMetadata,
-    ParameterSchema,
     IOPattern,
+    ParameterSchema,
 )
 
 

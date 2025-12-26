@@ -23,12 +23,7 @@ class SchemaCache:
     ) -> dict[str, Any] | None:
         data = self._load()
         tool_key = f"{tool_id}@{tool_version}"
-        entry = (
-            data.get("tools", {})
-            .get(tool_key, {})
-            .get("functions", {})
-            .get(fn_id)
-        )
+        entry = data.get("tools", {}).get(tool_key, {}).get("functions", {}).get(fn_id)
         if not isinstance(entry, dict):
             return None
         if "params_schema" not in entry:

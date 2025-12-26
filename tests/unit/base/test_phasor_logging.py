@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 from urllib.parse import quote
-import subprocess
 
 import numpy as np
 import pytest

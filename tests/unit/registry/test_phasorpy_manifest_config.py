@@ -2,13 +2,12 @@
 Unit tests for PhasorPy adapter manifest configuration.
 """
 
-import sys
 from pathlib import Path
 from types import ModuleType
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-import pytest
 import yaml
+
 from bioimage_mcp.registry.loader import load_manifest_file
 
 

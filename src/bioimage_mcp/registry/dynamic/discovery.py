@@ -6,7 +6,7 @@ Coordinates adapter-based function discovery from dynamic_sources in tool manife
 
 import hashlib
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from bioimage_mcp.registry.dynamic.cache import IntrospectionCache
 from bioimage_mcp.registry.dynamic.models import FunctionMetadata
@@ -33,10 +33,10 @@ def _calculate_lockfile_hash(manifest: ToolManifest, project_root: Path) -> str:
 
 def discover_functions(
     manifest: ToolManifest,
-    adapter_registry: Dict[str, Any],
-    cache: Optional[IntrospectionCache] = None,
-    project_root: Optional[Path] = None,
-) -> List[FunctionMetadata]:
+    adapter_registry: dict[str, Any],
+    cache: IntrospectionCache | None = None,
+    project_root: Path | None = None,
+) -> list[FunctionMetadata]:
     """Discover functions from dynamic sources in a tool manifest.
 
     Args:
@@ -51,7 +51,7 @@ def discover_functions(
     Raises:
         ValueError: If a dynamic source references an unknown adapter.
     """
-    results: List[FunctionMetadata] = []
+    results: list[FunctionMetadata] = []
 
     # Calculate lockfile hash if cache and project_root provided
     lockfile_hash = ""

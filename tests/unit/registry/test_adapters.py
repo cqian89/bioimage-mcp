@@ -6,9 +6,7 @@ for library adapters in the dynamic registry system.
 """
 
 import inspect
-from typing import get_type_hints, Protocol, runtime_checkable
-
-import pytest
+from typing import Protocol
 
 
 class TestBaseAdapterProtocol:
@@ -36,7 +34,7 @@ class TestBaseAdapterProtocol:
         assert hasattr(BaseAdapter, "discover")
 
         # Verify it's a method (not just an attribute)
-        discover_attr = getattr(BaseAdapter, "discover")
+        discover_attr = BaseAdapter.discover
         assert callable(discover_attr) or inspect.isfunction(discover_attr)
 
     def test_base_adapter_has_execute_method(self):
@@ -47,7 +45,7 @@ class TestBaseAdapterProtocol:
         assert hasattr(BaseAdapter, "execute")
 
         # Verify it's a method (not just an attribute)
-        execute_attr = getattr(BaseAdapter, "execute")
+        execute_attr = BaseAdapter.execute
         assert callable(execute_attr) or inspect.isfunction(execute_attr)
 
     def test_base_adapter_has_resolve_io_pattern_method(self):
@@ -58,27 +56,28 @@ class TestBaseAdapterProtocol:
         assert hasattr(BaseAdapter, "resolve_io_pattern")
 
         # Verify it's a method (not just an attribute)
-        resolve_attr = getattr(BaseAdapter, "resolve_io_pattern")
+        resolve_attr = BaseAdapter.resolve_io_pattern
         assert callable(resolve_attr) or inspect.isfunction(resolve_attr)
 
     def test_concrete_class_satisfies_protocol(self):
         """A concrete class implementing all methods should satisfy BaseAdapter protocol."""
+        from typing import Any
+
+        from bioimage_mcp.artifacts.base import Artifact
         from bioimage_mcp.registry.dynamic.adapters import BaseAdapter
         from bioimage_mcp.registry.dynamic.models import FunctionMetadata, IOPattern
-        from bioimage_mcp.artifacts.base import Artifact
-        from typing import List, Dict, Any
 
         # Define a concrete implementation
         class DummyAdapter:
             """Dummy adapter for testing protocol conformance."""
 
-            def discover(self, module_config: Dict[str, Any]) -> List[FunctionMetadata]:
+            def discover(self, module_config: dict[str, Any]) -> list[FunctionMetadata]:
                 """Discover functions from module."""
                 return []
 
             def execute(
-                self, fn_id: str, inputs: List[Artifact], params: Dict[str, Any]
-            ) -> List[Artifact]:
+                self, fn_id: str, inputs: list[Artifact], params: dict[str, Any]
+            ) -> list[Artifact]:
                 """Execute a function."""
                 return []
 

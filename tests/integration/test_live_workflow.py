@@ -11,7 +11,6 @@ from bioimage_mcp.config.schema import Config
 from bioimage_mcp.registry.loader import load_manifests
 from bioimage_mcp.storage.sqlite import connect
 
-
 FLUTE_DATASET_PATH = Path(__file__).parent.parent.parent / "datasets" / "FLUTE_FLIM_data_tif"
 
 

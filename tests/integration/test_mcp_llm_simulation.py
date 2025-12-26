@@ -13,7 +13,6 @@ v0.1 spec does not include a FLIM-to-intensity conversion tool.
 
 from __future__ import annotations
 
-import sqlite3
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
@@ -27,7 +26,6 @@ from bioimage_mcp.artifacts.store import ArtifactStore
 from bioimage_mcp.config.schema import Config
 from bioimage_mcp.registry.loader import load_manifests
 from bioimage_mcp.storage.sqlite import connect
-
 
 # Path to the FLUTE FLIM dataset
 FLUTE_DATASET_PATH = Path(__file__).parent.parent.parent / "datasets" / "FLUTE_FLIM_data_tif"
@@ -48,7 +46,7 @@ def _mock_execute_step(
     timeout_seconds: int | None,
 ) -> tuple[dict[str, Any], str, int]:
     """Mock execute_step that simulates successful Cellpose segmentation.
-    
+
     This mock is used when the cellpose environment is not available.
     """
     # Create mock output files
@@ -82,7 +80,7 @@ def _mock_execute_step(
 
 class TestMCPLLMSimulation:
     """Simulate an LLM interacting with the bioimage-mcp server.
-    
+
     This test class demonstrates the MCP tool calling flow that an LLM
     would use to perform cell segmentation on microscopy images.
     """
@@ -92,7 +90,7 @@ class TestMCPLLMSimulation:
         """Set up a complete MCP environment with discovery and execution services."""
         artifacts_root = tmp_path / "artifacts"
         tools_root = Path(__file__).parent.parent.parent / "tools"
-        
+
         config = Config(
             artifact_store_root=artifacts_root,
             tool_manifest_roots=[tools_root],
@@ -100,13 +98,13 @@ class TestMCPLLMSimulation:
             fs_allowlist_write=[tmp_path],
             fs_denylist=[],
         )
-        
+
         # Set up database connection
         conn = connect(config)
-        
+
         # Load tool manifests
         manifests, diagnostics = load_manifests(config.tool_manifest_roots)
-        
+
         # Set up discovery service
         discovery = DiscoveryService(conn)
         for manifest in manifests:
@@ -131,18 +129,18 @@ class TestMCPLLMSimulation:
                     outputs=[p.model_dump() for p in fn.outputs],
                     params_schema=fn.params_schema,
                 )
-        
+
         # Mock the execute_step to avoid requiring cellpose installation
         monkeypatch.setattr(
             "bioimage_mcp.api.execution.execute_step",
             _mock_execute_step,
         )
-        
+
         # Set up execution and artifacts services
         artifact_store = ArtifactStore(config, conn=conn)
         execution = ExecutionService(config, artifact_store=artifact_store)
         artifacts = ArtifactsService(artifact_store)
-        
+
         yield {
             "config": config,
             "discovery": discovery,
@@ -151,7 +149,7 @@ class TestMCPLLMSimulation:
             "artifact_store": artifact_store,
             "tmp_path": tmp_path,
         }
-        
+
         # Cleanup
         discovery.close()
         execution.close()
@@ -160,17 +158,17 @@ class TestMCPLLMSimulation:
     def test_step1_load_images_from_dataset(self, mcp_environment):
         """
         Step 1: LLM loads images from the FLUTE_FLIM_data_tif dataset.
-        
+
         Simulates the LLM identifying available images and creating
         artifact references for them.
         """
         # Check that the dataset exists
         assert FLUTE_DATASET_PATH.exists(), f"Dataset not found at {FLUTE_DATASET_PATH}"
-        
+
         # List available images (LLM would do this to discover data)
         tiff_files = list(FLUTE_DATASET_PATH.glob("*.tif"))
         assert len(tiff_files) > 0, "No TIFF files found in dataset"
-        
+
         # Create artifact references for images
         # Note: In actual MCP flow, these would be imported via artifact store
         image_refs = []
@@ -181,21 +179,21 @@ class TestMCPLLMSimulation:
                 "uri": _path_to_uri(tiff_file),
             }
             image_refs.append(image_ref)
-        
+
         assert len(image_refs) == 2
         assert all(ref["type"] == "BioImageRef" for ref in image_refs)
-        
+
         return image_refs
 
     def test_step2_query_cellpose_functions(self, mcp_environment):
         """
         Step 2: LLM queries MCP for cellpose segmentation functions.
-        
+
         Demonstrates using search_functions to find available
         segmentation capabilities.
         """
         discovery = mcp_environment["discovery"]
-        
+
         # Search for segmentation functions
         result = discovery.search_functions(
             query="cellpose",
@@ -203,35 +201,35 @@ class TestMCPLLMSimulation:
             limit=10,
             cursor=None,
         )
-        
+
         functions = result["functions"]
         assert len(functions) > 0, "No cellpose functions found"
-        
+
         # Find the cellpose.segment function
         segment_fn = None
         for fn in functions:
             if fn["fn_id"] == "cellpose.segment":
                 segment_fn = fn
                 break
-        
+
         assert segment_fn is not None, "cellpose.segment function not found"
         assert "segmentation" in segment_fn["tags"]
-        
+
         return segment_fn
 
     def test_step3_describe_cellpose_function(self, mcp_environment):
         """
         Step 3: LLM gets detailed description of the cellpose.segment function.
-        
+
         Uses describe_function to get the parameter schema for calling
         the segmentation function.
-        
+
         Note: Per NFR-001 (payload discipline), discovery responses are
         summary-only. Input/output schemas are not returned in listings.
         The describe_function returns the params_schema on-demand.
         """
         discovery = mcp_environment["discovery"]
-        
+
         # Search should find the cellpose.segment function
         search_result = discovery.search_functions(
             query="cellpose.segment",
@@ -240,34 +238,34 @@ class TestMCPLLMSimulation:
         )
         assert len(search_result["functions"]) > 0
         fn_summary = search_result["functions"][0]
-        
+
         # Summary contains key info per NFR-001
         assert fn_summary["fn_id"] == "cellpose.segment"
         assert "segmentation" in fn_summary["tags"]
-        
+
         # Get parameter schema via describe_function
         fn_details = discovery.describe_function("cellpose.segment")
-        
+
         assert fn_details is not None
         assert fn_details["fn_id"] == "cellpose.segment"
         assert "schema" in fn_details  # params_schema
-        
+
         return fn_details
 
     def test_step4_run_cellpose_segmentation(self, mcp_environment):
         """
         Step 4: LLM runs cellpose segmentation on an image.
-        
+
         Executes the segmentation workflow and receives output artifact
         references.
         """
         execution = mcp_environment["execution"]
         tmp_path = mcp_environment["tmp_path"]
-        
+
         # Get an image from the dataset
         tiff_files = list(FLUTE_DATASET_PATH.glob("*.tif"))
         assert len(tiff_files) > 0
-        
+
         # Use hMSC-ZOOM.tif as it's smaller
         image_file = None
         for f in tiff_files:
@@ -276,7 +274,7 @@ class TestMCPLLMSimulation:
                 break
         if image_file is None:
             image_file = tiff_files[0]
-        
+
         # Build the workflow
         workflow = {
             "steps": [
@@ -296,49 +294,49 @@ class TestMCPLLMSimulation:
                 }
             ]
         }
-        
+
         # Run the workflow (skip validation since we're using mock)
         result = execution.run_workflow(workflow, skip_validation=True)
-        
+
         assert result["status"] in ("succeeded", "running", "queued")
         assert "run_id" in result
-        
+
         # Get run status
         status = execution.get_run_status(result["run_id"])
-        
+
         assert "outputs" in status
         outputs = status["outputs"]
-        
+
         # Verify LabelImageRef output
         assert "labels" in outputs
         assert outputs["labels"]["type"] == "LabelImageRef"
-        
+
         # Verify NativeOutputRef (cellpose bundle)
         assert "cellpose_bundle" in outputs
         assert outputs["cellpose_bundle"]["type"] == "NativeOutputRef"
         assert outputs["cellpose_bundle"]["format"] == "cellpose-seg-npy"
-        
+
         # Verify workflow record for replay capability
         assert "workflow_record" in outputs
         assert outputs["workflow_record"]["format"] == "workflow-record-json"
-        
+
         return status
 
     def test_step5_export_outputs(self, mcp_environment):
         """
         Step 5: LLM exports the segmentation outputs to local files.
-        
+
         Demonstrates exporting artifacts to user-specified paths.
         """
         execution = mcp_environment["execution"]
         artifacts_svc = mcp_environment["artifacts"]
         artifact_store = mcp_environment["artifact_store"]
         tmp_path = mcp_environment["tmp_path"]
-        
+
         # First run a segmentation (reusing step 4 logic)
         tiff_files = list(FLUTE_DATASET_PATH.glob("*.tif"))
         image_file = tiff_files[0]
-        
+
         workflow = {
             "steps": [
                 {
@@ -354,35 +352,29 @@ class TestMCPLLMSimulation:
                 }
             ]
         }
-        
+
         result = execution.run_workflow(workflow, skip_validation=True)
         status = execution.get_run_status(result["run_id"])
         outputs = status["outputs"]
-        
+
         # Export the label image (OME-TIFF)
         labels_ref = outputs["labels"]
         labels_export_path = tmp_path / "exported_labels.ome.tiff"
-        
-        export_result = artifacts_svc.export_artifact(
-            labels_ref["ref_id"], 
-            str(labels_export_path)
-        )
-        
+
+        export_result = artifacts_svc.export_artifact(labels_ref["ref_id"], str(labels_export_path))
+
         assert labels_export_path.exists(), "Exported labels file not found"
         assert "exported_path" in export_result
-        
+
         # Export the native output (cellpose bundle)
         bundle_ref = outputs["cellpose_bundle"]
         bundle_export_path = tmp_path / "exported_bundle.npy"
-        
-        export_result = artifacts_svc.export_artifact(
-            bundle_ref["ref_id"],
-            str(bundle_export_path)
-        )
-        
+
+        export_result = artifacts_svc.export_artifact(bundle_ref["ref_id"], str(bundle_export_path))
+
         assert bundle_export_path.exists(), "Exported bundle file not found"
         assert "exported_path" in export_result
-        
+
         return {
             "labels_path": labels_export_path,
             "bundle_path": bundle_export_path,
@@ -390,9 +382,9 @@ class TestMCPLLMSimulation:
 
     def test_full_llm_workflow_simulation(self, mcp_environment):
         """
-        Complete end-to-end test simulating an LLM's interaction with 
+        Complete end-to-end test simulating an LLM's interaction with
         the bioimage-mcp server.
-        
+
         This test demonstrates the full flow:
         1. Query available functions
         2. Get function details
@@ -403,7 +395,7 @@ class TestMCPLLMSimulation:
         execution = mcp_environment["execution"]
         artifacts_svc = mcp_environment["artifacts"]
         tmp_path = mcp_environment["tmp_path"]
-        
+
         # === LLM Step 1: Query for segmentation capabilities ===
         print("\n[LLM] Searching for cell segmentation tools...")
         search_result = discovery.search_functions(
@@ -414,29 +406,29 @@ class TestMCPLLMSimulation:
             limit=5,
             cursor=None,
         )
-        
+
         assert len(search_result["functions"]) > 0
         print(f"[LLM] Found {len(search_result['functions'])} segmentation functions")
-        
+
         # === LLM Step 2: Get details on cellpose.segment ===
         print("\n[LLM] Getting details for cellpose.segment...")
-        
+
         # Get input/output info from search results (per NFR-001 payload discipline)
         fn_summary = [f for f in search_result["functions"] if f["fn_id"] == "cellpose.segment"][0]
         print(f"[LLM] Function requires inputs: {fn_summary.get('inputs', [])}")
         print(f"[LLM] Function produces outputs: {fn_summary.get('outputs', [])}")
-        
-        # Get parameter schema via describe_function  
+
+        # Get parameter schema via describe_function
         fn_details = discovery.describe_function("cellpose.segment")
         print(f"[LLM] Parameter schema: {fn_details.get('schema', {})}")
-        
+
         # === LLM Step 3: Prepare input image ===
         print("\n[LLM] Preparing input image from dataset...")
         tiff_files = list(FLUTE_DATASET_PATH.glob("*.tif"))
         # Use smallest file for faster test
         smallest_file = min(tiff_files, key=lambda f: f.stat().st_size)
         print(f"[LLM] Selected image: {smallest_file.name}")
-        
+
         # === LLM Step 4: Run segmentation workflow ===
         print("\n[LLM] Running cellpose segmentation workflow...")
         workflow = {
@@ -457,33 +449,33 @@ class TestMCPLLMSimulation:
                 }
             ]
         }
-        
+
         result = execution.run_workflow(workflow, skip_validation=True)
         print(f"[LLM] Workflow started with run_id: {result['run_id']}")
         print(f"[LLM] Status: {result['status']}")
-        
+
         # Get final status
         status = execution.get_run_status(result["run_id"])
         print(f"[LLM] Final status: {status['status']}")
-        
+
         # === LLM Step 5: Export outputs ===
         print("\n[LLM] Exporting outputs...")
         outputs = status["outputs"]
-        
+
         # Export OME-TIFF labels
         labels_path = tmp_path / "segmentation_labels.ome.tiff"
         artifacts_svc.export_artifact(outputs["labels"]["ref_id"], str(labels_path))
         print(f"[LLM] Exported labels to: {labels_path}")
-        
+
         # Export native bundle
         bundle_path = tmp_path / "cellpose_bundle.npy"
         artifacts_svc.export_artifact(outputs["cellpose_bundle"]["ref_id"], str(bundle_path))
         print(f"[LLM] Exported native bundle to: {bundle_path}")
-        
+
         # Verify outputs exist
         assert labels_path.exists(), "Labels file was not exported"
         assert bundle_path.exists(), "Bundle file was not exported"
-        
+
         print("\n[LLM] Segmentation workflow completed successfully!")
         print(f"[LLM] Outputs saved to: {tmp_path}")
 
@@ -496,7 +488,7 @@ class TestMCPToolsAvailability:
         """Set up discovery service with tool manifests."""
         artifacts_root = tmp_path / "artifacts"
         tools_root = Path(__file__).parent.parent.parent / "tools"
-        
+
         config = Config(
             artifact_store_root=artifacts_root,
             tool_manifest_roots=[tools_root],
@@ -504,10 +496,10 @@ class TestMCPToolsAvailability:
             fs_allowlist_write=[tmp_path],
             fs_denylist=[],
         )
-        
+
         conn = connect(config)
         manifests, _ = load_manifests(config.tool_manifest_roots)
-        
+
         discovery = DiscoveryService(conn)
         for manifest in manifests:
             discovery.upsert_tool(
@@ -531,14 +523,14 @@ class TestMCPToolsAvailability:
                     outputs=[p.model_dump() for p in fn.outputs],
                     params_schema=fn.params_schema,
                 )
-        
+
         yield discovery
         discovery.close()
 
     def test_list_tools_returns_cellpose(self, discovery_service):
         """Verify cellpose tool pack is registered."""
         result = discovery_service.list_tools(limit=20, cursor=None)
-        
+
         tool_ids = [t["tool_id"] for t in result["tools"]]
         assert "tools.cellpose" in tool_ids, "Cellpose tool pack not found"
 
@@ -549,22 +541,22 @@ class TestMCPToolsAvailability:
             limit=10,
             cursor=None,
         )
-        
+
         fn_ids = [f["fn_id"] for f in result["functions"]]
         assert "cellpose.segment" in fn_ids, "cellpose.segment function not found"
 
     def test_describe_function_returns_cellpose_schema(self, discovery_service):
         """Verify cellpose.segment function details are complete.
-        
+
         Per NFR-001, describe_function returns the params_schema on-demand.
         Summary fields are available from search_functions.
         """
         # Get parameter schema via describe_function
         fn = discovery_service.describe_function("cellpose.segment")
-        
+
         assert fn["fn_id"] == "cellpose.segment"
         assert "schema" in fn  # params_schema (per NFR-001)
-        
+
         # Verify summary fields are available from search_functions
         result = discovery_service.search_functions(
             query="cellpose.segment",

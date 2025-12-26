@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 from urllib.parse import quote
-import subprocess
 
 import pytest
 import tifffile
@@ -11,7 +11,6 @@ from bioimage_mcp.api.execution import ExecutionService
 from bioimage_mcp.artifacts.store import ArtifactStore
 from bioimage_mcp.config.schema import Config
 from bioimage_mcp.storage.sqlite import connect
-
 
 FLUTE_DATASET_PATH = Path(__file__).parent.parent.parent / "datasets" / "FLUTE_FLIM_data_tif"
 

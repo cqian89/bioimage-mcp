@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 from bioimage_mcp.registry.dynamic.models import FunctionMetadata
 from bioimage_mcp.registry.loader import load_manifest_file
-from bioimage_mcp.registry.manifest_schema import Function
 
 
 def test_load_manifest_file_calls_discover_functions_with_dynamic_sources(
