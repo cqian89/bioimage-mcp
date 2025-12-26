@@ -1,9 +1,12 @@
 artifact_store_root: /home/qianchen/.bioimage-mcp/artifacts
 tool_manifest_roots:
-  - /home/qianchen/.bioimage-mcp/tools
+- /home/qianchen/.bioimage-mcp/tools
+- /mnt/c/Users/meqia/bioimage-mcp/tools/base
+- /mnt/c/Users/meqia/bioimage-mcp/tools/builtin
+- /mnt/c/Users/meqia/bioimage-mcp/tools/cellpose
 fs_allowlist_read: []
 fs_allowlist_write:
-  - /home/qianchen/.bioimage-mcp
+- /home/qianchen/.bioimage-mcp
 fs_denylist:
-  - /etc
-  - /proc
+- /etc
+- /proc
