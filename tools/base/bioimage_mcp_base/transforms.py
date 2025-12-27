@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -11,6 +13,28 @@ class ToolInputError(ValueError):
     def __init__(self, message: str, code: str) -> None:
         super().__init__(message)
         self.code = code
+
+
+def _assert_read_allowed(path: Path) -> None:
+    allowlist = os.environ.get("BIOIMAGE_MCP_FS_ALLOWLIST_READ")
+    if not allowlist:
+        return
+
+    try:
+        roots = json.loads(allowlist)
+    except json.JSONDecodeError:
+        return
+
+    target = path.expanduser().absolute()
+    for root in roots:
+        root_path = Path(root).expanduser().absolute()
+        try:
+            target.relative_to(root_path)
+            return
+        except ValueError:
+            continue
+
+    raise PermissionError(f"Path not under allowlist read roots: {target}")
 
 
 def resize(*, inputs: dict, params: dict, work_dir: Path) -> Path:
@@ -144,7 +168,9 @@ def project_sum(*, inputs: dict, params: dict, work_dir: Path) -> Path:
         raise ValueError("Input 'image' must include uri")
 
     axis = params.get("axis", 0)
-    data = load_image(uri_to_path(str(uri)))
+    path = uri_to_path(str(uri))
+    _assert_read_allowed(path)
+    data = load_image(path)
     idx = resolve_axis(axis, data.ndim)
     projected = np.sum(data, axis=idx)
     return save_zarr(projected, work_dir, "project_sum.ome.zarr")
@@ -261,23 +287,21 @@ def _load_flim_data(image_ref: dict) -> tuple[np.ndarray, str, dict, int, list[d
         data = tifffile.imread(str(path))
         # Try to extract axes from tifffile metadata
         with tifffile.TiffFile(str(path)) as tif:
-            if tif.pages and hasattr(tif.pages[0], "axes"):
-                axes = tif.pages[0].axes or ""
-            # Check OME metadata if available
-            if hasattr(tif, "ome_metadata") and tif.ome_metadata:
+            if tif.ome_metadata:
                 try:
                     import xml.etree.ElementTree as ET
 
                     root = ET.fromstring(tif.ome_metadata)
-                    ns = {"ome": "http://www.openmicroscopy.org/Schemas/OME/2016-06"}
-                    pixels = root.find(".//ome:Pixels", ns)
+                    pixels = root.find(".//{*}Pixels")
                     if pixels is not None:
                         dim_order = pixels.get("DimensionOrder", "")
                         if dim_order:
-                            # DimensionOrder is like XYZCT, need to reverse for array order
+                            # DimensionOrder is like XYZCT; reverse for array order
                             axes = dim_order[::-1]
                 except Exception:
                     pass
+            if not axes and tif.pages and hasattr(tif.pages[0], "axes"):
+                axes = tif.pages[0].axes or ""
 
     # Override axes from image_ref metadata if provided
     axes_from_ref = (image_ref.get("metadata") or {}).get("axes", "")
@@ -285,6 +309,21 @@ def _load_flim_data(image_ref: dict) -> tuple[np.ndarray, str, dict, int, list[d
         axes = axes_from_ref
     elif not axes:
         axes = ""
+
+    if axes and len(axes) > data.ndim:
+        trimmed_axes = axes[-data.ndim :]
+        if trimmed_axes != axes:
+            load_warnings.append(
+                {
+                    "code": "AXES_TRIMMED",
+                    "message": (
+                        "Axis metadata includes singleton dimensions not present in the array; "
+                        f"trimmed '{axes}' to '{trimmed_axes}'."
+                    ),
+                }
+            )
+            axes = trimmed_axes
+            metadata["_axes_trimmed"] = True
 
     axes_inferred = False
     inferred_axes = ""
@@ -470,6 +509,22 @@ def phasor_from_flim(*, inputs: dict, params: dict, work_dir: Path) -> dict[str,
         np.asarray(intensity, dtype="float32"), work_dir, "phasor_intensity.ome.tiff", output_axes
     )
 
+    stack_output = bool(params.get("stack", False))
+    stack_path = None
+    stack_axes = None
+    if stack_output:
+        stack_axes = f"C{output_axes}" if "C" not in output_axes else f"P{output_axes}"
+        stacked = np.stack(
+            [np.asarray(g_map, dtype="float32"), np.asarray(s_map, dtype="float32")],
+            axis=0,
+        )
+        stack_path = _write_ome_tiff(
+            stacked,
+            work_dir,
+            "phasor_stack.ome.tiff",
+            stack_axes,
+        )
+
     provenance = {
         "resolved_params": {
             "time_axis": time_axis_name,
@@ -485,16 +540,25 @@ def phasor_from_flim(*, inputs: dict, params: dict, work_dir: Path) -> dict[str,
         provenance["axes_inferred"] = True
         provenance["inferred_axes"] = metadata.get("_inferred_axes", "")
 
-    return {
-        "outputs": {
-            "g_image": {"type": "BioImageRef", "format": "OME-TIFF", "path": str(g_path)},
-            "s_image": {"type": "BioImageRef", "format": "OME-TIFF", "path": str(s_path)},
-            "intensity_image": {
-                "type": "BioImageRef",
-                "format": "OME-TIFF",
-                "path": str(i_path),
-            },
+    outputs = {
+        "g_image": {"type": "BioImageRef", "format": "OME-TIFF", "path": str(g_path)},
+        "s_image": {"type": "BioImageRef", "format": "OME-TIFF", "path": str(s_path)},
+        "intensity_image": {
+            "type": "BioImageRef",
+            "format": "OME-TIFF",
+            "path": str(i_path),
         },
+    }
+    if stack_path is not None and stack_axes is not None:
+        outputs["phasor_stack"] = {
+            "type": "BioImageRef",
+            "format": "OME-TIFF",
+            "path": str(stack_path),
+            "metadata": {"axes": stack_axes},
+        }
+
+    return {
+        "outputs": outputs,
         "warnings": warnings,
         "provenance": provenance,
         "log": f"phasor_from_flim completed (mapping_mode={mapping_mode})",

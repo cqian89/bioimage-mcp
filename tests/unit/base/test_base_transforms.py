@@ -69,3 +69,27 @@ def test_crop_requires_matching_dims(monkeypatch, tmp_path: Path) -> None:
             params={"start": [0, 0], "stop": [1, 1]},
             work_dir=tmp_path,
         )
+
+
+def test_project_sum_rejects_disallowed_paths(monkeypatch, tmp_path: Path) -> None:
+    denied_dir = tmp_path / "denied"
+    denied_dir.mkdir()
+    denied_path = denied_dir / "sample.tif"
+    denied_path.write_text("x")
+
+    monkeypatch.setenv(
+        "BIOIMAGE_MCP_FS_ALLOWLIST_READ",
+        f'["{tmp_path / "allowed"}"]',
+    )
+
+    def _load_image(_path: Path) -> np.ndarray:
+        raise AssertionError("load_image should not run for denied paths")
+
+    monkeypatch.setattr(transforms, "load_image", _load_image)
+
+    with pytest.raises(PermissionError, match="allowlist"):
+        transforms.project_sum(
+            inputs={"image": {"uri": denied_path.as_uri()}},
+            params={},
+            work_dir=tmp_path,
+        )

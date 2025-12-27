@@ -50,15 +50,15 @@ def _convert_inputs_to_artifacts(inputs: dict[str, Any]) -> list[Any]:
         inputs: Dictionary of input name to artifact reference dict
 
     Returns:
-        List of artifact reference dicts (pass-through for now)
+        List of (name, artifact) pairs for adapter consumption.
 
     Note:
-        For now, this is a pass-through that returns the input dict values.
+        For now, this is a pass-through that returns the input dict entries.
         Full artifact resolution will be implemented when artifact store is available.
     """
     # TODO: Convert dict refs to actual Artifact objects when artifact store is integrated
     # For now, adapters are expected to handle dict refs directly
-    return list(inputs.values())
+    return list(inputs.items())
 
 
 def _convert_outputs_to_refs(outputs: list[Any]) -> dict[str, dict[str, Any]]:

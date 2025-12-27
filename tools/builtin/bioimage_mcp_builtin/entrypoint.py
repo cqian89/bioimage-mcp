@@ -4,7 +4,14 @@ import inspect
 import json
 import sys
 from pathlib import Path
-from typing import Any
+
+# Add tool roots to sys.path to support imports
+BASE_DIR = Path(__file__).resolve().parent
+TOOLS_ROOT = BASE_DIR.parent
+REPO_TOOLS_ROOT = TOOLS_ROOT.parent
+for path in (TOOLS_ROOT, REPO_TOOLS_ROOT):
+    if str(path) not in sys.path:
+        sys.path.insert(0, str(path))
 
 from bioimage_mcp_builtin.ops.convert_to_ome_zarr import convert_to_ome_zarr
 from bioimage_mcp_builtin.ops.gaussian_blur import gaussian_blur

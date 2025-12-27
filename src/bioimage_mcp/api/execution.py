@@ -110,6 +110,7 @@ def execute_step(
                 "params": params,
                 "inputs": inputs,
                 "work_dir": str(work_dir),
+                "fs_allowlist_read": [str(path) for path in config.fs_allowlist_read],
             }
             return execute_tool(
                 entrypoint=entrypoint,
@@ -315,13 +316,17 @@ class ExecutionService:
         self._run_store.set_log_ref(run.run_id, log_ref.ref_id)
 
         if not response.get("ok"):
-            self._run_store.set_status(
-                run.run_id, "failed", error=response.get("error") or {"exit_code": exit_code}
-            )
+            error_payload = response.get("error") or {"exit_code": exit_code}
+            if not isinstance(error_payload, dict):
+                error_payload = {"message": str(error_payload)}
+                if exit_code is not None:
+                    error_payload.setdefault("exit_code", exit_code)
+
+            self._run_store.set_status(run.run_id, "failed", error=error_payload)
             hints = self._get_function_hints(fn_id)
             error_hints = hints.get("error_hints") if hints else {}
             error_response_hints = None
-            error_code = (response.get("error") or {}).get("code") or "GENERAL"
+            error_code = error_payload.get("code") or "GENERAL"
             if error_hints or input_metadata:
                 selected_hints = error_hints.get(error_code) or error_hints.get("GENERAL", {})
                 error_response_hints = {

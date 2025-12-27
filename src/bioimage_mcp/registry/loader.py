@@ -32,7 +32,10 @@ def _map_io_pattern_to_ports(pattern: IOPattern) -> tuple[list[Port], list[Port]
         inputs = [Port(name="image", artifact_type="BioImageRef")]
         outputs = [Port(name="labels", artifact_type="LabelImageRef")]
     elif pattern == IOPattern.LABELS_TO_TABLE:
-        inputs = [Port(name="labels", artifact_type="LabelImageRef")]
+        inputs = [
+            Port(name="labels", artifact_type="LabelImageRef"),
+            Port(name="intensity_image", artifact_type="BioImageRef", required=False),
+        ]
         outputs = [Port(name="table", artifact_type="TableRef")]
     elif pattern == IOPattern.SIGNAL_TO_PHASOR:
         # Returns mean, real, imag images

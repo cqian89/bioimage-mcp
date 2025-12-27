@@ -172,3 +172,48 @@ def test_phasor_warns_on_large_input(monkeypatch, tmp_path: Path) -> None:
 
     warnings = result["warnings"]
     assert any(warning.get("code") == "OVERSIZED_INPUT" for warning in warnings)
+
+
+def test_phasor_stack_emits_combined_output(monkeypatch, tmp_path: Path) -> None:
+    data = np.arange(2 * 3 * 4, dtype="float32").reshape(2, 3, 4)
+    axes = "TYX"
+    metadata: dict = {}
+    captured: dict[str, list[tuple[str, np.ndarray, str]]] = {"writes": []}
+
+    def _load_flim_data(_image_ref: dict) -> tuple[np.ndarray, str, dict, int, list]:
+        return data, axes, metadata, data.nbytes, []
+
+    def _compute_phasor(
+        signal: np.ndarray,
+        time_axis: int,
+        harmonic: int,
+        sample_phase: np.ndarray | None,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        return np.ones((3, 4), dtype="float32"), np.zeros((3, 4), dtype="float32")
+
+    def _write_ome_tiff(
+        array: np.ndarray,
+        work_dir: Path,
+        name: str,
+        axes: str,
+        **_kwargs: dict,
+    ) -> Path:
+        captured["writes"].append((name, array.copy(), axes))
+        return work_dir / name
+
+    monkeypatch.setattr(transforms, "_load_flim_data", _load_flim_data)
+    monkeypatch.setattr(transforms, "_compute_phasor", _compute_phasor)
+    monkeypatch.setattr(transforms, "_write_ome_tiff", _write_ome_tiff)
+
+    result = transforms.phasor_from_flim(
+        inputs={"dataset": {"uri": "file:///tmp/sample.tif", "format": "OME-TIFF"}},
+        params={"stack": True},
+        work_dir=tmp_path,
+    )
+
+    outputs = result["outputs"]
+    assert "phasor_stack" in outputs
+
+    stack_write = next(item for item in captured["writes"] if item[0] == "phasor_stack.ome.tiff")
+    assert stack_write[1].shape == (2, 3, 4)
+    assert stack_write[2] == "CYX"

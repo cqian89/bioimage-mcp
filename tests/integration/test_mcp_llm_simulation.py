@@ -183,8 +183,6 @@ class TestMCPLLMSimulation:
         assert len(image_refs) == 2
         assert all(ref["type"] == "BioImageRef" for ref in image_refs)
 
-        return image_refs
-
     def test_step2_query_cellpose_functions(self, mcp_environment):
         """
         Step 2: LLM queries MCP for cellpose segmentation functions.
@@ -214,8 +212,6 @@ class TestMCPLLMSimulation:
 
         assert segment_fn is not None, "cellpose.segment function not found"
         assert "segmentation" in segment_fn["tags"]
-
-        return segment_fn
 
     def test_step3_describe_cellpose_function(self, mcp_environment):
         """
@@ -249,8 +245,6 @@ class TestMCPLLMSimulation:
         assert fn_details is not None
         assert fn_details["fn_id"] == "cellpose.segment"
         assert "schema" in fn_details  # params_schema
-
-        return fn_details
 
     def test_step4_run_cellpose_segmentation(self, mcp_environment):
         """
@@ -320,8 +314,6 @@ class TestMCPLLMSimulation:
         assert "workflow_record" in outputs
         assert outputs["workflow_record"]["format"] == "workflow-record-json"
 
-        return status
-
     def test_step5_export_outputs(self, mcp_environment):
         """
         Step 5: LLM exports the segmentation outputs to local files.
@@ -374,11 +366,6 @@ class TestMCPLLMSimulation:
 
         assert bundle_export_path.exists(), "Exported bundle file not found"
         assert "exported_path" in export_result
-
-        return {
-            "labels_path": labels_export_path,
-            "bundle_path": bundle_export_path,
-        }
 
     def test_full_llm_workflow_simulation(self, mcp_environment):
         """

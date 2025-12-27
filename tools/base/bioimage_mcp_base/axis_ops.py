@@ -78,11 +78,15 @@ class SwapAxesParams(AxisToolParams):
 def load_image(path: Path) -> np.ndarray:
     try:
         from bioio import BioImage  # type: ignore
-    except Exception as exc:
-        raise RuntimeError("Missing dependencies for axis operations") from exc
 
-    img = BioImage(str(path))
-    return img.get_image_data()  # type: ignore[attr-defined]
+        img = BioImage(str(path))
+        return img.get_image_data()  # type: ignore[attr-defined]
+    except Exception:
+        try:
+            import tifffile
+        except Exception as exc:
+            raise RuntimeError("Missing dependencies for axis operations") from exc
+        return tifffile.imread(str(path))
 
 
 def _write_ome_tiff(array: np.ndarray, work_dir: Path, name: str, axes: str) -> Path:
@@ -110,6 +114,15 @@ def relabel_axes(inputs: dict, params: dict, work_dir: Path) -> dict:
     data = load_image(uri_to_path(str(uri)))
     metadata = image_ref.get("metadata") or {}
     axes = str(metadata.get("axes") or "")
+
+    shape = metadata.get("shape")
+    if shape and len(shape) != data.ndim:
+        try:
+            expected_shape = tuple(int(dim) for dim in shape)
+        except (TypeError, ValueError):
+            expected_shape = ()
+        if expected_shape and int(np.prod(expected_shape)) == data.size:
+            data = data.reshape(expected_shape)
 
     for axis in validated.axis_mapping:
         if axis not in axes:

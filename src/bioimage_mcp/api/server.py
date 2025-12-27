@@ -150,6 +150,7 @@ def create_server(
 
         if ctx and ctx.session:
             session_id = get_session_identifier(ctx)
+            session_manager.ensure_session(session_id)
             active_ids = session_manager.store.get_active_functions(session_id)
             if active_ids:
                 return _filter_tools_impl(tools_result, active_ids)
@@ -181,6 +182,7 @@ def create_server(
 
         if ctx and ctx.session:
             session_id = get_session_identifier(ctx)
+            session_manager.ensure_session(session_id)
             active_ids = session_manager.store.get_active_functions(session_id)
             if active_ids:
                 return _filter_functions_impl(result, active_ids)

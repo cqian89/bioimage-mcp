@@ -101,3 +101,66 @@ def test_skimage_adapter_execute_calls_gaussian(mock_gaussian, mock_imread):
     assert len(outputs) == 1
     assert isinstance(outputs[0], dict)
     assert outputs[0]["type"] == "BioImageRef"
+
+
+@patch("tifffile.imwrite")
+def test_skimage_adapter_save_image_writes_axes_metadata(mock_imwrite, tmp_path):
+    """_save_image() should include axes metadata for OME-TIFF output."""
+    import numpy as np
+
+    adapter = SkimageAdapter()
+
+    array = np.zeros((8, 6), dtype=np.uint8)
+    adapter._save_image(array, work_dir=tmp_path)
+
+    assert mock_imwrite.call_count == 1
+    _, kwargs = mock_imwrite.call_args
+    assert kwargs["metadata"] == {"axes": "YX"}
+
+
+@patch("tifffile.imread")
+@patch("skimage.measure.regionprops_table")
+def test_skimage_adapter_execute_accepts_multiple_inputs(mock_regionprops, mock_imread, tmp_path):
+    """execute() should pass multiple image inputs to regionprops_table."""
+    import numpy as np
+
+    adapter = SkimageAdapter()
+
+    labels = np.ones((4, 4), dtype="int32")
+    intensity = np.zeros((4, 4), dtype="float32")
+    mock_imread.side_effect = [labels, intensity]
+    mock_regionprops.return_value = {"label": np.array([1]), "area": np.array([16])}
+
+    labels_ref = ArtifactRef(
+        ref_id="labels-1",
+        type="LabelImageRef",
+        uri="file:///tmp/labels.tif",
+        format="OME-TIFF",
+        mime_type="image/tiff",
+        size_bytes=1024,
+        created_at=ArtifactRef.now(),
+    )
+    intensity_ref = ArtifactRef(
+        ref_id="image-1",
+        type="BioImageRef",
+        uri="file:///tmp/intensity.tif",
+        format="OME-TIFF",
+        mime_type="image/tiff",
+        size_bytes=1024,
+        created_at=ArtifactRef.now(),
+    )
+
+    outputs = adapter.execute(
+        fn_id="skimage.measure.regionprops_table",
+        inputs=[("labels", labels_ref), ("intensity_image", intensity_ref)],
+        params={},
+        work_dir=tmp_path,
+    )
+
+    mock_regionprops.assert_called_once()
+    called_args, called_kwargs = mock_regionprops.call_args
+    assert np.array_equal(called_args[0], labels)
+    assert np.array_equal(called_kwargs["intensity_image"], intensity)
+
+    assert outputs[0]["type"] == "TableRef"
+    assert outputs[0]["path"].endswith(".csv")

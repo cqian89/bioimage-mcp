@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -33,12 +34,18 @@ def execute_tool(
 ) -> tuple[dict, str, int]:
     cmd = _build_command(entrypoint, env_id=env_id)
 
+    env = os.environ.copy()
+    allowlist_read = request.get("fs_allowlist_read")
+    if allowlist_read is not None:
+        env["BIOIMAGE_MCP_FS_ALLOWLIST_READ"] = json.dumps(allowlist_read)
+
     proc = subprocess.Popen(
         cmd,
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
+        env=env,
     )
 
     try:

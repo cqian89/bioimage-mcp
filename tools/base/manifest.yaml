@@ -491,6 +491,10 @@ functions:
         artifact_type: BioImageRef
         format: OME-TIFF
         required: true
+      - name: phasor_stack
+        artifact_type: BioImageRef
+        format: OME-TIFF
+        required: false
     params_schema:
       type: object
       properties:
@@ -503,6 +507,10 @@ functions:
           type: integer
           default: 1
           description: Harmonic to compute.
+        stack:
+          type: boolean
+          default: false
+          description: If true, return a 2-channel G/S phasor stack.
     hints:
       inputs:
         dataset:

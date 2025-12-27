@@ -115,6 +115,7 @@ REMOVE_SMALL_OBJECTS_DESCRIPTIONS = {
 PHASOR_FROM_FLIM_DESCRIPTIONS = {
     "time_axis": "Time/bin axis name or index for the FLIM signal (e.g., 'T' or 0).",
     "harmonic": "Phasor harmonic to compute (default 1).",
+    "stack": "If true, emit a 2-channel phasor stack (G/S) for downstream calibration.",
 }
 
 DENOISE_IMAGE_DESCRIPTIONS = {

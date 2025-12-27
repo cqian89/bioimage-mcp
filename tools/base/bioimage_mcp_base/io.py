@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import numpy as np
@@ -19,6 +20,22 @@ __all__ = [
 ]
 
 
+DEFAULT_OVERSIZED_INPUT_THRESHOLD_BYTES = 4 * 1024**3
+
+
+def _get_oversized_input_threshold_bytes() -> int:
+    env_value = os.environ.get("BIOIMAGE_MCP_OVERSIZED_INPUT_THRESHOLD_BYTES")
+    if not env_value:
+        return DEFAULT_OVERSIZED_INPUT_THRESHOLD_BYTES
+    try:
+        threshold = int(env_value)
+    except ValueError:
+        return DEFAULT_OVERSIZED_INPUT_THRESHOLD_BYTES
+    if threshold <= 0:
+        return DEFAULT_OVERSIZED_INPUT_THRESHOLD_BYTES
+    return threshold
+
+
 def load_image_fallback(path: Path) -> tuple[np.ndarray, list[dict[str, str]], str]:
     """Proxy to utils.load_image_fallback with patchable readers."""
     return _load_image_fallback_with_readers(
@@ -28,10 +45,18 @@ def load_image_fallback(path: Path) -> tuple[np.ndarray, list[dict[str, str]], s
     )
 
 
+def _extract_image_uri(image_ref: object) -> str | None:
+    if isinstance(image_ref, str):
+        return image_ref
+    if isinstance(image_ref, dict):
+        return str(image_ref.get("uri") or image_ref.get("path") or "") or None
+    return None
+
+
 def convert_to_ome_zarr(*, inputs: dict, params: dict, work_dir: Path) -> Path:
     _ = params
-    image_ref = inputs.get("image") or {}
-    uri = image_ref.get("uri")
+    image_ref = inputs.get("image")
+    uri = _extract_image_uri(image_ref)
     if not uri:
         raise ValueError("Input 'image' must include uri")
 
@@ -60,14 +85,14 @@ def export_ome_tiff(*, inputs: dict, params: dict, work_dir: Path) -> dict:
 
     Returns a dict with 'path' and 'warnings' keys.
     """
-    image_ref = inputs.get("image") or {}
-    uri = image_ref.get("uri")
+    image_ref = inputs.get("image")
+    uri = _extract_image_uri(image_ref)
     if not uri:
         raise ValueError("Input 'image' must include uri")
 
     in_path = uri_to_path(str(uri))
     compression = params.get("compression")
-    input_format = (image_ref.get("format") or "").lower()
+    input_format = (image_ref.get("format") or "").lower() if isinstance(image_ref, dict) else ""
 
     try:
         from bioio.writers import OmeTiffWriter  # type: ignore
@@ -77,6 +102,7 @@ def export_ome_tiff(*, inputs: dict, params: dict, work_dir: Path) -> dict:
     # Load data based on format
     data = None
     warnings: list[dict[str, str]] = []
+    oversized_threshold = _get_oversized_input_threshold_bytes()
 
     # Handle OME-Zarr directories
     if "zarr" in input_format or in_path.suffix.lower() == ".zarr" or in_path.is_dir():
@@ -90,7 +116,7 @@ def export_ome_tiff(*, inputs: dict, params: dict, work_dir: Path) -> dict:
                     arr = root[array_path]
                     # Check size before full materialization
                     size_bytes = arr.nbytes if hasattr(arr, "nbytes") else 0
-                    if size_bytes > 4 * 1024**3:  # 4GB threshold
+                    if size_bytes > oversized_threshold:
                         gb_size = size_bytes / 1024**3
                         warnings.append(
                             {
@@ -108,7 +134,7 @@ def export_ome_tiff(*, inputs: dict, params: dict, work_dir: Path) -> dict:
                 for key in root.array_keys():
                     arr = root[key]
                     size_bytes = arr.nbytes if hasattr(arr, "nbytes") else 0
-                    if size_bytes > 4 * 1024**3:
+                    if size_bytes > oversized_threshold:
                         gb_size = size_bytes / 1024**3
                         warnings.append(
                             {

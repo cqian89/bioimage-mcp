@@ -100,6 +100,16 @@ class ScipyNdimageAdapter(BaseAdapter):
         # Best effort without module context
         return self.determine_io_pattern("", func_name)
 
+    def _normalize_inputs(self, inputs: list[Artifact]) -> list[Artifact]:
+        normalized: list[Artifact] = []
+        for item in inputs:
+            if isinstance(item, tuple) and len(item) == 2:
+                _name, artifact = item
+                normalized.append(artifact)
+            else:
+                normalized.append(item)
+        return normalized
+
     def _load_image(self, artifact: Artifact) -> np.ndarray:
         """Load image data from artifact reference."""
         if tifffile is None:
@@ -172,9 +182,10 @@ class ScipyNdimageAdapter(BaseAdapter):
 
         # Load input images
         args = []
-        if inputs:
+        normalized_inputs = self._normalize_inputs(inputs)
+        if normalized_inputs:
             # Load the first input as numpy array
-            image_data = self._load_image(inputs[0])
+            image_data = self._load_image(normalized_inputs[0])
             args.append(image_data)
 
         # Execute function
