@@ -178,7 +178,8 @@ class ExecutionService:
         run_store: RunStore | None = None,
     ):
         self._config = config
-        self._owns_stores = artifact_store is None and run_store is None
+        self._owns_artifact_store = artifact_store is None
+        self._owns_run_store = run_store is None
         self._artifact_store = artifact_store or ArtifactStore(config)
         self._run_store = run_store or RunStore(config)
 
@@ -187,8 +188,9 @@ class ExecutionService:
         return self._artifact_store
 
     def close(self) -> None:
-        if self._owns_stores:
+        if self._owns_artifact_store:
             self._artifact_store.close()
+        if self._owns_run_store:
             self._run_store.close()
 
     def __enter__(self):
@@ -319,11 +321,12 @@ class ExecutionService:
             hints = self._get_function_hints(fn_id)
             error_hints = hints.get("error_hints") if hints else {}
             error_response_hints = None
+            error_code = (response.get("error") or {}).get("code") or "GENERAL"
             if error_hints or input_metadata:
-                general_hints = error_hints.get("GENERAL", {}) if error_hints else {}
+                selected_hints = error_hints.get(error_code) or error_hints.get("GENERAL", {})
                 error_response_hints = {
-                    "diagnosis": general_hints.get("diagnosis"),
-                    "suggested_fix": general_hints.get("suggested_fix"),
+                    "diagnosis": selected_hints.get("diagnosis"),
+                    "suggested_fix": selected_hints.get("suggested_fix"),
                     "related_metadata": input_metadata,
                 }
             return {

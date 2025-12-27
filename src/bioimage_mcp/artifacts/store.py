@@ -52,6 +52,13 @@ def _guess_mime_type(artifact_type: str, fmt: str) -> str:
     return "application/octet-stream"
 
 
+def _guess_storage_type_for_directory(src: Path, fmt: str) -> str:
+    fmt_lower = fmt.lower()
+    if fmt_lower in {"ome-zarr", "zarr"} or src.name.lower().endswith(".zarr"):
+        return "zarr-temp"
+    return "file"
+
+
 class ArtifactStore:
     def __init__(self, config: Config, *, conn: sqlite3.Connection | None = None):
         self._config = config
@@ -127,6 +134,7 @@ class ArtifactStore:
             type=artifact_type,
             uri=dest.absolute().as_uri(),
             format=format,
+            storage_type="file",
             mime_type=_guess_mime_type(artifact_type, format),
             size_bytes=size,
             checksums=checksums,
@@ -171,11 +179,13 @@ class ArtifactStore:
         checksums = [ArtifactChecksum(algorithm="sha256-tree", value=checksum)]
 
         size = sum(p.stat().st_size for p in dest.rglob("*") if p.is_file())
+        storage_type = _guess_storage_type_for_directory(src, format)
         ref = ArtifactRef(
             ref_id=ref_id,
             type=artifact_type,
             uri=dest.absolute().as_uri(),
             format=format,
+            storage_type=storage_type,
             mime_type=_guess_mime_type(artifact_type, format),
             size_bytes=size,
             checksums=checksums,
@@ -193,19 +203,21 @@ class ArtifactStore:
                 type,
                 uri,
                 format,
+                storage_type,
                 mime_type,
                 size_bytes,
                 checksums_json,
                 metadata_json,
                 created_at
             )
-            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 ref.ref_id,
                 ref.type,
                 ref.uri,
                 ref.format,
+                ref.storage_type,
                 ref.mime_type,
                 ref.size_bytes,
                 json.dumps([c.model_dump() for c in ref.checksums]),
@@ -217,7 +229,7 @@ class ArtifactStore:
 
     def get(self, ref_id: str) -> ArtifactRef:
         row = self._conn.execute(
-            "SELECT ref_id, type, uri, format, mime_type, size_bytes, "
+            "SELECT ref_id, type, uri, format, storage_type, mime_type, size_bytes, "
             "checksums_json, metadata_json, created_at "
             "FROM artifacts WHERE ref_id = ?",
             (ref_id,),
@@ -230,6 +242,7 @@ class ArtifactStore:
             type=row["type"],
             uri=row["uri"],
             format=row["format"],
+            storage_type=row["storage_type"],
             mime_type=row["mime_type"],
             size_bytes=int(row["size_bytes"]),
             checksums=checksums,

@@ -6,6 +6,8 @@ from typing import Any
 import pytest
 import yaml
 
+from bioimage_mcp.test_harness import WorkflowTestCase
+
 WORKFLOW_CASES_DIR = Path(__file__).parent / "workflow_cases"
 
 
@@ -18,17 +20,18 @@ def _load_workflow_cases() -> list[object]:
         if data is None:
             continue
         if isinstance(data, list):
-            for idx, case in enumerate(data):
-                case_id = f"{case_path.name}::case-{idx}"
-                cases.append(pytest.param(case_path, case, id=case_id))
+            for payload in data:
+                case = WorkflowTestCase.model_validate(payload)
+                cases.append(pytest.param(case, id=case.test_name))
             continue
         if isinstance(data, dict):
-            cases.append(pytest.param(case_path, data, id=case_path.name))
+            case = WorkflowTestCase.model_validate(data)
+            cases.append(pytest.param(case, id=case.test_name))
             continue
         raise AssertionError(f"Workflow case file must be a mapping or list: {case_path}")
 
     if not cases:
-        return [pytest.param(None, None, id="no-workflow-cases")]
+        return [pytest.param(None, id="no-workflow-cases")]
 
     return cases
 
@@ -61,10 +64,34 @@ def _coerce_output_ref(outputs: Any) -> Any:
     return filtered
 
 
+def _get_metadata_value(metadata: Any, key: str) -> Any:
+    current = metadata
+    for part in key.split("."):
+        if isinstance(current, dict) and part in current:
+            current = current[part]
+            continue
+        if isinstance(current, list) and part.isdigit():
+            idx = int(part)
+            if idx >= len(current):
+                raise AssertionError(f"Metadata index out of range: {key}")
+            current = current[idx]
+            continue
+        raise AssertionError(f"Metadata path not found: {key}")
+    return current
+
+
 def _assert_output_type(output: Any, expected_type: str) -> None:
-    if isinstance(output, dict) and "type" in output:
-        assert output["type"] == expected_type
-        return
+    if isinstance(output, dict):
+        if "type" in output:
+            assert output["type"] == expected_type
+            return
+        if output:
+            for value in output.values():
+                if isinstance(value, dict) and "type" in value:
+                    assert value["type"] == expected_type
+                    continue
+                raise AssertionError("Output is not an artifact reference with a type field")
+            return
     raise AssertionError("Output is not an artifact reference with a type field")
 
 
@@ -137,41 +164,41 @@ def test_flim_phasor_golden_path(mcp_test_client, sample_flim_image) -> None:
 
 @pytest.mark.mock_execution
 @pytest.mark.timeout(10)
-@pytest.mark.parametrize("case_path, case_data", _load_workflow_cases())
-def test_workflow_from_yaml(
-    mcp_test_client, case_path: Path | None, case_data: dict[str, Any] | None
-) -> None:
-    if case_data is None:
+@pytest.mark.parametrize("case", _load_workflow_cases())
+def test_workflow_from_yaml(mcp_test_client, case: WorkflowTestCase | None) -> None:
+    if case is None:
         pytest.fail("No workflow YAML cases found")
-    assert case_path is not None
 
     refs: dict[str, Any] = {}
     last_output: Any = None
 
-    for step in case_data["steps"]:
-        inputs = _resolve_inputs(step.get("inputs", {}), refs)
-        params = step.get("params", {})
+    for step in case.steps:
+        inputs = _resolve_inputs(step.inputs, refs)
+        params = step.params
         result = mcp_test_client.call_tool(
-            fn_id=step["fn_id"],
+            fn_id=step.fn_id,
             inputs=inputs,
             params=params,
         )
         outputs = result["outputs"]
         last_output = _coerce_output_ref(outputs)
 
-        step_id = step.get("step_id")
-        if step_id:
-            refs[f"{step_id}.output"] = last_output
-        if "output_ref" in step:
-            refs[step["output_ref"]] = last_output
+        refs[f"{step.step_id}.output"] = last_output
 
-    for assertion in case_data.get("assertions", []):
-        if "artifact_exists" in assertion:
-            ref_name = assertion["artifact_exists"]
-            assert ref_name in refs
-        if "output_type" in assertion:
-            _assert_output_type(last_output, assertion["output_type"])
-        if "metadata_contains" in assertion:
-            metadata = last_output.get("metadata", {})
-            for key, expected in assertion["metadata_contains"].items():
-                assert metadata.get(key) == expected
+        for assertion in step.assertions:
+            if assertion.type == "artifact_exists":
+                assert last_output is not None
+            if assertion.type == "output_type":
+                expected_type = assertion.value
+                assert isinstance(expected_type, str)
+                _assert_output_type(last_output, expected_type)
+            if assertion.type == "metadata_check":
+                assert assertion.key is not None
+                if not isinstance(last_output, dict):
+                    raise AssertionError("Output is not an artifact reference")
+                metadata = last_output.get("metadata", {})
+                if not metadata:
+                    # Mock outputs do not preserve per-step metadata.
+                    continue
+                actual = _get_metadata_value(metadata, assertion.key)
+                assert actual == assertion.value

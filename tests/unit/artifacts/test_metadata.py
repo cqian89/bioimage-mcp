@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from bioimage_mcp.artifacts.metadata import extract_image_metadata
+from bioimage_mcp.artifacts.metadata import _truncate_text, extract_image_metadata
 
 
 def test_extract_metadata_from_tiff(tmp_path: Path) -> None:
@@ -48,3 +48,37 @@ def test_extract_metadata_from_empty_file_returns_empty(tmp_path: Path) -> None:
 
     meta = extract_image_metadata(path)
     assert meta == {}
+
+
+def test_custom_attributes_bounded_when_large() -> None:
+    from bioimage_mcp.artifacts.metadata import _truncate_dict
+
+    custom_attributes = {"nested": {"level1": {"level2": {"level3": "value"}}}}
+    custom_attributes.update({f"key_{idx}": "x" * 600 for idx in range(25)})
+
+    truncated = _truncate_dict(custom_attributes)
+
+    assert len(truncated) <= 20
+    sample_value = next(value for key, value in truncated.items() if key.startswith("key_"))
+    assert isinstance(sample_value, str)
+    assert len(sample_value) == 500
+    assert truncated["nested"]["level1"] == "..."
+
+
+def test_custom_attributes_truncated_marker_when_limited() -> None:
+    from bioimage_mcp.artifacts.metadata import _truncate_dict
+
+    custom_attributes = {"key": "x" * 600}
+
+    truncated = _truncate_dict(custom_attributes)
+
+    assert truncated["_truncated"] is True
+
+
+def test_truncate_text_adds_marker_with_char_count() -> None:
+    value = "x" * 10
+
+    truncated = _truncate_text(value, limit=5)
+
+    assert truncated == "xxxxx... (10 chars)"
+    assert _truncate_text(value, limit=10) == value

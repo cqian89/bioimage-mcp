@@ -53,6 +53,7 @@ def init_schema(conn: sqlite3.Connection) -> None:
             type TEXT NOT NULL,
             uri TEXT NOT NULL,
             format TEXT NOT NULL,
+            storage_type TEXT NOT NULL DEFAULT 'file',
             mime_type TEXT NOT NULL,
             size_bytes INTEGER NOT NULL,
             checksums_json TEXT NOT NULL,

@@ -136,7 +136,7 @@ def test_phasor_preserves_channel_dimension(monkeypatch, tmp_path: Path) -> None
 
 
 def test_phasor_warns_on_large_input(monkeypatch, tmp_path: Path) -> None:
-    data = np.zeros((1, 2, 2), dtype="float32")
+    data = np.zeros((2, 2, 2), dtype="float32")
     axes = "TYX"
     metadata: dict = {}
 

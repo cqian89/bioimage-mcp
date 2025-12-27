@@ -29,6 +29,7 @@ def test_list_tools_paginates_by_cursor() -> None:
 
     page2 = service.list_tools(limit=2, cursor=page1["next_cursor"])
     assert [t["tool_id"] for t in page2["tools"]] == ["c"]
+    conn.close()
 
 
 def test_search_functions_filters_by_tag() -> None:
@@ -70,6 +71,7 @@ def test_search_functions_filters_by_tag() -> None:
 
     page = service.search_functions(query="", tags=["b"], limit=10, cursor=None)
     assert [f["fn_id"] for f in page["functions"]] == ["fn.two"]
+    conn.close()
 
 
 def test_search_functions_filters_by_io_types() -> None:
@@ -114,3 +116,4 @@ def test_search_functions_filters_by_io_types() -> None:
 
     page2 = service.search_functions(query="", io_out="LogRef", limit=10, cursor=None)
     assert [f["fn_id"] for f in page2["functions"]] == ["fn.out"]
+    conn.close()

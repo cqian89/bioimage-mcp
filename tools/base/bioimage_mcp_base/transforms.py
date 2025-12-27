@@ -7,6 +7,12 @@ import numpy as np
 from bioimage_mcp_base.utils import load_image, resolve_axis, save_zarr, uri_to_path
 
 
+class ToolInputError(ValueError):
+    def __init__(self, message: str, code: str) -> None:
+        super().__init__(message)
+        self.code = code
+
+
 def resize(*, inputs: dict, params: dict, work_dir: Path) -> Path:
     from skimage.transform import resize as sk_resize
 
@@ -428,6 +434,13 @@ def phasor_from_flim(*, inputs: dict, params: dict, work_dir: Path) -> dict[str,
     time_axis_param = params.get("time_axis")
     time_axis_idx, time_axis_name = _resolve_time_axis(time_axis_param, axes, data.ndim)
 
+    n_time_samples = int(data.shape[time_axis_idx])
+    if n_time_samples < 2:
+        raise ToolInputError(
+            "Time axis must have at least 2 samples for phasor calculation",
+            "AXIS_SAMPLES_ERROR",
+        )
+
     if not np.isfinite(data).all():
         raise ValueError("Input dataset contains NaN or Inf values")
 
@@ -558,7 +571,7 @@ def phasor_calibrate(*, inputs: dict, params: dict, work_dir: Path) -> dict[str,
     try:
         from phasorpy.lifetime import phasor_calibrate as pp_calibrate
     except ImportError:
-        raise RuntimeError("phasorpy is required for phasor calibration")
+        raise RuntimeError("phasorpy is required for phasor calibration") from None
 
     # phasorpy.lifetime.phasor_calibrate(real, imag, ref_mean, ref_real, ref_imag,
     #                                     frequency, lifetime, harmonic=...)
@@ -597,5 +610,7 @@ def phasor_calibrate(*, inputs: dict, params: dict, work_dir: Path) -> dict[str,
             },
         },
         "provenance": provenance,
-        "log": f"phasor_calibrate completed (lifetime={lifetime}ns, frequency={frequency / 1e6}MHz)",
+        "log": (
+            f"phasor_calibrate completed (lifetime={lifetime}ns, frequency={frequency / 1e6}MHz)"
+        ),
     }

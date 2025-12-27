@@ -105,13 +105,40 @@ def relabel_axes(inputs: dict, params: dict, work_dir: Path) -> dict:
     image_ref = inputs.get("image") or {}
     uri = image_ref.get("uri")
     if not uri:
-        raise ValueError("Input 'image' must include uri")
+        raise ValueError("Error in base.relabel_axes: Input 'image' must include uri")
 
     data = load_image(uri_to_path(str(uri)))
-    axes = str((image_ref.get("metadata") or {}).get("axes") or "")
+    metadata = image_ref.get("metadata") or {}
+    axes = str(metadata.get("axes") or "")
+
+    for axis in validated.axis_mapping:
+        if axis not in axes:
+            raise ValueError(
+                "Error in base.relabel_axes: Axis "
+                f"{axis} not found in image with axes {axes}. Check axis names."
+            )
 
     new_axes = "".join(validated.axis_mapping.get(axis, axis) for axis in axes)
+    duplicate_axis = _find_duplicate_axis(new_axes)
+    if duplicate_axis is not None:
+        raise ValueError(
+            "Error in base.relabel_axes: Mapping would create duplicate axis "
+            f"'{duplicate_axis}' in result '{new_axes}'. Use unique target names."
+        )
+
     out_path = _write_ome_tiff(data, work_dir, "relabeled.ome.tiff", new_axes)
+
+    output_metadata = {"axes": new_axes}
+    physical_pixel_sizes = _extract_physical_pixel_sizes(metadata)
+    if physical_pixel_sizes is not None:
+        remapped_sizes = {
+            validated.axis_mapping.get(axis, axis): physical_pixel_sizes[axis]
+            for axis in axes
+            if axis in physical_pixel_sizes
+        }
+        output_metadata["physical_pixel_sizes"] = _order_physical_pixel_sizes(
+            new_axes, remapped_sizes
+        )
 
     return {
         "outputs": {
@@ -119,7 +146,7 @@ def relabel_axes(inputs: dict, params: dict, work_dir: Path) -> dict:
                 "type": "BioImageRef",
                 "format": "OME-TIFF",
                 "path": str(out_path),
-                "metadata": {"axes": new_axes},
+                "metadata": output_metadata,
             }
         }
     }
@@ -130,31 +157,49 @@ def squeeze(inputs: dict, params: dict, work_dir: Path) -> dict:
     image_ref = inputs.get("image") or {}
     uri = image_ref.get("uri")
     if not uri:
-        raise ValueError("Input 'image' must include uri")
+        raise ValueError("Error in base.squeeze: Input 'image' must include uri")
 
     data = load_image(uri_to_path(str(uri)))
-    axes = str((image_ref.get("metadata") or {}).get("axes") or "")
+    metadata = image_ref.get("metadata") or {}
+    axes = str(metadata.get("axes") or "")
 
     axis = validated.axis
     if axis is None:
         singleton_axes = [idx for idx, size in enumerate(data.shape) if size == 1]
         if not singleton_axes:
-            raise ValueError("No singleton axes to squeeze")
+            raise ValueError("Error in base.squeeze: No singleton axes to squeeze")
         squeezed = np.squeeze(data)
         new_axes = _remove_axes_by_index(axes, singleton_axes)
     else:
-        axis_idx = _resolve_axis_index(axis, axes, data.ndim)
+        try:
+            axis_idx = _resolve_axis_index(axis, axes, data.ndim)
+        except ValueError as exc:
+            raise ValueError(f"Error in base.squeeze: {exc}") from exc
+        if data.shape[axis_idx] != 1:
+            raise ValueError(
+                "Error in base.squeeze: Cannot squeeze axis "
+                f"{axis} (index {axis_idx}) with size {data.shape[axis_idx]}. "
+                "Only singleton axes (size 1) can be squeezed."
+            )
         squeezed = np.squeeze(data, axis=axis_idx)
         new_axes = _remove_axes_by_index(axes, [axis_idx])
 
     out_path = _write_ome_tiff(squeezed, work_dir, "squeezed.ome.tiff", new_axes)
+    output_metadata = {"axes": new_axes}
+    physical_pixel_sizes = _extract_physical_pixel_sizes(metadata)
+    if physical_pixel_sizes is not None:
+        output_metadata["physical_pixel_sizes"] = _order_physical_pixel_sizes(
+            new_axes,
+            physical_pixel_sizes,
+        )
+
     return {
         "outputs": {
             "output": {
                 "type": "BioImageRef",
                 "format": "OME-TIFF",
                 "path": str(out_path),
-                "metadata": {"axes": new_axes},
+                "metadata": output_metadata,
             }
         }
     }
@@ -165,23 +210,44 @@ def expand_dims(inputs: dict, params: dict, work_dir: Path) -> dict:
     image_ref = inputs.get("image") or {}
     uri = image_ref.get("uri")
     if not uri:
-        raise ValueError("Input 'image' must include uri")
+        raise ValueError("Error in base.expand_dims: Input 'image' must include uri")
 
     data = load_image(uri_to_path(str(uri)))
-    axes = str((image_ref.get("metadata") or {}).get("axes") or "")
+    metadata = image_ref.get("metadata") or {}
+    axes = str(metadata.get("axes") or "")
 
-    axis_idx = _normalize_insert_axis(validated.axis, data.ndim)
+    if validated.new_axis_name in axes:
+        raise ValueError(
+            "Error in base.expand_dims: Axis name "
+            f"'{validated.new_axis_name}' already exists in axes '{axes}'. Use a unique name."
+        )
+
+    try:
+        axis_idx = _normalize_insert_axis(validated.axis, data.ndim)
+    except ValueError as exc:
+        raise ValueError(f"Error in base.expand_dims: {exc}") from exc
     expanded = np.expand_dims(data, axis=axis_idx)
     new_axes = _insert_axis_name(axes, axis_idx, validated.new_axis_name)
 
     out_path = _write_ome_tiff(expanded, work_dir, "expanded.ome.tiff", new_axes)
+    output_metadata = {"axes": new_axes}
+    physical_pixel_sizes = _extract_physical_pixel_sizes(metadata)
+    if physical_pixel_sizes is not None:
+        expanded_sizes = {}
+        for axis in new_axes:
+            if axis == validated.new_axis_name:
+                expanded_sizes[axis] = None
+            elif axis in physical_pixel_sizes:
+                expanded_sizes[axis] = physical_pixel_sizes[axis]
+        output_metadata["physical_pixel_sizes"] = expanded_sizes
+
     return {
         "outputs": {
             "output": {
                 "type": "BioImageRef",
                 "format": "OME-TIFF",
                 "path": str(out_path),
-                "metadata": {"axes": new_axes},
+                "metadata": output_metadata,
             }
         }
     }
@@ -192,25 +258,40 @@ def moveaxis(inputs: dict, params: dict, work_dir: Path) -> dict:
     image_ref = inputs.get("image") or {}
     uri = image_ref.get("uri")
     if not uri:
-        raise ValueError("Input 'image' must include uri")
+        raise ValueError("Error in base.moveaxis: Input 'image' must include uri")
 
     data = load_image(uri_to_path(str(uri)))
-    axes = str((image_ref.get("metadata") or {}).get("axes") or "")
+    metadata = image_ref.get("metadata") or {}
+    axes = str(metadata.get("axes") or "")
 
-    source_idx = _resolve_axis_index(validated.source, axes, data.ndim)
-    dest_idx = _normalize_move_destination(validated.destination, data.ndim)
+    try:
+        source_idx = _resolve_axis_index(validated.source, axes, data.ndim)
+    except ValueError as exc:
+        raise ValueError(f"Error in base.moveaxis: {exc}") from exc
+    try:
+        dest_idx = _normalize_move_destination(validated.destination, data.ndim)
+    except ValueError as exc:
+        raise ValueError(f"Error in base.moveaxis: {exc}") from exc
 
     moved = np.moveaxis(data, source_idx, dest_idx)
     new_axes = _move_axis_name(axes, source_idx, dest_idx)
 
     out_path = _write_ome_tiff(moved, work_dir, "moved.ome.tiff", new_axes)
+    output_metadata = {"axes": new_axes}
+    physical_pixel_sizes = _extract_physical_pixel_sizes(metadata)
+    if physical_pixel_sizes is not None:
+        output_metadata["physical_pixel_sizes"] = _order_physical_pixel_sizes(
+            new_axes,
+            physical_pixel_sizes,
+        )
+
     return {
         "outputs": {
             "output": {
                 "type": "BioImageRef",
                 "format": "OME-TIFF",
                 "path": str(out_path),
-                "metadata": {"axes": new_axes},
+                "metadata": output_metadata,
             }
         }
     }
@@ -221,25 +302,40 @@ def swap_axes(inputs: dict, params: dict, work_dir: Path) -> dict:
     image_ref = inputs.get("image") or {}
     uri = image_ref.get("uri")
     if not uri:
-        raise ValueError("Input 'image' must include uri")
+        raise ValueError("Error in base.swap_axes: Input 'image' must include uri")
 
     data = load_image(uri_to_path(str(uri)))
-    axes = str((image_ref.get("metadata") or {}).get("axes") or "")
+    metadata = image_ref.get("metadata") or {}
+    axes = str(metadata.get("axes") or "")
 
-    axis1_idx = _resolve_axis_index(validated.axis1, axes, data.ndim)
-    axis2_idx = _resolve_axis_index(validated.axis2, axes, data.ndim)
+    try:
+        axis1_idx = _resolve_axis_index(validated.axis1, axes, data.ndim)
+    except ValueError as exc:
+        raise ValueError(f"Error in base.swap_axes: {exc}") from exc
+    try:
+        axis2_idx = _resolve_axis_index(validated.axis2, axes, data.ndim)
+    except ValueError as exc:
+        raise ValueError(f"Error in base.swap_axes: {exc}") from exc
 
     swapped = np.swapaxes(data, axis1_idx, axis2_idx)
     new_axes = _swap_axis_names(axes, axis1_idx, axis2_idx)
 
     out_path = _write_ome_tiff(swapped, work_dir, "swapped.ome.tiff", new_axes)
+    output_metadata = {"axes": new_axes}
+    physical_pixel_sizes = _extract_physical_pixel_sizes(metadata)
+    if physical_pixel_sizes is not None:
+        output_metadata["physical_pixel_sizes"] = _order_physical_pixel_sizes(
+            new_axes,
+            physical_pixel_sizes,
+        )
+
     return {
         "outputs": {
             "output": {
                 "type": "BioImageRef",
                 "format": "OME-TIFF",
                 "path": str(out_path),
-                "metadata": {"axes": new_axes},
+                "metadata": output_metadata,
             }
         }
     }
@@ -312,3 +408,26 @@ def _swap_axis_names(axes: str, axis1_idx: int, axis2_idx: int) -> str:
     axis_names = list(axes)
     axis_names[axis1_idx], axis_names[axis2_idx] = axis_names[axis2_idx], axis_names[axis1_idx]
     return "".join(axis_names)
+
+
+def _extract_physical_pixel_sizes(metadata: dict) -> dict[str, float | None] | None:
+    physical_pixel_sizes = metadata.get("physical_pixel_sizes")
+    if isinstance(physical_pixel_sizes, dict):
+        return dict(physical_pixel_sizes)
+    return None
+
+
+def _order_physical_pixel_sizes(
+    axes: str,
+    physical_pixel_sizes: dict[str, float | None],
+) -> dict[str, float | None]:
+    return {axis: physical_pixel_sizes[axis] for axis in axes if axis in physical_pixel_sizes}
+
+
+def _find_duplicate_axis(axes: str) -> str | None:
+    seen: set[str] = set()
+    for axis in axes:
+        if axis in seen:
+            return axis
+        seen.add(axis)
+    return None

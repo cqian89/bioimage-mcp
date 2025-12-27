@@ -66,6 +66,40 @@ def test_swap_axes_params_valid() -> None:
     assert params.axis2 == 0
 
 
+def test_relabel_axes_rejects_nonexistent_axis(monkeypatch, tmp_path: Path) -> None:
+    data = np.arange(2 * 3 * 4, dtype="uint8").reshape(2, 3, 4)
+    monkeypatch.setattr(axis_ops, "load_image", lambda _path: data)
+
+    with pytest.raises(ValueError) as excinfo:
+        axis_ops.relabel_axes(
+            inputs={"image": {"uri": "file:///tmp/sample.tif", "metadata": {"axes": "ZYX"}}},
+            params={"axis_mapping": {"W": "Z"}},
+            work_dir=tmp_path,
+        )
+
+    assert (
+        str(excinfo.value)
+        == "Error in base.relabel_axes: Axis W not found in image with axes ZYX. Check axis names."
+    )
+
+
+def test_relabel_axes_rejects_duplicate_result(monkeypatch, tmp_path: Path) -> None:
+    data = np.arange(2 * 3 * 4, dtype="uint8").reshape(2, 3, 4)
+    monkeypatch.setattr(axis_ops, "load_image", lambda _path: data)
+
+    with pytest.raises(ValueError) as excinfo:
+        axis_ops.relabel_axes(
+            inputs={"image": {"uri": "file:///tmp/sample.tif", "metadata": {"axes": "ZYX"}}},
+            params={"axis_mapping": {"Z": "Y"}},
+            work_dir=tmp_path,
+        )
+
+    assert str(excinfo.value) == (
+        "Error in base.relabel_axes: Mapping would create duplicate axis 'Y' in result 'YYX'. "
+        "Use unique target names."
+    )
+
+
 def test_relabel_axes_swap_zt(monkeypatch, tmp_path: Path) -> None:
     data = np.arange(2 * 3 * 4, dtype="uint8").reshape(2, 3, 4)
     captured: dict[str, object] = {}
@@ -87,6 +121,30 @@ def test_relabel_axes_swap_zt(monkeypatch, tmp_path: Path) -> None:
     assert result["outputs"]["output"]["format"] == "OME-TIFF"
     np.testing.assert_array_equal(captured["array"], data)
     assert captured["axes"] == "TZYX"
+
+
+def test_physical_pixel_sizes_preserved_on_relabel(monkeypatch, tmp_path: Path) -> None:
+    data = np.arange(2 * 3 * 4, dtype="uint8").reshape(2, 3, 4)
+    monkeypatch.setattr(axis_ops, "load_image", lambda _path: data)
+    monkeypatch.setattr(axis_ops, "_write_ome_tiff", lambda *_args, **_kwargs: tmp_path / "out.tif")
+
+    result = axis_ops.relabel_axes(
+        inputs={
+            "image": {
+                "uri": "file:///tmp/sample.tif",
+                "metadata": {
+                    "axes": "ZYX",
+                    "physical_pixel_sizes": {"Z": 1.0, "Y": 0.1, "X": 0.1},
+                },
+            }
+        },
+        params={"axis_mapping": {"Z": "T"}},
+        work_dir=tmp_path,
+    )
+
+    metadata = result["outputs"]["output"]["metadata"]
+    assert metadata["axes"] == "TYX"
+    assert metadata["physical_pixel_sizes"] == {"T": 1.0, "Y": 0.1, "X": 0.1}
 
 
 def test_squeeze_singleton(monkeypatch, tmp_path: Path) -> None:
@@ -112,6 +170,63 @@ def test_squeeze_singleton(monkeypatch, tmp_path: Path) -> None:
     assert captured["axes"] == "YX"
 
 
+def test_squeeze_rejects_non_singleton_axis(monkeypatch, tmp_path: Path) -> None:
+    data = np.arange(2 * 3 * 4, dtype="uint8").reshape(2, 3, 4)
+    monkeypatch.setattr(axis_ops, "load_image", lambda _path: data)
+
+    with pytest.raises(ValueError) as excinfo:
+        axis_ops.squeeze(
+            inputs={"image": {"uri": "file:///tmp/sample.tif", "metadata": {"axes": "ZYX"}}},
+            params={"axis": 0},
+            work_dir=tmp_path,
+        )
+
+    assert str(excinfo.value) == (
+        "Error in base.squeeze: Cannot squeeze axis 0 (index 0) with size 2. "
+        "Only singleton axes (size 1) can be squeezed."
+    )
+
+
+def test_physical_pixel_sizes_removed_on_squeeze(monkeypatch, tmp_path: Path) -> None:
+    data = np.arange(1 * 3 * 4, dtype="uint8").reshape(1, 3, 4)
+    monkeypatch.setattr(axis_ops, "load_image", lambda _path: data)
+    monkeypatch.setattr(axis_ops, "_write_ome_tiff", lambda *_args, **_kwargs: tmp_path / "out.tif")
+
+    result = axis_ops.squeeze(
+        inputs={
+            "image": {
+                "uri": "file:///tmp/sample.tif",
+                "metadata": {
+                    "axes": "ZYX",
+                    "physical_pixel_sizes": {"Z": 1.0, "Y": 0.1, "X": 0.1},
+                },
+            }
+        },
+        params={"axis": 0},
+        work_dir=tmp_path,
+    )
+
+    metadata = result["outputs"]["output"]["metadata"]
+    assert metadata["axes"] == "YX"
+    assert metadata["physical_pixel_sizes"] == {"Y": 0.1, "X": 0.1}
+
+
+def test_expand_dims_rejects_existing_axis(monkeypatch, tmp_path: Path) -> None:
+    data = np.arange(3 * 4, dtype="uint8").reshape(3, 4)
+    monkeypatch.setattr(axis_ops, "load_image", lambda _path: data)
+
+    with pytest.raises(ValueError) as excinfo:
+        axis_ops.expand_dims(
+            inputs={"image": {"uri": "file:///tmp/sample.tif", "metadata": {"axes": "ZYX"}}},
+            params={"axis": 0, "new_axis_name": "Z"},
+            work_dir=tmp_path,
+        )
+
+    assert str(excinfo.value) == (
+        "Error in base.expand_dims: Axis name 'Z' already exists in axes 'ZYX'. Use a unique name."
+    )
+
+
 def test_expand_dims_at_start(monkeypatch, tmp_path: Path) -> None:
     data = np.arange(3 * 4, dtype="uint8").reshape(3, 4)
     captured: dict[str, object] = {}
@@ -133,6 +248,30 @@ def test_expand_dims_at_start(monkeypatch, tmp_path: Path) -> None:
     assert result["outputs"]["output"]["format"] == "OME-TIFF"
     assert np.asarray(captured["array"]).shape == (1, 3, 4)
     assert captured["axes"] == "ZYX"
+
+
+def test_physical_pixel_sizes_added_on_expand(monkeypatch, tmp_path: Path) -> None:
+    data = np.arange(3 * 4, dtype="uint8").reshape(3, 4)
+    monkeypatch.setattr(axis_ops, "load_image", lambda _path: data)
+    monkeypatch.setattr(axis_ops, "_write_ome_tiff", lambda *_args, **_kwargs: tmp_path / "out.tif")
+
+    result = axis_ops.expand_dims(
+        inputs={
+            "image": {
+                "uri": "file:///tmp/sample.tif",
+                "metadata": {
+                    "axes": "YX",
+                    "physical_pixel_sizes": {"Y": 0.1, "X": 0.1},
+                },
+            }
+        },
+        params={"axis": 0, "new_axis_name": "Z"},
+        work_dir=tmp_path,
+    )
+
+    metadata = result["outputs"]["output"]["metadata"]
+    assert metadata["axes"] == "ZYX"
+    assert metadata["physical_pixel_sizes"] == {"Z": None, "Y": 0.1, "X": 0.1}
 
 
 def test_moveaxis_forward(monkeypatch, tmp_path: Path) -> None:
@@ -303,7 +442,7 @@ def test_swap_axes_preserves_existing_metadata_keys(monkeypatch, tmp_path: Path)
 
     metadata = result["outputs"]["output"]["metadata"]
     assert metadata["axes"] == "XYZ"
-    assert "physical_pixel_sizes" not in metadata
+    assert metadata["physical_pixel_sizes"] == {"Z": 1.0}
 
 
 def test_swap_axes_double_swap_invariant(monkeypatch, tmp_path: Path) -> None:
@@ -398,3 +537,53 @@ def test_swap_axes_out_of_bounds_error(monkeypatch, tmp_path: Path) -> None:
     message = str(excinfo.value)
     assert "5" in message
     assert "ndim=3" in message
+
+
+def test_relabel_axes_missing_uri_error(tmp_path: Path) -> None:
+    with pytest.raises(ValueError) as excinfo:
+        axis_ops.relabel_axes(
+            inputs={"image": {}}, params={"axis_mapping": {"Z": "T"}}, work_dir=tmp_path
+        )
+    assert str(excinfo.value) == "Error in base.relabel_axes: Input 'image' must include uri"
+
+
+def test_squeeze_missing_uri_error(tmp_path: Path) -> None:
+    with pytest.raises(ValueError) as excinfo:
+        axis_ops.squeeze(inputs={"image": {}}, params={"axis": 0}, work_dir=tmp_path)
+    assert str(excinfo.value) == "Error in base.squeeze: Input 'image' must include uri"
+
+
+def test_squeeze_no_singleton_axes_error(monkeypatch, tmp_path: Path) -> None:
+    # Create data with no singleton dimensions (shape 2, 3, 4)
+    data = np.zeros((2, 3, 4))
+    monkeypatch.setattr(axis_ops, "load_image", lambda _path: data)
+
+    with pytest.raises(ValueError) as excinfo:
+        axis_ops.squeeze(
+            inputs={"image": {"uri": "file:///tmp/test.tif", "metadata": {"axes": "ZYX"}}},
+            params={"axis": None},  # Auto-detect singleton axes
+            work_dir=tmp_path,
+        )
+    assert str(excinfo.value) == "Error in base.squeeze: No singleton axes to squeeze"
+
+
+def test_expand_dims_missing_uri_error(tmp_path: Path) -> None:
+    with pytest.raises(ValueError) as excinfo:
+        axis_ops.expand_dims(
+            inputs={"image": {}}, params={"axis": 0, "new_axis_name": "T"}, work_dir=tmp_path
+        )
+    assert str(excinfo.value) == "Error in base.expand_dims: Input 'image' must include uri"
+
+
+def test_moveaxis_missing_uri_error(tmp_path: Path) -> None:
+    with pytest.raises(ValueError) as excinfo:
+        axis_ops.moveaxis(
+            inputs={"image": {}}, params={"source": 0, "destination": 1}, work_dir=tmp_path
+        )
+    assert str(excinfo.value) == "Error in base.moveaxis: Input 'image' must include uri"
+
+
+def test_swap_axes_missing_uri_error(tmp_path: Path) -> None:
+    with pytest.raises(ValueError) as excinfo:
+        axis_ops.swap_axes(inputs={"image": {}}, params={"axis1": 0, "axis2": 1}, work_dir=tmp_path)
+    assert str(excinfo.value) == "Error in base.swap_axes: Input 'image' must include uri"

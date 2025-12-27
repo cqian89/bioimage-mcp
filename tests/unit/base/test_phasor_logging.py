@@ -84,3 +84,4 @@ def test_phasor_workflow_record_contains_log_ref(tmp_path: Path) -> None:
     log_ref = record.get("log_ref")
     assert log_ref, "workflow record should include log_ref"
     assert log_ref["type"] == "LogRef"
+    conn.close()

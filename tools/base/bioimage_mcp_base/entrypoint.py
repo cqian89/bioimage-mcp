@@ -174,9 +174,13 @@ def main() -> int:
                 "log": "ok (dynamic dispatch)",
             }
     except Exception as exc:  # noqa: BLE001
+        error = {"message": str(exc)}
+        error_code = getattr(exc, "code", None)
+        if error_code:
+            error["code"] = error_code
         response = {
             "ok": False,
-            "error": {"message": str(exc)},
+            "error": error,
             "outputs": {},
             "log": "failed",
         }

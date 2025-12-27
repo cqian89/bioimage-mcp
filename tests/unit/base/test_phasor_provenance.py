@@ -104,3 +104,4 @@ def test_phasor_workflow_record_includes_provenance(tmp_path: Path) -> None:
     tool_manifests = record.get("tool_manifests", [])
     versions = {tm.get("tool_id"): tm.get("tool_version") for tm in tool_manifests}
     assert versions.get("tools.base") == _manifest_tool_version("tools.base")
+    conn.close()

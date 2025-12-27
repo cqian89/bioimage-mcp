@@ -47,6 +47,7 @@ class InteractiveExecutionService:
             - run_id (if not dry_run)
             - status
             - outputs (including summaries)
+            - hints (if available)
             - error (if any)
             - log_ref (if available)
             - dry_run (if True)
@@ -108,6 +109,7 @@ class InteractiveExecutionService:
         # ExecutionService.run_workflow returns dict with run_id, status, etc.
         # It handles DB entries for RunStore and ArtifactStore.
         result = self.execution.run_workflow(spec)
+        hints = result.get("hints")
 
         # Record end time
         ended_at = datetime.now(UTC).isoformat()
@@ -178,6 +180,9 @@ class InteractiveExecutionService:
             "status": status,
             "outputs": response_outputs,
         }
+
+        if hints:
+            response["hints"] = hints
 
         if status == "failed":
             response["isError"] = True

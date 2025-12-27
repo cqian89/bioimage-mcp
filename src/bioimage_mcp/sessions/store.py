@@ -20,6 +20,22 @@ class SessionStore:
             self.conn.row_factory = sqlite3.Row
             sqlite.init_schema(self.conn)
 
+    def close(self) -> None:
+        self.conn.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+        return False
+
+    def __del__(self):
+        try:
+            self.conn.close()
+        except Exception:
+            pass
+
     def create_session(self, session_id: str, connection_hint: str | None = None) -> Session:
         # Explicitly provide fields to satisfy linter
         now = datetime.now(UTC).isoformat()

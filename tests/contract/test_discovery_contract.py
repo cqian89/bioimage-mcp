@@ -30,6 +30,7 @@ def test_discovery_list_tools_contract_shape() -> None:
     assert "name" in page["tools"][0]
     assert "description" in page["tools"][0]
     assert "tool_version" in page["tools"][0]
+    conn.close()
 
 
 def test_discovery_search_functions_contract_shape() -> None:
@@ -65,6 +66,7 @@ def test_discovery_search_functions_contract_shape() -> None:
     assert page["functions"][0]["fn_id"] == "builtin.gaussian_blur"
     assert "tool_id" in page["functions"][0]
     assert "tags" in page["functions"][0]
+    conn.close()
 
 
 def test_discovery_describe_function_returns_schema() -> None:
@@ -99,6 +101,7 @@ def test_discovery_describe_function_returns_schema() -> None:
     assert set(described.keys()).issubset(allowed_keys)
     assert described["fn_id"] == "builtin.gaussian_blur"
     assert described["schema"]["type"] == "object"
+    conn.close()
 
 
 # --- New tests for User Story 1: Discovery without ServerSession errors ---
@@ -136,6 +139,7 @@ def test_list_tools_returns_without_session_error() -> None:
     assert len(result["tools"]) > 0
     assert result["tools"][0]["tool_id"] == "tools.base"
     assert result["tools"][0]["name"] == "Base Toolkit"
+    conn.close()
 
 
 def test_search_functions_returns_matching_results() -> None:
@@ -197,6 +201,7 @@ def test_search_functions_returns_matching_results() -> None:
         assert "phasor" in fn["fn_id"].lower() or "phasor" in fn["description"].lower(), (
             f"Function {fn['fn_id']} should match 'phasor' query"
         )
+    conn.close()
 
 
 def test_list_tools_returns_paginated_response() -> None:
@@ -241,3 +246,4 @@ def test_list_tools_returns_paginated_response() -> None:
     next_page = service.list_tools(limit=2, cursor=result["next_cursor"])
     assert "tools" in next_page
     assert len(next_page["tools"]) > 0, "Next page should have more results"
+    conn.close()

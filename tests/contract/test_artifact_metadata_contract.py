@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from bioimage_mcp.artifacts.models import ArtifactRef
 from bioimage_mcp.artifacts.store import ArtifactStore
 from bioimage_mcp.config.schema import Config
 
@@ -64,3 +65,17 @@ def test_artifact_metadata_has_physical_pixel_sizes(tmp_path: Path) -> None:
 
     assert "physical_pixel_sizes" in metadata
     assert isinstance(metadata["physical_pixel_sizes"], dict)
+
+
+def test_artifact_ref_has_storage_type_field() -> None:
+    ref = ArtifactRef(
+        ref_id="test-ref-storage",
+        type="BioImageRef",
+        uri="file:///path/to/image.ome.tiff",
+        format="OME-TIFF",
+        mime_type="image/tiff",
+        size_bytes=2048,
+        created_at="2025-01-01T00:00:00Z",
+    )
+    assert ref.storage_type == "file"
+    assert ref.model_dump()["storage_type"] == "file"

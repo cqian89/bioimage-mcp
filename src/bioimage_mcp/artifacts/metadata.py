@@ -7,7 +7,56 @@ from typing import Any
 def _truncate_text(value: str, limit: int = 1024) -> str:
     if len(value) <= limit:
         return value
-    return value[:limit]
+    return f"{value[:limit]}... ({len(value)} chars)"
+
+
+def _truncate_dict(
+    value: dict,
+    *,
+    max_keys: int = 20,
+    max_string: int = 500,
+    max_depth: int = 2,
+) -> dict:
+    truncated = False
+
+    def truncate_value(item: Any, depth: int) -> Any:
+        nonlocal truncated
+        if isinstance(item, str):
+            if len(item) > max_string:
+                truncated = True
+                return item[:max_string]
+            return item
+        if depth >= max_depth:
+            if isinstance(item, (dict, list, tuple)):
+                truncated = True
+                return "..."
+            return item
+        if isinstance(item, dict):
+            result: dict = {}
+            for idx, (key, nested) in enumerate(item.items()):
+                if idx >= max_keys:
+                    truncated = True
+                    break
+                result[str(key)] = truncate_value(nested, depth + 1)
+            return result
+        if isinstance(item, (list, tuple)):
+            return [truncate_value(nested, depth + 1) for nested in item]
+        return item
+
+    result = truncate_value(value, 0)
+    if not isinstance(result, dict):
+        return {}
+
+    if truncated:
+        if "_truncated" not in result:
+            if len(result) >= max_keys:
+                last_key = next(reversed(result))
+                result.pop(last_key)
+            result["_truncated"] = True
+        else:
+            result["_truncated"] = True
+
+    return result
 
 
 def _extract_ome_xml_summary(image: Any) -> str:
@@ -96,7 +145,7 @@ def extract_image_metadata(path: Path) -> dict:
         "axes_inferred": axes_inferred,
         "file_metadata": {
             "ome_xml_summary": _extract_ome_xml_summary(image),
-            "custom_attributes": _extract_custom_attributes(image),
+            "custom_attributes": _truncate_dict(_extract_custom_attributes(image)),
         },
     }
 

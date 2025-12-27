@@ -31,6 +31,7 @@ class ArtifactRef(BaseModel):
     type: str
     uri: str
     format: str
+    storage_type: str = "file"  # "file" or "zarr-temp"
     mime_type: str
     size_bytes: int
     checksums: list[ArtifactChecksum] = Field(default_factory=list)

@@ -120,6 +120,7 @@ def mcp_services(tmp_path: Path):
     discovery.close()
     execution.close()
     artifact_store.close()
+    conn.close()
 
 
 def _resolve_input_path(inputs: dict[str, Any], repo_root: Path) -> Path | None:

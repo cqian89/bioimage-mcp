@@ -23,3 +23,4 @@ def test_run_store_sets_native_output_ref(tmp_path: Path) -> None:
     store.set_native_output_ref(run.run_id, "ref-123")
     loaded = store.get(run.run_id)
     assert loaded.native_output_ref_id == "ref-123"
+    store.close()

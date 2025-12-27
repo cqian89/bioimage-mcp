@@ -384,3 +384,4 @@ def test_describe_function_includes_manifest_hints_inputs_outputs(
     assert described["inputs"]["image"]["description"] == "Input image"
     assert described["outputs"]["output"]["description"] == "Output image"
     assert described["hints"]["inputs"]["image"]["expected_axes"] == ["T", "Y", "X"]
+    conn.close()
