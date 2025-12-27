@@ -24,7 +24,7 @@ WORKFLOW_CASES_DIR = Path(__file__).parent / "workflow_cases"
 
 
 class AsyncMCPTestClient:
-    """Async wrapper around MCPTestClient for asyncio tests."""
+    """Sync wrapper around MCPTestClient for integration tests."""
 
     def __init__(self, client: MCPTestClient) -> None:
         self._client = client
@@ -33,12 +33,10 @@ class AsyncMCPTestClient:
     def context(self) -> dict[str, Any]:
         return self._client.context
 
-    async def list_tools(
-        self, *, limit: int | None = 50, cursor: str | None = None
-    ) -> dict[str, Any]:
+    def list_tools(self, *, limit: int | None = 50, cursor: str | None = None) -> dict[str, Any]:
         return self._client.list_tools(limit=limit, cursor=cursor)
 
-    async def search_functions(
+    def search_functions(
         self,
         query: str,
         *,
@@ -57,13 +55,13 @@ class AsyncMCPTestClient:
             cursor=cursor,
         )
 
-    async def activate_functions(self, fn_ids: list[str]) -> dict[str, Any]:
+    def activate_functions(self, fn_ids: list[str]) -> dict[str, Any]:
         return self._client.activate_functions(fn_ids)
 
-    async def describe_function(self, fn_id: str) -> dict[str, Any]:
+    def describe_function(self, fn_id: str) -> dict[str, Any]:
         return self._client.describe_function(fn_id)
 
-    async def call_tool(self, fn_id: str, inputs: dict, params: dict) -> dict[str, Any]:
+    def call_tool(self, fn_id: str, inputs: dict, params: dict) -> dict[str, Any]:
         return self._client.call_tool(fn_id, inputs, params)
 
 
@@ -208,10 +206,17 @@ def mcp_test_client(mcp_services, mock_executor, request) -> AsyncMCPTestClient:
 
 
 @pytest.fixture
-def sample_flim_image() -> dict[str, str]:
+def sample_flim_image() -> dict[str, Any]:
     repo_root = Path(__file__).resolve().parents[2]
     sample_path = repo_root / "datasets" / "FLUTE_FLIM_data_tif" / "Embryo.tif"
-    return {"type": "BioImageRef", "uri": f"file://{sample_path.absolute()}"}
+    return {
+        "type": "BioImageRef",
+        "uri": f"file://{sample_path.absolute()}",
+        "metadata": {
+            "axes": "TCZYX",
+            "shape": [1, 1, 56, 512, 512],
+        },
+    }
 
 
 def _iter_case_payloads(case_path: Path, data: Any) -> Iterable[dict[str, Any]]:

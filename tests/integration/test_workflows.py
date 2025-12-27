@@ -38,6 +38,8 @@ def _resolve_inputs(inputs: dict[str, Any], refs: dict[str, Any]) -> dict[str, A
     for key, value in inputs.items():
         if isinstance(value, str) and value.startswith("{") and value.endswith("}"):
             ref_name = value[1:-1]
+            if ref_name not in refs:
+                raise AssertionError(f"Unknown input reference: {ref_name}")
             resolved[key] = refs[ref_name]
         else:
             resolved[key] = value
@@ -45,9 +47,18 @@ def _resolve_inputs(inputs: dict[str, Any], refs: dict[str, Any]) -> dict[str, A
 
 
 def _coerce_output_ref(outputs: Any) -> Any:
-    if isinstance(outputs, dict) and len(outputs) == 1:
-        return next(iter(outputs.values()))
-    return outputs
+    """Extract the primary output artifact from outputs dict.
+
+    Filters out workflow_record and returns the single remaining output
+    if there's exactly one, otherwise returns the filtered outputs dict.
+    """
+    if not isinstance(outputs, dict):
+        return outputs
+    # Filter out workflow_record which is always present
+    filtered = {k: v for k, v in outputs.items() if k != "workflow_record"}
+    if len(filtered) == 1:
+        return next(iter(filtered.values()))
+    return filtered
 
 
 def _assert_output_type(output: Any, expected_type: str) -> None:
@@ -57,27 +68,27 @@ def _assert_output_type(output: Any, expected_type: str) -> None:
     raise AssertionError("Output is not an artifact reference with a type field")
 
 
-@pytest.mark.asyncio
 @pytest.mark.mock_execution
-async def test_full_discovery_to_execution_flow(mcp_test_client, sample_flim_image) -> None:
-    search_results = await mcp_test_client.search_functions("phasor FLIM")
+@pytest.mark.timeout(10)
+def test_full_discovery_to_execution_flow(mcp_test_client, sample_flim_image) -> None:
+    search_results = mcp_test_client.search_functions("phasor FLIM")
     fn_ids = {fn["fn_id"] for fn in search_results["functions"]}
     assert "base.phasor_from_flim" in fn_ids
 
-    await mcp_test_client.activate_functions(["base.relabel_axes", "base.phasor_from_flim"])
+    mcp_test_client.activate_functions(["base.relabel_axes", "base.phasor_from_flim"])
 
-    schema = await mcp_test_client.describe_function("base.relabel_axes")
+    schema = mcp_test_client.describe_function("base.relabel_axes")
     assert schema["fn_id"] == "base.relabel_axes"
     assert schema["schema"]["type"] == "object"
 
-    relabeled = await mcp_test_client.call_tool(
+    relabeled = mcp_test_client.call_tool(
         fn_id="base.relabel_axes",
         inputs={"image": sample_flim_image},
         params={"axis_mapping": {"Z": "T", "T": "Z"}},
     )
     relabeled_output = _coerce_output_ref(relabeled["outputs"])
 
-    phasor = await mcp_test_client.call_tool(
+    phasor = mcp_test_client.call_tool(
         fn_id="base.phasor_from_flim",
         inputs={"dataset": relabeled_output},
         params={"harmonic": 1},
@@ -92,19 +103,24 @@ async def test_full_discovery_to_execution_flow(mcp_test_client, sample_flim_ima
     _assert_output_type(outputs["intensity_image"], "BioImageRef")
 
 
-@pytest.mark.asyncio
 @pytest.mark.real_execution
-async def test_flim_phasor_golden_path(mcp_test_client, sample_flim_image) -> None:
-    await mcp_test_client.activate_functions(["base.relabel_axes", "base.phasor_from_flim"])
+@pytest.mark.timeout(60)
+def test_flim_phasor_golden_path(mcp_test_client, sample_flim_image) -> None:
+    sample_uri = sample_flim_image["uri"]
+    sample_path = Path(sample_uri.replace("file://", ""))
+    if not sample_path.exists():
+        pytest.skip(f"Missing FLIM dataset at {sample_path}")
 
-    relabeled = await mcp_test_client.call_tool(
+    mcp_test_client.activate_functions(["base.relabel_axes", "base.phasor_from_flim"])
+
+    relabeled = mcp_test_client.call_tool(
         fn_id="base.relabel_axes",
         inputs={"image": sample_flim_image},
         params={"axis_mapping": {"Z": "T", "T": "Z"}},
     )
     relabeled_output = _coerce_output_ref(relabeled["outputs"])
 
-    phasor = await mcp_test_client.call_tool(
+    phasor = mcp_test_client.call_tool(
         fn_id="base.phasor_from_flim",
         inputs={"dataset": relabeled_output},
         params={"harmonic": 1},
@@ -119,10 +135,10 @@ async def test_flim_phasor_golden_path(mcp_test_client, sample_flim_image) -> No
     _assert_output_type(outputs["intensity_image"], "BioImageRef")
 
 
-@pytest.mark.asyncio
 @pytest.mark.mock_execution
+@pytest.mark.timeout(10)
 @pytest.mark.parametrize("case_path, case_data", _load_workflow_cases())
-async def test_workflow_from_yaml(
+def test_workflow_from_yaml(
     mcp_test_client, case_path: Path | None, case_data: dict[str, Any] | None
 ) -> None:
     if case_data is None:
@@ -135,7 +151,7 @@ async def test_workflow_from_yaml(
     for step in case_data["steps"]:
         inputs = _resolve_inputs(step.get("inputs", {}), refs)
         params = step.get("params", {})
-        result = await mcp_test_client.call_tool(
+        result = mcp_test_client.call_tool(
             fn_id=step["fn_id"],
             inputs=inputs,
             params=params,
@@ -143,6 +159,9 @@ async def test_workflow_from_yaml(
         outputs = result["outputs"]
         last_output = _coerce_output_ref(outputs)
 
+        step_id = step.get("step_id")
+        if step_id:
+            refs[f"{step_id}.output"] = last_output
         if "output_ref" in step:
             refs[step["output_ref"]] = last_output
 

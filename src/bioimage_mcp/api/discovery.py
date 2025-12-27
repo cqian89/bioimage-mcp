@@ -136,6 +136,29 @@ class DiscoveryService:
         if manifest is None:
             return payload
 
+        function_def = next((fn for fn in manifest.functions if fn.fn_id == fn_id), None)
+        if function_def is None:
+            return payload
+
+        inputs: dict[str, Any] = {}
+        for port in function_def.inputs:
+            description = port.description or f"{port.name} input"
+            inputs[port.name] = {
+                "type": port.artifact_type,
+                "required": port.required,
+                "description": description,
+            }
+
+        outputs: dict[str, Any] = {}
+        for port in function_def.outputs:
+            description = port.description or f"{port.name} output"
+            outputs[port.name] = {
+                "type": port.artifact_type,
+                "description": description,
+            }
+
+        hints = function_def.hints.model_dump(exclude_none=True) if function_def.hints else None
+
         schema_cache_path = config.schema_cache_path or (
             config.artifact_store_root / "state" / "schema_cache.json"
         )
@@ -150,6 +173,9 @@ class DiscoveryService:
                 "fn_id": fn_id,
                 "schema": cached["params_schema"],
                 "introspection_source": cached.get("introspection_source"),
+                "inputs": inputs,
+                "outputs": outputs,
+                "hints": hints,
             }
             return FunctionResponse.model_validate(enriched).model_dump(
                 exclude_none=True,
@@ -175,12 +201,30 @@ class DiscoveryService:
             env_id=manifest.env_id,
         )
         if not response.get("ok"):
-            return payload
+            fallback = {
+                **payload,
+                "inputs": inputs,
+                "outputs": outputs,
+                "hints": hints,
+            }
+            return FunctionResponse.model_validate(fallback).model_dump(
+                exclude_none=True,
+                by_alias=True,
+            )
 
         result = response.get("result") or {}
         params_schema = result.get("params_schema")
         if not isinstance(params_schema, dict):
-            return payload
+            fallback = {
+                **payload,
+                "inputs": inputs,
+                "outputs": outputs,
+                "hints": hints,
+            }
+            return FunctionResponse.model_validate(fallback).model_dump(
+                exclude_none=True,
+                by_alias=True,
+            )
 
         introspection_source = str(result.get("introspection_source") or "manual")
         cache.set(
@@ -194,6 +238,9 @@ class DiscoveryService:
             "fn_id": fn_id,
             "schema": params_schema,
             "introspection_source": introspection_source,
+            "inputs": inputs,
+            "outputs": outputs,
+            "hints": hints,
         }
         return FunctionResponse.model_validate(enriched).model_dump(
             exclude_none=True,

@@ -209,7 +209,8 @@ class RegistryIndex:
         after_fn_id: str | None,
         batch_size: int,
     ) -> list[dict]:
-        q = f"%{query}%"
+        normalized = " ".join(query.split())
+        q = f"%{normalized.replace(' ', '%')}%"
         if query:
             where = "(fn_id LIKE ? OR name LIKE ? OR description LIKE ? OR tags_json LIKE ?)"
             params: list[object] = [q, q, q, q]

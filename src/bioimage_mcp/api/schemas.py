@@ -19,7 +19,7 @@ class InputRequirement(BaseModel):
     """Schema for a single input requirement."""
 
     type: ArtifactType
-    required: bool = True
+    required: bool
     description: str
     expected_axes: list[AxisName] | None = None
     preprocessing_hint: str | None = None

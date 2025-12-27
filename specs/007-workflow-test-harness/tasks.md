@@ -33,7 +33,7 @@ description: "Task list for Axis Manipulation Tools, LLM Guidance Hints & Workfl
 
 - [X] T003 [P] Update `ArtifactRef` metadata schema in `src/bioimage_mcp/artifacts/models.py` (US9, FR-020..FR-023)
 - [X] T038 [P] Extend image metadata extraction in `src/bioimage_mcp/artifacts/metadata.py` to populate `axes_inferred`, `physical_pixel_sizes`, and `file_metadata` (FR-020..FR-023)
-- [ ] T039 [P] Ensure artifact metadata is attached to both success and error tool responses in the API layer (FR-023)
+- [X] T039 [P] Ensure artifact metadata is attached to both success and error tool responses in the API layer (FR-023)
 
 - [X] T004 [P] Create `src/bioimage_mcp/api/schemas.py` with `LLMHints` and related pydantic models (US6/7/8)
 - [X] T005 [P] Create `AxisMapping` and `AxisToolParams` models in `tools/base/bioimage_mcp_base/axis_ops.py` (US1/2/3)
@@ -113,7 +113,7 @@ description: "Task list for Axis Manipulation Tools, LLM Guidance Hints & Workfl
 ### Tests for User Story 3 ⚠️ (Red)
 
 - [X] T021 [P] [US3] Create contract tests for `moveaxis` and `swap_axes` in `tests/contract/test_axis_tools_schema.py`
-- [ ] T022 [P] [US3] Create unit tests for `moveaxis` and `swap_axes` in `tests/unit/base/test_axis_ops.py` (data reorder invariants, `physical_pixel_sizes` reordering per FR-006, OME metadata updates per FR-007, and error messages per NFR-004)
+- [X] T022 [P] [US3] Create unit tests for `moveaxis` and `swap_axes` in `tests/unit/base/test_axis_ops.py` (data reorder invariants, `physical_pixel_sizes` reordering per FR-006, OME metadata updates per FR-007, and error messages per NFR-004)
 
 ### Implementation for User Story 3 (Green)
 
@@ -131,14 +131,14 @@ description: "Task list for Axis Manipulation Tools, LLM Guidance Hints & Workfl
 
 ### Tests for LLM Hints ⚠️ (Red)
 
-- [ ] T026 [P] [US6/7/8] Expand schema validation tests for hints in `tests/contract/test_hints_schema.py` (describe_function + call_tool success + call_tool error)
+- [X] T026 [P] [US6/7/8] Expand schema validation tests for hints in `tests/contract/test_hints_schema.py` (describe_function + call_tool success + call_tool error)
 
 ### Implementation for LLM Hints (Green)
 
-- [ ] T027 [US6] Update `DiscoveryService.describe_function` in `src/bioimage_mcp/api/discovery.py` to inject hints and include FR-016 outputs schema (type, description for each output)
-- [ ] T028 [US7] Update `ToolService.call_tool` in `src/bioimage_mcp/api/tools.py` to return success hints
-- [ ] T029 [US8] Update `ToolService.call_tool` in `src/bioimage_mcp/api/tools.py` to handle error hints including SC-010 requirement: axis errors return `suggested_fix` with `fn_id=base.relabel_axes`
-- [ ] T030 [US6] Add hints to tool definitions in `tools/base/manifest.yaml` including `supported_storage_types` per FR-015/FR-019
+- [X] T027 [US6] Update `DiscoveryService.describe_function` in `src/bioimage_mcp/api/discovery.py` to inject hints and include FR-016 outputs schema (type, description for each output)
+- [X] T028 [US7] Update `ToolService.call_tool` in `src/bioimage_mcp/api/tools.py` to return success hints
+- [X] T029 [US8] Update `ToolService.call_tool` in `src/bioimage_mcp/api/tools.py` to handle error hints including SC-010 requirement: axis errors return `suggested_fix` with `fn_id=base.relabel_axes`
+- [X] T030 [US6] Add hints to tool definitions in `tools/base/manifest.yaml` including `supported_storage_types` per FR-015/FR-019
 
 ---
 
@@ -146,19 +146,19 @@ description: "Task list for Axis Manipulation Tools, LLM Guidance Hints & Workfl
 
 **Goal**: Ensure all registered tools have valid schemas.
 
-- [ ] T031 [US5] Add parametrized schema validation test for all registered functions (generic registry-wide test, not axis-only)
+- [X] T031 [US5] Add parametrized schema validation test for all registered functions (generic registry-wide test, not axis-only)
 
 ---
 
 ## Phase 9: Polish & Cross-Cutting Concerns
 
-- [ ] T032 [P] Update documentation in `docs/reference/tools.md` with new axis tools
-- [ ] T041 [P] Add/verify `replay_workflow` workflow harness coverage (integration test proving record→replay succeeds) (Constitution IV)
-- [ ] T042 [P] Verify NFR-002 time budgets for workflow tests in both mock and real modes using `pytest --durations=20`; add pytest markers `@pytest.mark.timeout(10)` for mock, `@pytest.mark.timeout(60)` for real
-- [ ] T043 [P] Verify NFR-003 orchestration coverage target (>=80% in mock mode) using `pytest --cov=src/bioimage_mcp/api --cov-report=term-missing` and assert coverage >= 80%
-- [ ] T044 [P] Implement `storage_type` handling in orchestrator: detect per-tool supported storage types from manifest, auto-materialize zarr-temp to OME-TIFF when tool requires `file` storage (per spec.md "Cross-Environment Artifact Handling" MVP scope)
-- [ ] T033 Run full validation suite (all tests, linting)
-- [ ] T034 [P] Verify performance criteria (<1s for axis tools) (NFR-001)
+- [X] T032 [P] Update documentation in `docs/reference/tools.md` with new axis tools
+- [X] T041 [P] Add/verify `replay_workflow` workflow harness coverage (integration test proving record→replay succeeds) (Constitution IV)
+- [X] T042 [P] Verify NFR-002 time budgets for workflow tests in both mock and real modes using `pytest --durations=20`; add pytest markers `@pytest.mark.timeout(10)` for mock, `@pytest.mark.timeout(60)` for real
+- [X] T043 [P] Verify NFR-003 orchestration coverage target (>=80% in mock mode) using `pytest --cov=src/bioimage_mcp/api --cov-report=term-missing` and assert coverage >= 80%
+- [X] T044 [P] Implement `storage_type` handling in orchestrator: detect per-tool supported storage types from manifest, auto-materialize zarr-temp to OME-TIFF when tool requires `file` storage (per spec.md "Cross-Environment Artifact Handling" MVP scope)
+- [X] T033 Run full validation suite (all tests, linting)
+- [X] T034 [P] Verify performance criteria (<1s for axis tools) (NFR-001) - unit tests complete in 0.40s
 
 ---
 

@@ -527,8 +527,17 @@ def phasor_calibrate(*, inputs: dict, params: dict, work_dir: Path) -> dict[str,
     sample_path = uri_to_path(str(sample_uri))
     ref_path = uri_to_path(str(ref_uri))
 
-    sample_data = load_image(sample_path)
-    ref_data = load_image(ref_path)
+    sample_data = np.squeeze(load_image(sample_path))
+    ref_data = np.squeeze(load_image(ref_path))
+
+    if sample_data.ndim != 3:
+        raise ValueError(
+            "Expected phasor image with shape (C, Y, X) after squeezing singleton axes"
+        )
+    if ref_data.ndim != 3:
+        raise ValueError(
+            "Expected reference phasor image with shape (C, Y, X) after squeezing singleton axes"
+        )
 
     # Validate 2-channel structure
     if sample_data.shape[0] != 2:

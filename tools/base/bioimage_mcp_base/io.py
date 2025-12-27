@@ -3,7 +3,29 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
-from bioimage_mcp_base.utils import load_image_fallback, uri_to_path
+from bioimage_mcp_base.utils import (
+    _load_image_fallback_with_readers,
+    _try_bioio_bioformats,
+    _try_bioio_ome_tiff,
+    uri_to_path,
+)
+
+__all__ = [
+    "convert_to_ome_zarr",
+    "export_ome_tiff",
+    "load_image_fallback",
+    "_try_bioio_ome_tiff",
+    "_try_bioio_bioformats",
+]
+
+
+def load_image_fallback(path: Path) -> tuple[np.ndarray, list[dict[str, str]], str]:
+    """Proxy to utils.load_image_fallback with patchable readers."""
+    return _load_image_fallback_with_readers(
+        path,
+        _try_bioio_ome_tiff,
+        _try_bioio_bioformats,
+    )
 
 
 def convert_to_ome_zarr(*, inputs: dict, params: dict, work_dir: Path) -> Path:

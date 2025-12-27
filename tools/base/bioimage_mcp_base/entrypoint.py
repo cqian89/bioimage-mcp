@@ -14,6 +14,13 @@ if str(TOOLS_ROOT) not in sys.path:
     sys.path.insert(0, str(TOOLS_ROOT))
 
 from bioimage_mcp_base import descriptions as desc
+from bioimage_mcp_base.axis_ops import (
+    expand_dims,
+    moveaxis,
+    relabel_axes,
+    squeeze,
+    swap_axes,
+)
 from bioimage_mcp_base.io import convert_to_ome_zarr, export_ome_tiff
 from bioimage_mcp_base.preprocess import (
     bilateral,
@@ -58,6 +65,11 @@ FN_MAP = {
     "base.flip": (flip, desc.FLIP_DESCRIPTIONS),
     "base.crop": (crop, desc.CROP_DESCRIPTIONS),
     "base.pad": (pad, desc.PAD_DESCRIPTIONS),
+    "base.relabel_axes": (relabel_axes, desc.RELABEL_AXES_DESCRIPTIONS),
+    "base.squeeze": (squeeze, desc.SQUEEZE_DESCRIPTIONS),
+    "base.expand_dims": (expand_dims, desc.EXPAND_DIMS_DESCRIPTIONS),
+    "base.moveaxis": (moveaxis, desc.MOVEAXIS_DESCRIPTIONS),
+    "base.swap_axes": (swap_axes, desc.SWAP_AXES_DESCRIPTIONS),
     "base.normalize_intensity": (normalize_intensity, desc.NORMALIZE_INTENSITY_DESCRIPTIONS),
     "base.gaussian": (gaussian, desc.GAUSSIAN_DESCRIPTIONS),
     "base.median": (median, desc.MEDIAN_DESCRIPTIONS),

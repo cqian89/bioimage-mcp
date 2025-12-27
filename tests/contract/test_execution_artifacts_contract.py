@@ -27,7 +27,9 @@ def test_run_workflow_contract_shape(tmp_path: Path, monkeypatch) -> None:
     svc = ExecutionService(config, artifact_store=store)
     response = svc.run_workflow({"steps": [{"fn_id": "fn.one", "params": {}, "inputs": {}}]})
 
-    assert set(response.keys()) == {"run_id", "status", "workflow_record_ref_id"}
+    allowed_keys = {"run_id", "status", "workflow_record_ref_id", "hints"}
+    assert {"run_id", "status", "workflow_record_ref_id"}.issubset(response.keys())
+    assert set(response.keys()).issubset(allowed_keys)
 
 
 def test_get_artifact_contract_shape(tmp_path: Path) -> None:

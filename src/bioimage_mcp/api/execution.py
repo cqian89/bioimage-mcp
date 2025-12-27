@@ -15,6 +15,72 @@ from bioimage_mcp.runtimes.executor import execute_tool
 from bioimage_mcp.runtimes.protocol import validate_workflow_compatibility
 
 
+def _get_input_storage_requirements(
+    config: Config,
+    fn_id: str,
+) -> dict[str, list[str]]:
+    """Get supported storage types for each input from manifest hints."""
+    manifests, _diagnostics = load_manifests(config.tool_manifest_roots)
+    for manifest in manifests:
+        for fn in manifest.functions:
+            if fn.fn_id == fn_id and fn.hints:
+                return {
+                    name: req.supported_storage_types or ["file", "zarr-temp"]
+                    for name, req in (fn.hints.inputs or {}).items()
+                    if hasattr(req, "supported_storage_types")
+                }
+    return {}
+
+
+def _needs_materialization(artifact_ref: dict, supported_types: list[str]) -> bool:
+    """Check if artifact needs materialization to a supported storage type."""
+    storage_type = artifact_ref.get("storage_type", "file")
+    return storage_type == "zarr-temp" and "zarr-temp" not in supported_types
+
+
+def _materialize_zarr_to_file(
+    artifact_ref: dict,
+    work_dir: Path,
+    artifact_store: ArtifactStore,
+) -> dict:
+    """Materialize a zarr-temp artifact to OME-TIFF file.
+
+    Returns the new artifact reference with storage_type="file".
+    """
+    import bioio
+    from tifffile import imwrite
+
+    uri = artifact_ref.get("uri", "")
+    if uri.startswith("file://"):
+        path = Path(uri[7:])
+    else:
+        path = Path(uri)
+
+    img = bioio.BioImage(str(path))
+    data = img.data
+    axes = img.dims.order
+
+    ref_id = artifact_ref.get("ref_id", "materialized")
+    out_path = work_dir / f"materialized-{ref_id}.ome.tiff"
+    imwrite(
+        str(out_path),
+        data,
+        compression="zlib",
+        metadata={"axes": axes},
+    )
+
+    artifact_type = artifact_ref.get("type", "BioImageRef")
+    new_ref = artifact_store.import_file(
+        out_path,
+        artifact_type=artifact_type,
+        format="OME-TIFF",
+    )
+    result = new_ref.model_dump()
+    result["storage_type"] = "file"
+    result["materialized_from"] = artifact_ref.get("ref_id")
+    return result
+
+
 def execute_step(
     *,
     config: Config,
@@ -162,6 +228,15 @@ class ExecutionService:
             for err in errors
         ]
 
+    def _get_function_hints(self, fn_id: str) -> dict | None:
+        """Load hints for a function from its manifest."""
+        manifests, _diagnostics = load_manifests(self._config.tool_manifest_roots)
+        for manifest in manifests:
+            for fn in manifest.functions:
+                if fn.fn_id == fn_id:
+                    return fn.hints.model_dump() if fn.hints else None
+        return None
+
     def run_workflow(self, spec: dict, *, skip_validation: bool = False) -> dict:
         steps = spec.get("steps") or []
         if len(steps) != 1:
@@ -182,6 +257,16 @@ class ExecutionService:
         inputs = step.get("inputs") or {}
         timeout_seconds = (spec.get("run_opts") or {}).get("timeout_seconds")
 
+        input_metadata: dict[str, dict] = {}
+        for name, inp in inputs.items():
+            if isinstance(inp, dict) and "ref_id" in inp:
+                ref_id = inp["ref_id"]
+                try:
+                    ref = self._artifact_store.get(ref_id)
+                    input_metadata[name] = ref.metadata or {}
+                except KeyError:
+                    input_metadata[name] = {}
+
         # Create the run early so we can use its ID to isolate outputs (FR-009).
         log_ref = self._artifact_store.write_log("workflow started")
         run = self._run_store.create_run(
@@ -196,6 +281,23 @@ class ExecutionService:
         work_dir.mkdir(parents=True, exist_ok=True)
 
         self._run_store.set_status(run.run_id, "running")
+
+        storage_requirements = _get_input_storage_requirements(self._config, fn_id)
+        materialized_inputs: dict[str, str] = {}
+        for input_name, input_ref in inputs.items():
+            if not isinstance(input_ref, dict):
+                continue
+            if input_name not in storage_requirements:
+                continue
+            supported = storage_requirements[input_name]
+            if _needs_materialization(input_ref, supported):
+                new_ref = _materialize_zarr_to_file(input_ref, work_dir, self._artifact_store)
+                inputs[input_name] = new_ref
+                materialized_inputs[input_name] = input_ref.get("ref_id", "unknown")
+
+        if materialized_inputs:
+            run.provenance["materialized_inputs"] = materialized_inputs
+            self._run_store.update_provenance(run.run_id, run.provenance)
 
         response, log_text, exit_code = execute_step(
             config=self._config,
@@ -214,7 +316,23 @@ class ExecutionService:
             self._run_store.set_status(
                 run.run_id, "failed", error=response.get("error") or {"exit_code": exit_code}
             )
-            return {"run_id": run.run_id, "status": "failed", "log_ref_id": log_ref.ref_id}
+            hints = self._get_function_hints(fn_id)
+            error_hints = hints.get("error_hints") if hints else {}
+            error_response_hints = None
+            if error_hints or input_metadata:
+                general_hints = error_hints.get("GENERAL", {}) if error_hints else {}
+                error_response_hints = {
+                    "diagnosis": general_hints.get("diagnosis"),
+                    "suggested_fix": general_hints.get("suggested_fix"),
+                    "related_metadata": input_metadata,
+                }
+            return {
+                "run_id": run.run_id,
+                "status": "failed",
+                "log_ref_id": log_ref.ref_id,
+                "input_metadata": input_metadata,
+                "hints": error_response_hints,
+            }
 
         outputs_payload: dict = {}
         outputs = response.get("outputs") or {}
@@ -294,10 +412,13 @@ class ExecutionService:
         self._run_store.set_native_output_ref(run.run_id, workflow_record_ref.ref_id)
 
         self._run_store.set_status(run.run_id, "succeeded", outputs=outputs_payload)
+        hints = self._get_function_hints(fn_id)
+        success_hints = hints.get("success_hints") if hints else None
         return {
             "run_id": run.run_id,
             "status": "succeeded",
             "workflow_record_ref_id": workflow_record_ref.ref_id,
+            "hints": success_hints,
         }
 
     def get_run_status(self, run_id: str) -> dict:

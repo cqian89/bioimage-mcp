@@ -22,66 +22,71 @@ General purpose image processing tools powered by `scikit-image`.
 
 #### `base.relabel_axes`
 Description: Relabel axis names (e.g., Z to T) for pipeline compatibility.
+Inputs:
+*   `image` (BioImageRef, required)
 Parameters:
-*   `axis_mapping` (object): Mapping of existing axis names to new axis names.
+*   `axis_mapping` (object, required): Mapping from existing axis names to new axis names (applied atomically).
+Outputs:
+*   `output` (BioImageRef)
 Example usage:
 ```
 base.relabel_axes(image=<BioImageRef>, axis_mapping={"Z": "T", "T": "Z"})
 ```
-Common use cases:
-*   Align FLIM time/bin axis with downstream tools expecting `T`.
-*   Standardize axis labels across datasets before batch processing.
 
 #### `base.squeeze`
 Description: Remove singleton (size=1) dimensions from an image.
+Inputs:
+*   `image` (BioImageRef, required)
 Parameters:
-*   `axis` (string | integer, optional): Axis name or index to squeeze. Omit to squeeze all singleton axes.
+*   `axis` (string | integer, optional): Axis name or index to squeeze. Omit or set null to squeeze all singleton axes.
+Outputs:
+*   `output` (BioImageRef)
 Example usage:
 ```
 base.squeeze(image=<BioImageRef>, axis="Z")
 ```
-Common use cases:
-*   Remove a trailing singleton Z or C axis before 2D processing.
-*   Simplify images exported from microscopy systems with extra length-1 axes.
 
 #### `base.expand_dims`
 Description: Add a new dimension at a specified position.
+Inputs:
+*   `image` (BioImageRef, required)
 Parameters:
-*   `axis` (integer): Axis index where the new dimension is inserted.
-*   `new_axis_name` (string): Axis name for the new dimension.
+*   `axis` (integer, required): Position to insert new axis (0=first, -1=before last).
+*   `new_axis_name` (string, required): Name for new axis (single uppercase letter).
+Outputs:
+*   `output` (BioImageRef)
 Example usage:
 ```
 base.expand_dims(image=<BioImageRef>, axis=0, new_axis_name="T")
 ```
-Common use cases:
-*   Add a time axis for single-frame images before time-series workflows.
-*   Insert a channel axis for single-channel images prior to multi-channel tools.
 
 #### `base.moveaxis`
 Description: Move an axis from one position to another.
+Inputs:
+*   `image` (BioImageRef, required)
 Parameters:
-*   `source` (string | integer): Source axis name or index.
-*   `destination` (integer): Destination axis index.
+*   `source` (string | integer, required): Source axis name or index.
+*   `destination` (integer, required): Destination position (index).
+Outputs:
+*   `output` (BioImageRef)
 Example usage:
 ```
 base.moveaxis(image=<BioImageRef>, source="C", destination=0)
 ```
-Common use cases:
-*   Reorder axes to match expected layout for a downstream model.
-*   Move channel or time axis to the front for batch operations.
 
 #### `base.swap_axes`
 Description: Swap two axes in an image.
+Inputs:
+*   `image` (BioImageRef, required)
 Parameters:
-*   `axis1` (string | integer): First axis name or index.
-*   `axis2` (string | integer): Second axis name or index.
+*   `axis1` (string | integer, required): First axis name or index.
+*   `axis2` (string | integer, required): Second axis name or index.
+Outputs:
+*   `output` (BioImageRef)
 Example usage:
 ```
 base.swap_axes(image=<BioImageRef>, axis1="Z", axis2="T")
 ```
-Common use cases:
-*   Exchange Z and T axes when acquisition metadata is reversed.
-*   Correct axis order before projection or segmentation tools.
 
 ### Pre-processing & Filters
 *   `base.normalize_intensity`: Normalize intensities.

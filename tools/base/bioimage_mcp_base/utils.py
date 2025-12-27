@@ -47,30 +47,19 @@ def _try_bioio_bioformats(path: Path) -> np.ndarray:
         raise RuntimeError("bioio-bioformats not available")
 
 
-def load_image_fallback(path: Path) -> tuple[np.ndarray, list[dict[str, str]], str]:
-    """Load image with explicit fallback chain.
-
-    Tries readers in order:
-    1. bioio-ome-tiff (fast, pure Python)
-    2. bioio-bioformats (heavier, Java-based, more compatible)
-    3. tifffile (minimal fallback, raw pixels only)
-
-    Args:
-        path: Path to the image file
-
-    Returns:
-        Tuple of (data, warnings, reader_used) where:
-        - data: numpy array of image data
-        - warnings: list of warning dicts with 'code' and 'message' keys
-        - reader_used: string identifying which reader succeeded
-    """
+def _load_image_fallback_with_readers(
+    path: Path,
+    try_ome_tiff,
+    try_bioformats,
+) -> tuple[np.ndarray, list[dict[str, str]], str]:
+    """Load image with explicit fallback chain using supplied readers."""
     import tifffile
 
     warnings: list[dict[str, str]] = []
 
     # 1. Try bioio-ome-tiff
     try:
-        data = _try_bioio_ome_tiff(path)
+        data = try_ome_tiff(path)
         return data, warnings, "bioio-ome-tiff"
     except Exception as e:
         warnings.append(
@@ -82,7 +71,7 @@ def load_image_fallback(path: Path) -> tuple[np.ndarray, list[dict[str, str]], s
 
     # 2. Try bioio-bioformats
     try:
-        data = _try_bioio_bioformats(path)
+        data = try_bioformats(path)
         return data, warnings, "bioio-bioformats"
     except Exception as e:
         warnings.append(
@@ -101,6 +90,30 @@ def load_image_fallback(path: Path) -> tuple[np.ndarray, list[dict[str, str]], s
     )
     data = tifffile.imread(str(path))
     return data, warnings, "tifffile"
+
+
+def load_image_fallback(path: Path) -> tuple[np.ndarray, list[dict[str, str]], str]:
+    """Load image with explicit fallback chain.
+
+    Tries readers in order:
+    1. bioio-ome-tiff (fast, pure Python)
+    2. bioio-bioformats (heavier, Java-based, more compatible)
+    3. tifffile (minimal fallback, raw pixels only)
+
+    Args:
+        path: Path to the image file
+
+    Returns:
+        Tuple of (data, warnings, reader_used) where:
+        - data: numpy array of image data
+        - warnings: list of warning dicts with 'code' and 'message' keys
+        - reader_used: string identifying which reader succeeded
+    """
+    return _load_image_fallback_with_readers(
+        path,
+        _try_bioio_ome_tiff,
+        _try_bioio_bioformats,
+    )
 
 
 def load_image(path: Path) -> np.ndarray:

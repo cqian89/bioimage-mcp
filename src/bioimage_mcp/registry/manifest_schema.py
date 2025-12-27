@@ -4,10 +4,13 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from bioimage_mcp.api.schemas import FunctionHints
+
 
 class Port(BaseModel):
     name: str
     artifact_type: str
+    description: str | None = None
     format: str | None = None
     required: bool = True
 
@@ -27,6 +30,7 @@ class Function(BaseModel):
     inputs: list[Port] = Field(default_factory=list)
     outputs: list[Port] = Field(default_factory=list)
     params_schema: dict = Field(default_factory=dict)
+    hints: FunctionHints | None = None
     resource_hints: dict | None = None
     introspection_source: str | None = Field(
         default=None,
@@ -105,6 +109,9 @@ class FunctionResponse(BaseModel):
     fn_id: str
     params_schema: dict = Field(alias="schema")
     introspection_source: str | None = None
+    inputs: dict | None = None
+    outputs: dict | None = None
+    hints: dict | None = None
 
     @model_validator(mode="after")
     def _validate_schema(self) -> FunctionResponse:

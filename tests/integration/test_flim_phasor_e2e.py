@@ -84,7 +84,7 @@ def test_flim_phasor_e2e(tmp_path: Path) -> None:
                         "uri": _path_to_uri(dataset_file),
                     }
                 },
-                "params": {},
+                "params": {"time_axis": "Z"},
             }
         ]
     }

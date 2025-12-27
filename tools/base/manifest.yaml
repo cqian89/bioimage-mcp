@@ -506,15 +506,21 @@ functions:
     hints:
       inputs:
         dataset:
+          type: BioImageRef
+          required: true
+          description: FLIM dataset
           expected_axes: ["T", "Y", "X"]
           preprocessing_hint: "If T has only 1 sample, check if FLIM bins are in Z axis"
           supported_storage_types: ["file"]
       outputs:
         g_image:
+          type: BioImageRef
           description: "Phasor G coordinates (real component)"
         s_image:
+          type: BioImageRef
           description: "Phasor S coordinates (imaginary component)"
         intensity_image:
+          type: BioImageRef
           description: "Sum intensity image"
       success_hints:
         next_steps:
@@ -622,11 +628,49 @@ functions:
         format: OME-TIFF
         required: true
     params_schema:
+      $defs:
+        AxisMapping:
+          type: object
+          additionalProperties:
+            type: string
+            pattern: "^[A-Z]$"
+          description: "Mapping from old axis names to new names"
+          example:
+            Z: "T"
+            T: "Z"
+        AxisSpec:
+          oneOf:
+            - type: integer
+              description: "Axis index (0-based, negative allowed)"
+            - type: string
+              pattern: "^[A-Z]$"
+              description: "Axis name (single uppercase letter)"
       type: object
+      required: [axis_mapping]
       properties:
         axis_mapping:
-          type: object
-          description: Mapping of existing axis names to new axis names.
+          $ref: "#/$defs/AxisMapping"
+          description: "Mapping from old axis names to new names. Applied atomically."
+      additionalProperties: false
+      examples:
+        - axis_mapping: {"Z": "T", "T": "Z"}
+        - axis_mapping: {"Y": "Z", "Z": "Y"}
+    hints:
+      inputs:
+        image:
+          type: BioImageRef
+          required: true
+          description: Input image
+          expected_axes: ["T", "C", "Z", "Y", "X"]
+          preprocessing_hint: Ensure axes are correctly labeled before transformation
+      outputs:
+        output:
+          type: BioImageRef
+          description: Image with relabeled axes
+      success_hints:
+        next_steps:
+          - fn_id: base.phasor_from_flim
+            reason: If relabeling for FLIM, proceed with phasor analysis
 
   - fn_id: base.squeeze
     tool_id: tools.base
@@ -643,13 +687,34 @@ functions:
         format: OME-TIFF
         required: true
     params_schema:
+      $defs:
+        AxisMapping:
+          type: object
+          additionalProperties:
+            type: string
+            pattern: "^[A-Z]$"
+          description: "Mapping from old axis names to new names"
+          example:
+            Z: "T"
+            T: "Z"
+        AxisSpec:
+          oneOf:
+            - type: integer
+              description: "Axis index (0-based, negative allowed)"
+            - type: string
+              pattern: "^[A-Z]$"
+              description: "Axis name (single uppercase letter)"
       type: object
       properties:
         axis:
-          type:
-            - string
-            - integer
-          description: Optional axis name or index to squeeze.
+          $ref: "#/$defs/AxisSpec"
+          description: "Axis to squeeze. If null, squeeze all singleton axes."
+          nullable: true
+      additionalProperties: false
+      examples:
+        - axis: 0
+        - axis: "Z"
+        - {}
 
   - fn_id: base.expand_dims
     tool_id: tools.base
@@ -666,14 +731,39 @@ functions:
         format: OME-TIFF
         required: true
     params_schema:
+      $defs:
+        AxisMapping:
+          type: object
+          additionalProperties:
+            type: string
+            pattern: "^[A-Z]$"
+          description: "Mapping from old axis names to new names"
+          example:
+            Z: "T"
+            T: "Z"
+        AxisSpec:
+          oneOf:
+            - type: integer
+              description: "Axis index (0-based, negative allowed)"
+            - type: string
+              pattern: "^[A-Z]$"
+              description: "Axis name (single uppercase letter)"
       type: object
+      required: [axis, new_axis_name]
       properties:
         axis:
           type: integer
-          description: Axis index where the new dimension is inserted.
+          description: "Position to insert new axis (0=first, -1=before last)"
         new_axis_name:
           type: string
-          description: Axis name for the new dimension.
+          pattern: "^[A-Z]$"
+          description: "Name for new axis (single uppercase letter)"
+      additionalProperties: false
+      examples:
+        - axis: 0
+          new_axis_name: "Z"
+        - axis: -1
+          new_axis_name: "C"
 
   - fn_id: base.moveaxis
     tool_id: tools.base
@@ -690,16 +780,38 @@ functions:
         format: OME-TIFF
         required: true
     params_schema:
+      $defs:
+        AxisMapping:
+          type: object
+          additionalProperties:
+            type: string
+            pattern: "^[A-Z]$"
+          description: "Mapping from old axis names to new names"
+          example:
+            Z: "T"
+            T: "Z"
+        AxisSpec:
+          oneOf:
+            - type: integer
+              description: "Axis index (0-based, negative allowed)"
+            - type: string
+              pattern: "^[A-Z]$"
+              description: "Axis name (single uppercase letter)"
       type: object
+      required: [source, destination]
       properties:
         source:
-          type:
-            - string
-            - integer
-          description: Source axis name or index.
+          $ref: "#/$defs/AxisSpec"
+          description: "Source axis to move"
         destination:
           type: integer
-          description: Destination axis index.
+          description: "Destination position (index)"
+      additionalProperties: false
+      examples:
+        - source: 0
+          destination: 2
+        - source: "C"
+          destination: -1
 
   - fn_id: base.swap_axes
     tool_id: tools.base
@@ -716,18 +828,38 @@ functions:
         format: OME-TIFF
         required: true
     params_schema:
+      $defs:
+        AxisMapping:
+          type: object
+          additionalProperties:
+            type: string
+            pattern: "^[A-Z]$"
+          description: "Mapping from old axis names to new names"
+          example:
+            Z: "T"
+            T: "Z"
+        AxisSpec:
+          oneOf:
+            - type: integer
+              description: "Axis index (0-based, negative allowed)"
+            - type: string
+              pattern: "^[A-Z]$"
+              description: "Axis name (single uppercase letter)"
       type: object
+      required: [axis1, axis2]
       properties:
         axis1:
-          type:
-            - string
-            - integer
-          description: First axis name or index.
+          $ref: "#/$defs/AxisSpec"
+          description: "First axis to swap"
         axis2:
-          type:
-            - string
-            - integer
-          description: Second axis name or index.
+          $ref: "#/$defs/AxisSpec"
+          description: "Second axis to swap"
+      additionalProperties: false
+      examples:
+        - axis1: "Z"
+          axis2: "Y"
+        - axis1: 0
+          axis2: 2
 
   # Required for on-demand schema enrichment
   - fn_id: meta.describe

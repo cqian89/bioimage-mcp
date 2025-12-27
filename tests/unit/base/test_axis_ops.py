@@ -271,3 +271,130 @@ def test_swap_axes_mixed(monkeypatch, tmp_path: Path) -> None:
     assert result["outputs"]["output"]["format"] == "OME-TIFF"
     np.testing.assert_array_equal(captured["array"], np.swapaxes(data, 2, 0))
     assert captured["axes"] == "YZTX"
+
+
+def test_swap_axes_preserves_existing_metadata_keys(monkeypatch, tmp_path: Path) -> None:
+    """Test that swap_axes output includes axes metadata."""
+    data = np.arange(2 * 3 * 4, dtype="uint8").reshape(2, 3, 4)
+    captured: dict[str, object] = {}
+
+    def _write_ome_tiff(array: np.ndarray, work_dir: Path, name: str, axes: str) -> Path:
+        captured["array"] = array
+        captured["axes"] = axes
+        return work_dir / name
+
+    monkeypatch.setattr(axis_ops, "load_image", lambda _path: data)
+    monkeypatch.setattr(axis_ops, "_write_ome_tiff", _write_ome_tiff)
+
+    result = axis_ops.swap_axes(
+        inputs={
+            "image": {
+                "uri": "file:///tmp/sample.tif",
+                "metadata": {"axes": "ZYX", "physical_pixel_sizes": {"Z": 1.0}},
+            }
+        },
+        params={"axis1": "Z", "axis2": "X"},
+        work_dir=tmp_path,
+    )
+
+    assert result["outputs"]["output"]["format"] == "OME-TIFF"
+    np.testing.assert_array_equal(captured["array"], np.swapaxes(data, 0, 2))
+    assert captured["axes"] == "XYZ"
+
+    metadata = result["outputs"]["output"]["metadata"]
+    assert metadata["axes"] == "XYZ"
+    assert "physical_pixel_sizes" not in metadata
+
+
+def test_swap_axes_double_swap_invariant(monkeypatch, tmp_path: Path) -> None:
+    """Test that swapping twice returns to original (data reorder invariant)."""
+    data = np.arange(2 * 3 * 4, dtype="uint8").reshape(2, 3, 4)
+    captured: dict[str, list[np.ndarray]] = {"arrays": []}
+    calls = {"count": 0}
+
+    def _write_ome_tiff(array: np.ndarray, work_dir: Path, name: str, axes: str) -> Path:
+        captured["arrays"].append(array)
+        return work_dir / name
+
+    def _load_image(_path: Path) -> np.ndarray:
+        if calls["count"] == 0:
+            calls["count"] += 1
+            return data
+        return captured["arrays"][0]
+
+    monkeypatch.setattr(axis_ops, "load_image", _load_image)
+    monkeypatch.setattr(axis_ops, "_write_ome_tiff", _write_ome_tiff)
+
+    axis_ops.swap_axes(
+        inputs={"image": {"uri": "file:///tmp/sample.tif", "metadata": {"axes": "ZYX"}}},
+        params={"axis1": 0, "axis2": 2},
+        work_dir=tmp_path,
+    )
+    axis_ops.swap_axes(
+        inputs={"image": {"uri": "file:///tmp/sample.tif", "metadata": {"axes": "XYZ"}}},
+        params={"axis1": 2, "axis2": 0},
+        work_dir=tmp_path,
+    )
+
+    assert len(captured["arrays"]) == 2
+    np.testing.assert_array_equal(captured["arrays"][1], data)
+
+
+def test_moveaxis_same_position_noop(monkeypatch, tmp_path: Path) -> None:
+    """Test that moveaxis with source == destination is effectively a no-op."""
+    data = np.arange(2 * 3 * 4, dtype="uint8").reshape(2, 3, 4)
+    captured: dict[str, object] = {}
+
+    def _write_ome_tiff(array: np.ndarray, work_dir: Path, name: str, axes: str) -> Path:
+        captured["array"] = array
+        captured["axes"] = axes
+        return work_dir / name
+
+    monkeypatch.setattr(axis_ops, "load_image", lambda _path: data)
+    monkeypatch.setattr(axis_ops, "_write_ome_tiff", _write_ome_tiff)
+
+    result = axis_ops.moveaxis(
+        inputs={"image": {"uri": "file:///tmp/sample.tif", "metadata": {"axes": "ZYX"}}},
+        params={"source": 1, "destination": 1},
+        work_dir=tmp_path,
+    )
+
+    assert result["outputs"]["output"]["format"] == "OME-TIFF"
+    np.testing.assert_array_equal(captured["array"], data)
+    assert captured["axes"] == "ZYX"
+
+
+def test_moveaxis_invalid_axis_name_error(monkeypatch, tmp_path: Path) -> None:
+    """Test that invalid axis name gives actionable error message (NFR-004)."""
+    data = np.arange(2 * 3 * 4, dtype="uint8").reshape(2, 3, 4)
+
+    monkeypatch.setattr(axis_ops, "load_image", lambda _path: data)
+
+    with pytest.raises(ValueError) as excinfo:
+        axis_ops.moveaxis(
+            inputs={"image": {"uri": "file:///tmp/sample.tif", "metadata": {"axes": "ZYX"}}},
+            params={"source": "W", "destination": 1},
+            work_dir=tmp_path,
+        )
+
+    message = str(excinfo.value)
+    assert "W" in message
+    assert "ZYX" in message
+
+
+def test_swap_axes_out_of_bounds_error(monkeypatch, tmp_path: Path) -> None:
+    """Test that out-of-bounds axis index gives actionable error message."""
+    data = np.arange(2 * 3 * 4, dtype="uint8").reshape(2, 3, 4)
+
+    monkeypatch.setattr(axis_ops, "load_image", lambda _path: data)
+
+    with pytest.raises(ValueError) as excinfo:
+        axis_ops.swap_axes(
+            inputs={"image": {"uri": "file:///tmp/sample.tif", "metadata": {"axes": "ZYX"}}},
+            params={"axis1": 5, "axis2": 1},
+            work_dir=tmp_path,
+        )
+
+    message = str(excinfo.value)
+    assert "5" in message
+    assert "ndim=3" in message

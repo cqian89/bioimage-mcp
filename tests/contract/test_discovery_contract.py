@@ -94,7 +94,9 @@ def test_discovery_describe_function_returns_schema() -> None:
     )
 
     described = service.describe_function("builtin.gaussian_blur")
-    assert set(described.keys()) == {"fn_id", "schema"}
+    allowed_keys = {"fn_id", "schema", "inputs", "outputs", "hints"}
+    assert {"fn_id", "schema"}.issubset(described.keys())
+    assert set(described.keys()).issubset(allowed_keys)
     assert described["fn_id"] == "builtin.gaussian_blur"
     assert described["schema"]["type"] == "object"
 

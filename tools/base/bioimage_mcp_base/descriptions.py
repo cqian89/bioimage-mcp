@@ -130,3 +130,9 @@ PHASOR_CALIBRATE_DESCRIPTIONS = {
     "frequency": "Laser repetition frequency in Hz (e.g., 80e6 for 80 MHz).",
     "harmonic": "Harmonic number for multi-harmonic analysis (default: 1).",
 }
+
+RELABEL_AXES_DESCRIPTIONS = {}
+SQUEEZE_DESCRIPTIONS = {}
+EXPAND_DIMS_DESCRIPTIONS = {}
+MOVEAXIS_DESCRIPTIONS = {}
+SWAP_AXES_DESCRIPTIONS = {}
