@@ -12,8 +12,8 @@ description: "Task list for Axis Manipulation Tools, LLM Guidance Hints & Workfl
 
 **Purpose**: Project initialization and dependency wiring.
 
-- [ ] T001 Create directory `tests/integration/workflow_cases/`
-- [ ] T002 Add `pytest-asyncio` to `pyproject.toml` under `[project.optional-dependencies].dev` (PyYAML is already a core dependency as `PyYAML`)
+- [X] T001 Create directory `tests/integration/workflow_cases/`
+- [X] T002 Add `pytest-asyncio` to `pyproject.toml` under `[project.optional-dependencies].dev` (PyYAML is already a core dependency as `PyYAML`)
 
 ---
 
@@ -25,18 +25,18 @@ description: "Task list for Axis Manipulation Tools, LLM Guidance Hints & Workfl
 
 ### Tests for Foundational ⚠️ (Red)
 
-- [ ] T035 [P] [RED] Add failing contract tests for ArtifactRef metadata requirements in `tests/contract/test_artifact_metadata_contract.py` (FR-020..FR-023)
-- [ ] T036 [P] [RED] Add failing contract/unit tests for `LLMHints` + related response models in `tests/contract/test_hints_schema.py` (US6/7/8)
-- [ ] T037 [P] [RED] Add failing unit tests for axis tool param validation models in `tests/unit/base/test_axis_ops.py` (US1/2/3)
+- [X] T035 [P] [RED] Add failing contract tests for ArtifactRef metadata requirements in `tests/contract/test_artifact_metadata_contract.py` (FR-020..FR-023)
+- [X] T036 [P] [RED] Add failing contract/unit tests for `LLMHints` + related response models in `tests/contract/test_hints_schema.py` (US6/7/8)
+- [X] T037 [P] [RED] Add failing unit tests for axis tool param validation models in `tests/unit/base/test_axis_ops.py` (US1/2/3)
 
 ### Implementation for Foundational (Green)
 
-- [ ] T003 [P] Update `ArtifactRef` metadata schema in `src/bioimage_mcp/artifacts/models.py` (US9, FR-020..FR-023)
-- [ ] T038 [P] Extend image metadata extraction in `src/bioimage_mcp/artifacts/metadata.py` to populate `axes_inferred`, `physical_pixel_sizes`, and `file_metadata` (FR-020..FR-023)
+- [X] T003 [P] Update `ArtifactRef` metadata schema in `src/bioimage_mcp/artifacts/models.py` (US9, FR-020..FR-023)
+- [X] T038 [P] Extend image metadata extraction in `src/bioimage_mcp/artifacts/metadata.py` to populate `axes_inferred`, `physical_pixel_sizes`, and `file_metadata` (FR-020..FR-023)
 - [ ] T039 [P] Ensure artifact metadata is attached to both success and error tool responses in the API layer (FR-023)
 
-- [ ] T004 [P] Create `src/bioimage_mcp/api/schemas.py` with `LLMHints` and related pydantic models (US6/7/8)
-- [ ] T005 [P] Create `AxisMapping` and `AxisToolParams` models in `tools/base/bioimage_mcp_base/axis_ops.py` (US1/2/3)
+- [X] T004 [P] Create `src/bioimage_mcp/api/schemas.py` with `LLMHints` and related pydantic models (US6/7/8)
+- [X] T005 [P] Create `AxisMapping` and `AxisToolParams` models in `tools/base/bioimage_mcp_base/axis_ops.py` (US1/2/3)
 
 **Checkpoint**: Foundational models + contracts exist; tests are in place.
 
@@ -50,15 +50,15 @@ description: "Task list for Axis Manipulation Tools, LLM Guidance Hints & Workfl
 
 ### Tests for User Story 4 ⚠️ (Red)
 
-- [ ] T010 [P] [US4] Write failing workflow harness tests in `tests/integration/test_workflows.py` including FR-014 golden path sequence: `search_functions("phasor FLIM")` → `activate_functions([...])` → `describe_function("base.relabel_axes")` → `call_tool("base.relabel_axes")` → `call_tool("base.phasor_from_flim")`
-- [ ] T040 [P] [US4] Add failing contract tests validating YAML workflow testcase schema in `tests/contract/test_workflow_testcase_schema.py` (schema source: `specs/007-workflow-test-harness/contracts/workflow-testcase.yaml`)
+- [X] T010 [P] [US4] Write failing workflow harness tests in `tests/integration/test_workflows.py` including FR-014 golden path sequence: `search_functions("phasor FLIM")` → `activate_functions([...])` → `describe_function("base.relabel_axes")` → `call_tool("base.relabel_axes")` → `call_tool("base.phasor_from_flim")`
+- [X] T040 [P] [US4] Add failing contract tests validating YAML workflow testcase schema in `tests/contract/test_workflow_testcase_schema.py` (schema source: `specs/007-workflow-test-harness/contracts/workflow-testcase.yaml`)
 
 ### Implementation for User Story 4 (Green)
 
-- [ ] T006 [P] [US4] Create `MCPTestClient` class in `tests/integration/mcp_test_client.py` implementing all 5 FR-009 operations: `list_tools()`, `search_functions()`, `activate_functions()`, `describe_function()`, `call_tool()`
-- [ ] T007 [P] [US4] Implement `MockExecutor` logic in `tests/integration/mcp_test_client.py`
-- [ ] T008 [P] [US4] Implement YAML test case loader in `tests/integration/conftest.py` (validate cases against the workflow testcase schema)
-- [ ] T009 [US4] Register `mcp_test_client` and `mock_executor` fixtures in `tests/integration/conftest.py`
+- [X] T006 [P] [US4] Create `MCPTestClient` class in `tests/integration/mcp_test_client.py` implementing all 5 FR-009 operations: `list_tools()`, `search_functions()`, `activate_functions()`, `describe_function()`, `call_tool()`
+- [X] T007 [P] [US4] Implement `MockExecutor` logic in `tests/integration/mcp_test_client.py`
+- [X] T008 [P] [US4] Implement YAML test case loader in `tests/integration/conftest.py` (validate cases against the workflow testcase schema)
+- [X] T009 [US4] Register `mcp_test_client` and `mock_executor` fixtures in `tests/integration/conftest.py`
 
 **Checkpoint**: Test harness operational; mock mode + schema validation works.
 
@@ -72,14 +72,14 @@ description: "Task list for Axis Manipulation Tools, LLM Guidance Hints & Workfl
 
 ### Tests for User Story 1 ⚠️ (Red)
 
-- [ ] T011 [P] [US1] Create contract tests for `relabel_axes` in `tests/contract/test_axis_tools_schema.py`
-- [ ] T012 [P] [US1] Create unit tests for `relabel_axes` in `tests/unit/base/test_axis_ops.py` (atomic rename, error messages per NFR-004, OME metadata updates per FR-007, and `physical_pixel_sizes` remapping where applicable per FR-006)
+- [X] T011 [P] [US1] Create contract tests for `relabel_axes` in `tests/contract/test_axis_tools_schema.py`
+- [X] T012 [P] [US1] Create unit tests for `relabel_axes` in `tests/unit/base/test_axis_ops.py` (atomic rename, error messages per NFR-004, OME metadata updates per FR-007, and `physical_pixel_sizes` remapping where applicable per FR-006)
 
 ### Implementation for User Story 1 (Green)
 
-- [ ] T013 [US1] Implement `relabel_axes` function in `tools/base/bioimage_mcp_base/axis_ops.py`
-- [ ] T014 [US1] Register `base.relabel_axes` in `tools/base/manifest.yaml`
-- [ ] T015 [US1] Create YAML test case `tests/integration/workflow_cases/axis_manipulation.yaml` with relabel scenarios
+- [X] T013 [US1] Implement `relabel_axes` function in `tools/base/bioimage_mcp_base/axis_ops.py`
+- [X] T014 [US1] Register `base.relabel_axes` in `tools/base/manifest.yaml`
+- [X] T015 [US1] Create YAML test case `tests/integration/workflow_cases/axis_manipulation.yaml` with relabel scenarios
 
 **Checkpoint**: Relabeling tool works and is tested.
 
@@ -93,14 +93,14 @@ description: "Task list for Axis Manipulation Tools, LLM Guidance Hints & Workfl
 
 ### Tests for User Story 2 ⚠️ (Red)
 
-- [ ] T016 [P] [US2] Create contract tests for `squeeze` and `expand_dims` in `tests/contract/test_axis_tools_schema.py`
-- [ ] T017 [P] [US2] Create unit tests for `squeeze` and `expand_dims` in `tests/unit/base/test_axis_ops.py` (metadata updates per FR-006/FR-007 and error messages per NFR-004)
+- [X] T016 [P] [US2] Create contract tests for `squeeze` and `expand_dims` in `tests/contract/test_axis_tools_schema.py`
+- [X] T017 [P] [US2] Create unit tests for `squeeze` and `expand_dims` in `tests/unit/base/test_axis_ops.py` (metadata updates per FR-006/FR-007 and error messages per NFR-004)
 
 ### Implementation for User Story 2 (Green)
 
-- [ ] T018 [US2] Implement `squeeze` and `expand_dims` in `tools/base/bioimage_mcp_base/axis_ops.py`
-- [ ] T019 [US2] Register `base.squeeze` and `base.expand_dims` in `tools/base/manifest.yaml`
-- [ ] T020 [US2] Update `tests/integration/workflow_cases/axis_manipulation.yaml` with dimension tests
+- [X] T018 [US2] Implement `squeeze` and `expand_dims` in `tools/base/bioimage_mcp_base/axis_ops.py`
+- [X] T019 [US2] Register `base.squeeze` and `base.expand_dims` in `tools/base/manifest.yaml`
+- [X] T020 [US2] Update `tests/integration/workflow_cases/axis_manipulation.yaml` with dimension tests
 
 ---
 
@@ -112,14 +112,14 @@ description: "Task list for Axis Manipulation Tools, LLM Guidance Hints & Workfl
 
 ### Tests for User Story 3 ⚠️ (Red)
 
-- [ ] T021 [P] [US3] Create contract tests for `moveaxis` and `swap_axes` in `tests/contract/test_axis_tools_schema.py`
+- [X] T021 [P] [US3] Create contract tests for `moveaxis` and `swap_axes` in `tests/contract/test_axis_tools_schema.py`
 - [ ] T022 [P] [US3] Create unit tests for `moveaxis` and `swap_axes` in `tests/unit/base/test_axis_ops.py` (data reorder invariants, `physical_pixel_sizes` reordering per FR-006, OME metadata updates per FR-007, and error messages per NFR-004)
 
 ### Implementation for User Story 3 (Green)
 
-- [ ] T023 [US3] Implement `moveaxis` and `swap_axes` in `tools/base/bioimage_mcp_base/axis_ops.py`
-- [ ] T024 [US3] Register `base.moveaxis` and `base.swap_axes` in `tools/base/manifest.yaml`
-- [ ] T025 [US3] Update `tests/integration/workflow_cases/axis_manipulation.yaml` with reordering tests
+- [X] T023 [US3] Implement `moveaxis` and `swap_axes` in `tools/base/bioimage_mcp_base/axis_ops.py`
+- [X] T024 [US3] Register `base.moveaxis` and `base.swap_axes` in `tools/base/manifest.yaml`
+- [X] T025 [US3] Update `tests/integration/workflow_cases/axis_manipulation.yaml` with reordering tests
 
 ---
 

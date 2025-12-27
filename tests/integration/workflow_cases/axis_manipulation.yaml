@@ -1,0 +1,63 @@
+- test_name: "flim_phasor_golden_path"
+  description: "End-to-end FLIM phasor workflow with axis relabeling"
+  steps:
+    - step_id: "fix_axes"
+      fn_id: "base.relabel_axes"
+      inputs:
+        image: "datasets/FLUTE_FLIM_data_tif/Embryo.tif"
+      params:
+        axis_mapping:
+          Z: "T"
+          T: "Z"
+      assertions:
+        - type: "output_type"
+          value: "BioImageRef"
+    - step_id: "compute_phasor"
+      fn_id: "base.phasor_from_flim"
+      inputs:
+        dataset: "{fix_axes.output}"
+      params:
+        harmonic: 1
+      assertions:
+        - type: "artifact_exists"
+        - type: "output_type"
+          value: "BioImageRef"
+
+- test_name: "squeeze_expand_roundtrip"
+  description: "Verify expand_dims then squeeze restores axes"
+  steps:
+    - step_id: "add_dim"
+      fn_id: "base.expand_dims"
+      inputs:
+        image: "datasets/synthetic/test.tif"
+      params:
+        axis: 0
+        new_axis_name: "Z"
+      assertions:
+        - type: "metadata_check"
+          key: "axes"
+          value: "ZYX"
+    - step_id: "remove_dim"
+      fn_id: "base.squeeze"
+      inputs:
+        image: "{add_dim.output}"
+      params:
+        axis: 0
+      assertions:
+        - type: "metadata_check"
+          key: "axes"
+          value: "YX"
+
+- test_name: "axis_swap_test"
+  description: "Verify swap_axes exchanges Z and Y axes"
+  steps:
+    - step_id: "swap_axes"
+      fn_id: "base.swap_axes"
+      inputs:
+        image: "datasets/synthetic/test.tif"
+      params:
+        axis1: "Z"
+        axis2: "Y"
+      assertions:
+        - type: "output_type"
+          value: "BioImageRef"

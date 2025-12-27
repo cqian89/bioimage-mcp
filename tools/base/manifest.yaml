@@ -503,6 +503,36 @@ functions:
           type: integer
           default: 1
           description: Harmonic to compute.
+    hints:
+      inputs:
+        dataset:
+          expected_axes: ["T", "Y", "X"]
+          preprocessing_hint: "If T has only 1 sample, check if FLIM bins are in Z axis"
+          supported_storage_types: ["file"]
+      outputs:
+        g_image:
+          description: "Phasor G coordinates (real component)"
+        s_image:
+          description: "Phasor S coordinates (imaginary component)"
+        intensity_image:
+          description: "Sum intensity image"
+      success_hints:
+        next_steps:
+          - fn_id: base.phasor_calibrate
+            reason: "Apply calibration using reference standard"
+            required_inputs: ["reference dataset with known lifetime"]
+        common_issues:
+          - "Raw phasors are uncalibrated - use phasor_calibrate for quantitative analysis"
+      error_hints:
+        AXIS_SAMPLES_ERROR:
+          diagnosis: "The T axis has only 1 sample. FLIM time bins may be stored in Z dimension."
+          suggested_fix:
+            fn_id: base.relabel_axes
+            params:
+              axis_mapping:
+                Z: "T"
+                T: "Z"
+            explanation: "Relabel Z axis as T to treat Z slices as FLIM time bins"
 
   - fn_id: base.denoise_image
     tool_id: tools.base
@@ -576,6 +606,128 @@ functions:
           default: 1
           description: Harmonic number for multi-harmonic analysis
       required: [lifetime, frequency]
+
+  - fn_id: base.relabel_axes
+    tool_id: tools.base
+    name: Relabel axes
+    description: Relabel axis names (e.g., Z to T) for pipeline compatibility.
+    tags: [image, transform, axes]
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+    outputs:
+      - name: output
+        artifact_type: BioImageRef
+        format: OME-TIFF
+        required: true
+    params_schema:
+      type: object
+      properties:
+        axis_mapping:
+          type: object
+          description: Mapping of existing axis names to new axis names.
+
+  - fn_id: base.squeeze
+    tool_id: tools.base
+    name: Squeeze dimensions
+    description: Remove singleton (size=1) dimensions from an image.
+    tags: [image, transform, axes]
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+    outputs:
+      - name: output
+        artifact_type: BioImageRef
+        format: OME-TIFF
+        required: true
+    params_schema:
+      type: object
+      properties:
+        axis:
+          type:
+            - string
+            - integer
+          description: Optional axis name or index to squeeze.
+
+  - fn_id: base.expand_dims
+    tool_id: tools.base
+    name: Expand dimensions
+    description: Add a new dimension at a specified position.
+    tags: [image, transform, axes]
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+    outputs:
+      - name: output
+        artifact_type: BioImageRef
+        format: OME-TIFF
+        required: true
+    params_schema:
+      type: object
+      properties:
+        axis:
+          type: integer
+          description: Axis index where the new dimension is inserted.
+        new_axis_name:
+          type: string
+          description: Axis name for the new dimension.
+
+  - fn_id: base.moveaxis
+    tool_id: tools.base
+    name: Move axis
+    description: Move an axis from one position to another.
+    tags: [image, transform, axes]
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+    outputs:
+      - name: output
+        artifact_type: BioImageRef
+        format: OME-TIFF
+        required: true
+    params_schema:
+      type: object
+      properties:
+        source:
+          type:
+            - string
+            - integer
+          description: Source axis name or index.
+        destination:
+          type: integer
+          description: Destination axis index.
+
+  - fn_id: base.swap_axes
+    tool_id: tools.base
+    name: Swap axes
+    description: Swap two axes in an image.
+    tags: [image, transform, axes]
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+    outputs:
+      - name: output
+        artifact_type: BioImageRef
+        format: OME-TIFF
+        required: true
+    params_schema:
+      type: object
+      properties:
+        axis1:
+          type:
+            - string
+            - integer
+          description: First axis name or index.
+        axis2:
+          type:
+            - string
+            - integer
+          description: Second axis name or index.
 
   # Required for on-demand schema enrichment
   - fn_id: meta.describe
