@@ -5,7 +5,7 @@ Defines the base protocol that all library adapters must implement
 to integrate with the dynamic registry system.
 """
 
-from typing import Any, Dict, List, Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 from bioimage_mcp.artifacts.base import Artifact
 from bioimage_mcp.registry.dynamic.models import FunctionMetadata, IOPattern

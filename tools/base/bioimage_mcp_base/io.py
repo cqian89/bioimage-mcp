@@ -64,19 +64,23 @@ def convert_to_ome_zarr(*, inputs: dict, params: dict, work_dir: Path) -> Path:
 
     try:
         import zarr
-        from bioio import BioImage  # type: ignore
     except Exception as exc:
         raise RuntimeError("Missing dependencies for convert_to_ome_zarr") from exc
 
-    img = BioImage(str(in_path))
-    data = img.get_image_data()  # type: ignore[attr-defined]
+    try:
+        from bioio import BioImage  # type: ignore
+
+        img = BioImage(str(in_path))
+        data = img.get_image_data()  # type: ignore[attr-defined]
+    except Exception:
+        data, _warnings, _reader = load_image_fallback(in_path)
 
     out_dir = work_dir / "converted.ome.zarr"
     if out_dir.exists():
         raise FileExistsError(out_dir)
 
     root = zarr.open_group(str(out_dir), mode="w")
-    root.create_dataset("0", data=data, chunks=True)
+    root.create_array("0", data=data, chunks=data.shape)
     return out_dir
 
 

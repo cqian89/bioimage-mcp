@@ -20,7 +20,8 @@ def test_materialize_zarr_dir():
         (zarr_path / ".zattrs").write_text("{}")
 
         # We need a valid array to read. This is getting complicated to fake without zarr lib.
-        # But maybe bioio will at least try to read it and fail with a different error if it recognizes it as zarr.
+        # But maybe bioio will at least try to read it and fail with a different error
+        # if it recognizes it as zarr.
 
         config = Config(
             artifact_store_root=store_root,
@@ -44,9 +45,10 @@ def test_materialize_zarr_dir():
         work_dir.mkdir()
 
         try:
-            # This will fail because the Zarr is empty/fake, but we want to see if bioio attempts to read it
-            # or if it fails with "UnsupportedFileFormatError" immediately because of the folder name.
-            new_ref = _materialize_zarr_to_file(ref.model_dump(), work_dir, store)
+            # This will fail because the Zarr is empty/fake, but we want to see if bioio attempts
+            # to read it or if it fails with "UnsupportedFileFormatError" immediately because
+            # of the folder name.
+            _materialize_zarr_to_file(ref.model_dump(), work_dir, store)
         except Exception as e:
             print(f"Caught expected exception: {type(e).__name__}: {e}")
             # If it's a zarr reading error, then it passed the format detection

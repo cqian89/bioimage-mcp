@@ -45,6 +45,17 @@ def test_load_config_missing_files_uses_defaults(tmp_path: Path) -> None:
     assert config.max_pagination_limit >= config.default_pagination_limit
 
 
+def test_default_config_allows_artifact_store_reads(tmp_path: Path) -> None:
+    """Verify default config includes artifact_store_root in fs_allowlist_read."""
+    config = load_config(
+        global_path=tmp_path / "nope" / "config.yaml",
+        local_path=tmp_path / "also_nope" / "config.yaml",
+    )
+
+    assert config.fs_allowlist_read
+    assert config.artifact_store_root in config.fs_allowlist_read
+
+
 def test_load_config_rejects_non_absolute_roots(tmp_path: Path) -> None:
     global_cfg = tmp_path / "home" / ".bioimage-mcp" / "config.yaml"
     global_cfg.parent.mkdir(parents=True)

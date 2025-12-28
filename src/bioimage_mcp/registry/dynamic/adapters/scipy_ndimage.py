@@ -55,7 +55,8 @@ class ScipyNdimageAdapter(BaseAdapter):
             except ImportError:
                 continue
 
-            # Filter functions (simple logic for now, respecting include/exclude patterns from config if passed)
+            # Filter functions (simple logic for now, respecting include/exclude patterns
+            # from config if passed)
             # For now, just getting public functions
             for name in dir(module):
                 if name.startswith("_"):

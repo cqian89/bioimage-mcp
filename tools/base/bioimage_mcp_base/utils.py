@@ -32,7 +32,7 @@ def _try_bioio_ome_tiff(path: Path) -> np.ndarray:
         img = BioImage(str(path), reader=OmeTiffReader)
         return img.get_image_data()
     except ImportError:
-        raise RuntimeError("bioio-ome-tiff not available")
+        raise RuntimeError("bioio-ome-tiff not available") from None
 
 
 def _try_bioio_bioformats(path: Path) -> np.ndarray:
@@ -44,7 +44,7 @@ def _try_bioio_bioformats(path: Path) -> np.ndarray:
         img = BioImage(str(path), reader=BioformatsReader)
         return img.get_image_data()
     except ImportError:
-        raise RuntimeError("bioio-bioformats not available")
+        raise RuntimeError("bioio-bioformats not available") from None
 
 
 def _load_image_fallback_with_readers(

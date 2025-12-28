@@ -285,6 +285,18 @@ class ExecutionService:
 
         self._run_store.set_status(run.run_id, "running")
 
+        for input_name, input_ref in inputs.items():
+            if not isinstance(input_ref, dict):
+                continue
+            if "ref_id" in input_ref and "uri" not in input_ref:
+                try:
+                    ref = self._artifact_store.get(input_ref["ref_id"])
+                except KeyError:
+                    continue
+                resolved = ref.model_dump()
+                resolved.update(input_ref)
+                inputs[input_name] = resolved
+
         storage_requirements = _get_input_storage_requirements(self._config, fn_id)
         materialized_inputs: dict[str, str] = {}
         for input_name, input_ref in inputs.items():

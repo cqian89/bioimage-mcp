@@ -72,6 +72,37 @@ def _build_config(tmp_path: Path, manifest_dir: Path) -> Config:
     )
 
 
+def test_run_workflow_resolves_ref_id_to_full_artifact(tmp_path: Path, monkeypatch) -> None:
+    manifest_dir = tmp_path / "tools"
+    _write_manifest(manifest_dir, ["file"])
+    config = _build_config(tmp_path, manifest_dir)
+
+    config.artifact_store_root.mkdir(parents=True, exist_ok=True)
+    source = config.artifact_store_root / "input.txt"
+    source.write_text("data")
+
+    with ExecutionService(config) as svc:
+        ref = svc.artifact_store.import_file(source, artifact_type="BioImageRef", format="text")
+        inputs = {"image": {"ref_id": ref.ref_id}}
+
+        captured: dict[str, object] = {}
+
+        def _fake_execute_step(*, inputs: dict, **kwargs):
+            captured["inputs"] = inputs
+            return {"ok": True, "outputs": {}, "provenance": {}}, "ok", 0
+
+        monkeypatch.setattr("bioimage_mcp.api.execution.execute_step", _fake_execute_step)
+
+        result = svc.run_workflow(
+            {"steps": [{"fn_id": "storage.fn", "inputs": inputs, "params": {}}]},
+            skip_validation=True,
+        )
+
+        assert result["status"] == "succeeded"
+        assert captured["inputs"]["image"]["ref_id"] == ref.ref_id
+        assert captured["inputs"]["image"]["uri"] == ref.uri
+
+
 def test_run_workflow_materializes_zarr_temp_input(tmp_path: Path, monkeypatch) -> None:
     manifest_dir = tmp_path / "tools"
     _write_manifest(manifest_dir, ["file"])

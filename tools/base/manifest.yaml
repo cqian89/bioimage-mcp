@@ -509,8 +509,8 @@ functions:
           description: Harmonic to compute.
         stack:
           type: boolean
-          default: false
-          description: If true, return a 2-channel G/S phasor stack.
+          default: true
+          description: If false, omit the 2-channel G/S phasor stack.
     hints:
       inputs:
         dataset:

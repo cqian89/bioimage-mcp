@@ -13,16 +13,16 @@ TOOLS_ROOT = BASE_DIR.parent
 if str(TOOLS_ROOT) not in sys.path:
     sys.path.insert(0, str(TOOLS_ROOT))
 
-from bioimage_mcp_base import descriptions as desc
-from bioimage_mcp_base.axis_ops import (
+from bioimage_mcp_base import descriptions as desc  # noqa: E402
+from bioimage_mcp_base.axis_ops import (  # noqa: E402
     expand_dims,
     moveaxis,
     relabel_axes,
     squeeze,
     swap_axes,
 )
-from bioimage_mcp_base.io import convert_to_ome_zarr, export_ome_tiff
-from bioimage_mcp_base.preprocess import (
+from bioimage_mcp_base.io import convert_to_ome_zarr, export_ome_tiff  # noqa: E402
+from bioimage_mcp_base.preprocess import (  # noqa: E402
     bilateral,
     denoise_image,
     denoise_nl_means,
@@ -38,7 +38,7 @@ from bioimage_mcp_base.preprocess import (
     threshold_yen,
     unsharp_mask,
 )
-from bioimage_mcp_base.transforms import (
+from bioimage_mcp_base.transforms import (  # noqa: E402
     crop,
     flip,
     pad,

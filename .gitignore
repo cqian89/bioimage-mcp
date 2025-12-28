@@ -212,4 +212,4 @@ Thumbs.db
 .idea/
 
 # Analysis outputs
-datasets/FLUTE_FLIM_data_tif/phasor/
+datasets/*/outputs/

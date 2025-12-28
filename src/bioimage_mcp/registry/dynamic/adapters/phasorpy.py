@@ -36,11 +36,9 @@ class PhasorPyAdapter:
             module_config: Configuration from manifest with:
                 - modules: list of module names to scan
                 - module_name: single module name (alternative)
-                - include_patterns: patterns for function names (currently unused - hardcoded for US1)
+                - include_patterns: patterns for function names (currently unused
+                  - hardcoded for US1)
                 - exclude_patterns: patterns to exclude (currently unused)
-
-        Returns:
-            List of discovered function metadata
         """
         # Support both 'modules' (list) and 'module_name' (single string)
         if "module_name" in module_config:

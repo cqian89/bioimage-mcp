@@ -509,7 +509,7 @@ def phasor_from_flim(*, inputs: dict, params: dict, work_dir: Path) -> dict[str,
         np.asarray(intensity, dtype="float32"), work_dir, "phasor_intensity.ome.tiff", output_axes
     )
 
-    stack_output = bool(params.get("stack", False))
+    stack_output = bool(params.get("stack", True))
     stack_path = None
     stack_axes = None
     if stack_output:

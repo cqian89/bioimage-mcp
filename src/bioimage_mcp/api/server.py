@@ -220,7 +220,7 @@ def create_server(
     def call_tool(
         fn_id: str,
         inputs: dict[str, Any],
-        params: dict[str, Any],
+        params: dict[str, Any] | None = None,
         session_id: str | None = None,
         ordinal: int | None = None,
         dry_run: bool = False,
@@ -240,6 +240,9 @@ def create_server(
             # we should probably fail or let ensure_session handle it (but ensure_session needs ID).
             # For now, let's assume we need a session ID.
             raise ValueError("session_id must be provided or available in context")
+
+        if params is None:
+            params = {}
 
         return interactive.call_tool(
             session_id=session_id,
@@ -281,7 +284,7 @@ def create_server(
         try:
             session = session_manager.get_session(session_id)
         except KeyError:
-            raise ValueError(f"Session {session_id} not found")
+            raise ValueError(f"Session {session_id} not found") from None
 
         active_fns = session_manager.store.get_active_functions(session_id)
 
