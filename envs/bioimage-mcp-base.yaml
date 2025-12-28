@@ -6,9 +6,13 @@ platforms:
 dependencies:
   - python=3.13
   - pip
+  # Core bioio (available via conda)
   - bioio
-  - bioio-ome-zarr
+  # Bioio plugins available via conda-forge
+  - bioio-lif
   - bioio-ome-tiff
+  - bioio-ome-zarr
+  # Other scientific computing dependencies
   - numpy
   - openjdk
   - scipy
@@ -18,6 +22,16 @@ dependencies:
   - numpydoc
   - pydantic>=2.0
   - pip:
-    - bioio-bioformats
+    # Bioio reader plugins (PyPI-only)
+    - bioio-czi         # CZI (Zeiss) files
+    - bioio-dv          # DeltaVision files
+    - bioio-imageio     # General image formats (PNG, JPG, etc.)
+    - bioio-nd2         # Nikon ND2 files
+    - bioio-sldy        # SlideBook files
+    - bioio-tifffile    # Generic TIFF files
+    - bioio-tiff-glob   # Multi-file TIFF stacks
+    - bioio-bioformats  # Bio-Formats (Java-based, supports 150+ formats)
+    # Note: bioio-ome-tiled-tiff is excluded due to dependency conflicts with numpy
+    # (requires tifffile<2022.4.22 which needs numpy 1.26.4 built from source)
     # Install bioimage_mcp in editable mode for access to adapters
-    - -e .
+    - -e ../.
