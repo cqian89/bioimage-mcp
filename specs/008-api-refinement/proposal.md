@@ -143,9 +143,7 @@ cellpose.cellpose.models.eval
 
 #### C. Migration Path
 
-1. **Phase 1**: Keep `base.gaussian` as alias, add `base.skimage.filters.gaussian`
-2. **Phase 2**: Deprecation warnings on old names
-3. **Phase 3**: Remove old names
+Per Constitution v0.6.0, no migration path is required. `builtin` is removed immediately.
 
 ---
 
@@ -177,7 +175,32 @@ list_tools(paths=["base.skimage.filters", "base.phasorpy.phasor"])
 # -> combined results
 ```
 
-### 3.2 `search_functions` Enhancement
+### 3.2 Smart Hierarchy Shortcuts
+
+**Problem**: For single-tool environments like cellpose, the full path `cellpose.cellpose.models.eval` requires 4 navigation calls.
+
+**Solution**: Auto-expand single-child paths.
+
+```python
+# Without shortcuts (4 calls)
+list_tools()  # → ["base", "cellpose"]
+list_tools(path="cellpose")  # → ["cellpose"]  (the package)
+list_tools(path="cellpose.cellpose")  # → ["models"]
+list_tools(path="cellpose.cellpose.models")  # → ["eval", "train"]
+
+# With shortcuts (2 calls)
+list_tools()  # → ["base", "cellpose"]
+list_tools(path="cellpose")  # → ["eval", "train"] directly!
+```
+
+**Flatten Parameter**:
+```python
+# Get all functions at once
+list_tools(path="base", flatten=True)  # → all 47 functions
+list_tools(flatten=True)  # → all functions across all envs
+```
+
+### 3.3 `search_functions` Enhancement
 
 **Current**: Single query string, simple text match
 
@@ -199,7 +222,7 @@ async def search_functions(
 2. Within same keyword count, more total matches ranks higher
 3. Match weights: name (3) > description (2) > tags (1)
 
-### 3.3 Batch Operations
+### 3.4 Batch Operations
 
 | Operation | Current | Proposed |
 |-----------|---------|----------|
@@ -217,15 +240,9 @@ async def search_functions(
 - `run_function` better describes executing a registered function
 - Aligns with naming: "function" is the unit of work
 
-### 4.2 Migration
+### 4.2 Status
 
-```python
-# Backward compatible: accept both names
-@server.tool("call_tool")  # Deprecated, logs warning (NOT returned to user)
-@server.tool("run_function")  # New name
-async def handle_call_tool(...):
-    ...
-```
+`call_tool` is removed; `run_function` is the only execution API.
 
 ---
 
@@ -279,9 +296,11 @@ From report:
 
 ---
 
-## Constitution Amendment Required
+## Constitution Amendment (Applied)
 
-**Version bump**: 0.4.0 → 0.5.0 (MINOR - expanded guidance)
+**Version**: v0.6.0 (already amended)
+
+The amendment has been applied.
 
 ### Proposed Changes to Constitution
 
@@ -312,6 +331,7 @@ Add:
 | **P0** | Remove `builtin`, consolidate to `base` | 1 day | Eliminates I/O errors |
 | **P0** | Fix dimension metadata in artifacts | 1 day | Unblocks axis tools |
 | **P1** | Hierarchical `list_tools` | 2 days | Better discovery UX |
+| **P1** | Smart hierarchy shortcuts | 1 day | Reduces agent roundtrips |
 | **P1** | Multi-keyword search with ranking | 1 day | Better search results |
 | **P1** | Rename `call_tool` → `run_function` | 0.5 day | Cleaner API |
 | **P2** | MCP Roots integration for permissions | 2 days | Better defaults |

@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Bioimage-MCP API Refinement & Permissions Contracts
-  version: 0.8.0
+  version: 0.10.0
   description: |
     Refined schemas for Bioimage-MCP discovery, execution, and permission systems.
     These contracts define the JSON structures used in MCP tool calls and responses.
@@ -126,6 +126,10 @@ components:
           items:
             type: string
           description: Batch navigation
+        flatten:
+          type: boolean
+          default: false
+          description: If true, return all functions under path flattened
         limit:
           type: integer
           default: 20
@@ -141,6 +145,10 @@ components:
             $ref: "#/components/schemas/ToolHierarchyNode"
         next_cursor:
           type: string
+        expanded_from:
+          type: string
+          nullable: true
+          description: Shows auto-expansion path if single-child traversal occurred
 
     SearchFunctionsRequest:
       type: object
@@ -244,4 +252,7 @@ x-contract-assertions:
     hierarchy_semantics: "list_tools() MUST return environment nodes; list_tools(path='base') MUST return package nodes."
     ranking: "search_functions MUST rank by (match_count DESC, weight_sum DESC)."
     batch_partial_failure: "describe_function with multiple IDs MUST return partial results and populate 'errors' for failed IDs."
-    call_tool_deprecation: "call_tool MUST function as an alias to run_function; server MUST log a deprecation warning but MUST NOT return it in the response payload."
+    call_tool_removed: "call_tool is removed; run_function is the only execution API"
+    auto_expand: "list_tools MUST auto-expand single-child paths until reaching functions or multiple children"
+    flatten_param: "list_tools with flatten=true MUST return all functions under the path, respecting pagination"
+    expanded_from_field: "Response MUST include expanded_from when auto-expansion occurred"

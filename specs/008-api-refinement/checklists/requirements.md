@@ -37,6 +37,13 @@
 - [x] API changes are backward compatible (Principle I)
 - [x] TDD requirement acknowledged (Principle VI)
 
+## Early Development Policy Compliance
+
+- [x] Constitution v0.6.0 referenced for breaking changes
+- [x] Backward compatibility aliases removed (not required pre-1.0)
+- [x] `builtin` tool pack removal does not require migration period
+- [x] `call_tool` removal does not require deprecation period
+
 ## Notes
 
 - All items passed validation

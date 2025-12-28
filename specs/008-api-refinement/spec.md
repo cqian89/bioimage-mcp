@@ -7,6 +7,12 @@
 
 ## Overview
 
+### Terminology
+
+- **Tool**: An MCP tool primitive registered with the server (e.g., `list_tools`, `run_function`)
+- **Function**: An individual callable operation within a tool pack (e.g., `base.skimage.filters.gaussian`)
+- **Tool Pack / Environment**: A collection of functions sharing a conda environment (e.g., `base`, `cellpose`)
+
 This specification addresses four critical improvements based on the 007-workflow-test-harness validation findings and user requirements:
 
 1. **Dynamic Permissions System (P0)**: Inherit read/write permissions from the MCP client via the Roots capability, with an "ask" pattern for existing file overwrites
@@ -21,7 +27,8 @@ This specification addresses four critical improvements based on the 007-workflo
 ### Session 2025-12-28
 
 - Q: Should "inherit" mode be the new default? → A: Yes, with explicit logging of inherited roots at session start for auditability.
-- Q: How should backward compatibility work for `call_tool`? → A: Accept both names, log deprecation warning for `call_tool`.
+- Q: How should backward compatibility work for `call_tool`? → A: It should not; `call_tool` is removed and `run_function` is the only supported execution API.
+- Q: Should we support backward compatibility aliases? → A: No. Per Constitution v0.6.0, backward compatibility is not required during early development.
 - Q: Should wrapper functions like `phasor_from_flim` be removed? → A: Keep as convenience functions but also expose direct library bindings.
 
 ## User Scenarios & Testing *(mandatory)*
@@ -40,6 +47,7 @@ A scientist uses an LLM agent to analyze FLIM data. The agent already has access
 2. **Given** an MCP client declares roots, **When** the server starts a session, **Then** the inherited roots are logged for auditability
 3. **Given** a tool attempts to write to a path outside all declared roots, **Then** the write is denied with a clear error message
 4. **Given** a tool attempts to overwrite an existing file with `on_overwrite: ask` configured, **When** the write is requested, **Then** the system prompts for user confirmation via MCP Elicitation
+5. **Given** a user denies the overwrite confirmation prompt, **When** the response is received, **Then** the write operation returns a `PermissionDenied` error with reason `user_declined`
 
 ---
 
@@ -55,17 +63,17 @@ A scientist runs a workflow that uses `gaussian_blur` followed by `phasor_from_f
 
 1. **Given** the `builtin` tool pack is removed, **When** a user searches for `gaussian_blur`, **Then** only `base.gaussian` (or `base.skimage.filters.gaussian`) is returned
 2. **Given** a workflow uses multiple image processing functions, **When** all functions run in the `base` environment, **Then** no cross-environment I/O errors occur
-3. **Given** legacy scripts reference `builtin.gaussian_blur`, **When** the function is called, **Then** a helpful error message suggests the replacement function
+3. **Given** `builtin.*` functions are removed, **When** a user calls a non-existent function, **Then** the error message indicates the function is not found
 
 ---
 
 ### User Story 3 - Hierarchical Tool Discovery (Priority: P1)
 
-An LLM agent needs to find image filtering functions. Instead of searching through 100+ functions, it can navigate the hierarchy: list environments → list packages in `base` → list modules in `skimage` → list functions in `filters`.
+An LLM agent needs to find image filtering functions. Instead of searching through 100+ functions, it can navigate the hierarchy: list environments → list packages in `base` → list modules in `skimage` → list functions in `filters`, with smart shortcuts that auto-expand single-child paths or flatten a subtree when needed.
 
 **Why this priority**: Reduces context window usage and improves LLM decision-making by presenting structured, navigable information.
 
-**Independent Test**: Can be tested by calling `list_tools()` with no args, then with `path="base"`, then with `path="base.skimage.filters"` and verifying progressive hierarchy.
+**Independent Test**: Can be tested by calling `list_tools()` with no args, then with `path="base"`, then with `path="base.skimage.filters"`, and verifying progressive hierarchy plus auto-expansion and flatten behavior.
 
 **Acceptance Scenarios**:
 
@@ -73,6 +81,8 @@ An LLM agent needs to find image filtering functions. Instead of searching throu
 2. **Given** `list_tools(path="base")`, **When** the response is returned, **Then** it contains package/module names available in base: `["skimage", "phasorpy", "scipy", ...]`
 3. **Given** `list_tools(path="base.skimage.filters")`, **When** the response is returned, **Then** it contains function names: `["gaussian", "median", "sobel", ...]`
 4. **Given** `list_tools(paths=["base.skimage.filters", "base.phasorpy.phasor"])`, **When** the response is returned, **Then** it contains combined results from both paths
+5. **Given** `list_tools(path="cellpose")` where cellpose has a single-child path, **When** the response is returned, **Then** it auto-expands to show functions directly with `expanded_from` field
+6. **Given** `list_tools(path="base", flatten=True)`, **When** the response is returned, **Then** it contains all functions in base environment flattened
 
 ---
 
@@ -90,6 +100,7 @@ An LLM agent searches for functions to calibrate phasors. Searching for `["phaso
 2. **Given** a search with keywords `["gaussian", "filter"]`, **When** results are returned, **Then** `base.gaussian` ranks high due to matching both in name/description
 3. **Given** a search with `limit=5`, **When** more than 5 functions match, **Then** only the top 5 ranked functions are returned
 4. **Given** a function matches a keyword in its name vs another matching only in tags, **When** results are ranked, **Then** the name match ranks higher (weight 3 vs weight 1)
+5. **Given** a search with typo `"gausian"`, **When** results are returned, **Then** `base.gaussian` is still found (typo tolerance via n-gram tokenization)
 
 ---
 
@@ -125,19 +136,18 @@ LLM agents often call `run_function` directly without first activating functions
 
 ---
 
-### User Story 7 - Function Naming Migration (Priority: P3)
+### User Story 7 - Function Naming (Priority: Cancelled)
 
-The system transitions from short names (`base.gaussian`) to full names (`base.skimage.filters.gaussian`). During migration, both names should work with deprecation warnings for the old names.
+Functions use canonical `env.package.module.function` naming. Short names and aliases are NOT supported.
 
-**Why this priority**: Long-term cleanliness but not blocking. Migration can happen gradually.
+**Why this priority**: No migration is needed if the system starts with canonical names only.
 
-**Independent Test**: Can be tested by calling both `base.gaussian` and `base.skimage.filters.gaussian` and verifying both resolve to the same function.
+**Independent Test**: N/A - Story cancelled; canonical naming is the only supported mode.
 
-**Acceptance Scenarios**:
+**Acceptance Scenarios**: N/A - Story cancelled. The following scenarios are retained for historical reference only and will NOT be implemented:
 
-1. **Given** a function is registered with full name `base.skimage.filters.gaussian`, **When** `base.gaussian` is also registered as an alias, **Then** both names resolve to the same implementation
-2. **Given** a deprecated alias is called, **When** the function executes, **Then** the response includes a deprecation warning with the new name
-3. **Given** `list_tools(path="base.skimage.filters")`, **When** results are returned, **Then** the full names are shown, not the aliases
+1. ~~**Given** a function is registered with canonical name `base.skimage.filters.gaussian`, **When** `list_tools(path="base.skimage.filters")` is called, **Then** only canonical names are shown~~
+2. ~~**Given** a short name like `base.gaussian`, **When** a user calls the function, **Then** the error message indicates the function is not found~~
 
 ---
 
@@ -145,7 +155,7 @@ The system transitions from short names (`base.gaussian`) to full names (`base.s
 
 - **Roots capability not supported by client**:
   - What happens: Client doesn't declare any roots
-  - Expected: Fall back to explicit allowlist configuration; log warning about missing roots
+  - Expected: Fall back to explicit allowlist configuration; log warning about missing roots (see FR-005)
 
 - **Empty roots list from client**:
   - What happens: Client declares Roots capability but returns empty list
@@ -155,10 +165,6 @@ The system transitions from short names (`base.gaussian`) to full names (`base.s
   - What happens: Server tries to prompt for overwrite confirmation but client doesn't support Elicitation
   - Expected: Fall back to `on_overwrite` default behavior (allow or deny based on config)
 
-- **Circular alias definitions**:
-  - What happens: `base.foo` aliases to `base.bar` which aliases to `base.foo`
-  - Expected: Detected at manifest load time; error logged; aliases ignored
-
 - **Search with zero keywords**:
   - What happens: `search_functions(keywords=[])` is called
   - Expected: Return error "At least one keyword required"
@@ -166,6 +172,14 @@ The system transitions from short names (`base.gaussian`) to full names (`base.s
 - **list_tools with invalid path**:
   - What happens: `list_tools(path="nonexistent.package")` is called
   - Expected: Return empty list with no error (path may not have children)
+
+- **Deep single-child path**:
+  - What happens: `cellpose.cellpose.models` has only one level with children
+  - Expected: Auto-expand traverses entire single-child chain, returning functions
+
+- **Flatten with pagination**:
+  - What happens: `list_tools(path="base", flatten=True)` returns 47 functions
+  - Expected: Respects `limit` parameter and returns `next_cursor` for pagination
 
 ## Requirements *(mandatory)*
 
@@ -179,7 +193,7 @@ The system transitions from short names (`base.gaussian`) to full names (`base.s
 - `list_tools` and `describe_function` responses remain paginated
 - New parameters are additive (backward compatible)
 - Full schemas still fetched only via `describe_function`, not in listings
-- `run_function` is just a rename of `call_tool` with same behavior
+- `run_function` is the only supported execution API
 
 #### 2. Isolated Tool Execution
 
@@ -225,7 +239,7 @@ The system transitions from short names (`base.gaussian`) to full names (`base.s
 - Permission inheritance tests written before implementation
 - Hierarchical list_tools tests written before implementation
 - Multi-keyword search tests written before implementation
-- Deprecation warning tests written before implementation
+- Call dispatch error handling tests written before implementation
 
 ### Functional Requirements
 
@@ -241,7 +255,7 @@ The system transitions from short names (`base.gaussian`) to full names (`base.s
 #### Tool Consolidation
 
 - **FR-007**: System MUST remove the `builtin` tool pack from the default tool manifest roots
-- **FR-008**: System MUST provide migration guidance for users referencing `builtin.*` functions
+- **FR-008**: System MUST provide migration guidance for users referencing `builtin.*` functions in a dedicated "Migration from builtin" section of the README
 - **FR-009**: All image processing functions MUST run in the `bioimage-mcp-base` environment
 - **FR-010**: System SHOULD expose direct library function bindings with full naming (e.g., `base.skimage.filters.gaussian`)
 
@@ -252,11 +266,14 @@ The system transitions from short names (`base.gaussian`) to full names (`base.s
 - **FR-013**: `list_tools(path="env.package.module")` MUST return function names at that level
 - **FR-014**: `list_tools(paths=[...])` MUST support multiple paths in a single call
 - **FR-015**: Hierarchical listing MUST respect existing pagination (limit/cursor)
+- **FR-032**: `list_tools` MUST auto-expand paths with single children until reaching functions or multiple children
+- **FR-033**: `list_tools` response MUST include `expanded_from: string | null` field when auto-expansion occurred (contains the original path before expansion, null if no expansion)
+- **FR-034**: `list_tools` MUST accept optional `flatten: bool` parameter to return all functions under a path. When `flatten=True`, auto-expansion is skipped and all descendant functions are returned directly.
 
 #### Multi-Keyword Search
 
 - **FR-016**: `search_functions` MUST accept `keywords: list[str] | str` parameter
-- **FR-017**: Results MUST be ranked by: (1) number of keywords matched, (2) total weighted matches
+- **FR-017**: Results MUST be ranked by: (1) number of keywords matched, (2) total weighted matches using BM25-style scoring with n-gram tokenization for typo tolerance
 - **FR-018**: Match weights MUST be: name=3, description=2, tags=1
 - **FR-019**: `search_functions` MUST support pagination via `limit` (default 20) and `cursor` parameters
 
@@ -269,20 +286,18 @@ The system transitions from short names (`base.gaussian`) to full names (`base.s
 #### API Naming
 
 - **FR-023**: System MUST register `run_function` as the canonical name for function execution
-- **FR-024**: System MUST continue accepting `call_tool` as deprecated alias
-- **FR-025**: Calls to `call_tool` MUST log a deprecation warning, but MUST NOT return it in the response payload
+- **FR-024**: `call_tool` is removed; `run_function` is the only supported execution API
 
 #### Agent Guidance
 
+- **FR-025**: System SHOULD log when a function is executed without prior activation for observability
 - **FR-026**: Responses SHOULD include `workflow_hint` field for guidance
 - **FR-027**: When `agent_guidance.warn_unactivated: true`, non-activated function calls MUST include warning
 - **FR-028**: Warning message MUST suggest using `activate_functions` before `run_function`
 
-#### Function Naming Migration
+#### Function Naming
 
-- **FR-029**: System SHOULD support alias definitions in manifest (e.g., `base.gaussian` → `base.skimage.filters.gaussian`)
-- **FR-030**: Alias calls SHOULD include deprecation notice in response
-- **FR-031**: Hierarchical listings MUST show canonical names, not aliases
+- **FR-029**: Functions MUST use canonical `env.package.module.function` naming only; short names and aliases are NOT supported
 
 ### Key Entities
 
@@ -302,20 +317,23 @@ Result of write permission check.
 - `DENIED`: Write not permitted
 - `ASK`: Prompt user for confirmation via Elicitation
 
-#### FunctionAlias
-Mapping from short name to canonical full name.
+#### OverwritePolicy
+Configuration for handling writes to existing files.
 
-**Example**:
-```yaml
-aliases:
-  base.gaussian: base.skimage.filters.gaussian
-  base.phasor_from_flim: base.phasorpy.phasor.phasor_from_signal
-```
+**Values**:
+- `allow`: Overwrite without prompting
+- `deny`: Reject overwrite attempts
+- `ask`: Prompt user via MCP Elicitation (requires client support)
 
-**Constraints**:
-- Aliases MUST NOT form cycles
-- Canonical name MUST be a registered function
-- Aliases are optional (functions can have only canonical name)
+#### PermissionDecision
+Structured record of a permission check result for audit logging.
+
+**Fields**:
+- `path: string` - The file path that was checked
+- `action: "read" | "write"` - The requested operation
+- `result: WritePermission` - The decision (ALLOWED/DENIED/ASK)
+- `reason: string` - Human-readable explanation (e.g., "path within inherited root /home/user/project")
+- `timestamp: datetime` - When the decision was made
 
 ## Success Criteria *(mandatory)*
 
@@ -341,11 +359,7 @@ aliases:
   - Measurement: Single call retrieves 5 function schemas
   - Verification: Integration test validates batch response structure
 
-- **SC-006**: Deprecated `call_tool` logs warning
-  - Measurement: Call to `call_tool` includes deprecation notice in logs
-  - Verification: Log assertion in integration test
-
-- **SC-007**: Agent guidance hints included in responses
+- **SC-006**: Agent guidance hints included in responses
   - Measurement: Non-activated function call includes `workflow_hint`
   - Verification: Integration test validates hint presence
 
@@ -382,8 +396,7 @@ aliases:
 
 **For API Naming:**
 - [ ] `run_function` registered as primary handler
-- [ ] `call_tool` accepted with deprecation warning
-- [ ] Deprecation warning logged, and NOT returned to user
+- [ ] `call_tool` removed from API surface
 
 **For Agent Guidance:**
 - [ ] `workflow_hint` field in responses
@@ -394,8 +407,8 @@ aliases:
 
 Before merging this feature:
 
-1. **Test Coverage**: ≥80% branch coverage for new permission logic
-2. **Performance**: Hierarchical list_tools completes in <100ms for any path
+1. **Test Coverage**: ≥80% branch coverage for new permission logic in `api/permissions.py` and `config/fs_policy.py`
+2. **Performance**: Hierarchical `list_tools` completes in <100ms for any single path query with default limit (excludes network latency)
 3. **Documentation**: README updated with new permission modes
 4. **Contract Tests**: Schema validation for all new/modified API responses
 5. **Integration Tests**: Full workflow test passes with inherit mode
@@ -408,7 +421,6 @@ Before merging this feature:
 1. **Permission caching**: Cache inherited roots with TTL to reduce Roots calls
 2. **Glob patterns in paths**: `list_tools(path="base.skimage.*")` for wildcard navigation
 3. **Function favorites**: Track frequently used functions per session for recommendations
-4. **Smart aliases**: Auto-generate aliases based on function usage patterns
 
 ### Integration Opportunities
 
@@ -418,29 +430,11 @@ Before merging this feature:
 
 ## Migration & Compatibility
 
-### Backward Compatibility
+Breaking changes are expected per Constitution v0.6.0, with no deprecation period. This release removes:
 
-- `call_tool` continues to work (deprecated, logs warning)
-- `describe_function(fn_id=...)` single-function form still works
-- `list_tools()` with no arguments returns envs (not breaking, but different)
-- Explicit permission allowlists still work in `hybrid` or `explicit` mode
-
-### Migration Path
-
-1. **builtin removal**:
-   - Users referencing `builtin.gaussian_blur` should use `base.gaussian`
-   - Users referencing `builtin.convert_to_ome_zarr` should use `base.convert_to_ome_zarr`
-
-2. **Permission config**:
-   - Existing explicit allowlists continue to work
-   - New installs default to `mode: inherit`
-   - Upgrade path: add `permissions.mode: inherit` to config
-
-### Deprecations
-
-- `call_tool`: Deprecated in favor of `run_function`
-- `builtin.*` functions: Removed, replaced by `base.*` equivalents
-- Short function names (e.g., `base.gaussian`): Deprecated in favor of full names (future)
+- `call_tool` (use `run_function` only)
+- `builtin.*` functions (use `base.*` canonical names)
+- Short names and aliases (use canonical `env.package.module.function` naming)
 
 ## References
 
@@ -464,5 +458,5 @@ Before merging this feature:
 4. Implement MCP Roots integration
 5. Implement hierarchical `list_tools`
 6. Implement multi-keyword search ranking
-7. Add `run_function` alias for `call_tool`
+7. Register `run_function` as the only execution API
 8. Run full validation workflow and verify all issues resolved

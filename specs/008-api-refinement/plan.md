@@ -9,10 +9,10 @@ This plan addresses several critical improvements to the Bioimage-MCP API and se
 
 1. **Dynamic Permissions (P0)**: Implementing `inherit` mode to leverage MCP Roots for zero-config file access, plus Elicitation-based overwrite protection.
 2. **Canonical Naming Scheme (P0)**: Migrating to `env.package.module.function` (e.g., `base.skimage.filters.gaussian`) and consolidating `builtin` into `base`.
-3. **Hierarchical Discovery (P1)**: Refining `list_tools` to support tree navigation (envs -> packages -> modules -> functions) with batch support.
+3. **Hierarchical Discovery (P1)**: Refining `list_tools` to support tree navigation (envs -> packages -> modules -> functions) with batch support, with smart shortcuts that auto-expand single-child paths.
 4. **Enhanced Search (P1)**: Implementing multi-keyword search with weighted ranking (Name=3, Desc=2, Tags=1).
 5. **Batch Describe (P2)**: Adding `describe_function(fn_ids=[...])` to reduce round-trips for agents.
-6. **API Consolidation (P2)**: Renaming `call_tool` to `run_function` (canonical) and adding workflow guidance hints.
+6. **API Consolidation (P2)**: Replacing `call_tool` with `run_function` (canonical) and adding workflow guidance hints.
 
 ## Technical Context
 
@@ -31,20 +31,24 @@ This plan addresses several critical improvements to the Bioimage-MCP API and se
 | Canonical Naming | `env.package.module.function` | Standardizes discovery; prevents collisions; maps clearly to Python hierarchy. |
 | Tool Consolidation | Remove `builtin`, move to `base` | Eliminates cross-environment I/O errors and dependency conflicts. |
 | Hierarchical Logic | Dot-notated `path` parameter | Intuitive navigation; allows agents to browse specific sub-trees efficiently. |
-| Search Ranking | Multi-keyword weighted score | Improves relevance; keyword count is primary sort, total weight is secondary. |
+| Hierarchy Shortcuts | Auto-expand single-child paths | Reduces roundtrips for small envs (e.g., cellpose) |
+| Search Ranking | BM25 with n-gram tokenization | Typo-tolerant, pure Python, <1ms latency |
+| Backward Compat | Not required (early dev) | Constitution v0.6.0 allows breaking changes pre-1.0 |
 | Permission Mode | Default to `inherit` | Zero-config "it just works" experience for users within their agent workspace. |
 | Overwrite Policy | MCP Elicitation (`ask`) | Best-in-class interactive safety; fall back to `deny` for non-supporting clients. |
 
 ### Research Questions (Resolved)
 
-1. **Alias handling**: Legacy names (e.g., `base.gaussian`) are supported as deprecated aliases in the registry but hidden from `list_tools`.
+1. **Alias handling**: Legacy names (e.g., `base.gaussian`) are not supported; only canonical names are registered.
 2. **Environment mapping**: `env` in the fn_id corresponds to the short name (`base`, `cellpose`), not the full `env_id` (`bioimage-mcp-base`).
 3. **Permission logging**: Inherited roots and every allow/deny decision are logged to `server.log` for auditability.
 4. **Hierarchy depth**: Hierarchy is dynamic based on registered functions; can be any depth, but typically 3-4 levels.
+5. **Hierarchy shortcuts**: Single-child paths auto-expand (e.g., `list_tools(path="cellpose")` returns functions directly). `flatten=True` parameter available for full flattening.
 
 ## Constitution Check
 
-- [x] **Stable MCP Surface**: New parameters are additive; pagination is preserved. `run_function` is an alias for `call_tool`.
+- [x] **Stable MCP Surface**: New parameters are additive; pagination is preserved.
+- [x] **Early Development Policy (v0.6.0)**: Breaking changes acceptable pre-1.0.
 - [x] **Summary-first responses**: `list_tools` and `search_functions` return summaries; full schemas stay in `describe_function`.
 - [x] **Tool execution isolated**: Consolidation reduces environment sprawl but maintains subprocess boundaries.
 - [x] **Artifact references only**: No changes to the artifact model; all I/O via typed references.
@@ -72,11 +76,11 @@ specs/008-api-refinement/
 src/bioimage_mcp/
 ├── api/
 │   ├── server.py            # MCP tool registrations and high-level routing
-│   ├── discovery.py         # Refined list_tools, search_functions, describe_function
-│   ├── execution.py         # Add run_function logic, handle call_tool deprecation
+│   ├── discovery.py         # Refined list_tools with smart shortcuts, search_functions, describe_function
+│   ├── execution.py         # Add run_function logic, remove call_tool handling
 │   └── permissions.py       # NEW: Root inheritance and decision logic
 ├── registry/
-│   ├── index.py             # Hierarchical index support, alias mapping
+│   ├── index.py             # Hierarchical index support
 │   └── search.py            # Weighted multi-keyword ranking
 ├── config/
 │   ├── loader.py            # Auto-discovers tool manifests under tools/
@@ -84,15 +88,16 @@ src/bioimage_mcp/
 │   └── fs_policy.py         # Modified to use dynamic permission service
 tools/
 ├── base/
-│   ├── manifest.yaml        # Updated naming, aliases, consolidated builtins
-└── builtin/                 # REMOVED (migration notes in research.md)
+│   ├── manifest.yaml        # Updated naming, consolidated builtins
+└── builtin/                 # REMOVED (users must update to base.* equivalents)
 ```
 
 ## Migration & Compatibility
 
-1. **API Mapping**: `call_tool` is accepted as a deprecated alias for `run_function`. Clients are encouraged to migrate. Deprecation warnings are logged but not returned in the JSON response.
+1. **API Mapping**: `call_tool` is removed; use `run_function` only.
 2. **Discovery**: `list_tools` response remains under the `tools` key for MCP compliance, but the items now represent hierarchical nodes (envs/packages/modules) rather than a flat list of all functions.
-3. **Environment Consolidation**: `tools/builtin/` is removed; all its functions (like OME-Zarr conversion) are moved to the `base` environment to reduce I/O overhead.
+3. **Environment Consolidation**: `tools/builtin/` is removed without replacement aliases; users referencing `builtin.*` should update to `base.*` equivalents.
+4. **Compatibility Policy**: Per Constitution v0.6.0, backward compatibility is not required during early development.
 
 ## Complexity Tracking
 

@@ -1,9 +1,9 @@
 <!--
 Sync Impact Report
-- Version change: 0.4.0 -> 0.5.0
-- Principles updated: Principle V (Safety, Testing, and Observability)
-- Added sections: Tool Naming convention in Architecture Constraints
-- Removed sections: None
+- Version change: 0.5.0 -> 0.6.0
+- Principles updated: Early development policy added
+- Added sections: Early Development section
+- Removed sections: Backward compatibility alias support
 - Templates requiring updates: None
 - Follow-up TODOs: Update config.yaml documentation for permissions.mode
 -->
@@ -20,8 +20,7 @@ Non-negotiables:
 - Full schemas MUST be fetched only on-demand (e.g., via `describe_function(fn_id)`).
 - Tool calls and workflow execution MUST return IDs and artifact references, not large
   in-message payloads.
-- Changes that expand the MCP surface area MUST come with a migration plan and version
-  bump justification.
+- Changes that expand the MCP surface area MUST include a version bump justification.
 
 Rationale: Tool catalogs grow quickly in bioimage analysis; the interface must scale
 without forcing prompt/context growth.
@@ -110,6 +109,17 @@ Non-negotiables:
 Rationale: TDD ensures robust, regression-resistant code and forces clear thinking about
 interfaces and edge cases before implementation.
 
+### VII. Early Development Policy (Pre-1.0)
+
+Bioimage-MCP is in early development and is not yet required to preserve backward compatibility.
+
+Non-negotiables:
+- Breaking changes are expected and acceptable prior to v1.0.
+- Backward compatibility will become a priority starting with v1.0.
+
+Rationale: Early iteration allows the architecture and MCP surface to mature quickly before
+stabilization.
+
 ## Architecture Constraints
 
 - **MCP SDK**: Use the official MCP Python SDK for server transports and protocol
@@ -133,10 +143,8 @@ interfaces and edge cases before implementation.
 - **Reference implementation**: `MicroscopyLM` (`../MicroscopyLM/`) provides reference
   patterns for registry, env manager, and subprocess executors.
 - **Tool naming**: Functions SHOULD use `env.package.module.function` naming scheme
-  (e.g., `base.skimage.filters.gaussian`) for clarity and discoverability. Legacy
-  short names (e.g., `base.gaussian`) MAY be supported as aliases during migration.
-- **API naming**: `run_function` is the canonical name for function execution; 
-  `call_tool` is deprecated but MAY be supported as an alias for backward compatibility.
+  (e.g., `base.skimage.filters.gaussian`) for clarity and discoverability.
+- **API naming**: `run_function` is the canonical name for function execution.
 
 ## Development Workflow & Quality Gates
 
@@ -172,4 +180,4 @@ Compliance expectations:
 - Exceptions MUST be documented in the plan with rationale and mitigation, and MUST
   be approved in review.
 
-**Version**: 0.5.0 | **Ratified**: 2025-12-26 | **Last Amended**: 2025-12-28
+**Version**: 0.6.0 | **Ratified**: 2025-12-26 | **Last Amended**: 2025-12-28
