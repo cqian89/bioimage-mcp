@@ -1,11 +1,11 @@
 <!--
 Sync Impact Report
-- Version change: 0.3.0 -> 0.4.0
-- Principles updated: Principle III (Artifact References Only)
-- Added sections: None
+- Version change: 0.4.0 -> 0.5.0
+- Principles updated: Principle V (Safety, Testing, and Observability)
+- Added sections: Tool Naming convention in Architecture Constraints
 - Removed sections: None
 - Templates requiring updates: None
-- Follow-up TODOs: None
+- Follow-up TODOs: Update config.yaml documentation for permissions.mode
 -->
 
 # Bioimage-MCP Constitution
@@ -80,8 +80,13 @@ Non-negotiables:
 - Tool code runs with user privileges; this MUST be documented clearly.
 - Subprocess boundaries provide fault isolation (crash containment), NOT security
   sandboxing.
-- File and network access policies MUST be explicit (allowlisted roots; network off by
-  default if configured).
+- File and network access policies MUST be explicit and verifiable through one of:
+  a) Explicit allowlists in configuration (current behavior)
+  b) MCP Roots capability with session-start logging of inherited roots
+  c) Hybrid mode combining both with explicit additions
+- Write operations to existing files SHOULD prompt for user confirmation via MCP 
+  Elicitation when `on_overwrite: ask` is configured.
+- All permission decisions (allow/deny/ask) MUST be logged with path and reason.
 - Runs MUST emit structured logs and persist them as artifacts.
 - Changes to core workflow execution, artifact schemas, or tool shims MUST include
   automated tests.
@@ -127,6 +132,11 @@ interfaces and edge cases before implementation.
   provide installation and runtime lifecycle (defined in PRD §6.6).
 - **Reference implementation**: `MicroscopyLM` (`../MicroscopyLM/`) provides reference
   patterns for registry, env manager, and subprocess executors.
+- **Tool naming**: Functions SHOULD use `env.package.module.function` naming scheme
+  (e.g., `base.skimage.filters.gaussian`) for clarity and discoverability. Legacy
+  short names (e.g., `base.gaussian`) MAY be supported as aliases during migration.
+- **API naming**: `run_function` is the canonical name for function execution; 
+  `call_tool` is deprecated but MAY be supported as an alias for backward compatibility.
 
 ## Development Workflow & Quality Gates
 
@@ -162,4 +172,4 @@ Compliance expectations:
 - Exceptions MUST be documented in the plan with rationale and mitigation, and MUST
   be approved in review.
 
-**Version**: 0.4.0 | **Ratified**: 2025-12-26 | **Last Amended**: 2025-12-26
+**Version**: 0.5.0 | **Ratified**: 2025-12-26 | **Last Amended**: 2025-12-28

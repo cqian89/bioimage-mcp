@@ -4,9 +4,11 @@ tool_manifest_roots:
 - /mnt/c/Users/meqia/bioimage-mcp/tools/base
 - /mnt/c/Users/meqia/bioimage-mcp/tools/builtin
 - /mnt/c/Users/meqia/bioimage-mcp/tools/cellpose
-fs_allowlist_read: []
+fs_allowlist_read:
+- /mnt/c/Users/meqia/bioimage-mcp/datasets
 fs_allowlist_write:
 - /home/qianchen/.bioimage-mcp
+- /mnt/c/Users/meqia/bioimage-mcp/datasets/FLUTE_FLIM_data_tif/outputs
 fs_denylist:
 - /etc
 - /proc

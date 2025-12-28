@@ -1,0 +1,247 @@
+openapi: 3.0.3
+info:
+  title: Bioimage-MCP API Refinement & Permissions Contracts
+  version: 0.8.0
+  description: |
+    Refined schemas for Bioimage-MCP discovery, execution, and permission systems.
+    These contracts define the JSON structures used in MCP tool calls and responses.
+
+components:
+  schemas:
+    # --- Configuration ---
+
+    ServerConfiguration:
+      type: object
+      properties:
+        permissions:
+          type: object
+          properties:
+            mode:
+              $ref: "#/components/schemas/PermissionMode"
+            on_overwrite:
+              $ref: "#/components/schemas/OverwritePolicy"
+        fs_allowlist_read:
+          type: array
+          items:
+            type: string
+        fs_allowlist_write:
+          type: array
+          items:
+            type: string
+        fs_denylist:
+          type: array
+          items:
+            type: string
+        agent_guidance:
+          type: object
+          properties:
+            warn_unactivated:
+              type: boolean
+              default: true
+
+    # --- Discovery & Hierarchy ---
+
+    ToolHierarchyNode:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Short name of the node (e.g. "skimage")
+        full_path:
+          type: string
+          description: Dot-notated path (e.g. "base.skimage")
+        type:
+          type: string
+          enum: [environment, package, module, function]
+        has_children:
+          type: boolean
+        fn_id:
+          type: string
+          description: Canonical function ID (only for type=function)
+        summary:
+          type: string
+
+    ScoredFunction:
+      type: object
+      properties:
+        fn_id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        score:
+          type: number
+          description: Weighted match score
+        match_count:
+          type: integer
+          description: Number of keywords matched
+        tags:
+          type: array
+          items:
+            type: string
+
+    # --- Permissions & Safety ---
+
+    PermissionMode:
+      type: string
+      enum: [explicit, inherit, hybrid]
+      default: inherit
+
+    OverwritePolicy:
+      type: string
+      enum: [allow, deny, ask]
+      default: ask
+
+    PermissionDecision:
+      type: object
+      required: [operation, path, decision, timestamp]
+      properties:
+        operation:
+          type: string
+          enum: [read, write]
+        path:
+          type: string
+        mode:
+          $ref: "#/components/schemas/PermissionMode"
+        decision:
+          type: string
+          enum: [ALLOWED, DENIED, ASK]
+        reason:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+    # --- Tool Interface Refinements ---
+
+    ListToolsRequest:
+      type: object
+      properties:
+        path:
+          type: string
+          description: Dot-notated path to navigate
+        paths:
+          type: array
+          items:
+            type: string
+          description: Batch navigation
+        limit:
+          type: integer
+          default: 20
+        cursor:
+          type: string
+
+    ListToolsResponse:
+      type: object
+      properties:
+        tools:
+          type: array
+          items:
+            $ref: "#/components/schemas/ToolHierarchyNode"
+        next_cursor:
+          type: string
+
+    SearchFunctionsRequest:
+      type: object
+      required: [keywords]
+      properties:
+        keywords:
+          oneOf:
+            - type: string
+            - type: array
+              items:
+                type: string
+        query:
+          type: string
+          description: Legacy alias for keywords
+        tags:
+          type: array
+          items:
+            type: string
+        limit:
+          type: integer
+          default: 20
+        cursor:
+          type: string
+
+    SearchFunctionsResponse:
+      type: object
+      properties:
+        functions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScoredFunction"
+        next_cursor:
+          type: string
+
+    DescribeFunctionRequest:
+      type: object
+      properties:
+        fn_id:
+          type: string
+          description: Single ID (legacy)
+        fn_ids:
+          type: array
+          items:
+            type: string
+          description: Batch retrieval
+
+    DescribeFunctionResponse:
+      type: object
+      properties:
+        schemas:
+          type: object
+          additionalProperties:
+            type: object
+            description: Full JSON Schema of the function
+        errors:
+          type: object
+          additionalProperties:
+            type: string
+          description: Mapping of fn_id to error message for batch partial failures
+
+    RunFunctionRequest:
+      type: object
+      required: [fn_id, inputs]
+      properties:
+        fn_id:
+          type: string
+        inputs:
+          type: object
+          description: Mapping of port name to ArtifactRef
+        params:
+          type: object
+        metadata:
+          type: object
+          properties:
+            warn_unactivated:
+              type: boolean
+              default: true
+
+    RunFunctionResponse:
+      type: object
+      properties:
+        result:
+          type: object
+        warnings:
+          type: array
+          items:
+            type: string
+        workflow_hint:
+          type: string
+
+paths: {}
+
+x-contract-assertions:
+  logging:
+    inherit_roots: "Server MUST log all inherited roots from list_roots() at session start."
+    decisions: "Server MUST log every ALLOWED/DENIED/ASK permission decision with path and reason."
+  permissions:
+    deny_outside_roots: "In 'inherit' mode, server MUST deny access to any path not under an inherited root or explicit allowlist."
+    overwrite_elicitation: "When on_overwrite is 'ask', server MUST use elicit_form and respect Action (accept/decline/cancel)."
+  discovery:
+    hierarchy_semantics: "list_tools() MUST return environment nodes; list_tools(path='base') MUST return package nodes."
+    ranking: "search_functions MUST rank by (match_count DESC, weight_sum DESC)."
+    batch_partial_failure: "describe_function with multiple IDs MUST return partial results and populate 'errors' for failed IDs."
+    call_tool_deprecation: "call_tool MUST function as an alias to run_function; server MUST log a deprecation warning but MUST NOT return it in the response payload."

@@ -237,6 +237,7 @@ python scripts/validate_pipeline.py
 - Local filesystem artifact store + SQLite index (MVP) (005-dynamic-function-registry)
 - Python 3.13 (core server); Python 3.13 (base tool env) + MCP Python SDK (`mcp>=1.25.0`), `pydantic>=2.0`, `bioio`, `phasorpy`, `bioio-bioformats` (006-phasor-usability-fixes)
 - Python 3.13 (core server); Python 3.13 (base tool env) + MCP Python SDK (`mcp>=1.25.0`), `pydantic>=2.0`, `bioio`, `numpy`, `pytest`, `pytest-asyncio`, `pyyaml` (007-workflow-test-harness)
+- Python 3.13 (core server); Python 3.13 (base tool env) + MCP Python SDK (`mcp>=1.25.0`), `pydantic>=2.0`, `bioio`, `numpy`, `pytest`, `pyyaml` (008-api-refinement)
 
 ## Recent Changes
 - 004-interactive-tool-calling: Added Python 3.13 (core server; tool envs may differ)
