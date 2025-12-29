@@ -5,9 +5,17 @@ from typing import Any
 
 from bioimage_mcp_base.axis_ops import (
     expand_dims as _expand_dims,
+)
+from bioimage_mcp_base.axis_ops import (
     moveaxis as _moveaxis,
+)
+from bioimage_mcp_base.axis_ops import (
     relabel_axes as _relabel_axes,
+)
+from bioimage_mcp_base.axis_ops import (
     squeeze as _squeeze,
+)
+from bioimage_mcp_base.axis_ops import (
     swap_axes as _swap_axes,
 )
 
