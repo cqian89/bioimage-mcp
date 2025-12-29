@@ -7,52 +7,57 @@
 - **Feature Area**: Artifacts, Runtimes
 
 ## Summary
-Standardize on bioio's `BioImage` as the cross-environment image artifact layer. Instead of building a custom wrapper, all tool environments will include `bioio` with format-appropriate plugins to provide a consistent, lazy-loaded interface to microscopy data. This ensures that tools receive data in a predictable 5D (TCZYX) format regardless of the underlying storage (OME-TIFF, OME-Zarr, etc.).
+Standardize on bioio's `BioImage` as the cross-environment image artifact layer. Instead of building a custom wrapper, tool environments will include `bioio` with format-appropriate plugins to provide a consistent, lazy-loaded interface to microscopy data. This ensures tools receive data in a predictable 5D (TCZYX) format regardless of underlying storage (OME-TIFF, OME-Zarr, proprietary, etc.).
 
 ## Key Design Decisions (REVISED)
-- **No custom wrapper**: Use `bioio.BioImage` directly instead of a custom `ImageArtifact` class. This leverages a maintained industry standard and reduces project complexity.
-- **Interchange format per-env**: Each environment declares its preferred interchange format. OME-TIFF is the default; OME-Zarr is used for high-performance or large-scale data environments.
-- **Plugin minimalism**: To keep tool environments lightweight, each environment installs only the `bioio` plugins it strictly needs (e.g., `bioio-ome-tiff` for most, `bioio-bioformats` only where proprietary formats are handled).
-- **5D normalization**: All images are accessed as TCZYX (Time, Channel, Z, Y, X) via bioio. Singleton dimensions are automatically added for 2D/3D data to ensure array shape consistency across tools.
+- **No custom wrapper**: Use `bioio.BioImage` directly instead of a custom `ImageArtifact` class.
+- **Format hints via manifests**: Use the existing `Port.format` field in tool manifests (validated by `src/bioimage_mcp/registry/manifest_schema.py`) to declare expected output formats (e.g., `OME-TIFF`, `OME-Zarr`).
+- **Plugin minimalism**: Each tool environment installs only the `bioio` plugins it needs for its declared formats/capabilities (e.g., `bioio-ome-tiff` for OME-TIFF, `bioio-ome-zarr` only where OME-Zarr conversion/processing is required).
+- **5D normalization**: All images are accessed as TCZYX (Time, Channel, Z, Y, X) via bioio. Singleton dimensions are automatically added for 2D/3D data.
+- **Conversion boundary**: The core server orchestrates format matching using artifact metadata and manifest `Port.format` hints, but any actual conversion runs inside a tool environment (primarily `bioimage-mcp-base`) and returns new artifact references.
 
 ## Research Findings: bioio Advantages
-Bioio provides the core functionality required for cross-environment image handling:
-- **BioImage class**: A universal wrapper that auto-detects formats and provides a unified API.
-- **Lazy Loading**: Native support for lazy loading via `dask`, preventing memory exhaustion with large datasets.
-- **Consistent Output**: Normalizes all inputs to TCZYX, eliminating "gotchas" with dimension ordering.
-- **Multiple Access Methods**:
-  - `.data`: Returns a numpy-like array (dask-backed).
-  - `.dask_data`: Direct access to the dask graph.
-  - `.xarray_data`: Labeled arrays for metadata-aware operations.
-- **StandardMetadata**: Provides normalized access to physical pixel sizes, channel names, and acquisition info.
-- **Lightweight Core**: Core dependencies (numpy, dask, xarray, ome-types) are already common in bioimaging stacks.
+- **BioImage class**: Unified reader API over multiple formats.
+- **Lazy loading**: Native `dask` support prevents memory exhaustion for large datasets.
+- **Consistent output**: Normalizes inputs to TCZYX.
+- **StandardMetadata**: Normalized access to pixel sizes, channel names, acquisition info.
 
-## Core Requirements (REVISED)
-1. **bioio in all envs**: Update all `envs/*.yaml` and `envs/*.lock.yml` to include `bioio` and `bioio-ome-tiff`.
-2. **Manifest format hints**: Update tool manifests (`manifest.yaml`) to declare supported/preferred formats using `interchange_format: OME-TIFF` or `interchange_format: OME-Zarr`.
-3. **Import conversion**: Proprietary formats (CZI, LIF, ND2) are converted to the environment's interchange format (typically OME-TIFF) upon initial import into the artifact store.
-4. **Export preservation**: Outputs are saved using standard writers (e.g., `OmeTiffWriter`) to ensure OME metadata (pixel size, channel labels) is preserved for downstream tools.
+## Core Requirements
+1. **bioio in current tool envs**: Update `envs/bioimage-mcp-base.yaml` and `envs/bioimage-mcp-cellpose.yaml` (and lockfiles) so:
+   - Base includes `bioio` + `bioio-ome-tiff` and (for this spec) `bioio-ome-zarr` plus the proprietary reader plugin for CZI ingest: `bioio-czi`.
+   - Cellpose includes `bioio` + `bioio-ome-tiff`.
+2. **Manifest format hints**: Tool manifests declare expected formats using `Port.format` values `OME-TIFF` / `OME-Zarr` (canonical spelling) where applicable.
+3. **Import conversion**: Proprietary formats (CZI, LIF, ND2) are converted to the required interchange format (typically OME-TIFF) before being passed to downstream tools. Conversion is executed within `bioimage-mcp-base`; core only orchestrates by artifact references.
+4. **Export preservation**: Outputs are written using standard writers (e.g., `OmeTiffWriter`) so OME metadata (pixel sizes, channel labels) is preserved.
+5. **Docs & migration**: Tutorials, AGENTS guidance, and a developer migration guide are updated to enforce the standard `BioImage` I/O pattern and format-hint conventions.
+6. **Versioning & migration notes**: Any public-contract change (manifest schema fields/semantics, artifact metadata schema) includes explicit migration notes.
 
 ## Compatibility Matrix (UPDATED)
 
-| Environment | Python | Interchange Format | Plugins |
-|-------------|--------|--------------------|---------|
-| bioimage-mcp-base | 3.13 | OME-TIFF | bioio, bioio-ome-tiff, bioio-bioformats, bioio-czi |
-| bioimage-mcp-cellpose | 3.10 | OME-TIFF | bioio, bioio-ome-tiff |
-| bioimage-mcp-stardist | 3.10 | OME-TIFF | bioio, bioio-ome-tiff |
+| Environment | Python | Supported Formats (practical) | Required Plugins (for this spec) |
+|-------------|--------|-------------------------------|----------------------------------|
+| bioimage-mcp-base | 3.13 | OME-TIFF, OME-Zarr, proprietary ingest (CZI via plugin) | `bioio`, `bioio-ome-tiff`, `bioio-ome-zarr`, plus CZI reader plugin(s) |
+| bioimage-mcp-cellpose | 3.10 | OME-TIFF | `bioio`, `bioio-ome-tiff` |
+
+Note: This spec intentionally scopes to the currently present tool environments (`base`, `cellpose`). Future tool packs must follow the same plugin + format-hint policy.
 
 ## User Stories (REVISED)
-1. **Proprietary Import**: An agent loads a Zeiss CZI file. The base environment uses `BioImage(czi_path)` to read it and immediately saves it as a standard OME-TIFF artifact.
-2. **Cross-Env Analysis**: The Cellpose environment receives an OME-TIFF artifact reference. It loads the data via `BioImage(path).data`, receiving a consistent 5D TCZYX array without needing to know about OME-TIFF specifics.
-3. **Large Dataset Handling**: An environment configured for OME-Zarr handles a multi-terabyte dataset. Because `bioio` uses dask, the tool can perform chunked processing natively without loading the entire image into RAM.
+1. **Proprietary import**: An agent provides a Zeiss CZI. The system converts it to OME-TIFF in the base environment and stores it as a standard `BioImageRef`.
+2. **Cross-env analysis**: Cellpose receives an OME-TIFF artifact reference and loads it via `BioImage(path).data`, receiving a consistent 5D TCZYX array.
+3. **Large dataset handling**: The base environment can produce OME-Zarr artifacts for chunked workflows; tools can process lazily via dask-backed access.
+
+## Edge Cases
+- **Missing metadata**: If pixel sizes or channel names are unavailable, metadata fields may be `None`; tools must handle this without crashing.
+- **Multi-scene files**: Multi-scene CZI/LIF must define a deterministic default (e.g., first scene) or require explicit selection.
+- **Conversion failures**: Fail fast with a clear error and a persisted log artifact; do not create partially valid artifacts.
+- **Unsupported formats**: Return a validation error before dispatching tool execution.
 
 ## Success Criteria (REVISED)
-- **SC-001**: All tool environments have `bioio` and the `bioio-ome-tiff` plugin installed and verified via `doctor` check.
-- **SC-002**: `BioImage(path).data` returns a consistent 5D TCZYX array (as a dask/numpy array) in all environments for any supported artifact.
-- **SC-003**: The Phasor analysis workflow successfully processes a CZI input by auto-converting it to OME-TIFF during the initial ingest step.
-- **SC-004**: `StandardMetadata` (physical pixel sizes, channel names) is correctly extracted from input artifacts and preserved through at least one transformation step.
+- **SC-001**: Tool environments satisfy the plugin policy in Requirement 1 and are verifiable via `python -m bioimage_mcp doctor`.
+- **SC-002**: `BioImage(path).data` yields consistent 5D TCZYX across environments for supported artifacts.
+- **SC-003**: A workflow can start from a CZI input and reach phasor analysis by auto-converting to OME-TIFF prior to phasor execution (phasor itself may remain OME-TIFF-only).
+- **SC-004**: `StandardMetadata` (pixel sizes, channel names) is preserved through at least one write step (e.g., import -> transform -> export).
 
 ## Out of Scope
-- **Custom `ImageArtifact` class**: This spec explicitly replaces the need for a custom wrapper class.
-- **Complex `FormatBroker`**: Heavyweight format conversion logic is deferred to bioio's internal plugin handling at the point of import/export.
-- **OME-Zarr chunked slicing optimization**: While supported by bioio, specific optimizations for cloud-native Zarr slicing are deferred to a future performance-focused spec.
+- **Custom `ImageArtifact` class**
+- **OME-Zarr cloud slicing optimizations** (future performance-focused spec)

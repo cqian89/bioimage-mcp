@@ -1,0 +1,229 @@
+--- a/specs/010-image-artifact/spec.md
++++ b/specs/010-image-artifact/spec.md
+@@ -28,11 +28,11 @@
+ - **Lightweight Core**: Core dependencies (numpy, dask, xarray, ome-types) are already common in bioimaging stacks.
+ 
+ ## Core Requirements (REVISED)
+-1. **bioio in current envs**: Update `envs/bioimage-mcp-base.yaml` and `envs/bioimage-mcp-cellpose.yaml` (and their lockfiles) to include `bioio` and `bioio-ome-tiff`. Future tool environments must follow this policy.
++1. **bioio in current envs**: Update `envs/bioimage-mcp-base.yaml` and `envs/bioimage-mcp-cellpose.yaml` (and their lockfiles) to include `bioio` and minimal plugins per declared interchange format (`bioio-ome-tiff` for OME-TIFF, `bioio-zarr` for OME-Zarr).
+ 2. **Manifest format hints**: Update tool manifests (`manifest.yaml`) to declare supported/preferred formats using `interchange_format: OME-TIFF` or `interchange_format: OME-Zarr`.
+ 3. **Import conversion**: Proprietary formats (CZI, LIF, ND2) are converted to the environment's interchange format (typically OME-TIFF) upon initial import. This conversion is executed within the `base` tool environment; the core server orchestrates by managing artifact references without directly importing proprietary readers.
+ 4. **Export preservation**: Outputs are saved using standard writers (e.g., `OmeTiffWriter`) to ensure OME metadata (pixel size, channel labels) is preserved for downstream tools.
+-5. **Documentation & Migration**: A migration guide for tool developers and updated user tutorials are required to ensure consistent adoption.
++5. **Documentation & Migration**: A migration guide for tool developers and updated user tutorials are required to ensure consistent adoption. This requirement maps explicitly to T034-T037 in the implementation plan.
+ 6. **Versioning**: Any changes to the manifest schema (e.g., adding `interchange_format`) must include corresponding versioning and migration notes in the codebase.
+ 
+ ## Compatibility Matrix (UPDATED)
+@@ -51,11 +51,16 @@
+ - **SC-001**: All tool environments have `bioio` and the minimal set of plugins required by their declared `interchange_format` (at least `bioio-ome-tiff` for base/cellpose) installed and verified via `doctor` check.
+ - **SC-002**: `BioImage(path).data` returns a consistent 5D TCZYX array (as a dask/numpy array) in all environments for any supported artifact.
+ - **SC-003**: The Phasor analysis workflow successfully processes a CZI input. Since Phasor requires OME-TIFF, the system auto-converts the CZI to OME-TIFF within the `base` environment before passing the artifact to the Phasor tool.
+-- **SC-004**: `StandardMetadata` (physical pixel sizes, channel names) is correctly extracted from input artifacts and preserved through at least one transformation step.
++- **SC-004**: `StandardMetadata` (physical pixel sizes, channel names, dtype) is correctly extracted from input artifacts and preserved through at least one transformation step.
++
++## Edge Cases
++- **Conversion Failure**: If proprietary format conversion fails, the system must provide a clear error message via the tool log and prevent downstream processing of the invalid artifact.
++- **Missing Metadata**: If an input lacks OME metadata, `bioio` provides sensible defaults (e.g., pixel size 1.0, generic channel names). The system should warn the user but proceed if possible.
++- **Unsupported Formats**: For formats not supported by any `bioio` plugin in the current environment, the server must return a validation error before attempting tool execution.
+ 
+ ## Out of Scope
+ - **Custom `ImageArtifact` class**: This spec explicitly replaces the need for a custom wrapper class.
+ - **Complex `FormatBroker`**: Heavyweight format conversion logic is deferred to bioio's internal plugin handling at the point of import/export.
+ - **OME-Zarr chunked slicing optimization**: While supported by bioio, specific optimizations for cloud-native Zarr slicing are deferred to a future performance-focused spec.
+--- a/specs/010-image-artifact/plan.md
++++ b/specs/010-image-artifact/plan.md
+@@ -4,14 +4,23 @@
+ 
+ This plan implements standardized image artifact handling using `bioio` across all environments. Instead of custom wrappers, we leverage `bioio.BioImage` for consistent, lazy-loaded, 5D TCZYX access to microscopy data.
+ 
++## Constitution Gate
++- **P-I: Stable MCP Surface**: No change to public tool calling API; manifest schema expansion is backwards-compatible.
++- **P-II: Isolated Tool Execution**: `bioio` and plugins are installed in per-tool environments; core remains lightweight.
++- **P-III: Artifact References Only**: All I/O uses `ArtifactRef`; `bioio` provides the standardized reader for these references.
++- **P-IV: Reproducibility & Provenance**: Environments pinned via `conda-lock`; interchange formats declared in manifests.
++- **P-V: Safety & Observability**: File access remains restricted to allowlists; `bioio` used as a safe, industry-standard library.
++- **P-VI: Test-Driven Development**: All phases follow TDD, with contract/unit tests written before implementation.
++
+ ## Phase 1: Environment Updates (Foundation)
+ - **Location**: `envs/*.yaml`
+ - **Tasks**:
++- **Contract Verification**: T001 verifies YAML requirements before implementation.
+ - **Tasks**:
+-    - Update `bioimage-mcp-base.yaml`: Ensure `bioio`, `bioio-ome-tiff`, `bioio-bioformats`, and `bioio-czi` are present (verified: already mostly done).
++    - Update `bioimage-mcp-base.yaml`: Ensure `bioio`, `bioio-ome-tiff`, `bioio-bioformats`, `bioio-zarr`, and `bioio-czi` are present.
+     - Update `bioimage-mcp-cellpose.yaml`: Add `bioio` and `bioio-ome-tiff`.
+-    - Ensure all current tool environments (base, cellpose) include at least `bioio` and `bioio-ome-tiff`.
++    - Ensure all current tool environments include at least `bioio` and plugins for their interchange format.
+     - Regenerate lockfiles for all updated environments using `conda-lock`.
+ - **Tests**: 
+     - Run `python -m bioimage_mcp doctor` to verify environment health.
+@@ -20,12 +29,13 @@
+ ## Phase 2: Manifest Schema Updates
+ - **Location**: `src/bioimage_mcp/registry/manifest_schema.py`
+ - **Tasks**:
++- **TDD Foundations**: T007 (Contract) and T008 (Unit) written before implementation T010-T012.
+ - **Tasks**:
+     - Define `InterchangeFormat` Enum: `OME_TIFF` (default), `OME_ZARR`.
+     - Update `Function` Pydantic model to include an `interchange_format` field.
+     - Update `ToolManifest` validation logic to handle these new fields.
+     - Update `tools/base/manifest.yaml` and `tools/cellpose/manifest.yaml` to explicitly declare their preferred format.
+-    - **Versioning**: Add migration notes for manifest schema changes in the registry module.
++    - **Mapping**: Explicitly map manifest fields to documentation requirements.
+ - **Tests**: 
+     - Manifest validation unit tests in `tests/unit/registry/test_manifest_schema.py`.
+ 
+@@ -33,6 +43,7 @@
+ - **Location**: `tools/` packages
+ - **Tasks**:
+ - **Tasks**:
++    - **Fixture Selection**: Choose a redistributable CZI file for integration tests.
+     - **Cellpose**: Replace `tifffile.imread` or other direct I/O with `BioImage(path).data`.
+     - **Base Tools**: Ensure consistent use of `BioImage` for all input reading.
+     - **Standard Pattern**: Implement and document the pattern:
+@@ -73,11 +84,10 @@
+ - **Deliverables**: 
+     - Updated tutorials, AGENTS.md, and new developer guide.
+ 
+-## Testing Strategy
++## Testing Strategy (Consistent TDD)
++- **Contract**: Failing tests for YAML dependencies and manifest schemas must precede implementation.
+ - **Unit**: Verify `BioImage` loading and metadata extraction in isolation.
+-- **Contract**: Validate manifest schemas with the new `interchange_format` field.
+ - **Integration**: Full workflow tests starting from tiffs (e.g., `datasets/FLUTE_FLIM_data_tif`) through to analysis.
+-
+ ## Dependencies
+ - `bioio >= 1.0`
+ - `bioio-ome-tiff`
+--- a/specs/010-image-artifact/tasks.md
++++ b/specs/010-image-artifact/tasks.md
+@@ -10,12 +10,14 @@
+ ## Phase 1: Setup (Environment Updates)
+ 
+ **Purpose**: Update all tool environments to include bioio with required plugins
++**TDD Note**: T001 MUST fail until T002-T004 are complete.
+ 
+-- [ ] T001 [P] Update base environment to include bioio dependencies in `envs/bioimage-mcp-base.yaml`
+-- [ ] T002 [P] Update cellpose environment to include bioio dependencies in `envs/bioimage-mcp-cellpose.yaml`
+-- [ ] T003 Regenerate lockfiles for all updated environments using `conda-lock`
+-- [ ] T004 Verify environment health with `python -m bioimage_mcp doctor`
++- [ ] T001 [P] [TDD] Write contract test to verify `bioio`, `bioio-ome-tiff`, and `bioio-zarr` dependencies exist in relevant `envs/*.yaml` files.
++- [ ] T002 [P] Update base environment to include bioio dependencies (including `bioio-zarr`, `bioio-czi`) in `envs/bioimage-mcp-base.yaml`.
++- [ ] T003 [P] Update cellpose environment to include bioio dependencies in `envs/bioimage-mcp-cellpose.yaml`.
++- [ ] T004 [P] Ensure `bioio-zarr` plugin is present in all environments declaring OME-Zarr interchange format.
++- [ ] T005 Regenerate lockfiles for all updated environments using `conda-lock`.
++- [ ] T006 Verify environment health with `python -m bioimage_mcp doctor`.
+ 
+ ---
+ 
+@@ -25,13 +27,13 @@
+ 
+ ### Infrastructure & Schema
+ 
+-- [ ] T005 Write contract test for `InterchangeFormat` schema in `tests/contract/test_interchange_format_schema.py`
+-- [ ] T006 Create `InterchangeFormat` enum (OME_TIFF, OME_ZARR) in `src/bioimage_mcp/registry/manifest_schema.py`
+-- [ ] T007 Add `interchange_format` field to `Function` model in `src/bioimage_mcp/registry/manifest_schema.py`
+-- [ ] T008 Update `ToolManifest` validation logic to handle `interchange_format` defaults in `src/bioimage_mcp/registry/manifest_schema.py`
+-- [ ] T009 Write unit test for manifest validation with `interchange_format` in `tests/unit/registry/test_manifest_interchange.py`
+-- [ ] T010 Update tool manifests with interchange config in `tools/base/manifest.yaml` and `tools/cellpose/manifest.yaml`
+-- [ ] T011 Add versioning and migration notes for manifest schema changes in `src/bioimage_mcp/registry/`
++- [ ] T007 [P] [TDD] Write contract test for `InterchangeFormat` schema in `tests/contract/test_interchange_format_schema.py` (Fails until T010).
++- [ ] T008 [P] [TDD] Write unit test for manifest validation with `interchange_format` in `tests/unit/registry/test_manifest_interchange.py` (Fails until T012).
++- [ ] T009 [P] Identify and add a redistributable CZI fixture (e.g. from OME sample data) to `datasets/` for integration tests.
++- [ ] T010 Create `InterchangeFormat` enum (OME_TIFF, OME_ZARR) in `src/bioimage_mcp/registry/manifest_schema.py`.
++- [ ] T011 Add `interchange_format` field to `Function` model in `src/bioimage_mcp/registry/manifest_schema.py`.
++- [ ] T012 Update `ToolManifest` validation logic to handle `interchange_format` defaults in `src/bioimage_mcp/registry/manifest_schema.py`.
++- [ ] T013 Update tool manifests with interchange config in `tools/base/manifest.yaml` and `tools/cellpose/manifest.yaml`.
++- [ ] T014 Add versioning and migration notes for manifest schema changes in `src/bioimage_mcp/registry/`.
+ 
+ ---
+ 
+@@ -41,59 +43,58 @@
+ 
+ ### Tests for User Story 1
+ 
+-- [ ] T012 [P] [US1] Unit test for `BioImage` loading in `tests/unit/base/test_bioimage_loading.py`
+-- [ ] T013 [P] [US1] Unit test for metadata extraction in `tests/unit/api/test_metadata_extraction.py`
+-- [ ] T014 [P] [US1] Integration test for CZI import workflow in `tests/integration/test_czi_import_workflow.py`
++- [ ] T015 [P] [TDD] [US1] Unit test for `BioImage` loading in `tests/unit/base/test_bioimage_loading.py`.
++- [ ] T016 [P] [TDD] [US1] Unit test for metadata extraction in `tests/unit/api/test_metadata_extraction.py`.
++- [ ] T017 [P] [TDD] [US1] Integration test for CZI import workflow in `tests/integration/test_czi_import_workflow.py`.
+ 
+ ### Implementation for User Story 1
+ 
+-- [ ] T015 [US1] Simplify `load_image_fallback` to use `BioImage` directly in `tools/base/bioimage_mcp_base/io.py`
+-- [ ] T016 [US1] Update `export_ome_tiff` helper to use `BioImage` and `OmeTiffWriter` in `tools/base/bioimage_mcp_base/io.py`
+-- [ ] T017 [US1] Create helper function to extract `StandardMetadata` from `BioImage` in `src/bioimage_mcp/artifacts/models.py`
+-- [ ] T018 [US1] Update `ArtifactRef` creation logic to populate metadata (shape, pixel_sizes, channel_names, dtype) in `src/bioimage_mcp/api/artifacts.py`
+-- [ ] T019 [US1] Implement `ensure_interchange_format()` conversion orchestrator in `src/bioimage_mcp/api/artifacts.py`
++- [ ] T018 [US1] Simplify `load_image_fallback` to use `BioImage` directly in `tools/base/bioimage_mcp_base/io.py`.
++- [ ] T019 [US1] Update `export_ome_tiff` helper to use `BioImage` and `OmeTiffWriter` in `tools/base/bioimage_mcp_base/io.py`.
++- [ ] T020 [US1] Create helper function to extract `StandardMetadata` from `BioImage` in `src/bioimage_mcp/artifacts/models.py`.
++- [ ] T021 [US1] Update `ArtifactRef` creation logic to populate metadata (shape, pixel_sizes, channel_names, dtype) in `src/bioimage_mcp/api/artifacts.py`.
++- [ ] T022 [US1] Implement `ensure_interchange_format()` conversion orchestrator in `src/bioimage_mcp/api/artifacts.py`.
+ 
+ ---
+ 
+ ## Phase 4: User Story 2 - Cross-Env Analysis (Priority: P2)
+ 
+-**Goal**: The Cellpose environment receives an OME-TIFF artifact reference. It loads the data via BioImage(path).data, receiving a consistent 5D TCZYX array.
++**Goal**: The Cellpose environment receives an OME-TIFF artifact reference and loads it via BioImage(path).data.
+ 
+ ### Tests for User Story 2
+ 
+-- [ ] T020 [P] [US2] Unit test for `BioImage` 5D normalization in `tests/unit/base/test_bioimage_normalization.py`
+-- [ ] T021 [P] [US2] Integration test for cellpose with OME-TIFF input in `tests/integration/test_cellpose_bioimage.py`
++- [ ] T023 [P] [TDD] [US2] Unit test for `BioImage` 5D normalization in `tests/unit/base/test_bioimage_normalization.py`.
++- [ ] T024 [P] [TDD] [US2] Integration test for cellpose with OME-TIFF input in `tests/integration/test_cellpose_bioimage.py`.
+ 
+ ### Implementation for User Story 2
+ 
+-- [ ] T022 [P] [US2] Replace `tifffile.imread` with `BioImage` in cellpose tool in `tools/cellpose/bioimage_mcp_cellpose/segment.py`
+-- [ ] T023 [US2] Ensure cellpose handles 5D normalization (squeeze/expand dimensions) in `tools/cellpose/bioimage_mcp_cellpose/segment.py`
+-- [ ] T024 [US2] Standardize base tools to use `BioImage` for all input reading in `tools/base/bioimage_mcp_base/ops/`
++- [ ] T025 [P] [US2] Replace `tifffile.imread` with `BioImage` in cellpose tool in `tools/cellpose/bioimage_mcp_cellpose/segment.py`.
++- [ ] T026 [US2] Ensure cellpose handles 5D normalization (squeeze/expand dimensions) in `tools/cellpose/bioimage_mcp_cellpose/segment.py`.
++- [ ] T027 [US2] Standardize base tools to use `BioImage` for all input reading in `tools/base/bioimage_mcp_base/ops/`.
+ 
+ ---
+ 
+ ## Phase 5: User Story 3 - Large Dataset Handling (Priority: P3)
+ 
+-**Goal**: Handle multi-terabyte datasets via OME-Zarr and dask lazy loading.
++**Goal**: Handle multi-terabyte datasets via OME-Zarr and dask lazy loading via `bioio-zarr`.
+ 
+ ### Tests for User Story 3
+ 
+-- [ ] T025 [P] [US3] Unit test for dask-backed lazy loading in `tests/unit/base/test_bioimage_lazy_loading.py`
+-- [ ] T026 [P] [US3] Integration test for chunked processing workflow in `tests/integration/test_zarr_chunked_workflow.py`
++- [ ] T028 [P] [TDD] [US3] Unit test for dask-backed lazy loading in `tests/unit/base/test_bioimage_lazy_loading.py`.
++- [ ] T029 [P] [TDD] [US3] Integration test for chunked processing workflow in `tests/integration/test_zarr_chunked_workflow.py`.
+ 
+ ### Implementation for User Story 3
+ 
+-- [ ] T027 [US3] Add OME-Zarr interchange format support to conversion helper in `src/bioimage_mcp/api/artifacts.py`
+-- [ ] T028 [US3] Document chunked processing pattern for large datasets in `tools/base/bioimage_mcp_base/io.py`
++- [ ] T030 [US3] Add OME-Zarr interchange format support to conversion helper in `src/bioimage_mcp/api/artifacts.py`.
++- [ ] T031 [US3] Document chunked processing pattern for large datasets in `tools/base/bioimage_mcp_base/io.py`.
+ 
+ ---
+ 
+ ## Phase 6: Polish & Cross-Cutting Concerns
+ 
+-### Additional Verification & Integration
++### Verification & Documentation
+ 
+-- [ ] T029 [US1] Integration test for SC-004: Metadata preserved through at least one transformation step (e.g., Gaussian blur)
+-- [ ] T030 [US1] Integration test for SC-003: Phasor workflow using CZI fixture, extending `tests/integration/test_flim_phasor_e2e.py`
+-- [ ] T031 Update `cellpose_segmentation.md` tutorial in `docs/tutorials/cellpose_segmentation.md`
+-- [ ] T032 Update `flim_phasor.md` tutorial in `docs/tutorials/flim_phasor.md`
+-- [ ] T033 Update `AGENTS.md` with standard `BioImage` loading pattern
+-- [ ] T034 Create migration guide for tool developers in `docs/developer/image_handling.md`
+-- [ ] T035 Final verification of all Success Criteria (SC-001 to SC-004)
++- [ ] T032 [US1] Integration test for SC-004: Metadata preserved through transformation (e.g., Gaussian blur).
++- [ ] T033 [US1] Integration test for SC-003: Phasor workflow using CZI fixture, extending `tests/integration/test_flim_phasor_e2e.py`.
++- [ ] T034 Update `cellpose_segmentation.md` tutorial in `docs/tutorials/cellpose_segmentation.md`.
++- [ ] T035 Update `flim_phasor.md` tutorial in `docs/tutorials/flim_phasor.md`.
++- [ ] T036 Update `AGENTS.md` with standard `BioImage` loading pattern.
++- [ ] T037 Create migration guide for tool developers in `docs/developer/image_handling.md`.
+ 
+ ---
