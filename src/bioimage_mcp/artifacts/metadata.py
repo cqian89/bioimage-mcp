@@ -59,8 +59,17 @@ def _truncate_dict(
     return result
 
 
+def _safe_get_ome_metadata(image: Any) -> Any | None:
+    try:
+        return image.ome_metadata
+    except NotImplementedError:
+        return None
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def _extract_ome_xml_summary(image: Any) -> str:
-    ome_meta = getattr(image, "ome_metadata", None)
+    ome_meta = _safe_get_ome_metadata(image)
     if ome_meta is None:
         return ""
 
@@ -103,7 +112,7 @@ def _extract_custom_attributes(image: Any) -> dict:
                 if isinstance(value, dict):
                     return value
 
-    ome_meta = getattr(image, "ome_metadata", None)
+    ome_meta = _safe_get_ome_metadata(image)
     if ome_meta is not None and hasattr(ome_meta, "to_dict"):
         try:
             ome_dict = ome_meta.to_dict()

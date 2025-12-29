@@ -33,8 +33,22 @@ class AsyncMCPTestClient:
     def context(self) -> dict[str, Any]:
         return self._client.context
 
-    def list_tools(self, *, limit: int | None = 50, cursor: str | None = None) -> dict[str, Any]:
-        return self._client.list_tools(limit=limit, cursor=cursor)
+    def list_tools(
+        self,
+        *,
+        path: str | None = None,
+        paths: list[str] | None = None,
+        flatten: bool | None = None,
+        limit: int | None = 50,
+        cursor: str | None = None,
+    ) -> dict[str, Any]:
+        return self._client.list_tools(
+            path=path,
+            paths=paths,
+            flatten=flatten,
+            limit=limit,
+            cursor=cursor,
+        )
 
     def search_functions(
         self,

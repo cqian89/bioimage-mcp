@@ -6,11 +6,11 @@ from typing import Any
 
 from bioimage_mcp.api.pagination import decode_cursor, encode_cursor, resolve_limit
 from bioimage_mcp.config.loader import load_config
-from bioimage_mcp.registry.index import RegistryIndex
+from bioimage_mcp.registry.index import RegistryIndex, ToolIndex
 from bioimage_mcp.registry.loader import load_manifests
 from bioimage_mcp.registry.manifest_schema import FunctionResponse
 from bioimage_mcp.registry.schema_cache import SchemaCache
-from bioimage_mcp.registry.search import any_tag_matches, io_type_matches
+from bioimage_mcp.registry.search import SearchIndex, any_tag_matches, io_type_matches
 from bioimage_mcp.runtimes.executor import execute_tool
 
 
@@ -44,21 +44,80 @@ class DiscoveryService:
     def record_diagnostic(self, diagnostic) -> None:  # type: ignore[no-untyped-def]
         self._index.record_diagnostic(diagnostic)
 
-    def list_tools(self, *, limit: int | None, cursor: str | None) -> dict[str, Any]:
+    def list_tools(
+        self,
+        *,
+        path: str | None = None,
+        paths: list[str] | None = None,
+        flatten: bool | None = None,
+        limit: int | None = None,
+        cursor: str | None = None,
+    ) -> dict[str, Any]:
         config = load_config()
         resolved_limit = resolve_limit(limit, config)
+        flatten_flag = bool(flatten)
+
+        normalized_paths: list[str] | None = []
+        if path:
+            normalized_paths.append(path)
+        if paths:
+            normalized_paths.extend(paths)
+        if not normalized_paths:
+            normalized_paths = None
 
         after: str | None = None
         if cursor:
-            after = str(decode_cursor(cursor).get("last_tool_id") or "")
+            payload = decode_cursor(cursor)
+            if payload.get("paths") != normalized_paths or payload.get("flatten") != flatten_flag:
+                raise ValueError("Cursor does not match request")
+            after = str(payload.get("last_full_path") or "")
             after = after or None
 
-        tools = self._index.list_tools(after_tool_id=after, limit=resolved_limit)
-        next_cursor = None
-        if tools:
-            next_cursor = encode_cursor({"last_tool_id": tools[-1]["tool_id"]})
+        functions = self._index.list_functions()
+        tool_index = ToolIndex(functions)
+        tool_index.build_hierarchy()
 
-        return {"tools": tools, "next_cursor": next_cursor}
+        expanded_from = None
+        nodes: list[dict] = []
+        if flatten_flag:
+            if normalized_paths is None:
+                nodes = tool_index.flatten_tools(None)
+            else:
+                for target in normalized_paths:
+                    nodes.extend(tool_index.flatten_tools(target))
+        else:
+            if normalized_paths is None:
+                nodes, expanded_from = tool_index.list_children(None, auto_expand=False)
+            elif len(normalized_paths) == 1:
+                nodes, expanded_from = tool_index.list_children(
+                    normalized_paths[0], auto_expand=True
+                )
+            else:
+                collected: list[dict] = []
+                for target in normalized_paths:
+                    child_nodes, _expanded = tool_index.list_children(target, auto_expand=True)
+                    collected.extend(child_nodes)
+                nodes = collected
+
+        if nodes:
+            deduped = {node["full_path"]: node for node in nodes}
+            nodes = sorted(deduped.values(), key=lambda entry: entry["full_path"])
+
+        if after:
+            nodes = [node for node in nodes if node["full_path"] > after]
+
+        page = nodes[:resolved_limit]
+        next_cursor = None
+        if page:
+            next_cursor = encode_cursor(
+                {
+                    "last_full_path": page[-1]["full_path"],
+                    "paths": normalized_paths,
+                    "flatten": flatten_flag,
+                }
+            )
+
+        return {"tools": page, "next_cursor": next_cursor, "expanded_from": expanded_from}
 
     def describe_tool(self, tool_id: str) -> dict[str, Any]:
         tool = self._index.get_tool(tool_id)
@@ -70,7 +129,8 @@ class DiscoveryService:
     def search_functions(
         self,
         *,
-        query: str,
+        keywords: list[str] | str | None = None,
+        query: str | None = None,
         tags: list[str] | None = None,
         io_in: str | None = None,
         io_out: str | None = None,
@@ -80,17 +140,45 @@ class DiscoveryService:
         config = load_config()
         resolved_limit = resolve_limit(limit, config)
 
-        after: str | None = None
+        raw_keywords = keywords if keywords is not None else query
+        if raw_keywords is None:
+            raise ValueError("keywords must not be empty")
+
+        if isinstance(raw_keywords, str):
+            keyword_list = [kw for kw in raw_keywords.split() if kw]
+        else:
+            keyword_list = [str(kw) for kw in raw_keywords]
+
+        normalized_keywords: list[str] = []
+        seen: set[str] = set()
+        for keyword in keyword_list:
+            cleaned = str(keyword).strip().lower()
+            if not cleaned or cleaned in seen:
+                continue
+            seen.add(cleaned)
+            normalized_keywords.append(cleaned)
+
+        if not normalized_keywords:
+            raise ValueError("keywords must not be empty")
+
+        offset = 0
         if cursor:
-            after = str(decode_cursor(cursor).get("last_fn_id") or "")
-            after = after or None
+            payload = decode_cursor(cursor)
+            if (
+                payload.get("keywords") != normalized_keywords
+                or payload.get("tags") != tags
+                or payload.get("io_in") != io_in
+                or payload.get("io_out") != io_out
+            ):
+                raise ValueError("Cursor does not match request")
+            offset = int(payload.get("offset") or 0)
 
         collected: list[dict] = []
-        scan_after = after
-        batch_size = max(resolved_limit, 50)
-        while len(collected) < resolved_limit:
+        scan_after: str | None = None
+        batch_size = 200
+        while True:
             batch = self._index.iter_search_functions(
-                query=query, after_fn_id=scan_after, batch_size=batch_size
+                query="", after_fn_id=scan_after, batch_size=batch_size
             )
             if not batch:
                 break
@@ -105,24 +193,62 @@ class DiscoveryService:
                 collected.append(
                     {
                         "fn_id": row["fn_id"],
-                        "tool_id": row["tool_id"],
                         "name": row["name"],
                         "description": row["description"],
                         "tags": row["tags"],
                     }
                 )
-                if len(collected) >= resolved_limit:
-                    break
 
             scan_after = batch[-1]["fn_id"]
 
+        index = SearchIndex()
+        ranked = index.rank(keywords=normalized_keywords, candidates=collected)
+
+        page = ranked[offset : offset + resolved_limit]
         next_cursor = None
-        if collected:
-            next_cursor = encode_cursor({"last_fn_id": collected[-1]["fn_id"]})
+        if offset + len(page) < len(ranked):
+            next_cursor = encode_cursor(
+                {
+                    "offset": offset + len(page),
+                    "keywords": normalized_keywords,
+                    "tags": tags,
+                    "io_in": io_in,
+                    "io_out": io_out,
+                }
+            )
 
-        return {"functions": collected, "next_cursor": next_cursor}
+        functions = [
+            {
+                "fn_id": entry["fn_id"],
+                "name": entry.get("name", ""),
+                "description": entry.get("description", ""),
+                "tags": entry.get("tags", []),
+                "score": float(entry["score"]),
+                "match_count": int(entry["match_count"]),
+            }
+            for entry in page
+        ]
 
-    def describe_function(self, fn_id: str) -> dict[str, Any]:
+        return {"functions": functions, "next_cursor": next_cursor}
+
+    def describe_function(
+        self,
+        fn_id: str | None = None,
+        fn_ids: list[str] | None = None,
+    ) -> dict[str, Any]:
+        if fn_ids is not None:
+            schemas: dict[str, Any] = {}
+            errors: dict[str, str] = {}
+            for target_id in fn_ids:
+                try:
+                    schemas[target_id] = self.describe_function(fn_id=target_id)
+                except KeyError:
+                    errors[target_id] = f"Function not found: {target_id}"
+            return {"schemas": schemas, "errors": errors}
+
+        if fn_id is None:
+            raise ValueError("fn_id is required when fn_ids is not provided")
+
         payload = self._index.get_function(fn_id)
         if payload is None:
             raise KeyError(fn_id)

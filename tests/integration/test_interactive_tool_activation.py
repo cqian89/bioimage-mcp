@@ -12,7 +12,7 @@ from bioimage_mcp.storage.sqlite import init_schema
 
 
 def setup_discovery(discovery_service: DiscoveryService):
-    # Tool 1: fn.a, fn.b
+    # Tool 1: t1.pkg.mod.a, t1.pkg.mod.b
     discovery_service.upsert_tool(
         tool_id="tools.t1",
         name="Tool 1",
@@ -24,7 +24,7 @@ def setup_discovery(discovery_service: DiscoveryService):
         installed=True,
     )
     discovery_service.upsert_function(
-        fn_id="fn.a",
+        fn_id="t1.pkg.mod.a",
         tool_id="tools.t1",
         name="Function A",
         description="A",
@@ -34,7 +34,7 @@ def setup_discovery(discovery_service: DiscoveryService):
         params_schema={},
     )
     discovery_service.upsert_function(
-        fn_id="fn.b",
+        fn_id="t1.pkg.mod.b",
         tool_id="tools.t1",
         name="Function B",
         description="B",
@@ -44,7 +44,7 @@ def setup_discovery(discovery_service: DiscoveryService):
         params_schema={},
     )
 
-    # Tool 2: fn.c
+    # Tool 2: t2.pkg.mod.c
     discovery_service.upsert_tool(
         tool_id="tools.t2",
         name="Tool 2",
@@ -56,7 +56,7 @@ def setup_discovery(discovery_service: DiscoveryService):
         installed=True,
     )
     discovery_service.upsert_function(
-        fn_id="fn.c",
+        fn_id="t2.pkg.mod.c",
         tool_id="tools.t2",
         name="Function C",
         description="C",
@@ -136,15 +136,15 @@ def test_interactive_tool_activation_flow(tmp_path: Path):
         # Note: Using default limit/cursor
         page = await call_tool("list_tools", limit=20, cursor=None)
         tools = page["tools"]
-        tool_ids = sorted([t["tool_id"] for t in tools])
-        assert tool_ids == ["tools.t1", "tools.t2"]
+        tool_paths = sorted([t["full_path"] for t in tools])
+        assert tool_paths == ["t1", "t2"]
 
-        # --- Action 2: Activate fn.a ---
-        await call_tool("activate_functions", fn_ids=["fn.a"])
+        # --- Action 2: Activate t1.pkg.mod.a ---
+        await call_tool("activate_functions", fn_ids=["t1.pkg.mod.a"])
 
         # Verify persistence
         active = session_store.get_active_functions(session_id)
-        assert active == ["fn.a"]
+        assert active == ["t1.pkg.mod.a"]
 
         # --- Action 3: Verify filtering (list_tools) ---
 
@@ -152,30 +152,30 @@ def test_interactive_tool_activation_flow(tmp_path: Path):
         # Should NOT show tools.t2 because it has NO active functions
         page = await call_tool("list_tools", limit=20, cursor=None)
         tools = page["tools"]
-        tool_ids = [t["tool_id"] for t in tools]
-        assert "tools.t1" in tool_ids
-        assert "tools.t2" not in tool_ids
+        tool_paths = [t["full_path"] for t in tools]
+        assert "t1" in tool_paths
+        assert "t2" not in tool_paths
 
         # --- Action 4: Verify filtering (search_functions) ---
         # Should show fn.a
-        page = await call_tool("search_functions", query="", limit=20, cursor=None)
+        page = await call_tool("search_functions", keywords="mod", limit=20, cursor=None)
         fns = page["functions"]
         fn_ids = sorted([f["fn_id"] for f in fns])
-        assert fn_ids == ["fn.a"]
+        assert fn_ids == ["t1.pkg.mod.a"]
 
-        # --- Action 5: Switch to fn.c ---
-        await call_tool("activate_functions", fn_ids=["fn.c"])
+        # --- Action 5: Switch to t2.pkg.mod.c ---
+        await call_tool("activate_functions", fn_ids=["t2.pkg.mod.c"])
 
         page = await call_tool("list_tools", limit=20, cursor=None)
-        tool_ids = [t["tool_id"] for t in page["tools"]]
-        assert "tools.t1" not in tool_ids
-        assert "tools.t2" in tool_ids
+        tool_paths = [t["full_path"] for t in page["tools"]]
+        assert "t1" not in tool_paths
+        assert "t2" in tool_paths
 
         # --- Action 6: Deactivate (Restore all) ---
         await call_tool("deactivate_functions")
 
         page = await call_tool("list_tools", limit=20, cursor=None)
-        tool_ids = sorted([t["tool_id"] for t in page["tools"]])
-        assert tool_ids == ["tools.t1", "tools.t2"]
+        tool_paths = sorted([t["full_path"] for t in page["tools"]])
+        assert tool_paths == ["t1", "t2"]
 
     asyncio.run(run_test())

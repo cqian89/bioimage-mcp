@@ -8,6 +8,8 @@ from bioimage_mcp.config.schema import Config
 from bioimage_mcp.sessions.manager import SessionManager
 from bioimage_mcp.sessions.store import SessionStore
 
+WORKFLOW_HINT = "TIP: Use activate_functions before run_function for better guidance"
+
 
 class _FakeMCP:
     def __init__(self, name: str, **_kwargs):
@@ -61,8 +63,7 @@ class _CapturingInteractive:
         return {"ok": True}
 
 
-def test_run_function_params_optional(monkeypatch, tmp_path) -> None:
-    """Verify run_function works without explicit params field."""
+def test_run_function_warns_when_unactivated(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr(server_module, "FastMCP", _FakeMCP)
     server_module.FastMCP.__module__ = "fake_mcp"
 
@@ -84,9 +85,6 @@ def test_run_function_params_optional(monkeypatch, tmp_path) -> None:
         session_manager=session_manager,
     )
 
-    session_manager.ensure_session("session-1")
-    session_manager.store.replace_active_functions("session-1", ["fn.test"])
-
     ctx = SimpleNamespace(session=SimpleNamespace(id="session-1"))
 
     result = mcp.tools["run_function"](
@@ -96,8 +94,18 @@ def test_run_function_params_optional(monkeypatch, tmp_path) -> None:
         ctx=ctx,
     )
 
-    assert result["result"]["ok"] is True
-    assert result["workflow_hint"] is None
-    assert "warnings" not in result
-    assert interactive.calls
-    assert interactive.calls[0]["params"] == {}
+    assert result["workflow_hint"] == WORKFLOW_HINT
+    assert result["warnings"] == [WORKFLOW_HINT]
+
+    session_manager.ensure_session("session-1")
+    session_manager.store.replace_active_functions("session-1", ["fn.test"])
+
+    result_active = mcp.tools["run_function"](
+        fn_id="fn.test",
+        inputs={},
+        session_id="session-1",
+        ctx=ctx,
+    )
+
+    assert result_active["workflow_hint"] is None
+    assert "warnings" not in result_active

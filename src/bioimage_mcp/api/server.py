@@ -6,6 +6,7 @@ from bioimage_mcp.api.artifacts import ArtifactsService
 from bioimage_mcp.api.discovery import DiscoveryService
 from bioimage_mcp.api.execution import ExecutionService
 from bioimage_mcp.api.interactive import InteractiveExecutionService
+from bioimage_mcp.api.permissions import PermissionService
 from bioimage_mcp.sessions.manager import SessionManager
 
 try:
@@ -77,6 +78,7 @@ def create_server(
         raise RuntimeError("MCP SDK not available; install `mcp` to use serve")
 
     mcp = FastMCP("bioimage-mcp")
+    permission_service = PermissionService()
 
     def get_session(ctx: Context) -> Any:
         """Helper to get the current session from the request context."""
@@ -86,28 +88,14 @@ def create_server(
 
     # --- Implementation helpers for testing ---
     def _filter_tools_impl(tools_result: dict, active_ids: list[str]) -> dict:
-        # Filter tools: only include tools that contain at least one active function.
-        allowed_tool_ids = set()
+        allowed_prefixes: set[str] = set()
         for fn_id in active_ids:
-            try:
-                # We try describe_function first, but if it lacks tool_id (as observed),
-                # we fall back to search_functions.
-                desc = discovery.describe_function(fn_id)
-                if desc and "tool_id" in desc:
-                    allowed_tool_ids.add(desc["tool_id"])
-                else:
-                    # Fallback: search for the function to get its tool_id
-                    search_res = discovery.search_functions(query=fn_id, limit=5, cursor=None)
-                    if search_res and search_res.get("functions"):
-                        for f in search_res["functions"]:
-                            if f["fn_id"] == fn_id:
-                                allowed_tool_ids.add(f["tool_id"])
-                                break
-            except Exception:
-                pass
+            parts = fn_id.split(".")
+            for idx in range(1, len(parts) + 1):
+                allowed_prefixes.add(".".join(parts[:idx]))
 
         tools_result["tools"] = [
-            t for t in tools_result["tools"] if t["tool_id"] in allowed_tool_ids
+            node for node in tools_result["tools"] if node.get("full_path") in allowed_prefixes
         ]
         return tools_result
 
@@ -142,11 +130,20 @@ def create_server(
 
     @mcp.tool()
     def list_tools(
+        path: str | None = None,
+        paths: list[str] | None = None,
+        flatten: bool | None = None,
         cursor: str | None = None,
         limit: int | None = None,
         ctx: Context | None = None,
     ) -> dict[str, Any]:
-        tools_result = discovery.list_tools(limit=limit, cursor=cursor)
+        tools_result = discovery.list_tools(
+            path=path,
+            paths=paths,
+            flatten=flatten,
+            limit=limit,
+            cursor=cursor,
+        )
 
         if ctx and ctx.session:
             session_id = get_session_identifier(ctx)
@@ -163,7 +160,8 @@ def create_server(
 
     @mcp.tool()
     def search_functions(
-        query: str,
+        keywords: list[str] | str | None = None,
+        query: str | None = None,
         tags: list[str] | None = None,
         io_in: str | None = None,
         io_out: str | None = None,
@@ -172,6 +170,7 @@ def create_server(
         ctx: Context | None = None,
     ) -> dict[str, Any]:
         result = discovery.search_functions(
+            keywords=keywords,
             query=query,
             tags=tags,
             io_in=io_in,
@@ -204,8 +203,10 @@ def create_server(
         return await _deactivate_functions_impl(ctx)
 
     @mcp.tool()
-    def describe_function(fn_id: str) -> dict[str, Any]:
-        return discovery.describe_function(fn_id)
+    def describe_function(
+        fn_id: str | None = None, fn_ids: list[str] | None = None
+    ) -> dict[str, Any]:
+        return discovery.describe_function(fn_id=fn_id, fn_ids=fn_ids)
 
     @mcp.tool()
     def run_workflow(steps: list[dict], run_opts: dict | None = None) -> dict[str, Any]:
@@ -217,16 +218,17 @@ def create_server(
         return execution.get_run_status(run_id)
 
     @mcp.tool()
-    def call_tool(
+    def run_function(
         fn_id: str,
         inputs: dict[str, Any],
         params: dict[str, Any] | None = None,
+        metadata: dict[str, Any] | None = None,
         session_id: str | None = None,
         ordinal: int | None = None,
         dry_run: bool = False,
         ctx: Context | None = None,
     ) -> dict[str, Any]:
-        """Execute a tool call within a session.
+        """Execute a function within a session.
 
         If session_id is not provided, uses the current MCP connection's session ID.
         """
@@ -234,17 +236,31 @@ def create_server(
             session_id = get_session_identifier(ctx)
 
         if not session_id:
-            # We could create a new session here, or raise an error.
-            # The interactive service expects a session_id.
-            # If called via stdio without explicit session_id and no client session context,
-            # we should probably fail or let ensure_session handle it (but ensure_session needs ID).
-            # For now, let's assume we need a session ID.
             raise ValueError("session_id must be provided or available in context")
 
         if params is None:
             params = {}
 
-        return interactive.call_tool(
+        session_manager.ensure_session(session_id)
+        active_ids = session_manager.store.get_active_functions(session_id)
+        is_activated = fn_id in active_ids if active_ids else False
+
+        workflow_hint = None
+        warnings: list[str] | None = None
+        if not is_activated:
+            workflow_hint = "TIP: Use activate_functions before run_function for better guidance"
+            warn_override = None
+            if metadata and isinstance(metadata, dict):
+                warn_override = metadata.get("warn_unactivated")
+            warn_unactivated = (
+                warn_override
+                if warn_override is not None
+                else session_manager.config.agent_guidance.warn_unactivated
+            )
+            if warn_unactivated:
+                warnings = [workflow_hint]
+
+        result = interactive.call_tool(
             session_id=session_id,
             fn_id=fn_id,
             inputs=inputs,
@@ -253,13 +269,28 @@ def create_server(
             dry_run=dry_run,
         )
 
+        response: dict[str, Any] = {"result": result, "workflow_hint": workflow_hint}
+        if warnings:
+            response["warnings"] = warnings
+        return response
+
     @mcp.tool()
     def get_artifact(ref_id: str) -> dict[str, Any]:
         return artifacts.get_artifact(ref_id)
 
     @mcp.tool()
-    def export_artifact(ref_id: str, dest_path: str) -> dict[str, Any]:
-        return artifacts.export_artifact(ref_id, dest_path)
+    def export_artifact(
+        ref_id: str,
+        dest_path: str,
+        ctx: Context | None = None,
+    ) -> dict[str, Any]:
+        session = ctx.session if ctx and ctx.session else None
+        return artifacts.export_artifact(
+            ref_id,
+            dest_path,
+            session=session,
+            permission_service=permission_service,
+        )
 
     @mcp.tool()
     def export_session(session_id: str | None = None, ctx: Context | None = None) -> dict[str, Any]:

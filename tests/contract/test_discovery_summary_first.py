@@ -62,10 +62,10 @@ class TestListToolsSummaryOnly:
 
         for tool in result["tools"]:
             # Should only have summary fields
-            assert "tool_id" in tool
             assert "name" in tool
-            assert "description" in tool
-            assert "tool_version" in tool
+            assert "full_path" in tool
+            assert "type" in tool
+            assert "has_children" in tool
             # Should NOT have detailed schema fields
             assert "params_schema" not in tool
             assert "functions" not in tool
@@ -74,7 +74,7 @@ class TestListToolsSummaryOnly:
         """Test that list_tools returns only the expected summary fields."""
         result = discovery_service.list_tools(limit=10, cursor=None)
 
-        expected_fields = {"tool_id", "name", "description", "tool_version"}
+        expected_fields = {"name", "full_path", "type", "has_children"}
         for tool in result["tools"]:
             actual_fields = set(tool.keys())
             assert actual_fields == expected_fields, (
@@ -88,7 +88,7 @@ class TestSearchFunctionsSummaryOnly:
     def test_search_functions_no_params_schema(self, discovery_service: DiscoveryService) -> None:
         """Test that search_functions does not include params_schema."""
         result = discovery_service.search_functions(
-            query="sample",
+            keywords="sample",
             limit=10,
             cursor=None,
         )
@@ -99,6 +99,8 @@ class TestSearchFunctionsSummaryOnly:
             assert "name" in fn
             assert "description" in fn
             assert "tags" in fn
+            assert "score" in fn
+            assert "match_count" in fn
             # Should NOT have detailed schema fields
             assert "params_schema" not in fn
             assert "inputs" not in fn
@@ -109,12 +111,12 @@ class TestSearchFunctionsSummaryOnly:
     ) -> None:
         """Test that search_functions returns only the expected summary fields."""
         result = discovery_service.search_functions(
-            query="sample",
+            keywords="sample",
             limit=10,
             cursor=None,
         )
 
-        expected_fields = {"fn_id", "tool_id", "name", "description", "tags"}
+        expected_fields = {"fn_id", "name", "description", "tags", "score", "match_count"}
         for fn in result["functions"]:
             actual_fields = set(fn.keys())
             assert actual_fields == expected_fields, (

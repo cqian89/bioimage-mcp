@@ -26,6 +26,7 @@ def discovery_service_with_data():
     # Create multiple tools for pagination testing
     for i in range(1, 11):  # 10 tools
         tool_id = f"tools.test{i:02d}"
+        env_name = f"test{i:02d}"
         service.upsert_tool(
             tool_id=tool_id,
             name=f"Test Tool {i}",
@@ -39,7 +40,7 @@ def discovery_service_with_data():
         # Add functions to each tool
         for j in range(1, 4):  # 3 functions per tool
             service.upsert_function(
-                fn_id=f"{tool_id}.func{j}",
+                fn_id=f"{env_name}.pkg.module.func{j}",
                 tool_id=tool_id,
                 name=f"Function {j} of Tool {i}",
                 description=f"Function {j}",
@@ -66,13 +67,13 @@ class TestToolPaginationStability:
     def test_cursor_returns_next_page(self, discovery_service_with_data: DiscoveryService) -> None:
         """Test that using cursor returns the next page of results."""
         first_page = discovery_service_with_data.list_tools(limit=3, cursor=None)
-        first_tool_ids = {t["tool_id"] for t in first_page["tools"]}
+        first_tool_ids = {t["full_path"] for t in first_page["tools"]}
 
         second_page = discovery_service_with_data.list_tools(
             limit=3,
             cursor=first_page["next_cursor"],
         )
-        second_tool_ids = {t["tool_id"] for t in second_page["tools"]}
+        second_tool_ids = {t["full_path"] for t in second_page["tools"]}
 
         # Pages should not overlap
         assert len(first_tool_ids & second_tool_ids) == 0
@@ -96,7 +97,7 @@ class TestToolPaginationStability:
         # Should have all 10 tools
         assert len(all_tools) == 10
         # All should be unique
-        tool_ids = [t["tool_id"] for t in all_tools]
+        tool_ids = [t["full_path"] for t in all_tools]
         assert len(set(tool_ids)) == 10
 
     def test_same_cursor_returns_same_results(
@@ -111,8 +112,8 @@ class TestToolPaginationStability:
         second_page_2 = discovery_service_with_data.list_tools(limit=3, cursor=cursor)
 
         # Should return identical results
-        ids_1 = [t["tool_id"] for t in second_page_1["tools"]]
-        ids_2 = [t["tool_id"] for t in second_page_2["tools"]]
+        ids_1 = [t["full_path"] for t in second_page_1["tools"]]
+        ids_2 = [t["full_path"] for t in second_page_2["tools"]]
         assert ids_1 == ids_2
 
     def test_empty_result_no_cursor(self, discovery_service_with_data: DiscoveryService) -> None:

@@ -518,8 +518,8 @@ class TestMCPToolsAvailability:
         """Verify cellpose tool pack is registered."""
         result = discovery_service.list_tools(limit=20, cursor=None)
 
-        tool_ids = [t["tool_id"] for t in result["tools"]]
-        assert "tools.cellpose" in tool_ids, "Cellpose tool pack not found"
+        tool_paths = [t["full_path"] for t in result["tools"]]
+        assert "cellpose" in tool_paths, "Cellpose environment not found"
 
     def test_search_functions_finds_cellpose_segment(self, discovery_service):
         """Verify cellpose.segment function is discoverable."""

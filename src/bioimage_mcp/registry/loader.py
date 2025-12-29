@@ -106,6 +106,14 @@ def _parameters_to_json_schema(params: dict[str, ParameterSchema]) -> dict:
     return schema
 
 
+def _env_prefix_from_tool_id(tool_id: str | None) -> str | None:
+    if not tool_id:
+        return None
+    if tool_id.startswith("tools."):
+        return tool_id.split(".", 1)[1]
+    return tool_id
+
+
 def load_manifest_file(path: Path) -> tuple[ToolManifest | None, ManifestDiagnostic | None]:
     try:
         raw = path.read_bytes()
@@ -148,8 +156,13 @@ def load_manifest_file(path: Path) -> tuple[ToolManifest | None, ManifestDiagnos
                 inputs, outputs = _map_io_pattern_to_ports(meta.io_pattern)
                 params_schema = _parameters_to_json_schema(meta.parameters)
 
+                env_prefix = _env_prefix_from_tool_id(manifest.tool_id)
+                fn_id = meta.fn_id
+                if env_prefix and not fn_id.startswith(f"{env_prefix}."):
+                    fn_id = f"{env_prefix}.{fn_id}"
+
                 function = Function(
-                    fn_id=meta.fn_id,
+                    fn_id=fn_id,
                     tool_id=manifest.tool_id,
                     name=meta.name,
                     description=meta.description,

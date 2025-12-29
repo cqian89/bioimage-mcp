@@ -12,7 +12,7 @@ def test_discovery_list_tools_contract_shape() -> None:
 
     service = DiscoveryService(conn)
     service.upsert_tool(
-        tool_id="tools.builtin",
+        tool_id="tools.base",
         name="Built-ins",
         description="Built-in functions",
         tool_version="0.0.0",
@@ -22,14 +22,25 @@ def test_discovery_list_tools_contract_shape() -> None:
         installed=True,
     )
 
+    service.upsert_function(
+        fn_id="base.skimage.filters.gaussian",
+        tool_id="tools.base",
+        name="Gaussian blur",
+        description="Blur an image",
+        tags=["image", "filter"],
+        inputs=[{"name": "image", "artifact_type": "BioImageRef", "required": True}],
+        outputs=[{"name": "output", "artifact_type": "BioImageRef", "required": True}],
+        params_schema={"type": "object", "properties": {"sigma": {"type": "number"}}},
+    )
+
     page = service.list_tools(limit=20, cursor=None)
 
-    assert set(page.keys()) == {"tools", "next_cursor"}
+    assert set(page.keys()) == {"tools", "next_cursor", "expanded_from"}
     assert isinstance(page["tools"], list)
-    assert page["tools"][0]["tool_id"] == "tools.builtin"
-    assert "name" in page["tools"][0]
-    assert "description" in page["tools"][0]
-    assert "tool_version" in page["tools"][0]
+    assert page["tools"][0]["name"] == "base"
+    assert page["tools"][0]["full_path"] == "base"
+    assert page["tools"][0]["type"] == "environment"
+    assert page["tools"][0]["has_children"] is True
     conn.close()
 
 
@@ -39,7 +50,7 @@ def test_discovery_search_functions_contract_shape() -> None:
 
     service = DiscoveryService(conn)
     service.upsert_tool(
-        tool_id="tools.builtin",
+        tool_id="tools.base",
         name="Built-ins",
         description="Built-in functions",
         tool_version="0.0.0",
@@ -49,8 +60,8 @@ def test_discovery_search_functions_contract_shape() -> None:
         installed=True,
     )
     service.upsert_function(
-        fn_id="builtin.gaussian_blur",
-        tool_id="tools.builtin",
+        fn_id="base.bioimage_mcp_base.preprocess.gaussian",
+        tool_id="tools.base",
         name="Gaussian blur",
         description="Blur an image",
         tags=["image", "filter"],
@@ -59,13 +70,14 @@ def test_discovery_search_functions_contract_shape() -> None:
         params_schema={"type": "object", "properties": {"sigma": {"type": "number"}}},
     )
 
-    page = service.search_functions(query="blur", limit=20, cursor=None)
+    page = service.search_functions(keywords="blur", limit=20, cursor=None)
 
     assert set(page.keys()) == {"functions", "next_cursor"}
     assert isinstance(page["functions"], list)
-    assert page["functions"][0]["fn_id"] == "builtin.gaussian_blur"
-    assert "tool_id" in page["functions"][0]
+    assert page["functions"][0]["fn_id"] == "base.bioimage_mcp_base.preprocess.gaussian"
     assert "tags" in page["functions"][0]
+    assert "score" in page["functions"][0]
+    assert "match_count" in page["functions"][0]
     conn.close()
 
 
@@ -75,7 +87,7 @@ def test_discovery_describe_function_returns_schema() -> None:
 
     service = DiscoveryService(conn)
     service.upsert_tool(
-        tool_id="tools.builtin",
+        tool_id="tools.base",
         name="Built-ins",
         description="Built-in functions",
         tool_version="0.0.0",
@@ -85,8 +97,8 @@ def test_discovery_describe_function_returns_schema() -> None:
         installed=True,
     )
     service.upsert_function(
-        fn_id="builtin.gaussian_blur",
-        tool_id="tools.builtin",
+        fn_id="base.bioimage_mcp_base.preprocess.gaussian",
+        tool_id="tools.base",
         name="Gaussian blur",
         description="Blur an image",
         tags=["image", "filter"],
@@ -95,11 +107,11 @@ def test_discovery_describe_function_returns_schema() -> None:
         params_schema={"type": "object", "properties": {"sigma": {"type": "number"}}},
     )
 
-    described = service.describe_function("builtin.gaussian_blur")
+    described = service.describe_function("base.bioimage_mcp_base.preprocess.gaussian")
     allowed_keys = {"fn_id", "schema", "inputs", "outputs", "hints", "introspection_source"}
     assert {"fn_id", "schema"}.issubset(described.keys())
     assert set(described.keys()).issubset(allowed_keys)
-    assert described["fn_id"] == "builtin.gaussian_blur"
+    assert described["fn_id"] == "base.bioimage_mcp_base.preprocess.gaussian"
     assert described["schema"]["type"] == "object"
     conn.close()
 
@@ -130,6 +142,17 @@ def test_list_tools_returns_without_session_error() -> None:
         installed=True,
     )
 
+    service.upsert_function(
+        fn_id="base.skimage.filters.gaussian",
+        tool_id="tools.base",
+        name="Gaussian Blur",
+        description="Apply Gaussian blur filter",
+        tags=["filter", "blur"],
+        inputs=[{"name": "image", "artifact_type": "BioImageRef", "required": True}],
+        outputs=[{"name": "blurred", "artifact_type": "BioImageRef", "required": True}],
+        params_schema={"type": "object", "properties": {"sigma": {"type": "number"}}},
+    )
+
     # This should not raise AttributeError: 'ServerSession' object has no attribute 'id'
     result = service.list_tools(limit=20, cursor=None)
 
@@ -137,8 +160,8 @@ def test_list_tools_returns_without_session_error() -> None:
     assert "tools" in result, "Response must contain 'tools' key"
     assert isinstance(result["tools"], list)
     assert len(result["tools"]) > 0
-    assert result["tools"][0]["tool_id"] == "tools.base"
-    assert result["tools"][0]["name"] == "Base Toolkit"
+    assert result["tools"][0]["name"] == "base"
+    assert result["tools"][0]["full_path"] == "base"
     conn.close()
 
 
@@ -167,7 +190,7 @@ def test_search_functions_returns_matching_results() -> None:
 
     # Add phasor-related function
     service.upsert_function(
-        fn_id="base.phasor_from_flim",
+        fn_id="base.bioimage_mcp_base.transforms.phasor_from_flim",
         tool_id="tools.base",
         name="Phasor from FLIM",
         description="Calculate phasor coordinates from FLIM data",
@@ -179,7 +202,7 @@ def test_search_functions_returns_matching_results() -> None:
 
     # Add non-matching function
     service.upsert_function(
-        fn_id="base.gaussian_blur",
+        fn_id="base.bioimage_mcp_base.preprocess.gaussian",
         tool_id="tools.base",
         name="Gaussian Blur",
         description="Apply Gaussian blur filter",
@@ -189,7 +212,7 @@ def test_search_functions_returns_matching_results() -> None:
         params_schema={"type": "object", "properties": {"sigma": {"type": "number"}}},
     )
 
-    result = service.search_functions(query="phasor", limit=20, cursor=None)
+    result = service.search_functions(keywords="phasor", limit=20, cursor=None)
 
     # Verify contract shape
     assert "functions" in result
@@ -217,10 +240,12 @@ def test_list_tools_returns_paginated_response() -> None:
 
     service = DiscoveryService(conn)
 
-    # Register multiple tools to trigger pagination
+    # Register multiple tools and functions to trigger pagination
     for i in range(5):
+        tool_id = f"tools.pack_{i}"
+        env_name = f"pack_{i}"
         service.upsert_tool(
-            tool_id=f"tools.pack_{i}",
+            tool_id=tool_id,
             name=f"Tool Pack {i}",
             description=f"Description for tool pack {i}",
             tool_version="0.1.0",
@@ -229,8 +254,18 @@ def test_list_tools_returns_paginated_response() -> None:
             available=True,
             installed=True,
         )
+        service.upsert_function(
+            fn_id=f"{env_name}.pkg.module.fn{i}",
+            tool_id=tool_id,
+            name=f"Function {i}",
+            description=f"Function {i}",
+            tags=["test"],
+            inputs=[],
+            outputs=[],
+            params_schema={},
+        )
 
-    # Request with limit smaller than total tools
+    # Request with limit smaller than total environments
     result = service.list_tools(limit=2, cursor=None)
 
     # Verify contract shape

@@ -52,40 +52,84 @@ from bioimage_mcp_base.transforms import (  # noqa: E402
 )
 
 TOOL_VERSION = "0.1.0"
+TOOL_ENV_NAME = "bioimage-mcp-base"
+DYNAMIC_FN_PREFIXES = ("base.", f"{TOOL_ENV_NAME}.")
 
 
 FN_MAP = {
-    "base.convert_to_ome_zarr": (convert_to_ome_zarr, desc.CONVERT_TO_OME_ZARR_DESCRIPTIONS),
-    "base.export_ome_tiff": (export_ome_tiff, desc.EXPORT_OME_TIFF_DESCRIPTIONS),
-    "base.project_sum": (project_sum, desc.PROJECT_SUM_DESCRIPTIONS),
-    "base.project_max": (project_max, desc.PROJECT_MAX_DESCRIPTIONS),
-    "base.resize": (resize, desc.RESIZE_DESCRIPTIONS),
-    "base.rescale": (rescale, desc.RESCALE_DESCRIPTIONS),
-    "base.rotate": (rotate, desc.ROTATE_DESCRIPTIONS),
-    "base.flip": (flip, desc.FLIP_DESCRIPTIONS),
-    "base.crop": (crop, desc.CROP_DESCRIPTIONS),
-    "base.pad": (pad, desc.PAD_DESCRIPTIONS),
-    "base.relabel_axes": (relabel_axes, desc.RELABEL_AXES_DESCRIPTIONS),
-    "base.squeeze": (squeeze, desc.SQUEEZE_DESCRIPTIONS),
-    "base.expand_dims": (expand_dims, desc.EXPAND_DIMS_DESCRIPTIONS),
-    "base.moveaxis": (moveaxis, desc.MOVEAXIS_DESCRIPTIONS),
-    "base.swap_axes": (swap_axes, desc.SWAP_AXES_DESCRIPTIONS),
-    "base.normalize_intensity": (normalize_intensity, desc.NORMALIZE_INTENSITY_DESCRIPTIONS),
-    "base.gaussian": (gaussian, desc.GAUSSIAN_DESCRIPTIONS),
-    "base.median": (median, desc.MEDIAN_DESCRIPTIONS),
-    "base.bilateral": (bilateral, desc.BILATERAL_DESCRIPTIONS),
-    "base.denoise_nl_means": (denoise_nl_means, desc.DENOISE_NL_MEANS_DESCRIPTIONS),
-    "base.unsharp_mask": (unsharp_mask, desc.UNSHARP_MASK_DESCRIPTIONS),
-    "base.equalize_adapthist": (equalize_adapthist, desc.EQUALIZE_ADAPTHIST_DESCRIPTIONS),
-    "base.sobel": (sobel, desc.SOBEL_DESCRIPTIONS),
-    "base.threshold_otsu": (threshold_otsu, desc.THRESHOLD_OTSU_DESCRIPTIONS),
-    "base.threshold_yen": (threshold_yen, desc.THRESHOLD_YEN_DESCRIPTIONS),
-    "base.morph_opening": (morph_opening, desc.MORPH_OPENING_DESCRIPTIONS),
-    "base.morph_closing": (morph_closing, desc.MORPH_CLOSING_DESCRIPTIONS),
-    "base.remove_small_objects": (remove_small_objects, desc.REMOVE_SMALL_OBJECTS_DESCRIPTIONS),
-    "base.phasor_from_flim": (phasor_from_flim, desc.PHASOR_FROM_FLIM_DESCRIPTIONS),
-    "base.denoise_image": (denoise_image, desc.DENOISE_IMAGE_DESCRIPTIONS),
-    "base.phasor_calibrate": (phasor_calibrate, desc.PHASOR_CALIBRATE_DESCRIPTIONS),
+    "base.bioimage_mcp_base.io.convert_to_ome_zarr": (
+        convert_to_ome_zarr,
+        desc.CONVERT_TO_OME_ZARR_DESCRIPTIONS,
+    ),
+    "base.bioimage_mcp_base.io.export_ome_tiff": (
+        export_ome_tiff,
+        desc.EXPORT_OME_TIFF_DESCRIPTIONS,
+    ),
+    "base.bioimage_mcp_base.transforms.project_sum": (project_sum, desc.PROJECT_SUM_DESCRIPTIONS),
+    "base.bioimage_mcp_base.transforms.project_max": (project_max, desc.PROJECT_MAX_DESCRIPTIONS),
+    "base.bioimage_mcp_base.transforms.resize": (resize, desc.RESIZE_DESCRIPTIONS),
+    "base.bioimage_mcp_base.transforms.rescale": (rescale, desc.RESCALE_DESCRIPTIONS),
+    "base.bioimage_mcp_base.transforms.rotate": (rotate, desc.ROTATE_DESCRIPTIONS),
+    "base.bioimage_mcp_base.transforms.flip": (flip, desc.FLIP_DESCRIPTIONS),
+    "base.bioimage_mcp_base.transforms.crop": (crop, desc.CROP_DESCRIPTIONS),
+    "base.bioimage_mcp_base.transforms.pad": (pad, desc.PAD_DESCRIPTIONS),
+    "base.bioimage_mcp_base.axis_ops.relabel_axes": (relabel_axes, desc.RELABEL_AXES_DESCRIPTIONS),
+    "base.bioimage_mcp_base.axis_ops.squeeze": (squeeze, desc.SQUEEZE_DESCRIPTIONS),
+    "base.bioimage_mcp_base.axis_ops.expand_dims": (expand_dims, desc.EXPAND_DIMS_DESCRIPTIONS),
+    "base.bioimage_mcp_base.axis_ops.moveaxis": (moveaxis, desc.MOVEAXIS_DESCRIPTIONS),
+    "base.bioimage_mcp_base.axis_ops.swap_axes": (swap_axes, desc.SWAP_AXES_DESCRIPTIONS),
+    "base.bioimage_mcp_base.preprocess.normalize_intensity": (
+        normalize_intensity,
+        desc.NORMALIZE_INTENSITY_DESCRIPTIONS,
+    ),
+    "base.bioimage_mcp_base.preprocess.gaussian": (gaussian, desc.GAUSSIAN_DESCRIPTIONS),
+    "base.bioimage_mcp_base.preprocess.median": (median, desc.MEDIAN_DESCRIPTIONS),
+    "base.bioimage_mcp_base.preprocess.bilateral": (bilateral, desc.BILATERAL_DESCRIPTIONS),
+    "base.bioimage_mcp_base.preprocess.denoise_nl_means": (
+        denoise_nl_means,
+        desc.DENOISE_NL_MEANS_DESCRIPTIONS,
+    ),
+    "base.bioimage_mcp_base.preprocess.unsharp_mask": (
+        unsharp_mask,
+        desc.UNSHARP_MASK_DESCRIPTIONS,
+    ),
+    "base.bioimage_mcp_base.preprocess.equalize_adapthist": (
+        equalize_adapthist,
+        desc.EQUALIZE_ADAPTHIST_DESCRIPTIONS,
+    ),
+    "base.bioimage_mcp_base.preprocess.sobel": (sobel, desc.SOBEL_DESCRIPTIONS),
+    "base.bioimage_mcp_base.preprocess.threshold_otsu": (
+        threshold_otsu,
+        desc.THRESHOLD_OTSU_DESCRIPTIONS,
+    ),
+    "base.bioimage_mcp_base.preprocess.threshold_yen": (
+        threshold_yen,
+        desc.THRESHOLD_YEN_DESCRIPTIONS,
+    ),
+    "base.bioimage_mcp_base.preprocess.morph_opening": (
+        morph_opening,
+        desc.MORPH_OPENING_DESCRIPTIONS,
+    ),
+    "base.bioimage_mcp_base.preprocess.morph_closing": (
+        morph_closing,
+        desc.MORPH_CLOSING_DESCRIPTIONS,
+    ),
+    "base.bioimage_mcp_base.preprocess.remove_small_objects": (
+        remove_small_objects,
+        desc.REMOVE_SMALL_OBJECTS_DESCRIPTIONS,
+    ),
+    "base.bioimage_mcp_base.transforms.phasor_from_flim": (
+        phasor_from_flim,
+        desc.PHASOR_FROM_FLIM_DESCRIPTIONS,
+    ),
+    "base.bioimage_mcp_base.preprocess.denoise_image": (
+        denoise_image,
+        desc.DENOISE_IMAGE_DESCRIPTIONS,
+    ),
+    "base.bioimage_mcp_base.transforms.phasor_calibrate": (
+        phasor_calibrate,
+        desc.PHASOR_CALIBRATE_DESCRIPTIONS,
+    ),
 }
 
 
@@ -162,8 +206,14 @@ def main() -> int:
             # Dynamic dispatch for functions not in FN_MAP
             from bioimage_mcp_base.dynamic_dispatch import dispatch_dynamic
 
+            dynamic_fn_id = fn_id or ""
+            for prefix in DYNAMIC_FN_PREFIXES:
+                if dynamic_fn_id.startswith(prefix):
+                    dynamic_fn_id = dynamic_fn_id[len(prefix) :]
+                    break
+
             result = dispatch_dynamic(
-                fn_id=fn_id,
+                fn_id=dynamic_fn_id,
                 inputs=inputs,
                 params=params,
                 work_dir=work_dir,

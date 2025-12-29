@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime
+from enum import Enum
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
@@ -75,3 +77,77 @@ class FunctionHints(BaseModel):
 
 class LLMHints(FunctionHints):
     """Structured hints for LLM workflow guidance."""
+
+
+class PermissionMode(str, Enum):
+    """How to interpret file access permissions."""
+
+    EXPLICIT = "explicit"
+    INHERIT = "inherit"
+    HYBRID = "hybrid"
+
+
+class OverwritePolicy(str, Enum):
+    """How to handle overwriting existing files."""
+
+    ALLOW = "allow"
+    DENY = "deny"
+    ASK = "ask"
+
+
+class PermissionDecision(BaseModel):
+    """Recorded decision for a permission check."""
+
+    operation: Literal["read", "write"]
+    path: str
+    mode: PermissionMode | None = None
+    decision: Literal["ALLOWED", "DENIED", "ASK"]
+    reason: str | None = None
+    timestamp: datetime
+
+
+class ToolHierarchyNode(BaseModel):
+    """Single node in the tool hierarchy tree."""
+
+    name: str
+    full_path: str
+    type: Literal["environment", "package", "module", "function"]
+    has_children: bool
+    fn_id: str | None = None
+    summary: str | None = None
+
+
+class ListToolsResponse(BaseModel):
+    """Response for hierarchical tool listing."""
+
+    tools: list[ToolHierarchyNode]
+    next_cursor: str | None = None
+    expanded_from: str | None = None
+
+
+class ScoredFunction(BaseModel):
+    """Search result entry with ranking score."""
+
+    fn_id: str
+    name: str
+    description: str
+    score: float
+    match_count: int
+    tags: list[str] = Field(default_factory=list)
+
+
+class SearchFunctionsRequest(BaseModel):
+    """Search request for discovery API."""
+
+    keywords: list[str] | str
+    query: str | None = None
+    tags: list[str] | None = None
+    limit: int = 20
+    cursor: str | None = None
+
+
+class SearchFunctionsResponse(BaseModel):
+    """Search response with ranked functions."""
+
+    functions: list[ScoredFunction]
+    next_cursor: str | None = None

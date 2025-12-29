@@ -7,7 +7,8 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from bioimage_mcp.bootstrap.env_manager import detect_env_manager
-from bioimage_mcp.config.loader import load_config
+from bioimage_mcp.config.loader import find_repo_root, load_config
+from bioimage_mcp.registry.loader import load_manifest_file
 
 
 @dataclass(frozen=True)
@@ -110,6 +111,54 @@ def check_base_env(env_name: str = "bioimage-mcp-base") -> CheckResult:
     )
 
 
+def check_tool_consolidation() -> CheckResult:
+    repo_root = find_repo_root()
+    if not repo_root:
+        return CheckResult(
+            name="tool_consolidation",
+            ok=False,
+            remediation=["Run checks from the bioimage-mcp repository"],
+            details={"reason": "repo_root_not_found"},
+        )
+
+    errors: list[str] = []
+    remediation: list[str] = []
+    details: dict[str, object] = {"repo_root": str(repo_root)}
+
+    env_spec = repo_root / "envs" / "bioimage-mcp-base.yaml"
+    if not env_spec.exists():
+        errors.append("missing_base_env_spec")
+        remediation.append(f"Restore base env spec at {env_spec}")
+
+    base_manifest_path = repo_root / "tools" / "base" / "manifest.yaml"
+    if not base_manifest_path.exists():
+        errors.append("missing_base_manifest")
+        remediation.append(f"Restore base manifest at {base_manifest_path}")
+    else:
+        manifest, diag = load_manifest_file(base_manifest_path)
+        if manifest is None or diag is not None:
+            errors.append("invalid_base_manifest")
+            details["base_manifest_errors"] = (
+                diag.errors if diag is not None else ["unknown manifest error"]
+            )
+
+    builtin_path = repo_root / "tools" / "builtin"
+    if builtin_path.exists():
+        errors.append("builtin_present")
+        remediation.append("Remove tools/builtin to enforce unified base tool pack")
+        details["builtin_path"] = str(builtin_path)
+
+    if errors:
+        details["errors"] = errors
+
+    return CheckResult(
+        name="tool_consolidation",
+        ok=not errors,
+        remediation=remediation,
+        details=details,
+    )
+
+
 def check_gpu() -> CheckResult:
     nvidia_smi = shutil.which("nvidia-smi")
     available = nvidia_smi is not None
@@ -155,6 +204,7 @@ def run_all_checks() -> list[CheckResult]:
         check_disk(),
         check_permissions(),
         check_base_env(),
+        check_tool_consolidation(),
         check_gpu(),
         check_conda_lock(),
         check_network(),

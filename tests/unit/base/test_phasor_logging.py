@@ -63,7 +63,7 @@ def test_phasor_workflow_record_contains_log_ref(tmp_path: Path) -> None:
             {
                 "steps": [
                     {
-                        "fn_id": "base.phasor_from_flim",
+                        "fn_id": "base.bioimage_mcp_base.transforms.phasor_from_flim",
                         "inputs": {
                             "dataset": {
                                 "type": "BioImageRef",

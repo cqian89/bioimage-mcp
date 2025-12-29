@@ -7,13 +7,14 @@ from __future__ import annotations
 
 
 class TestPhasorCalibrateContract:
-    """Contract tests for base.phasor_calibrate function."""
+    """Contract tests for base.bioimage_mcp_base.transforms.phasor_calibrate function."""
 
     def test_calibrate_accepts_required_parameters(self) -> None:
         """CAL-001: phasor_calibrate accepts required parameters.
 
         Given: Raw sample and reference phasors available
-        When: Call base.phasor_calibrate with lifetime=4.04, frequency=80e6
+        When: Call base.bioimage_mcp_base.transforms.phasor_calibrate
+        with lifetime=4.04, frequency=80e6
         Then: Returns calibrated 2-channel BioImageRef
         """
         # This test will be implemented when the function exists
@@ -30,7 +31,7 @@ class TestPhasorCalibrateContract:
         """CAL-002: phasor_calibrate rejects invalid lifetime.
 
         Given: Valid phasor inputs
-        When: Call base.phasor_calibrate with lifetime=-1.0
+        When: Call base.bioimage_mcp_base.transforms.phasor_calibrate with lifetime=-1.0
         Then: Returns error with INVALID_LIFETIME code
         """
         # Negative lifetime must be rejected

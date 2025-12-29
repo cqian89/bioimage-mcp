@@ -22,7 +22,7 @@ def test_fs_policy_allows_path_under_read_root(tmp_path: Path) -> None:
         fs_denylist=[],
     )
 
-    assert_path_allowed("read", target, config)
+    assert_path_allowed("read", target, config, session=None, permission_service=None)
 
 
 def test_fs_policy_denies_path_under_denylist(tmp_path: Path) -> None:
@@ -41,7 +41,7 @@ def test_fs_policy_denies_path_under_denylist(tmp_path: Path) -> None:
     )
 
     with pytest.raises(PermissionError):
-        assert_path_allowed("read", target, config)
+        assert_path_allowed("read", target, config, session=None, permission_service=None)
 
 
 def test_fs_policy_denies_path_outside_allowlist(tmp_path: Path) -> None:
@@ -61,4 +61,4 @@ def test_fs_policy_denies_path_outside_allowlist(tmp_path: Path) -> None:
     )
 
     with pytest.raises(PermissionError):
-        assert_path_allowed("read", outside, config)
+        assert_path_allowed("read", outside, config, session=None, permission_service=None)

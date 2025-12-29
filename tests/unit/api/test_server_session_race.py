@@ -24,10 +24,24 @@ class _FakeMCP:
 
 
 class _DummyDiscovery:
-    def list_tools(self, *, limit=None, cursor=None):
+    def list_tools(self, *, path=None, paths=None, flatten=None, limit=None, cursor=None):
+        _ = path
+        _ = paths
+        _ = flatten
         _ = limit
         _ = cursor
-        return {"tools": [{"tool_id": "tools.base"}], "next_cursor": None}
+        return {
+            "tools": [
+                {
+                    "name": "base",
+                    "full_path": "base",
+                    "type": "environment",
+                    "has_children": True,
+                }
+            ],
+            "next_cursor": None,
+            "expanded_from": None,
+        }
 
 
 class _DummyService:
@@ -59,5 +73,5 @@ def test_list_tools_ensures_session(monkeypatch, tmp_path) -> None:
 
     result = mcp.tools["list_tools"](ctx=ctx)
 
-    assert result["tools"][0]["tool_id"] == "tools.base"
+    assert result["tools"][0]["full_path"] == "base"
     assert session_manager.get_session("session-1").session_id == "session-1"

@@ -33,20 +33,63 @@ def get_default_config() -> Config:
     )
 
 
-def find_sample_images(samples_dir: Path) -> list[Path]:
+def normalize_samples_dir(samples_dir: str | None) -> Path | None:
+    """Normalize samples directory argument."""
+    if samples_dir is None:
+        return None
+    cleaned = samples_dir.strip()
+    if not cleaned:
+        return None
+    return Path(cleaned)
+
+
+def default_sample_dirs(root: Path) -> list[Path]:
+    """Return default dataset directories to search."""
+    return [
+        root / "datasets" / "samples",
+        root / "datasets" / "synthetic",
+        root / "datasets" / "FLUTE_FLIM_data_tif",
+    ]
+
+
+def is_image_file(path: Path) -> bool:
+    """Check if a path looks like a supported image file."""
+    extensions = (".ome.tiff", ".ome.tif", ".tiff", ".tif", ".png")
+    return path.is_file() and path.name.lower().endswith(extensions)
+
+
+def find_sample_images(samples_dir: Path, recursive: bool = True) -> list[Path]:
     """Find sample microscopy images in the given directory."""
-    extensions = {".tiff", ".tif", ".ome.tiff", ".ome.tif", ".png"}
     images = []
 
     if not samples_dir.exists():
-        print(f"Warning: Samples directory does not exist: {samples_dir}")
         return images
 
-    for path in samples_dir.iterdir():
-        if path.is_file() and path.suffix.lower() in extensions:
+    paths = samples_dir.rglob("*") if recursive else samples_dir.iterdir()
+    for path in paths:
+        if is_image_file(path):
             images.append(path)
 
     return sorted(images)
+
+
+def collect_samples(
+    samples_dir: Path | None,
+    root: Path,
+) -> tuple[Path | None, list[Path]]:
+    """Collect sample images from the provided or default datasets."""
+    if samples_dir is not None:
+        samples = find_sample_images(samples_dir, recursive=True)
+        if samples:
+            return samples_dir, samples
+        return None, []
+
+    for candidate in default_sample_dirs(root):
+        samples = find_sample_images(candidate, recursive=True)
+        if samples:
+            return candidate, samples
+
+    return None, []
 
 
 def validate_image(svc: ExecutionService, image_path: Path, dry_run: bool = False) -> bool:
@@ -107,8 +150,8 @@ def main() -> int:
     )
     parser.add_argument(
         "--samples-dir",
-        type=Path,
-        default=Path(__file__).parent.parent / "datasets" / "samples",
+        type=str,
+        default=None,
         help="Directory containing sample images",
     )
     args = parser.parse_args()
@@ -117,17 +160,24 @@ def main() -> int:
     print("Pipeline Validation Script")
     print("=" * 60)
 
-    # Find sample images
-    samples = find_sample_images(args.samples_dir)
+    root = Path(__file__).parent.parent
+    samples_dir = normalize_samples_dir(args.samples_dir)
+    selected_dir, samples = collect_samples(samples_dir, root)
     if not samples:
-        print(f"\nNo sample images found in: {args.samples_dir}")
-        print("To add samples, place microscopy images in datasets/samples/")
+        if samples_dir is not None:
+            print(f"\nNo sample images found in: {samples_dir}")
+            print("To add samples, place microscopy images in the target directory.")
+        else:
+            print("\nNo sample images found in default dataset directories:")
+            for candidate in default_sample_dirs(root):
+                print(f"  - {candidate}")
         if args.dry_run:
             print("\n[DRY-RUN] Validation would pass with no samples")
             return 0
         return 1
 
-    print(f"\nFound {len(samples)} sample image(s)")
+    print(f"\nUsing samples from: {selected_dir}")
+    print(f"Found {len(samples)} sample image(s)")
 
     # Run validation
     config = get_default_config()

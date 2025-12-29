@@ -1,10 +1,15 @@
 from __future__ import annotations
 
 from pathlib import Path
+import re
+from typing import Iterable, TYPE_CHECKING
 
 import yaml
 
 from bioimage_mcp.config.schema import Config
+
+if TYPE_CHECKING:
+    from bioimage_mcp.registry.manifest_schema import ToolManifest
 
 
 def _read_yaml(path: Path) -> dict:
@@ -79,6 +84,42 @@ def _merge_manifest_roots(configured: list[str]) -> list[str]:
                 roots.append(path)
 
     return roots
+
+
+_CANONICAL_FN_ID_PATTERN = re.compile(r"^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*){2,}$")
+
+
+def is_canonical_fn_id(fn_id: str, *, allow_meta: bool = True) -> bool:
+    """Return True if fn_id matches canonical env.package.module.function."""
+    if allow_meta and fn_id == "meta.describe":
+        return True
+    return bool(_CANONICAL_FN_ID_PATTERN.match(fn_id))
+
+
+def validate_manifest_fn_ids(
+    manifests: Iterable["ToolManifest"],
+    *,
+    allow_meta: bool = True,
+) -> None:
+    """Validate that all manifest fn_ids are canonical."""
+    invalid = sorted(
+        {
+            fn.fn_id
+            for manifest in manifests
+            for fn in manifest.functions
+            if not is_canonical_fn_id(fn.fn_id, allow_meta=allow_meta)
+        }
+    )
+    if invalid:
+        raise ValueError(f"Non-canonical fn_id(s): {', '.join(invalid)}")
+
+
+def validate_manifest_fn_ids_for_config(config: Config, *, allow_meta: bool = True) -> None:
+    """Validate manifest fn_ids for configured tool roots."""
+    from bioimage_mcp.registry.loader import load_manifests
+
+    manifests, _diagnostics = load_manifests(list(config.tool_manifest_roots))
+    validate_manifest_fn_ids(manifests, allow_meta=allow_meta)
 
 
 def load_config(*, global_path: Path | None = None, local_path: Path | None = None) -> Config:

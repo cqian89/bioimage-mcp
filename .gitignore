@@ -213,3 +213,6 @@ Thumbs.db
 
 # Analysis outputs
 datasets/*/outputs/
+
+# Runtime artifacts
+artifacts/

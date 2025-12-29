@@ -7,11 +7,12 @@ import sqlite3
 import uuid
 from pathlib import Path
 
+from bioimage_mcp.api.permissions import PermissionService
 from bioimage_mcp.artifacts.checksums import sha256_file, sha256_tree
 from bioimage_mcp.artifacts.metadata import extract_image_metadata
 from bioimage_mcp.artifacts.models import ArtifactChecksum, ArtifactRef
 from bioimage_mcp.config.fs_policy import assert_path_allowed
-from bioimage_mcp.config.schema import Config
+from bioimage_mcp.config.schema import Config, OverwritePolicy
 from bioimage_mcp.errors import ArtifactStoreError
 from bioimage_mcp.storage.sqlite import connect
 
@@ -292,10 +293,38 @@ class ArtifactStore:
         content = self.get_raw_content(ref_id).decode("utf-8")
         return json.loads(content)
 
-    def export(self, ref_id: str, dest_path: Path) -> Path:
-        dest_path = assert_path_allowed("write", dest_path, self._config)
+    def export(
+        self,
+        ref_id: str,
+        dest_path: Path,
+        *,
+        session: object | None = None,
+        permission_service: PermissionService | None = None,
+    ) -> Path:
+        dest_path = assert_path_allowed(
+            "write",
+            dest_path,
+            self._config,
+            session=session,
+            permission_service=permission_service,
+        )
         ref = self.get(ref_id)
         src_path = Path(ref.uri.replace("file://", ""))
+
+        if dest_path.exists():
+            overwrite_policy = self._config.permissions.on_overwrite
+            if overwrite_policy == OverwritePolicy.DENY:
+                raise PermissionError(f"Overwrite denied for {dest_path}")
+            if overwrite_policy == OverwritePolicy.ASK:
+                if permission_service is None:
+                    raise PermissionError(f"Overwrite denied for {dest_path}")
+                decision = permission_service.elicit_confirmation(
+                    dest_path,
+                    session=session,
+                    config=self._config,
+                )
+                if decision != "ALLOWED":
+                    raise PermissionError(f"Overwrite denied for {dest_path}")
 
         if src_path.is_dir():
             if dest_path.exists():

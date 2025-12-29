@@ -145,7 +145,7 @@ def test_function_hints_schema() -> None:
 def test_describe_function_response_structure() -> None:
     """Validate describe_function response includes inputs and outputs with hints."""
     response = {
-        "fn_id": "base.phasor_from_flim",
+        "fn_id": "base.bioimage_mcp_base.transforms.phasor_from_flim",
         "name": "Phasor transform",
         "description": "Convert FLIM dataset to phasor coordinates",
         "schema": {"type": "object", "properties": {}},
@@ -177,52 +177,58 @@ def test_describe_function_response_structure() -> None:
         OutputDescription.model_validate(output_description)
 
 
-def test_call_tool_success_response_with_hints() -> None:
-    """Validate call_tool success response includes hints."""
+def test_run_function_success_response_with_hints() -> None:
+    """Validate run_function success response includes hints."""
     response = {
-        "status": "succeeded",
-        "outputs": {"g_image": {"ref_id": "abc123", "type": "BioImageRef"}},
-        "hints": {
-            "next_steps": [
-                {
-                    "fn_id": "base.phasor_calibrate",
-                    "reason": "Apply calibration using reference standard",
-                }
-            ],
-            "common_issues": ["Raw phasors are uncalibrated"],
-        },
-    }
-
-    assert response["status"] == "succeeded"
-    assert "hints" in response
-    SuccessHints.model_validate(response["hints"])
-
-
-def test_call_tool_error_response_with_hints() -> None:
-    """Validate call_tool error response includes diagnostic hints."""
-    response = {
-        "status": "failed",
-        "error": {
-            "message": "Not enough samples in axis T",
-            "code": "AXIS_SAMPLES_ERROR",
-        },
-        "hints": {
-            "diagnosis": "The T axis has only 1 sample",
-            "suggested_fix": {
-                "fn_id": "base.relabel_axes",
-                "params": {"axis_mapping": {"Z": "T", "T": "Z"}},
-                "explanation": "Swap Z and T axes",
-            },
-            "related_metadata": {
-                "detected_axes": "TCZYX",
-                "shape": [1, 1, 56, 512, 512],
+        "result": {
+            "status": "succeeded",
+            "outputs": {"g_image": {"ref_id": "abc123", "type": "BioImageRef"}},
+            "hints": {
+                "next_steps": [
+                    {
+                        "fn_id": "base.bioimage_mcp_base.transforms.phasor_calibrate",
+                        "reason": "Apply calibration using reference standard",
+                    }
+                ],
+                "common_issues": ["Raw phasors are uncalibrated"],
             },
         },
+        "workflow_hint": None,
     }
 
-    assert response["status"] == "failed"
-    assert "hints" in response
-    ErrorHints.model_validate(response["hints"])
+    assert response["result"]["status"] == "succeeded"
+    assert "hints" in response["result"]
+    SuccessHints.model_validate(response["result"]["hints"])
+
+
+def test_run_function_error_response_with_hints() -> None:
+    """Validate run_function error response includes diagnostic hints."""
+    response = {
+        "result": {
+            "status": "failed",
+            "error": {
+                "message": "Not enough samples in axis T",
+                "code": "AXIS_SAMPLES_ERROR",
+            },
+            "hints": {
+                "diagnosis": "The T axis has only 1 sample",
+                "suggested_fix": {
+                    "fn_id": "base.bioimage_mcp_base.axis_ops.relabel_axes",
+                    "params": {"axis_mapping": {"Z": "T", "T": "Z"}},
+                    "explanation": "Swap Z and T axes",
+                },
+                "related_metadata": {
+                    "detected_axes": "TCZYX",
+                    "shape": [1, 1, 56, 512, 512],
+                },
+            },
+        },
+        "workflow_hint": None,
+    }
+
+    assert response["result"]["status"] == "failed"
+    assert "hints" in response["result"]
+    ErrorHints.model_validate(response["result"]["hints"])
 
 
 def test_function_response_includes_inputs_outputs_hints() -> None:

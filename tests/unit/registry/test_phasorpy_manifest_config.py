@@ -58,7 +58,7 @@ def test_phasorpy_adapter_discovery_via_manifest(tmp_path):
 
         # Since adapter is not registered yet, this test will fail initially (TDD red phase)
         # Once adapter is registered, it should pass (green phase)
-        assert "phasorpy.phasor.phasor_from_signal" in function_ids
+        assert "test.tool.phasorpy.phasor.phasor_from_signal" in function_ids
 
 
 def test_base_manifest_contains_phasorpy_config():

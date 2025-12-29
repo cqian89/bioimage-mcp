@@ -59,8 +59,22 @@ class MCPTestClient:
         self._active_fn_ids: set[str] = set()
         self.context: dict[str, Any] = {}
 
-    def list_tools(self, *, limit: int | None = 50, cursor: str | None = None) -> dict[str, Any]:
-        return self._discovery.list_tools(limit=limit, cursor=cursor)
+    def list_tools(
+        self,
+        *,
+        path: str | None = None,
+        paths: list[str] | None = None,
+        flatten: bool | None = None,
+        limit: int | None = 50,
+        cursor: str | None = None,
+    ) -> dict[str, Any]:
+        return self._discovery.list_tools(
+            path=path,
+            paths=paths,
+            flatten=flatten,
+            limit=limit,
+            cursor=cursor,
+        )
 
     def search_functions(
         self,

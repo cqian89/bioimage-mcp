@@ -156,6 +156,20 @@ class RegistryIndex:
             )
         return tools
 
+    def list_functions(self) -> list[dict]:
+        rows = self._conn.execute(
+            "SELECT fn_id, tool_id, name, description FROM functions ORDER BY fn_id"
+        ).fetchall()
+        return [
+            {
+                "fn_id": row["fn_id"],
+                "tool_id": row["tool_id"],
+                "name": row["name"],
+                "description": row["description"],
+            }
+            for row in rows
+        ]
+
     def get_tool(self, tool_id: str) -> dict | None:
         row = self._conn.execute(
             "SELECT tool_id, tool_version, description FROM tools WHERE tool_id = ?", (tool_id,)
@@ -321,3 +335,142 @@ class RegistryIndex:
             (tool_id,),
         )
         self._conn.commit()
+
+
+class _HierarchyNode:
+    def __init__(
+        self,
+        name: str,
+        full_path: str,
+        node_type: str,
+        *,
+        fn_id: str | None = None,
+        summary: str | None = None,
+    ) -> None:
+        self.name = name
+        self.full_path = full_path
+        self.type = node_type
+        self.fn_id = fn_id
+        self.summary = summary
+        self.children: dict[str, _HierarchyNode] = {}
+
+
+class ToolIndex:
+    """Hierarchical index for tool discovery."""
+
+    def __init__(self, functions: list[dict]) -> None:
+        self._functions = functions
+        self._root = _HierarchyNode("", "", "root")
+        self._path_index: dict[str, _HierarchyNode] = {"": self._root}
+
+    def build_hierarchy(self) -> None:
+        for fn in self._functions:
+            fn_id = str(fn["fn_id"])
+            tool_id = fn.get("tool_id")
+            env_name = self._env_name(fn_id, tool_id)
+            segments = fn_id.split(".") if fn_id else []
+            if env_name and segments and segments[0] != env_name:
+                segments = [env_name, *segments]
+
+            if not segments:
+                continue
+
+            self._insert_path(segments, fn_id, fn.get("description"))
+
+    def list_children(
+        self, path: str | None, *, auto_expand: bool = True
+    ) -> tuple[list[dict], str | None]:
+        node = self._resolve_path(path)
+        if node is None:
+            return [], None
+
+        expanded_from = None
+        if auto_expand and path:
+            while node.type != "function":
+                children = list(node.children.values())
+                if len(children) != 1:
+                    break
+                node = children[0]
+                if expanded_from is None:
+                    expanded_from = path
+
+        if node.type == "function":
+            nodes = [node]
+        else:
+            nodes = list(node.children.values())
+
+        payloads = [self._to_payload(n) for n in nodes]
+        payloads.sort(key=lambda entry: entry["full_path"])
+        return payloads, expanded_from
+
+    def flatten_tools(self, path: str | None) -> list[dict]:
+        node = self._resolve_path(path)
+        if node is None:
+            return []
+
+        collected: list[_HierarchyNode] = []
+        self._collect_functions(node, collected)
+        payloads = [self._to_payload(n) for n in collected]
+        payloads.sort(key=lambda entry: entry["full_path"])
+        return payloads
+
+    def _collect_functions(self, node: _HierarchyNode, collected: list[_HierarchyNode]) -> None:
+        if node.type == "function":
+            collected.append(node)
+            return
+        for child in node.children.values():
+            self._collect_functions(child, collected)
+
+    def _resolve_path(self, path: str | None) -> _HierarchyNode | None:
+        if path is None or path == "":
+            return self._root
+        return self._path_index.get(path)
+
+    def _insert_path(self, segments: list[str], fn_id: str, summary: str | None) -> None:
+        node = self._root
+        for idx, segment in enumerate(segments):
+            is_last = idx == len(segments) - 1
+            node_type = self._node_type(idx, is_last)
+            full_path = ".".join(segments[: idx + 1])
+            existing = node.children.get(segment)
+            if existing is None:
+                existing = _HierarchyNode(segment, full_path, node_type)
+                node.children[segment] = existing
+                self._path_index[full_path] = existing
+
+            if is_last:
+                existing.fn_id = fn_id
+                existing.summary = summary
+            node = existing
+
+    @staticmethod
+    def _node_type(depth: int, is_last: bool) -> str:
+        if is_last:
+            return "function"
+        if depth == 0:
+            return "environment"
+        if depth == 1:
+            return "package"
+        return "module"
+
+    @staticmethod
+    def _env_name(fn_id: str, tool_id: str | None) -> str:
+        if tool_id and tool_id.startswith("tools."):
+            return tool_id.split(".", 1)[1]
+        if tool_id and "." in tool_id and tool_id.split(".", 1)[0] == "tools":
+            return tool_id.split(".", 1)[1]
+        return fn_id.split(".", 1)[0]
+
+    @staticmethod
+    def _to_payload(node: _HierarchyNode) -> dict:
+        payload = {
+            "name": node.name,
+            "full_path": node.full_path,
+            "type": node.type,
+            "has_children": bool(node.children),
+        }
+        if node.type == "function":
+            payload["fn_id"] = node.fn_id or node.full_path
+            if node.summary:
+                payload["summary"] = node.summary
+        return payload

@@ -36,7 +36,7 @@ def test_discovery_queries_are_reasonably_fast(monkeypatch, tmp_path) -> None:
     service = DiscoveryService(conn)
 
     service.upsert_tool(
-        tool_id="perf.tool",
+        tool_id="tools.perf",
         name="perf",
         description="perf",
         tool_version="0.0.0",
@@ -49,7 +49,7 @@ def test_discovery_queries_are_reasonably_fast(monkeypatch, tmp_path) -> None:
     for idx in range(500):
         service.upsert_function(
             fn_id=f"perf.fn_{idx:04d}",
-            tool_id="perf.tool",
+            tool_id="tools.perf",
             name=f"Perf Function {idx}",
             description="Synthetic function for perf testing",
             tags=["perf", "synthetic"],

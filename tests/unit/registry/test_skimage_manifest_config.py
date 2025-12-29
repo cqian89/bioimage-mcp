@@ -16,7 +16,7 @@ def test_skimage_adapter_discovery_via_manifest(tmp_path):
     manifest_path = tmp_path / "manifest.yaml"
     manifest_data = {
         "manifest_version": "0.0",
-        "tool_id": "test.tool",
+        "tool_id": "tools.test",
         "tool_version": "0.1.0",
         "name": "Test Tool",
         "description": "Test Tool",
@@ -67,4 +67,4 @@ def test_skimage_adapter_discovery_via_manifest(tmp_path):
         # Wait, the task is to write a failing test?
         # If I assert it IS present, it will fail. That's the goal.
 
-        assert "skimage.filters.gaussian" in function_ids
+        assert "test.skimage.filters.gaussian" in function_ids

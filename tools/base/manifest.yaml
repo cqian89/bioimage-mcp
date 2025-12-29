@@ -52,7 +52,7 @@ dynamic_sources:
 
 functions:
   # I/O / format
-  - fn_id: base.convert_to_ome_zarr
+  - fn_id: base.bioimage_mcp_base.io.convert_to_ome_zarr
     tool_id: tools.base
     name: Convert to OME-Zarr
     description: Convert an input image to OME-Zarr for file-backed pipeline processing.
@@ -70,7 +70,7 @@ functions:
       type: object
       properties: {}
 
-  - fn_id: base.export_ome_tiff
+  - fn_id: base.bioimage_mcp_base.io.export_ome_tiff
     tool_id: tools.base
     name: Export OME-TIFF
     description: Export an input image to OME-TIFF for compatibility.
@@ -89,7 +89,7 @@ functions:
       properties: {}
 
   # Axis/dim handling
-  - fn_id: base.project_sum
+  - fn_id: base.bioimage_mcp_base.transforms.project_sum
     tool_id: tools.base
     name: Sum projection
     description: Reduce a stack to an intensity image by summing over a selected axis.
@@ -107,7 +107,7 @@ functions:
       type: object
       properties: {}
 
-  - fn_id: base.project_max
+  - fn_id: base.bioimage_mcp_base.transforms.project_max
     tool_id: tools.base
     name: Max projection
     description: Reduce a stack to an intensity image by max projection over a selected axis.
@@ -126,7 +126,7 @@ functions:
       properties: {}
 
   # Transforms
-  - fn_id: base.resize
+  - fn_id: base.bioimage_mcp_base.transforms.resize
     tool_id: tools.base
     name: Resize
     description: Resize an image to a target shape.
@@ -144,7 +144,7 @@ functions:
       type: object
       properties: {}
 
-  - fn_id: base.rescale
+  - fn_id: base.bioimage_mcp_base.transforms.rescale
     tool_id: tools.base
     name: Rescale
     description: Rescale image by a scalar factor.
@@ -162,7 +162,7 @@ functions:
       type: object
       properties: {}
 
-  - fn_id: base.rotate
+  - fn_id: base.bioimage_mcp_base.transforms.rotate
     tool_id: tools.base
     name: Rotate
     description: Rotate an image by an angle.
@@ -180,7 +180,7 @@ functions:
       type: object
       properties: {}
 
-  - fn_id: base.flip
+  - fn_id: base.bioimage_mcp_base.transforms.flip
     tool_id: tools.base
     name: Flip
     description: Flip an image along an axis.
@@ -198,7 +198,7 @@ functions:
       type: object
       properties: {}
 
-  - fn_id: base.crop
+  - fn_id: base.bioimage_mcp_base.transforms.crop
     tool_id: tools.base
     name: Crop
     description: Crop an image using pixel coordinates.
@@ -216,7 +216,7 @@ functions:
       type: object
       properties: {}
 
-  - fn_id: base.pad
+  - fn_id: base.bioimage_mcp_base.transforms.pad
     tool_id: tools.base
     name: Pad
     description: Pad an image to a target shape.
@@ -235,7 +235,7 @@ functions:
       properties: {}
 
   # Pre-processing
-  - fn_id: base.normalize_intensity
+  - fn_id: base.bioimage_mcp_base.preprocess.normalize_intensity
     tool_id: tools.base
     name: Normalize intensity
     description: Normalize intensities (e.g., percentile-based) for downstream processing.
@@ -253,7 +253,7 @@ functions:
       type: object
       properties: {}
 
-  - fn_id: base.gaussian
+  - fn_id: base.bioimage_mcp_base.preprocess.gaussian
     tool_id: tools.base
     name: Gaussian filter
     description: Apply an N-D Gaussian filter.
@@ -271,7 +271,7 @@ functions:
       type: object
       properties: {}
 
-  - fn_id: base.median
+  - fn_id: base.bioimage_mcp_base.preprocess.median
     tool_id: tools.base
     name: Median filter
     description: Apply an N-D median filter.
@@ -289,7 +289,7 @@ functions:
       type: object
       properties: {}
 
-  - fn_id: base.bilateral
+  - fn_id: base.bioimage_mcp_base.preprocess.bilateral
     tool_id: tools.base
     name: Bilateral filter
     description: Apply an edge-preserving bilateral filter.
@@ -307,7 +307,7 @@ functions:
       type: object
       properties: {}
 
-  - fn_id: base.denoise_nl_means
+  - fn_id: base.bioimage_mcp_base.preprocess.denoise_nl_means
     tool_id: tools.base
     name: Non-local means denoise
     description: Denoise using non-local means.
@@ -325,7 +325,7 @@ functions:
       type: object
       properties: {}
 
-  - fn_id: base.unsharp_mask
+  - fn_id: base.bioimage_mcp_base.preprocess.unsharp_mask
     tool_id: tools.base
     name: Unsharp mask
     description: Sharpen using an unsharp mask.
@@ -343,7 +343,7 @@ functions:
       type: object
       properties: {}
 
-  - fn_id: base.equalize_adapthist
+  - fn_id: base.bioimage_mcp_base.preprocess.equalize_adapthist
     tool_id: tools.base
     name: Adaptive histogram equalization
     description: Improve local contrast using adaptive histogram equalization (CLAHE).
@@ -361,7 +361,7 @@ functions:
       type: object
       properties: {}
 
-  - fn_id: base.sobel
+  - fn_id: base.bioimage_mcp_base.preprocess.sobel
     tool_id: tools.base
     name: Sobel edges
     description: Compute Sobel edge magnitude.
@@ -379,7 +379,7 @@ functions:
       type: object
       properties: {}
 
-  - fn_id: base.threshold_otsu
+  - fn_id: base.bioimage_mcp_base.preprocess.threshold_otsu
     tool_id: tools.base
     name: Otsu threshold
     description: Compute an Otsu threshold and optionally apply it.
@@ -397,7 +397,7 @@ functions:
       type: object
       properties: {}
 
-  - fn_id: base.threshold_yen
+  - fn_id: base.bioimage_mcp_base.preprocess.threshold_yen
     tool_id: tools.base
     name: Yen threshold
     description: Compute a Yen threshold and optionally apply it.
@@ -415,7 +415,7 @@ functions:
       type: object
       properties: {}
 
-  - fn_id: base.morph_opening
+  - fn_id: base.bioimage_mcp_base.preprocess.morph_opening
     tool_id: tools.base
     name: Morphological opening
     description: Apply morphological opening to remove small bright artifacts.
@@ -433,7 +433,7 @@ functions:
       type: object
       properties: {}
 
-  - fn_id: base.morph_closing
+  - fn_id: base.bioimage_mcp_base.preprocess.morph_closing
     tool_id: tools.base
     name: Morphological closing
     description: Apply morphological closing to fill small dark holes.
@@ -451,7 +451,7 @@ functions:
       type: object
       properties: {}
 
-  - fn_id: base.remove_small_objects
+  - fn_id: base.bioimage_mcp_base.preprocess.remove_small_objects
     tool_id: tools.base
     name: Remove small objects
     description: Remove connected components smaller than a threshold.
@@ -469,7 +469,7 @@ functions:
       type: object
       properties: {}
 
-  - fn_id: base.phasor_from_flim
+  - fn_id: base.bioimage_mcp_base.transforms.phasor_from_flim
     tool_id: tools.base
     name: Phasor transform
     description: Convert a FLIM OME-TIFF dataset to phasor coordinates (G/S) and intensity.
@@ -532,7 +532,7 @@ functions:
           description: "Sum intensity image"
       success_hints:
         next_steps:
-          - fn_id: base.phasor_calibrate
+          - fn_id: base.bioimage_mcp_base.transforms.phasor_calibrate
             reason: "Apply calibration using reference standard"
             required_inputs: ["reference dataset with known lifetime"]
         common_issues:
@@ -541,14 +541,14 @@ functions:
         AXIS_SAMPLES_ERROR:
           diagnosis: "The T axis has only 1 sample. FLIM time bins may be stored in Z dimension."
           suggested_fix:
-            fn_id: base.relabel_axes
+            fn_id: base.bioimage_mcp_base.axis_ops.relabel_axes
             params:
               axis_mapping:
                 Z: "T"
                 T: "Z"
             explanation: "Relabel Z axis as T to treat Z slices as FLIM time bins"
 
-  - fn_id: base.denoise_image
+  - fn_id: base.bioimage_mcp_base.preprocess.denoise_image
     tool_id: tools.base
     name: Denoise image
     description: Apply a denoising filter to an image.
@@ -586,7 +586,7 @@ functions:
           default: 0.1
           description: Color/range sigma for bilateral filter.
 
-  - fn_id: base.phasor_calibrate
+  - fn_id: base.bioimage_mcp_base.transforms.phasor_calibrate
     tool_id: tools.base
     name: Phasor calibration
     description: Calibrate raw phasor coordinates using a reference standard with known lifetime.
@@ -621,7 +621,7 @@ functions:
           description: Harmonic number for multi-harmonic analysis
       required: [lifetime, frequency]
 
-  - fn_id: base.relabel_axes
+  - fn_id: base.bioimage_mcp_base.axis_ops.relabel_axes
     tool_id: tools.base
     name: Relabel axes
     description: Relabel axis names (e.g., Z to T) for pipeline compatibility.
@@ -677,10 +677,9 @@ functions:
           description: Image with relabeled axes
       success_hints:
         next_steps:
-          - fn_id: base.phasor_from_flim
+          - fn_id: base.bioimage_mcp_base.transforms.phasor_from_flim
             reason: If relabeling for FLIM, proceed with phasor analysis
-
-  - fn_id: base.squeeze
+  - fn_id: base.bioimage_mcp_base.axis_ops.squeeze
     tool_id: tools.base
     name: Squeeze dimensions
     description: Remove singleton (size=1) dimensions from an image.
@@ -724,7 +723,7 @@ functions:
         - axis: "Z"
         - {}
 
-  - fn_id: base.expand_dims
+  - fn_id: base.bioimage_mcp_base.axis_ops.expand_dims
     tool_id: tools.base
     name: Expand dimensions
     description: Add a new dimension at a specified position.
@@ -773,7 +772,7 @@ functions:
         - axis: -1
           new_axis_name: "C"
 
-  - fn_id: base.moveaxis
+  - fn_id: base.bioimage_mcp_base.axis_ops.moveaxis
     tool_id: tools.base
     name: Move axis
     description: Move an axis from one position to another.
@@ -821,7 +820,7 @@ functions:
         - source: "C"
           destination: -1
 
-  - fn_id: base.swap_axes
+  - fn_id: base.bioimage_mcp_base.axis_ops.swap_axes
     tool_id: tools.base
     name: Swap axes
     description: Swap two axes in an image.

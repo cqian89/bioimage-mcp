@@ -45,7 +45,7 @@ def test_skimage_dynamic_execution_gaussian(tmp_path: Path):
     workflow = {
         "steps": [
             {
-                "fn_id": "skimage.filters.gaussian",
+                "fn_id": "base.skimage.filters.gaussian",
                 "inputs": {
                     "image": {
                         "type": "BioImageRef",

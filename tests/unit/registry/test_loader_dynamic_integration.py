@@ -60,7 +60,7 @@ dynamic_sources:
 
         # Should add discovered functions to manifest.functions
         assert len(manifest.functions) == 1
-        assert manifest.functions[0].fn_id == "skimage.gaussian"
+        assert manifest.functions[0].fn_id == "test.skimage.gaussian"
         assert manifest.functions[0].tool_id == "tools.test"
         assert manifest.functions[0].name == "gaussian"
         assert manifest.functions[0].introspection_source == "python_api"

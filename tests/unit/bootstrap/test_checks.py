@@ -110,18 +110,21 @@ def test_check_network_failure_returns_remediation(monkeypatch) -> None:
     assert result.remediation
 
 
-def test_run_all_checks_returns_eight_results(monkeypatch) -> None:
+def test_run_all_checks_returns_nine_results(monkeypatch) -> None:
     # Avoid real network and disk.
     monkeypatch.setattr("bioimage_mcp.bootstrap.checks.check_network", lambda: check_gpu())
     monkeypatch.setattr("bioimage_mcp.bootstrap.checks.check_disk", lambda: check_gpu())
     monkeypatch.setattr("bioimage_mcp.bootstrap.checks.check_permissions", lambda: check_gpu())
     monkeypatch.setattr("bioimage_mcp.bootstrap.checks.check_conda_lock", lambda: check_gpu())
     monkeypatch.setattr("bioimage_mcp.bootstrap.checks.check_base_env", lambda: check_gpu())
+    monkeypatch.setattr(
+        "bioimage_mcp.bootstrap.checks.check_tool_consolidation", lambda: check_gpu()
+    )
     monkeypatch.setattr("bioimage_mcp.bootstrap.checks.check_env_manager", lambda: check_gpu())
     monkeypatch.setattr("bioimage_mcp.bootstrap.checks.check_python_version", lambda: check_gpu())
 
     results = run_all_checks()
-    assert len(results) == 8
+    assert len(results) == 9
 
 
 def test_check_network_passes_when_socket_connects(monkeypatch) -> None:

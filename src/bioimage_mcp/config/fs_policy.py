@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Literal
 
+from bioimage_mcp.api.permissions import PermissionService
 from bioimage_mcp.config.schema import Config
 
 Operation = Literal["read", "write"]
@@ -16,9 +17,27 @@ def _is_within(path: Path, root: Path) -> bool:
         return False
 
 
-def assert_path_allowed(operation: Operation, path: str | Path, config: Config) -> Path:
+def assert_path_allowed(
+    operation: Operation,
+    path: str | Path,
+    config: Config,
+    *,
+    session: object | None = None,
+    permission_service: PermissionService | None = None,
+) -> Path:
     target = path if isinstance(path, Path) else Path(path)
     target = target.expanduser().absolute()
+
+    if permission_service is not None and session is not None:
+        decision = permission_service.check_permission(
+            operation,
+            target,
+            session=session,
+            config=config,
+        )
+        if decision.decision != "ALLOWED":
+            raise PermissionError(decision.reason or f"Permission denied for {target}")
+        return target
 
     for deny_root in config.fs_denylist:
         if _is_within(target, deny_root):

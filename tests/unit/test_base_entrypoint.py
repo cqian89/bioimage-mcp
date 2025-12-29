@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 import importlib.util
 import sys
 import types
@@ -8,11 +9,11 @@ from pathlib import Path
 import numpy as np
 import tifffile
 
-BUILTIN_TOOLS_ROOT = Path(__file__).resolve().parents[2] / "tools" / "builtin"
-if str(BUILTIN_TOOLS_ROOT) not in sys.path:
-    sys.path.insert(0, str(BUILTIN_TOOLS_ROOT))
+BASE_TOOLS_ROOT = Path(__file__).resolve().parents[2] / "tools" / "base"
+if str(BASE_TOOLS_ROOT) not in sys.path:
+    sys.path.insert(0, str(BASE_TOOLS_ROOT))
 
-from bioimage_mcp_builtin.ops.convert_to_ome_zarr import convert_to_ome_zarr
+from bioimage_mcp_base.io import convert_to_ome_zarr
 
 
 def _write_plain_tiff(path: Path) -> None:
@@ -29,36 +30,33 @@ def _mock_bioio_failure(monkeypatch) -> None:
     monkeypatch.setitem(sys.modules, "bioio", fake_bioio)
 
 
-def test_builtin_entrypoint_inserts_tool_paths() -> None:
+def test_base_entrypoint_inserts_tool_paths() -> None:
     entrypoint_path = (
         Path(__file__).resolve().parents[2]
         / "tools"
-        / "builtin"
-        / "bioimage_mcp_builtin"
+        / "base"
+        / "bioimage_mcp_base"
         / "entrypoint.py"
     )
     tools_root = entrypoint_path.parent.parent
-    repo_tools_root = tools_root.parent
 
     original_sys_path = list(sys.path)
     try:
-        sys.path[:] = [
-            p for p in sys.path if str(tools_root) not in p and str(repo_tools_root) not in p
-        ]
+        sys.path[:] = [p for p in sys.path if str(tools_root) not in p]
 
-        spec = importlib.util.spec_from_file_location("test_builtin_entrypoint", entrypoint_path)
+        spec = importlib.util.spec_from_file_location("test_base_entrypoint", entrypoint_path)
         assert spec is not None
         module = importlib.util.module_from_spec(spec)
         assert spec.loader is not None
         spec.loader.exec_module(module)
 
         assert str(tools_root) in sys.path
-        assert str(repo_tools_root) in sys.path
+        assert importlib.util.find_spec("bioimage_mcp.registry.dynamic.adapters") is not None
     finally:
         sys.path[:] = original_sys_path
 
 
-def test_builtin_convert_to_ome_zarr_handles_plain_tiff(tmp_path, monkeypatch) -> None:
+def test_base_convert_to_ome_zarr_handles_plain_tiff(tmp_path, monkeypatch) -> None:
     tiff_path = tmp_path / "plain.tif"
     _write_plain_tiff(tiff_path)
     _mock_bioio_failure(monkeypatch)

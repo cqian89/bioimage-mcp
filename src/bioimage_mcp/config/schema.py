@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from enum import Enum
 from pathlib import Path
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -13,6 +14,35 @@ def _to_abs_path(value: str | Path) -> Path:
     return path
 
 
+class PermissionMode(str, Enum):
+    """How to interpret file access permissions."""
+
+    EXPLICIT = "explicit"
+    INHERIT = "inherit"
+    HYBRID = "hybrid"
+
+
+class OverwritePolicy(str, Enum):
+    """How to handle overwriting existing files."""
+
+    ALLOW = "allow"
+    DENY = "deny"
+    ASK = "ask"
+
+
+class PermissionSettings(BaseModel):
+    """Configuration for file access behavior."""
+
+    mode: PermissionMode = PermissionMode.INHERIT
+    on_overwrite: OverwritePolicy = OverwritePolicy.ASK
+
+
+class AgentGuidance(BaseModel):
+    """Configuration for agent-facing guidance."""
+
+    warn_unactivated: bool = True
+
+
 class Config(BaseModel):
     config_version: str = "0.0"
 
@@ -23,6 +53,9 @@ class Config(BaseModel):
     fs_allowlist_read: list[Path] = Field(default_factory=list)
     fs_allowlist_write: list[Path] = Field(default_factory=list)
     fs_denylist: list[Path] = Field(default_factory=list)
+
+    permissions: PermissionSettings = Field(default_factory=PermissionSettings)
+    agent_guidance: AgentGuidance = Field(default_factory=AgentGuidance)
 
     default_pagination_limit: int = 20
     max_pagination_limit: int = 200
