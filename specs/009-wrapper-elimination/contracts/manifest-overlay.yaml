@@ -1,0 +1,175 @@
+# Manifest Overlay Contract
+# Defines the schema for function_overlays in manifest.yaml
+
+openapi: "3.0.3"
+info:
+  title: Function Overlay Schema
+  version: "0.1.0"
+  description: |
+    Schema for function overlays that enrich dynamically discovered functions
+    with additional metadata, hints, and parameter constraints.
+
+components:
+  schemas:
+    FunctionOverlay:
+      type: object
+      description: |
+        Configuration object for enriching a dynamically discovered function.
+        Fields that are null/missing use the discovered value.
+      properties:
+        fn_id:
+          type: string
+          description: |
+            Target function ID to overlay. Must match a dynamically discovered
+            function ID in the format: <tool_id>.<prefix>.<module>.<function>
+          example: "base.skimage.filters.gaussian"
+          pattern: "^[a-z_]+\\.[a-z_]+\\.[a-z_]+\\.[a-z_]+$"
+
+        description:
+          type: string
+          nullable: true
+          description: Override the docstring-derived description
+          example: "Apply Gaussian blur to smooth an image"
+
+        tags:
+          type: array
+          items:
+            type: string
+          nullable: true
+          description: Tags for searchability and categorization
+          example: ["preprocessing", "filter", "smoothing"]
+
+        io_pattern:
+          type: string
+          nullable: true
+          description: Override the heuristic-detected I/O pattern
+          enum:
+            - image_to_image
+            - image_to_labels
+            - image_to_scalar
+            - labels_to_labels
+            - labels_to_image
+            - multi_image_to_image
+          example: "image_to_image"
+
+        hints:
+          $ref: "#/components/schemas/FunctionHints"
+          nullable: true
+          description: Workflow guidance hints for LLM agents
+
+        params_override:
+          type: object
+          additionalProperties:
+            type: object
+            description: JSON Schema property overrides
+          nullable: true
+          description: |
+            Override specific parameter properties. Keys are parameter names,
+            values are objects with JSON Schema fields to merge.
+          example:
+            sigma:
+              minimum: 0.1
+              maximum: 100.0
+              description: "Standard deviation for Gaussian kernel"
+
+      required:
+        - fn_id
+
+    FunctionHints:
+      type: object
+      description: Hints for workflow guidance and LLM decision-making
+      properties:
+        inputs:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/InputHint"
+          description: Hints keyed by input parameter name
+
+        success_hints:
+          $ref: "#/components/schemas/SuccessHints"
+          description: Guidance for successful execution
+
+    InputHint:
+      type: object
+      description: Hints for a specific input parameter
+      properties:
+        expected_axes:
+          type: array
+          items:
+            type: string
+          description: Expected dimension order for image inputs
+          example: ["Y", "X"]
+
+        preprocessing_hint:
+          type: string
+          description: Suggestion for preprocessing before this function
+          example: "Works best on normalized images"
+
+        expected_dtype:
+          type: string
+          description: Expected data type
+          example: "float32"
+
+    SuccessHints:
+      type: object
+      description: Hints for post-execution workflow guidance
+      properties:
+        next_steps:
+          type: array
+          items:
+            $ref: "#/components/schemas/NextStepHint"
+          description: Suggested functions to call after this one
+
+    NextStepHint:
+      type: object
+      description: Suggestion for a follow-up function
+      properties:
+        fn_id:
+          type: string
+          description: Function ID to suggest
+          example: "base.skimage.filters.threshold_otsu"
+
+        reason:
+          type: string
+          description: Why this function is suggested
+          example: "Segment after smoothing"
+      required:
+        - fn_id
+        - reason
+
+    # Manifest extension
+    ManifestOverlaySection:
+      type: object
+      description: |
+        The function_overlays section in manifest.yaml.
+        Keyed by fn_id for efficient lookup.
+      additionalProperties:
+        $ref: "#/components/schemas/FunctionOverlay"
+      example:
+        base.skimage.filters.gaussian:
+          description: "Apply Gaussian blur to smooth an image"
+          tags: ["preprocessing", "filter", "smoothing"]
+          hints:
+            inputs:
+              image:
+                expected_axes: ["Y", "X"]
+            success_hints:
+              next_steps:
+                - fn_id: base.skimage.filters.threshold_otsu
+                  reason: "Segment after smoothing"
+
+        base.skimage.morphology.remove_small_objects:
+          io_pattern: labels_to_labels
+          description: "Remove small connected components from label image"
+          tags: ["postprocessing", "cleanup", "labels"]
+
+# Example manifest.yaml usage:
+# 
+# function_overlays:
+#   base.skimage.filters.gaussian:
+#     description: "Apply Gaussian blur..."
+#     tags: [preprocessing, filter]
+#     hints:
+#       inputs:
+#         image:
+#           expected_axes: ["Y", "X"]
