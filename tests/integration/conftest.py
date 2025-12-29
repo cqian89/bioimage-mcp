@@ -199,11 +199,11 @@ def mock_executor() -> MockExecutor:
         return {"ok": True, "outputs": {"output": _mock_output(output_path)}}, "Mock swap", 0
 
     registry = {
-        "base.relabel_axes": _mock_relabel_axes,
-        "base.phasor_from_flim": _mock_phasor_from_flim,
-        "base.expand_dims": _mock_expand_dims,
-        "base.squeeze": _mock_squeeze,
-        "base.swap_axes": _mock_swap_axes,
+        "base.wrapper.axis.relabel_axes": _mock_relabel_axes,
+        "base.wrapper.phasor.phasor_from_flim": _mock_phasor_from_flim,
+        "base.wrapper.axis.expand_dims": _mock_expand_dims,
+        "base.wrapper.axis.squeeze": _mock_squeeze,
+        "base.wrapper.axis.swap_axes": _mock_swap_axes,
     }
 
     return MockExecutor(registry)

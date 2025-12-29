@@ -81,7 +81,7 @@ def test_mock_executor_default_returns_success(tmp_path: Path) -> None:
     executor = MockExecutor({})
 
     result, log, exit_code = executor.execute_step(
-        fn_id="base.relabel_axes",
+        fn_id="base.wrapper.axis.relabel_axes",
         work_dir=tmp_path,
         inputs={},
         params={},
@@ -112,10 +112,10 @@ def test_mock_executor_registry_override(tmp_path: Path) -> None:
             0,
         )
 
-    executor = MockExecutor({"base.relabel_axes": _mock_fn})
+    executor = MockExecutor({"base.wrapper.axis.relabel_axes": _mock_fn})
 
     result, log, exit_code = executor.execute_step(
-        fn_id="base.relabel_axes",
+        fn_id="base.wrapper.axis.relabel_axes",
         work_dir=tmp_path,
         inputs={"image": {"type": "BioImageRef"}},
         params={"axis_mapping": {"Z": "T"}},
@@ -138,7 +138,7 @@ def test_mcp_test_client_list_and_search(mcp_services) -> None:
 
     search_result = client.search_functions("relabel")
     fn_ids = [fn["fn_id"] for fn in search_result["functions"]]
-    assert "base.relabel_axes" in fn_ids
+    assert "base.wrapper.axis.relabel_axes" in fn_ids
 
 
 def test_mcp_test_client_call_tool_uses_mock_and_tracks_context(mcp_services) -> None:
@@ -160,17 +160,17 @@ def test_mcp_test_client_call_tool_uses_mock_and_tracks_context(mcp_services) ->
             0,
         )
 
-    executor = MockExecutor({"base.relabel_axes": _mock_fn})
+    executor = MockExecutor({"base.wrapper.axis.relabel_axes": _mock_fn})
     client = MCPTestClient(
         discovery=mcp_services["discovery"],
         execution=mcp_services["execution"],
         mock_executor=executor,
     )
 
-    client.activate_functions(["base.relabel_axes"])
+    client.activate_functions(["base.wrapper.axis.relabel_axes"])
 
     result = client.call_tool(
-        fn_id="base.relabel_axes",
+        fn_id="base.wrapper.axis.relabel_axes",
         inputs={"image": {"type": "BioImageRef", "uri": "file://mock"}},
         params={"axis_mapping": {"Z": "T"}},
     )
@@ -178,4 +178,4 @@ def test_mcp_test_client_call_tool_uses_mock_and_tracks_context(mcp_services) ->
     assert result["status"] == "succeeded"
     assert "outputs" in result
     assert "output" in result["outputs"]
-    assert "base.relabel_axes.output" in client.context
+    assert "base.wrapper.axis.relabel_axes.output" in client.context

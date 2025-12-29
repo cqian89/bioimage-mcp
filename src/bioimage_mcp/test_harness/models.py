@@ -17,7 +17,7 @@ class WorkflowStep(BaseModel):
     """Single step in a workflow test case."""
 
     step_id: str = Field(..., pattern=r"^[a-z_][a-z0-9_]*$")
-    fn_id: str = Field(..., pattern=r"^[a-z_]+\.[a-z_]+$")
+    fn_id: str = Field(..., pattern=r"^[a-z_]+(\.[a-z0-9_]+)+$")
     inputs: dict[str, str | dict] = Field(default_factory=dict)
     params: dict[str, Any] = Field(default_factory=dict)
     assertions: list[StepAssertion] = Field(default_factory=list)

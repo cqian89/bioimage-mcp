@@ -9,7 +9,7 @@ def test_load_manifest_parses_dynamic_sources(tmp_path: Path) -> None:
     path = tmp_path / "manifest.yaml"
     path.write_text(
         """
-manifest_version: "0.0"
+manifest_version: "1.0"
 tool_id: tools.dynamic
 tool_version: "0.1.0"
 name: Dynamic Tools
@@ -19,7 +19,7 @@ entrypoint: bioimage_mcp_dynamic.entrypoint
 platforms_supported: [linux-64]
 functions: []
 dynamic_sources:
-  - adapter: python_api
+  - adapter: skimage
     prefix: dynamic
     modules:
       - bioimage_mcp_dynamic.ops
@@ -35,7 +35,7 @@ dynamic_sources:
     assert len(manifest.dynamic_sources) == 1
 
     source = manifest.dynamic_sources[0]
-    assert source.adapter == "python_api"
+    assert source.adapter == "skimage"
     assert source.prefix == "dynamic"
     assert source.modules == ["bioimage_mcp_dynamic.ops"]
     assert source.include_patterns == ["segment_*", "filter_*"]

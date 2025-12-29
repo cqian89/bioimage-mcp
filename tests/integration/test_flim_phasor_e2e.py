@@ -76,7 +76,7 @@ def test_flim_phasor_e2e(tmp_path: Path) -> None:
     workflow1 = {
         "steps": [
             {
-                "fn_id": "base.phasor_from_flim",
+                "fn_id": "base.wrapper.phasor.phasor_from_flim",
                 "inputs": {
                     "dataset": {
                         "type": "BioImageRef",

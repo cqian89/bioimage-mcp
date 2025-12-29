@@ -100,23 +100,25 @@ def _assert_output_type(output: Any, expected_type: str) -> None:
 def test_full_discovery_to_execution_flow(mcp_test_client, sample_flim_image) -> None:
     search_results = mcp_test_client.search_functions("phasor FLIM")
     fn_ids = {fn["fn_id"] for fn in search_results["functions"]}
-    assert "base.phasor_from_flim" in fn_ids
+    assert "base.wrapper.phasor.phasor_from_flim" in fn_ids
 
-    mcp_test_client.activate_functions(["base.relabel_axes", "base.phasor_from_flim"])
+    mcp_test_client.activate_functions(
+        ["base.wrapper.axis.relabel_axes", "base.wrapper.phasor.phasor_from_flim"]
+    )
 
-    schema = mcp_test_client.describe_function("base.relabel_axes")
-    assert schema["fn_id"] == "base.relabel_axes"
+    schema = mcp_test_client.describe_function("base.wrapper.axis.relabel_axes")
+    assert schema["fn_id"] == "base.wrapper.axis.relabel_axes"
     assert schema["schema"]["type"] == "object"
 
     relabeled = mcp_test_client.call_tool(
-        fn_id="base.relabel_axes",
+        fn_id="base.wrapper.axis.relabel_axes",
         inputs={"image": sample_flim_image},
         params={"axis_mapping": {"Z": "T", "T": "Z"}},
     )
     relabeled_output = _coerce_output_ref(relabeled["outputs"])
 
     phasor = mcp_test_client.call_tool(
-        fn_id="base.phasor_from_flim",
+        fn_id="base.wrapper.phasor.phasor_from_flim",
         inputs={"dataset": relabeled_output},
         params={"harmonic": 1},
     )
@@ -138,17 +140,19 @@ def test_flim_phasor_golden_path(mcp_test_client, sample_flim_image) -> None:
     if not sample_path.exists():
         pytest.skip(f"Missing FLIM dataset at {sample_path}")
 
-    mcp_test_client.activate_functions(["base.relabel_axes", "base.phasor_from_flim"])
+    mcp_test_client.activate_functions(
+        ["base.wrapper.axis.relabel_axes", "base.wrapper.phasor.phasor_from_flim"]
+    )
 
     relabeled = mcp_test_client.call_tool(
-        fn_id="base.relabel_axes",
+        fn_id="base.wrapper.axis.relabel_axes",
         inputs={"image": sample_flim_image},
         params={"axis_mapping": {"Z": "T", "T": "Z"}},
     )
     relabeled_output = _coerce_output_ref(relabeled["outputs"])
 
     phasor = mcp_test_client.call_tool(
-        fn_id="base.phasor_from_flim",
+        fn_id="base.wrapper.phasor.phasor_from_flim",
         inputs={"dataset": relabeled_output},
         params={"harmonic": 1},
     )

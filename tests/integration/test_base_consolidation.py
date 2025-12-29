@@ -26,5 +26,5 @@ def test_base_manifest_includes_gaussian_and_convert() -> None:
     base_manifest = next(manifest for manifest in manifests if manifest.tool_id == "tools.base")
     fn_ids = {fn.fn_id for fn in base_manifest.functions}
 
-    assert "base.bioimage_mcp_base.preprocess.gaussian" in fn_ids
-    assert "base.bioimage_mcp_base.io.convert_to_ome_zarr" in fn_ids
+    assert "base.skimage.filters.gaussian" in fn_ids
+    assert "base.wrapper.io.convert_to_ome_zarr" in fn_ids

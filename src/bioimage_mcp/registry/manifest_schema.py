@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from bioimage_mcp.api.schemas import FunctionHints
+from bioimage_mcp.registry.dynamic.models import IOPattern
 
 
 class Port(BaseModel):
@@ -41,6 +43,17 @@ class Function(BaseModel):
     )
 
 
+class FunctionOverlay(BaseModel):
+    """Override/supplement fields for a dynamically discovered function."""
+
+    fn_id: str | None = None
+    description: str | None = None
+    tags: list[str] | None = None
+    io_pattern: IOPattern | None = None
+    hints: FunctionHints | None = None
+    params_override: dict[str, dict[str, Any]] | None = None
+
+
 class DynamicSource(BaseModel):
     """Configuration for dynamically discovering functions from a library."""
 
@@ -64,6 +77,7 @@ class ToolManifest(BaseModel):
     platforms_supported: list[str] = Field(default_factory=list)
     functions: list[Function] = Field(default_factory=list)
     dynamic_sources: list[DynamicSource] = Field(default_factory=list)
+    function_overlays: dict[str, FunctionOverlay] = Field(default_factory=dict)
 
     manifest_path: Path
     manifest_checksum: str
@@ -74,6 +88,18 @@ class ToolManifest(BaseModel):
         if not value.startswith("bioimage-mcp-"):
             raise ValueError("env_id must start with 'bioimage-mcp-'")
         return value
+
+    @model_validator(mode="before")
+    @classmethod
+    def _fill_overlay_fn_ids(cls, data: Any) -> Any:
+        """Fill fn_id in function_overlays from dict keys if missing."""
+        if isinstance(data, dict) and "function_overlays" in data:
+            overlays = data["function_overlays"]
+            if isinstance(overlays, dict):
+                for fn_id, overlay in overlays.items():
+                    if isinstance(overlay, dict) and "fn_id" not in overlay:
+                        overlay["fn_id"] = fn_id
+        return data
 
     @model_validator(mode="after")
     def _validate_unique_prefixes(self) -> ToolManifest:

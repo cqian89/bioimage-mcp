@@ -1,4 +1,4 @@
-manifest_version: "0.0"
+manifest_version: "1.0"
 tool_id: tools.base
 tool_version: "0.1.0"
 name: Base Image Processing Toolkit
@@ -51,8 +51,8 @@ dynamic_sources:
       - "test_*"
 
 functions:
-  # I/O / format
-  - fn_id: base.bioimage_mcp_base.io.convert_to_ome_zarr
+  # I/O / format (Wrappers)
+  - fn_id: base.wrapper.io.convert_to_ome_zarr
     tool_id: tools.base
     name: Convert to OME-Zarr
     description: Convert an input image to OME-Zarr for file-backed pipeline processing.
@@ -70,7 +70,7 @@ functions:
       type: object
       properties: {}
 
-  - fn_id: base.bioimage_mcp_base.io.export_ome_tiff
+  - fn_id: base.wrapper.io.export_ome_tiff
     tool_id: tools.base
     name: Export OME-TIFF
     description: Export an input image to OME-TIFF for compatibility.
@@ -88,12 +88,12 @@ functions:
       type: object
       properties: {}
 
-  # Axis/dim handling
-  - fn_id: base.bioimage_mcp_base.transforms.project_sum
+  # Axis/dim handling (Wrappers)
+  - fn_id: base.wrapper.axis.relabel_axes
     tool_id: tools.base
-    name: Sum projection
-    description: Reduce a stack to an intensity image by summing over a selected axis.
-    tags: [image, transform, projection]
+    name: Relabel axes
+    description: Relabel axis names (e.g., Z to T) for pipeline compatibility.
+    tags: [image, transform, axes]
     inputs:
       - name: image
         artifact_type: BioImageRef
@@ -101,17 +101,58 @@ functions:
     outputs:
       - name: output
         artifact_type: BioImageRef
-        format: OME-Zarr
+        format: OME-TIFF
         required: true
     params_schema:
+      $defs:
+        AxisMapping:
+          type: object
+          additionalProperties:
+            type: string
+            pattern: "^[A-Z]$"
+          description: "Mapping from old axis names to new names"
+          example:
+            Z: "T"
+            T: "Z"
+        AxisSpec:
+          oneOf:
+            - type: integer
+              description: "Axis index (0-based, negative allowed)"
+            - type: string
+              pattern: "^[A-Z]$"
+              description: "Axis name (single uppercase letter)"
       type: object
-      properties: {}
+      required: [axis_mapping]
+      properties:
+        axis_mapping:
+          $ref: "#/$defs/AxisMapping"
+          description: "Mapping from old axis names to new names. Applied atomically."
+      additionalProperties: false
+      examples:
+        - axis_mapping: {"Z": "T", "T": "Z"}
+        - axis_mapping: {"Y": "Z", "Z": "Y"}
+    hints:
+      inputs:
+        image:
+          type: BioImageRef
+          required: true
+          description: Input image
+          expected_axes: ["T", "C", "Z", "Y", "X"]
+          preprocessing_hint: Ensure axes are correctly labeled before transformation
+      outputs:
+        output:
+          type: BioImageRef
+          description: Image with relabeled axes
+      success_hints:
+        next_steps:
+          - fn_id: base.wrapper.phasor.phasor_from_flim
+            reason: If relabeling for FLIM, proceed with phasor analysis
 
-  - fn_id: base.bioimage_mcp_base.transforms.project_max
+  - fn_id: base.wrapper.axis.squeeze
     tool_id: tools.base
-    name: Max projection
-    description: Reduce a stack to an intensity image by max projection over a selected axis.
-    tags: [image, transform, projection]
+    name: Squeeze dimensions
+    description: Remove singleton (size=1) dimensions from an image.
+    tags: [image, transform, axes]
     inputs:
       - name: image
         artifact_type: BioImageRef
@@ -119,18 +160,34 @@ functions:
     outputs:
       - name: output
         artifact_type: BioImageRef
-        format: OME-Zarr
+        format: OME-TIFF
         required: true
     params_schema:
+      $defs:
+        AxisSpec:
+          oneOf:
+            - type: integer
+              description: "Axis index (0-based, negative allowed)"
+            - type: string
+              pattern: "^[A-Z]$"
+              description: "Axis name (single uppercase letter)"
       type: object
-      properties: {}
+      properties:
+        axis:
+          $ref: "#/$defs/AxisSpec"
+          description: "Axis to squeeze. If null, squeeze all singleton axes."
+          nullable: true
+      additionalProperties: false
+      examples:
+        - axis: 0
+        - axis: "Z"
+        - {}
 
-  # Transforms
-  - fn_id: base.bioimage_mcp_base.transforms.resize
+  - fn_id: base.wrapper.axis.expand_dims
     tool_id: tools.base
-    name: Resize
-    description: Resize an image to a target shape.
-    tags: [image, transform, resize]
+    name: Expand dimensions
+    description: Add a new dimension at a specified position.
+    tags: [image, transform, axes]
     inputs:
       - name: image
         artifact_type: BioImageRef
@@ -138,17 +195,31 @@ functions:
     outputs:
       - name: output
         artifact_type: BioImageRef
-        format: OME-Zarr
+        format: OME-TIFF
         required: true
     params_schema:
       type: object
-      properties: {}
+      required: [axis, new_axis_name]
+      properties:
+        axis:
+          type: integer
+          description: "Position to insert new axis (0=first, -1=before last)"
+        new_axis_name:
+          type: string
+          pattern: "^[A-Z]$"
+          description: "Name for new axis (single uppercase letter)"
+      additionalProperties: false
+      examples:
+        - axis: 0
+          new_axis_name: "Z"
+        - axis: -1
+          new_axis_name: "C"
 
-  - fn_id: base.bioimage_mcp_base.transforms.rescale
+  - fn_id: base.wrapper.axis.moveaxis
     tool_id: tools.base
-    name: Rescale
-    description: Rescale image by a scalar factor.
-    tags: [image, transform, resize]
+    name: Move axis
+    description: Move an axis from one position to another.
+    tags: [image, transform, axes]
     inputs:
       - name: image
         artifact_type: BioImageRef
@@ -156,17 +227,38 @@ functions:
     outputs:
       - name: output
         artifact_type: BioImageRef
-        format: OME-Zarr
+        format: OME-TIFF
         required: true
     params_schema:
+      $defs:
+        AxisSpec:
+          oneOf:
+            - type: integer
+              description: "Axis index (0-based, negative allowed)"
+            - type: string
+              pattern: "^[A-Z]$"
+              description: "Axis name (single uppercase letter)"
       type: object
-      properties: {}
+      required: [source, destination]
+      properties:
+        source:
+          $ref: "#/$defs/AxisSpec"
+          description: "Source axis to move"
+        destination:
+          type: integer
+          description: "Destination position (index)"
+      additionalProperties: false
+      examples:
+        - source: 0
+          destination: 2
+        - source: "C"
+          destination: -1
 
-  - fn_id: base.bioimage_mcp_base.transforms.rotate
+  - fn_id: base.wrapper.axis.swap_axes
     tool_id: tools.base
-    name: Rotate
-    description: Rotate an image by an angle.
-    tags: [image, transform, rotate]
+    name: Swap axes
+    description: Swap two axes in an image.
+    tags: [image, transform, axes]
     inputs:
       - name: image
         artifact_type: BioImageRef
@@ -174,302 +266,35 @@ functions:
     outputs:
       - name: output
         artifact_type: BioImageRef
-        format: OME-Zarr
+        format: OME-TIFF
         required: true
     params_schema:
+      $defs:
+        AxisSpec:
+          oneOf:
+            - type: integer
+              description: "Axis index (0-based, negative allowed)"
+            - type: string
+              pattern: "^[A-Z]$"
+              description: "Axis name (single uppercase letter)"
       type: object
-      properties: {}
+      required: [axis1, axis2]
+      properties:
+        axis1:
+          $ref: "#/$defs/AxisSpec"
+          description: "First axis to swap"
+        axis2:
+          $ref: "#/$defs/AxisSpec"
+          description: "Second axis to swap"
+      additionalProperties: false
+      examples:
+        - axis1: "Z"
+          axis2: "Y"
+        - axis1: 0
+          axis2: 2
 
-  - fn_id: base.bioimage_mcp_base.transforms.flip
-    tool_id: tools.base
-    name: Flip
-    description: Flip an image along an axis.
-    tags: [image, transform, flip]
-    inputs:
-      - name: image
-        artifact_type: BioImageRef
-        required: true
-    outputs:
-      - name: output
-        artifact_type: BioImageRef
-        format: OME-Zarr
-        required: true
-    params_schema:
-      type: object
-      properties: {}
-
-  - fn_id: base.bioimage_mcp_base.transforms.crop
-    tool_id: tools.base
-    name: Crop
-    description: Crop an image using pixel coordinates.
-    tags: [image, transform, crop]
-    inputs:
-      - name: image
-        artifact_type: BioImageRef
-        required: true
-    outputs:
-      - name: output
-        artifact_type: BioImageRef
-        format: OME-Zarr
-        required: true
-    params_schema:
-      type: object
-      properties: {}
-
-  - fn_id: base.bioimage_mcp_base.transforms.pad
-    tool_id: tools.base
-    name: Pad
-    description: Pad an image to a target shape.
-    tags: [image, transform, pad]
-    inputs:
-      - name: image
-        artifact_type: BioImageRef
-        required: true
-    outputs:
-      - name: output
-        artifact_type: BioImageRef
-        format: OME-Zarr
-        required: true
-    params_schema:
-      type: object
-      properties: {}
-
-  # Pre-processing
-  - fn_id: base.bioimage_mcp_base.preprocess.normalize_intensity
-    tool_id: tools.base
-    name: Normalize intensity
-    description: Normalize intensities (e.g., percentile-based) for downstream processing.
-    tags: [image, preprocessing, normalize]
-    inputs:
-      - name: image
-        artifact_type: BioImageRef
-        required: true
-    outputs:
-      - name: output
-        artifact_type: BioImageRef
-        format: OME-Zarr
-        required: true
-    params_schema:
-      type: object
-      properties: {}
-
-  - fn_id: base.bioimage_mcp_base.preprocess.gaussian
-    tool_id: tools.base
-    name: Gaussian filter
-    description: Apply an N-D Gaussian filter.
-    tags: [image, preprocessing, filter]
-    inputs:
-      - name: image
-        artifact_type: BioImageRef
-        required: true
-    outputs:
-      - name: output
-        artifact_type: BioImageRef
-        format: OME-Zarr
-        required: true
-    params_schema:
-      type: object
-      properties: {}
-
-  - fn_id: base.bioimage_mcp_base.preprocess.median
-    tool_id: tools.base
-    name: Median filter
-    description: Apply an N-D median filter.
-    tags: [image, preprocessing, filter]
-    inputs:
-      - name: image
-        artifact_type: BioImageRef
-        required: true
-    outputs:
-      - name: output
-        artifact_type: BioImageRef
-        format: OME-Zarr
-        required: true
-    params_schema:
-      type: object
-      properties: {}
-
-  - fn_id: base.bioimage_mcp_base.preprocess.bilateral
-    tool_id: tools.base
-    name: Bilateral filter
-    description: Apply an edge-preserving bilateral filter.
-    tags: [image, preprocessing, denoise]
-    inputs:
-      - name: image
-        artifact_type: BioImageRef
-        required: true
-    outputs:
-      - name: output
-        artifact_type: BioImageRef
-        format: OME-Zarr
-        required: true
-    params_schema:
-      type: object
-      properties: {}
-
-  - fn_id: base.bioimage_mcp_base.preprocess.denoise_nl_means
-    tool_id: tools.base
-    name: Non-local means denoise
-    description: Denoise using non-local means.
-    tags: [image, preprocessing, denoise]
-    inputs:
-      - name: image
-        artifact_type: BioImageRef
-        required: true
-    outputs:
-      - name: output
-        artifact_type: BioImageRef
-        format: OME-Zarr
-        required: true
-    params_schema:
-      type: object
-      properties: {}
-
-  - fn_id: base.bioimage_mcp_base.preprocess.unsharp_mask
-    tool_id: tools.base
-    name: Unsharp mask
-    description: Sharpen using an unsharp mask.
-    tags: [image, preprocessing, sharpen]
-    inputs:
-      - name: image
-        artifact_type: BioImageRef
-        required: true
-    outputs:
-      - name: output
-        artifact_type: BioImageRef
-        format: OME-Zarr
-        required: true
-    params_schema:
-      type: object
-      properties: {}
-
-  - fn_id: base.bioimage_mcp_base.preprocess.equalize_adapthist
-    tool_id: tools.base
-    name: Adaptive histogram equalization
-    description: Improve local contrast using adaptive histogram equalization (CLAHE).
-    tags: [image, preprocessing, contrast]
-    inputs:
-      - name: image
-        artifact_type: BioImageRef
-        required: true
-    outputs:
-      - name: output
-        artifact_type: BioImageRef
-        format: OME-Zarr
-        required: true
-    params_schema:
-      type: object
-      properties: {}
-
-  - fn_id: base.bioimage_mcp_base.preprocess.sobel
-    tool_id: tools.base
-    name: Sobel edges
-    description: Compute Sobel edge magnitude.
-    tags: [image, preprocessing, edges]
-    inputs:
-      - name: image
-        artifact_type: BioImageRef
-        required: true
-    outputs:
-      - name: output
-        artifact_type: BioImageRef
-        format: OME-Zarr
-        required: true
-    params_schema:
-      type: object
-      properties: {}
-
-  - fn_id: base.bioimage_mcp_base.preprocess.threshold_otsu
-    tool_id: tools.base
-    name: Otsu threshold
-    description: Compute an Otsu threshold and optionally apply it.
-    tags: [image, preprocessing, threshold]
-    inputs:
-      - name: image
-        artifact_type: BioImageRef
-        required: true
-    outputs:
-      - name: output
-        artifact_type: BioImageRef
-        format: OME-Zarr
-        required: true
-    params_schema:
-      type: object
-      properties: {}
-
-  - fn_id: base.bioimage_mcp_base.preprocess.threshold_yen
-    tool_id: tools.base
-    name: Yen threshold
-    description: Compute a Yen threshold and optionally apply it.
-    tags: [image, preprocessing, threshold]
-    inputs:
-      - name: image
-        artifact_type: BioImageRef
-        required: true
-    outputs:
-      - name: output
-        artifact_type: BioImageRef
-        format: OME-Zarr
-        required: true
-    params_schema:
-      type: object
-      properties: {}
-
-  - fn_id: base.bioimage_mcp_base.preprocess.morph_opening
-    tool_id: tools.base
-    name: Morphological opening
-    description: Apply morphological opening to remove small bright artifacts.
-    tags: [image, preprocessing, morphology]
-    inputs:
-      - name: image
-        artifact_type: BioImageRef
-        required: true
-    outputs:
-      - name: output
-        artifact_type: BioImageRef
-        format: OME-Zarr
-        required: true
-    params_schema:
-      type: object
-      properties: {}
-
-  - fn_id: base.bioimage_mcp_base.preprocess.morph_closing
-    tool_id: tools.base
-    name: Morphological closing
-    description: Apply morphological closing to fill small dark holes.
-    tags: [image, preprocessing, morphology]
-    inputs:
-      - name: image
-        artifact_type: BioImageRef
-        required: true
-    outputs:
-      - name: output
-        artifact_type: BioImageRef
-        format: OME-Zarr
-        required: true
-    params_schema:
-      type: object
-      properties: {}
-
-  - fn_id: base.bioimage_mcp_base.preprocess.remove_small_objects
-    tool_id: tools.base
-    name: Remove small objects
-    description: Remove connected components smaller than a threshold.
-    tags: [image, preprocessing, morphology]
-    inputs:
-      - name: image
-        artifact_type: BioImageRef
-        required: true
-    outputs:
-      - name: output
-        artifact_type: BioImageRef
-        format: OME-Zarr
-        required: true
-    params_schema:
-      type: object
-      properties: {}
-
-  - fn_id: base.bioimage_mcp_base.transforms.phasor_from_flim
+  # Phasor (Wrappers)
+  - fn_id: base.wrapper.phasor.phasor_from_flim
     tool_id: tools.base
     name: Phasor transform
     description: Convert a FLIM OME-TIFF dataset to phasor coordinates (G/S) and intensity.
@@ -532,7 +357,7 @@ functions:
           description: "Sum intensity image"
       success_hints:
         next_steps:
-          - fn_id: base.bioimage_mcp_base.transforms.phasor_calibrate
+          - fn_id: base.wrapper.phasor.phasor_calibrate
             reason: "Apply calibration using reference standard"
             required_inputs: ["reference dataset with known lifetime"]
         common_issues:
@@ -541,14 +366,50 @@ functions:
         AXIS_SAMPLES_ERROR:
           diagnosis: "The T axis has only 1 sample. FLIM time bins may be stored in Z dimension."
           suggested_fix:
-            fn_id: base.bioimage_mcp_base.axis_ops.relabel_axes
+            fn_id: base.wrapper.axis.relabel_axes
             params:
               axis_mapping:
                 Z: "T"
                 T: "Z"
             explanation: "Relabel Z axis as T to treat Z slices as FLIM time bins"
 
-  - fn_id: base.bioimage_mcp_base.preprocess.denoise_image
+  - fn_id: base.wrapper.phasor.phasor_calibrate
+    tool_id: tools.base
+    name: Phasor calibration
+    description: Calibrate raw phasor coordinates using a reference standard with known lifetime.
+    tags: [image, transform, flim, phasor, calibration]
+    inputs:
+      - name: sample_phasors
+        artifact_type: BioImageRef
+        required: true
+        description: 2-channel phasor image (G in channel 0, S in channel 1)
+      - name: reference_phasors
+        artifact_type: BioImageRef
+        required: true
+        description: 2-channel phasor image from reference standard
+    outputs:
+      - name: calibrated_phasors
+        artifact_type: BioImageRef
+        format: OME-TIFF
+        required: true
+        description: 2-channel calibrated phasor image
+    params_schema:
+      type: object
+      properties:
+        lifetime:
+          type: number
+          description: Known lifetime of reference standard in nanoseconds
+        frequency:
+          type: number
+          description: Laser repetition frequency in Hz
+        harmonic:
+          type: integer
+          default: 1
+          description: Harmonic number for multi-harmonic analysis
+      required: [lifetime, frequency]
+
+  # Denoise (Wrapper)
+  - fn_id: base.wrapper.denoise.denoise_image
     tool_id: tools.base
     name: Denoise image
     description: Apply a denoising filter to an image.
@@ -586,46 +447,30 @@ functions:
           default: 0.1
           description: Color/range sigma for bilateral filter.
 
-  - fn_id: base.bioimage_mcp_base.transforms.phasor_calibrate
+  # Edge Cases (Wrappers)
+  - fn_id: base.wrapper.transform.crop
     tool_id: tools.base
-    name: Phasor calibration
-    description: Calibrate raw phasor coordinates using a reference standard with known lifetime.
-    tags: [image, transform, flim, phasor, calibration]
+    name: Crop
+    description: Crop an image using pixel coordinates.
+    tags: [image, transform, crop]
     inputs:
-      - name: sample_phasors
+      - name: image
         artifact_type: BioImageRef
         required: true
-        description: 2-channel phasor image (G in channel 0, S in channel 1)
-      - name: reference_phasors
-        artifact_type: BioImageRef
-        required: true
-        description: 2-channel phasor image from reference standard
     outputs:
-      - name: calibrated_phasors
+      - name: output
         artifact_type: BioImageRef
-        format: OME-TIFF
+        format: OME-Zarr
         required: true
-        description: 2-channel calibrated phasor image
     params_schema:
       type: object
-      properties:
-        lifetime:
-          type: number
-          description: Known lifetime of reference standard in nanoseconds
-        frequency:
-          type: number
-          description: Laser repetition frequency in Hz
-        harmonic:
-          type: integer
-          default: 1
-          description: Harmonic number for multi-harmonic analysis
-      required: [lifetime, frequency]
+      properties: {}
 
-  - fn_id: base.bioimage_mcp_base.axis_ops.relabel_axes
+  - fn_id: base.wrapper.preprocess.normalize_intensity
     tool_id: tools.base
-    name: Relabel axes
-    description: Relabel axis names (e.g., Z to T) for pipeline compatibility.
-    tags: [image, transform, axes]
+    name: Normalize intensity
+    description: Normalize intensities (e.g., percentile-based) for downstream processing.
+    tags: [image, preprocessing, normalize]
     inputs:
       - name: image
         artifact_type: BioImageRef
@@ -633,101 +478,17 @@ functions:
     outputs:
       - name: output
         artifact_type: BioImageRef
-        format: OME-TIFF
+        format: OME-Zarr
         required: true
     params_schema:
-      $defs:
-        AxisMapping:
-          type: object
-          additionalProperties:
-            type: string
-            pattern: "^[A-Z]$"
-          description: "Mapping from old axis names to new names"
-          example:
-            Z: "T"
-            T: "Z"
-        AxisSpec:
-          oneOf:
-            - type: integer
-              description: "Axis index (0-based, negative allowed)"
-            - type: string
-              pattern: "^[A-Z]$"
-              description: "Axis name (single uppercase letter)"
       type: object
-      required: [axis_mapping]
-      properties:
-        axis_mapping:
-          $ref: "#/$defs/AxisMapping"
-          description: "Mapping from old axis names to new names. Applied atomically."
-      additionalProperties: false
-      examples:
-        - axis_mapping: {"Z": "T", "T": "Z"}
-        - axis_mapping: {"Y": "Z", "Z": "Y"}
-    hints:
-      inputs:
-        image:
-          type: BioImageRef
-          required: true
-          description: Input image
-          expected_axes: ["T", "C", "Z", "Y", "X"]
-          preprocessing_hint: Ensure axes are correctly labeled before transformation
-      outputs:
-        output:
-          type: BioImageRef
-          description: Image with relabeled axes
-      success_hints:
-        next_steps:
-          - fn_id: base.bioimage_mcp_base.transforms.phasor_from_flim
-            reason: If relabeling for FLIM, proceed with phasor analysis
-  - fn_id: base.bioimage_mcp_base.axis_ops.squeeze
-    tool_id: tools.base
-    name: Squeeze dimensions
-    description: Remove singleton (size=1) dimensions from an image.
-    tags: [image, transform, axes]
-    inputs:
-      - name: image
-        artifact_type: BioImageRef
-        required: true
-    outputs:
-      - name: output
-        artifact_type: BioImageRef
-        format: OME-TIFF
-        required: true
-    params_schema:
-      $defs:
-        AxisMapping:
-          type: object
-          additionalProperties:
-            type: string
-            pattern: "^[A-Z]$"
-          description: "Mapping from old axis names to new names"
-          example:
-            Z: "T"
-            T: "Z"
-        AxisSpec:
-          oneOf:
-            - type: integer
-              description: "Axis index (0-based, negative allowed)"
-            - type: string
-              pattern: "^[A-Z]$"
-              description: "Axis name (single uppercase letter)"
-      type: object
-      properties:
-        axis:
-          $ref: "#/$defs/AxisSpec"
-          description: "Axis to squeeze. If null, squeeze all singleton axes."
-          nullable: true
-      additionalProperties: false
-      examples:
-        - axis: 0
-        - axis: "Z"
-        - {}
+      properties: {}
 
-  - fn_id: base.bioimage_mcp_base.axis_ops.expand_dims
+  - fn_id: base.wrapper.transform.project_sum
     tool_id: tools.base
-    name: Expand dimensions
-    description: Add a new dimension at a specified position.
-    tags: [image, transform, axes]
+    name: Sum projection
+    description: Reduce a stack to an intensity image by summing over a selected axis.
+    tags: [image, transform, projection]
     inputs:
       - name: image
         artifact_type: BioImageRef
@@ -735,48 +496,17 @@ functions:
     outputs:
       - name: output
         artifact_type: BioImageRef
-        format: OME-TIFF
+        format: OME-Zarr
         required: true
     params_schema:
-      $defs:
-        AxisMapping:
-          type: object
-          additionalProperties:
-            type: string
-            pattern: "^[A-Z]$"
-          description: "Mapping from old axis names to new names"
-          example:
-            Z: "T"
-            T: "Z"
-        AxisSpec:
-          oneOf:
-            - type: integer
-              description: "Axis index (0-based, negative allowed)"
-            - type: string
-              pattern: "^[A-Z]$"
-              description: "Axis name (single uppercase letter)"
       type: object
-      required: [axis, new_axis_name]
-      properties:
-        axis:
-          type: integer
-          description: "Position to insert new axis (0=first, -1=before last)"
-        new_axis_name:
-          type: string
-          pattern: "^[A-Z]$"
-          description: "Name for new axis (single uppercase letter)"
-      additionalProperties: false
-      examples:
-        - axis: 0
-          new_axis_name: "Z"
-        - axis: -1
-          new_axis_name: "C"
+      properties: {}
 
-  - fn_id: base.bioimage_mcp_base.axis_ops.moveaxis
+  - fn_id: base.wrapper.transform.project_max
     tool_id: tools.base
-    name: Move axis
-    description: Move an axis from one position to another.
-    tags: [image, transform, axes]
+    name: Max projection
+    description: Reduce a stack to an intensity image by max projection over a selected axis.
+    tags: [image, transform, projection]
     inputs:
       - name: image
         artifact_type: BioImageRef
@@ -784,47 +514,17 @@ functions:
     outputs:
       - name: output
         artifact_type: BioImageRef
-        format: OME-TIFF
+        format: OME-Zarr
         required: true
     params_schema:
-      $defs:
-        AxisMapping:
-          type: object
-          additionalProperties:
-            type: string
-            pattern: "^[A-Z]$"
-          description: "Mapping from old axis names to new names"
-          example:
-            Z: "T"
-            T: "Z"
-        AxisSpec:
-          oneOf:
-            - type: integer
-              description: "Axis index (0-based, negative allowed)"
-            - type: string
-              pattern: "^[A-Z]$"
-              description: "Axis name (single uppercase letter)"
       type: object
-      required: [source, destination]
-      properties:
-        source:
-          $ref: "#/$defs/AxisSpec"
-          description: "Source axis to move"
-        destination:
-          type: integer
-          description: "Destination position (index)"
-      additionalProperties: false
-      examples:
-        - source: 0
-          destination: 2
-        - source: "C"
-          destination: -1
+      properties: {}
 
-  - fn_id: base.bioimage_mcp_base.axis_ops.swap_axes
+  - fn_id: base.wrapper.transform.flip
     tool_id: tools.base
-    name: Swap axes
-    description: Swap two axes in an image.
-    tags: [image, transform, axes]
+    name: Flip
+    description: Flip an image along an axis.
+    tags: [image, transform, flip]
     inputs:
       - name: image
         artifact_type: BioImageRef
@@ -832,41 +532,29 @@ functions:
     outputs:
       - name: output
         artifact_type: BioImageRef
-        format: OME-TIFF
+        format: OME-Zarr
         required: true
     params_schema:
-      $defs:
-        AxisMapping:
-          type: object
-          additionalProperties:
-            type: string
-            pattern: "^[A-Z]$"
-          description: "Mapping from old axis names to new names"
-          example:
-            Z: "T"
-            T: "Z"
-        AxisSpec:
-          oneOf:
-            - type: integer
-              description: "Axis index (0-based, negative allowed)"
-            - type: string
-              pattern: "^[A-Z]$"
-              description: "Axis name (single uppercase letter)"
       type: object
-      required: [axis1, axis2]
-      properties:
-        axis1:
-          $ref: "#/$defs/AxisSpec"
-          description: "First axis to swap"
-        axis2:
-          $ref: "#/$defs/AxisSpec"
-          description: "Second axis to swap"
-      additionalProperties: false
-      examples:
-        - axis1: "Z"
-          axis2: "Y"
-        - axis1: 0
-          axis2: 2
+      properties: {}
+
+  - fn_id: base.wrapper.transform.pad
+    tool_id: tools.base
+    name: Pad
+    description: Pad an image to a target shape.
+    tags: [image, transform, pad]
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+    outputs:
+      - name: output
+        artifact_type: BioImageRef
+        format: OME-Zarr
+        required: true
+    params_schema:
+      type: object
+      properties: {}
 
   # Required for on-demand schema enrichment
   - fn_id: meta.describe
@@ -884,6 +572,16 @@ functions:
           description: The fn_id to describe.
       required: [target_fn]
 
-# NOTE:
-# - Function params_schema values above are intentionally minimal.
-# - The authoritative detailed schema is returned via `meta.describe` on-demand and cached locally.
+function_overlays:
+  base.skimage.filters.gaussian:
+    description: "Apply a Gaussian filter to an image to reduce noise and detail."
+    tags: ["denoise", "smooth", "filter"]
+    hints:
+      success_hints:
+        next_steps:
+          - fn_id: "base.skimage.morphology.remove_small_objects"
+            reason: "Denoising often precedes object detection or filtering."
+
+  base.skimage.morphology.remove_small_objects:
+    io_pattern: labels_to_labels
+    tags: ["labels", "cleanup", "morphology"]

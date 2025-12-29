@@ -16,6 +16,7 @@ class IOPattern(str, Enum):
 
     IMAGE_TO_IMAGE = "image_to_image"
     IMAGE_TO_LABELS = "image_to_labels"
+    LABELS_TO_LABELS = "labels_to_labels"
     LABELS_TO_TABLE = "labels_to_table"
     SIGNAL_TO_PHASOR = "signal_to_phasor"
     PHASOR_TRANSFORM = "phasor_transform"

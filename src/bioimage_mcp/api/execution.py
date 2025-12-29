@@ -15,6 +15,43 @@ from bioimage_mcp.runtimes.executor import execute_tool
 from bioimage_mcp.runtimes.protocol import validate_workflow_compatibility
 
 
+CORE_LEGACY_REDIRECTS = {
+    "base.bioimage_mcp_base.io.convert_to_ome_zarr": "base.wrapper.io.convert_to_ome_zarr",
+    "base.bioimage_mcp_base.io.export_ome_tiff": "base.wrapper.io.export_ome_tiff",
+    "base.bioimage_mcp_base.transforms.project_sum": "base.wrapper.transform.project_sum",
+    "base.bioimage_mcp_base.transforms.project_max": "base.wrapper.transform.project_max",
+    "base.bioimage_mcp_base.transforms.flip": "base.wrapper.transform.flip",
+    "base.bioimage_mcp_base.transforms.crop": "base.wrapper.transform.crop",
+    "base.bioimage_mcp_base.transforms.pad": "base.wrapper.transform.pad",
+    "base.bioimage_mcp_base.axis_ops.relabel_axes": "base.wrapper.axis.relabel_axes",
+    "base.bioimage_mcp_base.axis_ops.squeeze": "base.wrapper.axis.squeeze",
+    "base.bioimage_mcp_base.axis_ops.expand_dims": "base.wrapper.axis.expand_dims",
+    "base.bioimage_mcp_base.axis_ops.moveaxis": "base.wrapper.axis.moveaxis",
+    "base.bioimage_mcp_base.axis_ops.swap_axes": "base.wrapper.axis.swap_axes",
+    "base.bioimage_mcp_base.preprocess.normalize_intensity": "base.wrapper.preprocess.normalize_intensity",
+    "base.bioimage_mcp_base.transforms.phasor_from_flim": "base.wrapper.phasor.phasor_from_flim",
+    "base.bioimage_mcp_base.preprocess.denoise_image": "base.wrapper.denoise.denoise_image",
+    "base.bioimage_mcp_base.transforms.phasor_calibrate": "base.wrapper.phasor.phasor_calibrate",
+}
+
+
+def _apply_legacy_redirects(spec: dict) -> tuple[dict, list[str]]:
+    """Rewrite legacy fn_ids in workflow spec and collect warnings."""
+    new_spec = copy.deepcopy(spec)
+    warnings = []
+    steps = new_spec.get("steps") or []
+    for step in steps:
+        fn_id = step.get("fn_id")
+        if fn_id in CORE_LEGACY_REDIRECTS:
+            new_fn_id = CORE_LEGACY_REDIRECTS[fn_id]
+            warnings.append(
+                f"DEPRECATED: {fn_id} is deprecated and will be removed in v1.0.0. "
+                f"Use {new_fn_id} instead."
+            )
+            step["fn_id"] = new_fn_id
+    return new_spec, warnings
+
+
 def _get_input_storage_requirements(
     config: Config,
     fn_id: str,
@@ -207,6 +244,9 @@ class ExecutionService:
         Returns a list of validation errors (empty if workflow is valid).
         Raises WorkflowValidationError if validation fails.
         """
+        # Apply redirects (SC-001)
+        spec, _warnings = _apply_legacy_redirects(spec)
+
         steps = spec.get("steps") or []
         if not steps:
             return []
@@ -241,6 +281,9 @@ class ExecutionService:
         return None
 
     def run_workflow(self, spec: dict, *, skip_validation: bool = False) -> dict:
+        # Apply redirects (SC-001)
+        spec, core_warnings = _apply_legacy_redirects(spec)
+
         steps = spec.get("steps") or []
         if len(steps) != 1:
             raise ValueError("v0.0 supports exactly 1 step")
@@ -314,14 +357,34 @@ class ExecutionService:
             run.provenance["materialized_inputs"] = materialized_inputs
             self._run_store.update_provenance(run.run_id, run.provenance)
 
-        response, log_text, exit_code = execute_step(
-            config=self._config,
-            fn_id=fn_id,
-            params=params,
-            inputs=inputs,
-            work_dir=work_dir,
-            timeout_seconds=timeout_seconds,
-        )
+        try:
+            response, log_text, exit_code = execute_step(
+                config=self._config,
+                fn_id=fn_id,
+                params=params,
+                inputs=inputs,
+                work_dir=work_dir,
+                timeout_seconds=timeout_seconds,
+            )
+        except KeyError as exc:
+            error_payload = {"message": f"Function not found: {exc}"}
+            self._run_store.set_status(run.run_id, "failed", error=error_payload)
+            return {
+                "run_id": run.run_id,
+                "status": "failed",
+                "log_ref_id": log_ref.ref_id,
+                "error": error_payload,
+            }
+
+        # Propagate tool-level warnings to log (T030)
+        tool_warnings = response.get("warnings", [])
+        all_warnings = core_warnings + tool_warnings
+        if all_warnings:
+            warning_prefix = "\n".join(f"WARNING: {w}" for w in all_warnings)
+            if log_text:
+                log_text = f"{warning_prefix}\n\n{log_text}"
+            else:
+                log_text = warning_prefix
 
         log_ref = self._artifact_store.write_log(log_text or str(response))
         run.log_ref_id = log_ref.ref_id
@@ -372,7 +435,13 @@ class ExecutionService:
                     )
                 else:
                     ref = self._artifact_store.import_file(p, artifact_type=out_type, format=fmt)
-                outputs_payload[name] = ref.model_dump()
+
+                # Propagate metadata from tool response (FR-007)
+                ref_data = ref.model_dump()
+                tool_metadata = out.get("metadata")
+                if tool_metadata:
+                    ref_data["metadata"] = {**ref_data.get("metadata", {}), **tool_metadata}
+                outputs_payload[name] = ref_data
 
         tool_provenance = response.get("provenance") or {}
         if tool_provenance:

@@ -44,6 +44,8 @@ def test_materialize_real():
         # (even though it's actually a file, bioio handles both transparently usually)
         ref_dict = ref.model_dump()
         ref_dict["storage_type"] = "zarr-temp"
+        # We must provide a path with a detectable extension for bioio
+        ref_dict["uri"] = src_path.as_uri()
 
         work_dir = tmp_path / "work"
         work_dir.mkdir()

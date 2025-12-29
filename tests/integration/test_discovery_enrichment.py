@@ -84,7 +84,7 @@ def test_describe_function_uses_json_cache(tmp_path: Path, monkeypatch) -> None:
 
     monkeypatch.setattr("bioimage_mcp.api.discovery.execute_tool", _fake_execute_tool)
 
-    fn_id = "base.gaussian"
+    fn_id = "base.skimage.filters.gaussian"
     first = service.describe_function(fn_id)
     assert "schema" in first
     assert "params_schema" not in first

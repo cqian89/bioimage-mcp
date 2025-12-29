@@ -9,7 +9,7 @@ from bioimage_mcp.registry.diagnostics import ManifestDiagnostic
 from bioimage_mcp.registry.dynamic.adapters import ADAPTER_REGISTRY
 from bioimage_mcp.registry.dynamic.discovery import discover_functions
 from bioimage_mcp.registry.dynamic.models import IOPattern, ParameterSchema
-from bioimage_mcp.registry.manifest_schema import Function, Port, ToolManifest
+from bioimage_mcp.registry.manifest_schema import Function, FunctionOverlay, Port, ToolManifest
 
 
 def _sha256_bytes(data: bytes) -> str:
@@ -30,6 +30,9 @@ def _map_io_pattern_to_ports(pattern: IOPattern) -> tuple[list[Port], list[Port]
         outputs = [Port(name="output", artifact_type="BioImageRef")]
     elif pattern == IOPattern.IMAGE_TO_LABELS:
         inputs = [Port(name="image", artifact_type="BioImageRef")]
+        outputs = [Port(name="labels", artifact_type="LabelImageRef")]
+    elif pattern == IOPattern.LABELS_TO_LABELS:
+        inputs = [Port(name="image", artifact_type="LabelImageRef")]
         outputs = [Port(name="labels", artifact_type="LabelImageRef")]
     elif pattern == IOPattern.LABELS_TO_TABLE:
         inputs = [
@@ -106,6 +109,65 @@ def _parameters_to_json_schema(params: dict[str, ParameterSchema]) -> dict:
     return schema
 
 
+def _deep_merge_dict(base: dict, overlay: dict) -> dict:
+    """Recursively merge two dictionaries."""
+    result = base.copy()
+    for key, value in overlay.items():
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            result[key] = _deep_merge_dict(result[key], value)
+        else:
+            result[key] = value
+    return result
+
+
+def merge_function_overlay(discovered: Function, overlay: FunctionOverlay) -> Function:
+    """Deep merge overlay into discovered function.
+
+    Args:
+        discovered: The function as discovered from introspection
+        overlay: The overlay to apply
+
+    Returns:
+        A new Function object with overlay applied
+    """
+    result = discovered.model_copy(deep=True)
+
+    # Simple override fields
+    if overlay.description is not None:
+        result.description = overlay.description
+    if overlay.tags is not None:
+        result.tags = overlay.tags
+    if overlay.io_pattern is not None:
+        inputs, outputs = _map_io_pattern_to_ports(overlay.io_pattern)
+        result.inputs = inputs
+        result.outputs = outputs
+
+    # Deep merge hints
+    if overlay.hints is not None:
+        if result.hints is None:
+            result.hints = overlay.hints
+        else:
+            base_hints_dict = result.hints.model_dump(exclude_unset=True)
+            overlay_hints_dict = overlay.hints.model_dump(exclude_unset=True)
+            merged_hints_dict = _deep_merge_dict(base_hints_dict, overlay_hints_dict)
+            result.hints = type(result.hints).model_validate(merged_hints_dict)
+
+    # Parameter overrides
+    if overlay.params_override is not None:
+        if not result.params_schema:
+            result.params_schema = {"type": "object", "properties": {}}
+        elif "properties" not in result.params_schema:
+            result.params_schema["properties"] = {}
+
+        for param_name, overrides in overlay.params_override.items():
+            if param_name in result.params_schema["properties"]:
+                result.params_schema["properties"][param_name].update(overrides)
+            else:
+                result.params_schema["properties"][param_name] = overrides
+
+    return result
+
+
 def _env_prefix_from_tool_id(tool_id: str | None) -> str | None:
     if not tool_id:
         return None
@@ -146,6 +208,8 @@ def load_manifest_file(path: Path) -> tuple[ToolManifest | None, ManifestDiagnos
     except Exception as exc:  # noqa: BLE001
         return None, ManifestDiagnostic(path=path, tool_id=tool_id, errors=[str(exc)])
 
+    warnings = []
+
     # Discover functions from dynamic sources if present
     if manifest.dynamic_sources:
         try:
@@ -177,13 +241,30 @@ def load_manifest_file(path: Path) -> tuple[ToolManifest | None, ManifestDiagnos
             # If discovery fails (e.g., adapter not registered), continue with
             # manifest loading. This allows manifests to be loaded before adapters
             # are fully implemented, and enables graceful degradation.
-            print(f"Discovery failed for {manifest.manifest_path}: {e}")
+            warnings.append(f"Discovery failed for {path}: {e}")
             import traceback
 
             traceback.print_exc()
-            pass
 
-    return manifest, None
+    # Apply overlays
+    if manifest.function_overlays:
+        discovered_fn_ids = {f.fn_id for f in manifest.functions}
+        for fn_id, overlay in manifest.function_overlays.items():
+            if fn_id not in discovered_fn_ids:
+                warnings.append(f"Overlay target {fn_id} not found in tool {manifest.tool_id}")
+                continue
+
+            # Find the function and replace it with the merged version
+            for i, function in enumerate(manifest.functions):
+                if function.fn_id == fn_id:
+                    manifest.functions[i] = merge_function_overlay(function, overlay)
+                    break
+
+    diag = None
+    if warnings:
+        diag = ManifestDiagnostic(path=path, tool_id=manifest.tool_id, errors=[], warnings=warnings)
+
+    return manifest, diag
 
 
 def discover_manifest_paths(roots: list[Path]) -> list[Path]:

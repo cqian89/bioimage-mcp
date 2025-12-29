@@ -32,36 +32,3 @@ def test_normalize_intensity_clips(monkeypatch, tmp_path: Path) -> None:
 
     assert captured["array"].min() >= 0
     assert captured["array"].max() <= 1
-
-
-def test_threshold_otsu_apply_false(monkeypatch, tmp_path: Path) -> None:
-    data = np.arange(16, dtype="uint8").reshape(4, 4)
-    monkeypatch.setattr(preprocess, "load_image", lambda _path: data)
-    captured = {}
-
-    def _save_zarr(array: np.ndarray, work_dir: Path, name: str) -> Path:
-        captured["array"] = array
-        return work_dir / name
-
-    monkeypatch.setattr(preprocess, "save_zarr", _save_zarr)
-
-    preprocess.threshold_otsu(
-        inputs={"image": {"uri": "file:///tmp/sample.tif"}},
-        params={"apply": False},
-        work_dir=tmp_path,
-    )
-
-    np.testing.assert_array_equal(captured["array"], data)
-
-
-def test_sobel_invalid_axis(monkeypatch, tmp_path: Path) -> None:
-    data = np.zeros((4, 4), dtype="uint8")
-    monkeypatch.setattr(preprocess, "load_image", lambda _path: data)
-    monkeypatch.setattr(preprocess, "save_zarr", lambda arr, work_dir, name: work_dir / name)
-
-    with pytest.raises(ValueError, match="Unknown axis"):
-        preprocess.sobel(
-            inputs={"image": {"uri": "file:///tmp/sample.tif"}},
-            params={"axis": "q"},
-            work_dir=tmp_path,
-        )

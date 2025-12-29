@@ -2,7 +2,7 @@
   description: "End-to-end FLIM phasor workflow with axis relabeling"
   steps:
     - step_id: "fix_axes"
-      fn_id: "base.relabel_axes"
+      fn_id: "base.wrapper.axis.relabel_axes"
       inputs:
         image: "datasets/FLUTE_FLIM_data_tif/Embryo.tif"
       params:
@@ -13,7 +13,7 @@
         - type: "output_type"
           value: "BioImageRef"
     - step_id: "compute_phasor"
-      fn_id: "base.phasor_from_flim"
+      fn_id: "base.wrapper.phasor.phasor_from_flim"
       inputs:
         dataset: "{fix_axes.output}"
       params:
@@ -27,7 +27,7 @@
   description: "Verify expand_dims then squeeze restores axes"
   steps:
     - step_id: "add_dim"
-      fn_id: "base.expand_dims"
+      fn_id: "base.wrapper.axis.expand_dims"
       inputs:
         image: "datasets/synthetic/test.tif"
       params:
@@ -38,7 +38,7 @@
           key: "axes"
           value: "ZYX"
     - step_id: "remove_dim"
-      fn_id: "base.squeeze"
+      fn_id: "base.wrapper.axis.squeeze"
       inputs:
         image: "{add_dim.output}"
       params:
@@ -52,7 +52,7 @@
   description: "Verify swap_axes exchanges Z and Y axes"
   steps:
     - step_id: "swap_axes"
-      fn_id: "base.swap_axes"
+      fn_id: "base.wrapper.axis.swap_axes"
       inputs:
         image: "datasets/synthetic/test.tif"
       params:

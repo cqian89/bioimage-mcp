@@ -13,19 +13,19 @@ CONTRACT_PATH = (
 )
 
 AXIS_TOOL_IDS = {
-    "base.bioimage_mcp_base.axis_ops.relabel_axes",
-    "base.bioimage_mcp_base.axis_ops.squeeze",
-    "base.bioimage_mcp_base.axis_ops.expand_dims",
-    "base.bioimage_mcp_base.axis_ops.moveaxis",
-    "base.bioimage_mcp_base.axis_ops.swap_axes",
+    "base.wrapper.axis.relabel_axes",
+    "base.wrapper.axis.squeeze",
+    "base.wrapper.axis.expand_dims",
+    "base.wrapper.axis.moveaxis",
+    "base.wrapper.axis.swap_axes",
 }
 
 AXIS_TOOL_SCHEMA_KEYS = {
-    "base.bioimage_mcp_base.axis_ops.relabel_axes": "relabel_axes",
-    "base.bioimage_mcp_base.axis_ops.squeeze": "squeeze",
-    "base.bioimage_mcp_base.axis_ops.expand_dims": "expand_dims",
-    "base.bioimage_mcp_base.axis_ops.moveaxis": "moveaxis",
-    "base.bioimage_mcp_base.axis_ops.swap_axes": "swap_axes",
+    "base.wrapper.axis.relabel_axes": "relabel_axes",
+    "base.wrapper.axis.squeeze": "squeeze",
+    "base.wrapper.axis.expand_dims": "expand_dims",
+    "base.wrapper.axis.moveaxis": "moveaxis",
+    "base.wrapper.axis.swap_axes": "swap_axes",
 }
 
 
@@ -43,11 +43,17 @@ def _get_function(manifest, fn_id: str):
     return next(fn for fn in manifest.functions if fn.fn_id == fn_id)
 
 
-def _expected_params_schema(contract: dict[str, Any], schema_key: str) -> dict[str, Any]:
+def _expected_params_schema(
+    fn_params_schema: dict[str, Any], contract: dict[str, Any], schema_key: str
+) -> dict[str, Any]:
     schema = dict(contract["schemas"][schema_key])
-    defs = contract.get("$defs")
-    if defs:
-        schema = {**schema, "$defs": defs}
+    contract_defs = contract.get("$defs", {})
+    fn_defs = fn_params_schema.get("$defs", {})
+
+    # Only include defs that are in the function's schema
+    needed_defs = {k: v for k, v in contract_defs.items() if k in fn_defs}
+    if needed_defs:
+        schema = {**schema, "$defs": needed_defs}
     return schema
 
 
@@ -82,8 +88,8 @@ def test_relabel_axes_schema_matches_contract() -> None:
     contract = _load_contract()
     base_manifest = _load_base_manifest()
 
-    fn = _get_function(base_manifest, "base.bioimage_mcp_base.axis_ops.relabel_axes")
-    expected_schema = _expected_params_schema(contract, "relabel_axes")
+    fn = _get_function(base_manifest, "base.wrapper.axis.relabel_axes")
+    expected_schema = _expected_params_schema(fn.params_schema, contract, "relabel_axes")
 
     assert fn.params_schema == expected_schema
 
@@ -92,8 +98,8 @@ def test_squeeze_schema_matches_contract() -> None:
     contract = _load_contract()
     base_manifest = _load_base_manifest()
 
-    fn = _get_function(base_manifest, "base.bioimage_mcp_base.axis_ops.squeeze")
-    expected_schema = _expected_params_schema(contract, "squeeze")
+    fn = _get_function(base_manifest, "base.wrapper.axis.squeeze")
+    expected_schema = _expected_params_schema(fn.params_schema, contract, "squeeze")
 
     assert fn.params_schema == expected_schema
 
@@ -102,8 +108,8 @@ def test_expand_dims_schema_matches_contract() -> None:
     contract = _load_contract()
     base_manifest = _load_base_manifest()
 
-    fn = _get_function(base_manifest, "base.bioimage_mcp_base.axis_ops.expand_dims")
-    expected_schema = _expected_params_schema(contract, "expand_dims")
+    fn = _get_function(base_manifest, "base.wrapper.axis.expand_dims")
+    expected_schema = _expected_params_schema(fn.params_schema, contract, "expand_dims")
 
     assert fn.params_schema == expected_schema
 
@@ -112,8 +118,8 @@ def test_moveaxis_schema_matches_contract() -> None:
     contract = _load_contract()
     base_manifest = _load_base_manifest()
 
-    fn = _get_function(base_manifest, "base.bioimage_mcp_base.axis_ops.moveaxis")
-    expected_schema = _expected_params_schema(contract, "moveaxis")
+    fn = _get_function(base_manifest, "base.wrapper.axis.moveaxis")
+    expected_schema = _expected_params_schema(fn.params_schema, contract, "moveaxis")
 
     assert fn.params_schema == expected_schema
 
@@ -122,8 +128,8 @@ def test_swap_axes_schema_matches_contract() -> None:
     contract = _load_contract()
     base_manifest = _load_base_manifest()
 
-    fn = _get_function(base_manifest, "base.bioimage_mcp_base.axis_ops.swap_axes")
-    expected_schema = _expected_params_schema(contract, "swap_axes")
+    fn = _get_function(base_manifest, "base.wrapper.axis.swap_axes")
+    expected_schema = _expected_params_schema(fn.params_schema, contract, "swap_axes")
 
     assert fn.params_schema == expected_schema
 

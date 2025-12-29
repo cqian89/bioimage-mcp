@@ -10,45 +10,19 @@ from typing import Any
 
 BASE_DIR = Path(__file__).resolve().parent
 TOOLS_ROOT = BASE_DIR.parent
+REPO_ROOT = TOOLS_ROOT.parent.parent
+if str(REPO_ROOT / "src") not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT / "src"))
 if str(TOOLS_ROOT) not in sys.path:
     sys.path.insert(0, str(TOOLS_ROOT))
 
 from bioimage_mcp_base import descriptions as desc  # noqa: E402
-from bioimage_mcp_base.axis_ops import (  # noqa: E402
-    expand_dims,
-    moveaxis,
-    relabel_axes,
-    squeeze,
-    swap_axes,
-)
-from bioimage_mcp_base.io import convert_to_ome_zarr, export_ome_tiff  # noqa: E402
-from bioimage_mcp_base.preprocess import (  # noqa: E402
-    bilateral,
-    denoise_image,
-    denoise_nl_means,
-    equalize_adapthist,
-    gaussian,
-    median,
-    morph_closing,
-    morph_opening,
-    normalize_intensity,
-    remove_small_objects,
-    sobel,
-    threshold_otsu,
-    threshold_yen,
-    unsharp_mask,
-)
-from bioimage_mcp_base.transforms import (  # noqa: E402
-    crop,
-    flip,
-    pad,
-    phasor_calibrate,
-    phasor_from_flim,
-    project_max,
-    project_sum,
-    rescale,
-    resize,
-    rotate,
+from bioimage_mcp_base.wrapper import (  # noqa: E402
+    axis as axis_wrappers,
+    denoise as denoise_wrappers,
+    edge_cases as edge_wrappers,
+    io as io_wrappers,
+    phasor as phasor_wrappers,
 )
 
 TOOL_VERSION = "0.1.0"
@@ -57,79 +31,72 @@ DYNAMIC_FN_PREFIXES = ("base.", f"{TOOL_ENV_NAME}.")
 
 
 FN_MAP = {
-    "base.bioimage_mcp_base.io.convert_to_ome_zarr": (
-        convert_to_ome_zarr,
+    # New wrapper namespace
+    "base.wrapper.io.convert_to_ome_zarr": (
+        io_wrappers.convert_to_ome_zarr,
         desc.CONVERT_TO_OME_ZARR_DESCRIPTIONS,
     ),
-    "base.bioimage_mcp_base.io.export_ome_tiff": (
-        export_ome_tiff,
+    "base.wrapper.io.export_ome_tiff": (
+        io_wrappers.export_ome_tiff,
         desc.EXPORT_OME_TIFF_DESCRIPTIONS,
     ),
-    "base.bioimage_mcp_base.transforms.project_sum": (project_sum, desc.PROJECT_SUM_DESCRIPTIONS),
-    "base.bioimage_mcp_base.transforms.project_max": (project_max, desc.PROJECT_MAX_DESCRIPTIONS),
-    "base.bioimage_mcp_base.transforms.resize": (resize, desc.RESIZE_DESCRIPTIONS),
-    "base.bioimage_mcp_base.transforms.rescale": (rescale, desc.RESCALE_DESCRIPTIONS),
-    "base.bioimage_mcp_base.transforms.rotate": (rotate, desc.ROTATE_DESCRIPTIONS),
-    "base.bioimage_mcp_base.transforms.flip": (flip, desc.FLIP_DESCRIPTIONS),
-    "base.bioimage_mcp_base.transforms.crop": (crop, desc.CROP_DESCRIPTIONS),
-    "base.bioimage_mcp_base.transforms.pad": (pad, desc.PAD_DESCRIPTIONS),
-    "base.bioimage_mcp_base.axis_ops.relabel_axes": (relabel_axes, desc.RELABEL_AXES_DESCRIPTIONS),
-    "base.bioimage_mcp_base.axis_ops.squeeze": (squeeze, desc.SQUEEZE_DESCRIPTIONS),
-    "base.bioimage_mcp_base.axis_ops.expand_dims": (expand_dims, desc.EXPAND_DIMS_DESCRIPTIONS),
-    "base.bioimage_mcp_base.axis_ops.moveaxis": (moveaxis, desc.MOVEAXIS_DESCRIPTIONS),
-    "base.bioimage_mcp_base.axis_ops.swap_axes": (swap_axes, desc.SWAP_AXES_DESCRIPTIONS),
-    "base.bioimage_mcp_base.preprocess.normalize_intensity": (
-        normalize_intensity,
-        desc.NORMALIZE_INTENSITY_DESCRIPTIONS,
+    "base.wrapper.axis.relabel_axes": (
+        axis_wrappers.relabel_axes,
+        desc.RELABEL_AXES_DESCRIPTIONS,
     ),
-    "base.bioimage_mcp_base.preprocess.gaussian": (gaussian, desc.GAUSSIAN_DESCRIPTIONS),
-    "base.bioimage_mcp_base.preprocess.median": (median, desc.MEDIAN_DESCRIPTIONS),
-    "base.bioimage_mcp_base.preprocess.bilateral": (bilateral, desc.BILATERAL_DESCRIPTIONS),
-    "base.bioimage_mcp_base.preprocess.denoise_nl_means": (
-        denoise_nl_means,
-        desc.DENOISE_NL_MEANS_DESCRIPTIONS,
+    "base.wrapper.axis.squeeze": (axis_wrappers.squeeze, desc.SQUEEZE_DESCRIPTIONS),
+    "base.wrapper.axis.expand_dims": (
+        axis_wrappers.expand_dims,
+        desc.EXPAND_DIMS_DESCRIPTIONS,
     ),
-    "base.bioimage_mcp_base.preprocess.unsharp_mask": (
-        unsharp_mask,
-        desc.UNSHARP_MASK_DESCRIPTIONS,
-    ),
-    "base.bioimage_mcp_base.preprocess.equalize_adapthist": (
-        equalize_adapthist,
-        desc.EQUALIZE_ADAPTHIST_DESCRIPTIONS,
-    ),
-    "base.bioimage_mcp_base.preprocess.sobel": (sobel, desc.SOBEL_DESCRIPTIONS),
-    "base.bioimage_mcp_base.preprocess.threshold_otsu": (
-        threshold_otsu,
-        desc.THRESHOLD_OTSU_DESCRIPTIONS,
-    ),
-    "base.bioimage_mcp_base.preprocess.threshold_yen": (
-        threshold_yen,
-        desc.THRESHOLD_YEN_DESCRIPTIONS,
-    ),
-    "base.bioimage_mcp_base.preprocess.morph_opening": (
-        morph_opening,
-        desc.MORPH_OPENING_DESCRIPTIONS,
-    ),
-    "base.bioimage_mcp_base.preprocess.morph_closing": (
-        morph_closing,
-        desc.MORPH_CLOSING_DESCRIPTIONS,
-    ),
-    "base.bioimage_mcp_base.preprocess.remove_small_objects": (
-        remove_small_objects,
-        desc.REMOVE_SMALL_OBJECTS_DESCRIPTIONS,
-    ),
-    "base.bioimage_mcp_base.transforms.phasor_from_flim": (
-        phasor_from_flim,
+    "base.wrapper.axis.moveaxis": (axis_wrappers.moveaxis, desc.MOVEAXIS_DESCRIPTIONS),
+    "base.wrapper.axis.swap_axes": (axis_wrappers.swap_axes, desc.SWAP_AXES_DESCRIPTIONS),
+    "base.wrapper.phasor.phasor_from_flim": (
+        phasor_wrappers.phasor_from_flim,
         desc.PHASOR_FROM_FLIM_DESCRIPTIONS,
     ),
-    "base.bioimage_mcp_base.preprocess.denoise_image": (
-        denoise_image,
-        desc.DENOISE_IMAGE_DESCRIPTIONS,
-    ),
-    "base.bioimage_mcp_base.transforms.phasor_calibrate": (
-        phasor_calibrate,
+    "base.wrapper.phasor.phasor_calibrate": (
+        phasor_wrappers.phasor_calibrate,
         desc.PHASOR_CALIBRATE_DESCRIPTIONS,
     ),
+    "base.wrapper.denoise.denoise_image": (
+        denoise_wrappers.denoise_image,
+        desc.DENOISE_IMAGE_DESCRIPTIONS,
+    ),
+    "base.wrapper.transform.crop": (edge_wrappers.crop, desc.CROP_DESCRIPTIONS),
+    "base.wrapper.preprocess.normalize_intensity": (
+        edge_wrappers.normalize_intensity,
+        desc.NORMALIZE_INTENSITY_DESCRIPTIONS,
+    ),
+    "base.wrapper.transform.project_sum": (
+        edge_wrappers.project_sum,
+        desc.PROJECT_SUM_DESCRIPTIONS,
+    ),
+    "base.wrapper.transform.project_max": (
+        edge_wrappers.project_max,
+        desc.PROJECT_MAX_DESCRIPTIONS,
+    ),
+    "base.wrapper.transform.flip": (edge_wrappers.flip, desc.FLIP_DESCRIPTIONS),
+    "base.wrapper.transform.pad": (edge_wrappers.pad, desc.PAD_DESCRIPTIONS),
+}
+
+LEGACY_REDIRECTS = {
+    "base.bioimage_mcp_base.io.convert_to_ome_zarr": "base.wrapper.io.convert_to_ome_zarr",
+    "base.bioimage_mcp_base.io.export_ome_tiff": "base.wrapper.io.export_ome_tiff",
+    "base.bioimage_mcp_base.transforms.project_sum": "base.wrapper.transform.project_sum",
+    "base.bioimage_mcp_base.transforms.project_max": "base.wrapper.transform.project_max",
+    "base.bioimage_mcp_base.transforms.flip": "base.wrapper.transform.flip",
+    "base.bioimage_mcp_base.transforms.crop": "base.wrapper.transform.crop",
+    "base.bioimage_mcp_base.transforms.pad": "base.wrapper.transform.pad",
+    "base.bioimage_mcp_base.axis_ops.relabel_axes": "base.wrapper.axis.relabel_axes",
+    "base.bioimage_mcp_base.axis_ops.squeeze": "base.wrapper.axis.squeeze",
+    "base.bioimage_mcp_base.axis_ops.expand_dims": "base.wrapper.axis.expand_dims",
+    "base.bioimage_mcp_base.axis_ops.moveaxis": "base.wrapper.axis.moveaxis",
+    "base.bioimage_mcp_base.axis_ops.swap_axes": "base.wrapper.axis.swap_axes",
+    "base.bioimage_mcp_base.preprocess.normalize_intensity": "base.wrapper.preprocess.normalize_intensity",
+    "base.bioimage_mcp_base.transforms.phasor_from_flim": "base.wrapper.phasor.phasor_from_flim",
+    "base.bioimage_mcp_base.preprocess.denoise_image": "base.wrapper.denoise.denoise_image",
+    "base.bioimage_mcp_base.transforms.phasor_calibrate": "base.wrapper.phasor.phasor_calibrate",
 }
 
 
@@ -169,6 +136,15 @@ def main() -> int:
     work_dir = Path(request.get("work_dir") or ".").absolute()
     work_dir.mkdir(parents=True, exist_ok=True)
 
+    warnings = []
+    if fn_id in LEGACY_REDIRECTS:
+        new_fn_id = LEGACY_REDIRECTS[fn_id]
+        warnings.append(
+            f"DEPRECATED: {fn_id} is deprecated and will be removed in v1.0.0. "
+            f"Use {new_fn_id} instead."
+        )
+        fn_id = new_fn_id
+
     try:
         if fn_id == "meta.describe":
             response = handle_meta_describe(params)
@@ -184,8 +160,8 @@ def main() -> int:
                     "outputs": outputs,
                     "log": result.get("log", "ok"),
                 }
-                if "warnings" in result:
-                    response["warnings"] = result["warnings"]
+                # Combine tool-specific warnings with redirect warnings
+                response["warnings"] = warnings + result.get("warnings", [])
                 if "provenance" in result:
                     response["provenance"] = result["provenance"]
             else:
@@ -201,6 +177,7 @@ def main() -> int:
                         }
                     },
                     "log": "ok",
+                    "warnings": warnings,
                 }
         else:
             # Dynamic dispatch for functions not in FN_MAP
@@ -237,50 +214,6 @@ def main() -> int:
 
     print(json.dumps(response))
     return 0 if response.get("ok") else 1
-
-
-def _dispatch_dynamic_mock(fn_id: str | None, work_dir: Path) -> dict[str, Any]:
-    if not fn_id:
-        raise ValueError("fn_id is required")
-
-    if not fn_id.startswith("phasorpy.phasor."):
-        raise ValueError(f"Dynamic dispatch not implemented for: {fn_id}")
-
-    func_name = fn_id.split(".")[-1]
-    work_dir.mkdir(parents=True, exist_ok=True)
-
-    if func_name == "phasor_from_signal":
-        mean_path = work_dir / "phasor_mean.tif"
-        real_path = work_dir / "phasor_real.tif"
-        imag_path = work_dir / "phasor_imag.tif"
-        mean_path.touch()
-        real_path.touch()
-        imag_path.touch()
-        return {
-            "ok": True,
-            "outputs": {
-                "mean": {"type": "BioImageRef", "format": "OME-TIFF", "path": str(mean_path)},
-                "real": {"type": "BioImageRef", "format": "OME-TIFF", "path": str(real_path)},
-                "imag": {"type": "BioImageRef", "format": "OME-TIFF", "path": str(imag_path)},
-            },
-            "log": "ok (mock)",
-        }
-
-    if func_name == "phasor_transform":
-        real_path = work_dir / "phasor_real_calibrated.tif"
-        imag_path = work_dir / "phasor_imag_calibrated.tif"
-        real_path.touch()
-        imag_path.touch()
-        return {
-            "ok": True,
-            "outputs": {
-                "real": {"type": "BioImageRef", "format": "OME-TIFF", "path": str(real_path)},
-                "imag": {"type": "BioImageRef", "format": "OME-TIFF", "path": str(imag_path)},
-            },
-            "log": "ok (mock)",
-        }
-
-    raise ValueError(f"Unknown phasorpy function: {func_name}")
 
 
 if __name__ == "__main__":

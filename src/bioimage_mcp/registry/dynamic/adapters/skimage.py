@@ -199,16 +199,23 @@ class SkimageAdapter(BaseAdapter):
 
         # Save image
         if metadata:
-            tifffile.imwrite(path, array, metadata=metadata)
+            # Use photometric='minisblack' for single-channel/grayscale images
+            # and ensure we use the metadata dict which tifffile uses for OME-XML
+            tifffile.imwrite(path, array, metadata=metadata, photometric="minisblack")
         else:
-            tifffile.imwrite(path, array)
+            tifffile.imwrite(path, array, photometric="minisblack")
 
         # Return artifact reference as dict (compatible with entrypoint protocol)
-        return {
+        ref = {
             "type": "BioImageRef",
             "format": "OME-TIFF",
             "path": str(path.absolute()),
         }
+        if metadata:
+            ref["metadata"] = {**metadata, "shape": list(array.shape)}
+        else:
+            ref["metadata"] = {"shape": list(array.shape)}
+        return ref
 
     def _save_table(self, table: dict, work_dir: Path | None = None) -> dict:
         if work_dir is None:
