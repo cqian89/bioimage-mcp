@@ -23,3 +23,4 @@ For detailed architectural decisions and history, please refer to the planning d
 
 *   **Subprocess Isolation**: We chose subprocesses over in-process execution to allow tools to have conflicting dependencies (e.g., different Python versions, conflicting library versions).
 *   **Artifact-First I/O**: To support large images (GBs or TBs), we never pass image data in API payloads. We pass references.
+*   **Standardized bioio Integration**: We use `bioio` as the universal cross-environment image artifact layer, ensuring consistent 5D TCZYX data access without custom wrapper overhead.

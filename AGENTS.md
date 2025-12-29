@@ -200,6 +200,12 @@ Cellpose environment:
 
 ### Adding a new function to base toolkit
 1. Add function implementation in `tools/base/bioimage_mcp_base/ops/`
+   - **Important**: Use `bioio.BioImage` for all input reading to ensure consistent 5D TCZYX data access.
+   ```python
+   from bioio import BioImage
+   img = BioImage(path)
+   data = img.data # Always 5D TCZYX
+   ```
 2. Add function definition to `tools/base/manifest.yaml`
 3. Write contract test in `tests/contract/`
 4. Write unit test (TDD: write failing test first)

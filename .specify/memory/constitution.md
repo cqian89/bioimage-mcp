@@ -1,11 +1,11 @@
 <!--
 Sync Impact Report
-- Version change: 0.5.0 -> 0.6.0
-- Principles updated: Early development policy added
-- Added sections: Early Development section
-- Removed sections: Backward compatibility alias support
+- Version change: 0.6.0 -> 0.7.0
+- Principles updated: Section III (Artifact References Only) updated with bioio architectural decision.
+- Added sections: None
+- Removed sections: None
 - Templates requiring updates: None
-- Follow-up TODOs: Update config.yaml documentation for permissions.mode
+- Follow-up TODOs: Update tool manifests and environment definitions to include bioio and plugins.
 -->
 
 # Bioimage-MCP Constitution
@@ -49,15 +49,19 @@ Non-negotiables:
   arrays/binaries in MCP messages.
 - Artifacts MAY be backed by files (OME-TIFF/OME-Zarr) or managed session memory (for 
   performance), provided they are addressable via a stable Reference URI.
-- Intermediate image artifacts SHOULD use OME-Zarr (OME-NGFF) by default; OME-TIFF MAY
-  be supported for compatibility.
+- All tool environments MUST include `bioio` plus the minimal reader/writer plugins for 
+  their declared interchange format (e.g., `bioio-ome-tiff` for OME-TIFF environments).
+- Each tool environment declares its preferred interchange format in its manifest. The 
+  MCP server ensures format compatibility before dispatching.
+- Interchange formats SHOULD be OME-TIFF (single-file portability) or OME-Zarr 
+  (chunked cloud-native). The choice is per-environment based on tool requirements.
 - Artifact references MUST carry enough metadata to validate I/O compatibility
   (axes, pixel sizes, channels, checksums, etc.).
 - Artifact formats and reference schemas MUST be stable and versioned.
 
 Rationale: Reference-based I/O enables scale (large volumes), allows replay/debugging,
-and prevents protocol-level context bloat. Memory-backed options reduce latency for 
-iterative workflows.
+and prevents protocol-level context bloat. Using `bioio` as the standard layer ensures 
+consistent 5D TCZYX normalization, metadata preservation, and reduces custom converter code.
 
 ### IV. Reproducibility & Provenance (Record + Replay)
 The system MUST make analysis runs reproducible and auditable.
@@ -180,4 +184,4 @@ Compliance expectations:
 - Exceptions MUST be documented in the plan with rationale and mitigation, and MUST
   be approved in review.
 
-**Version**: 0.6.0 | **Ratified**: 2025-12-26 | **Last Amended**: 2025-12-28
+**Version**: 0.7.0 | **Ratified**: 2025-12-26 | **Last Amended**: 2025-12-29

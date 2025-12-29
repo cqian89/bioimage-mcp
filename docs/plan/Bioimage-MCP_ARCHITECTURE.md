@@ -31,6 +31,7 @@
 ### 3.1 Lockfiles
 - Maintain `environment.yml` (human-edited intent) + `conda-lock.yml` (generated, pinned).
 - Generate locks per target platform using **conda-lock**.
+- **bioio requirement**: `bioio` and relevant format plugins are required dependencies for ALL tool environments to ensure consistent artifact interchange.
 
 ### 3.2 Fast installs
 - Use **micromamba** to create envs quickly and to install from lockfiles.
@@ -39,47 +40,62 @@
 
 ## 4. Artifact Model (the glue between envs)
 
-### 4.1 Artifact references
-All tool inputs/outputs are passed by reference, never by embedding large arrays in MCP messages.
+### 4.1 Cross-Environment I/O Standard: bioio
+All tool environments use the **bioio** Python library as the standard image artifact layer. This provides:
+- **Lazy loading**: Efficient access to large datasets via dask.
+- **Normalization**: BioImage normalizes all inputs to 5D TCZYX (Time, Channel, Z, Y, X) arrays automatically.
+- **StandardMetadata**: Consistent access to pixel sizes, channel names, and acquisition info across different formats.
+- **Format Abstraction**: Capability to read 150+ microscopy formats via plugins.
+- **Simplified Tooling**: No custom image wrapper is needed; tools use `BioImage(path).data` directly for numpy/dask/xarray access.
+
+### 4.2 Interchange Formats
+Each environment declares its preferred interchange format in its manifest (`interchange_format`).
+- **OME-TIFF**: Default for most tool environments. Offers single-file portability, metadata-rich headers, and broad tool support.
+- **OME-Zarr**: Used for environments handling extremely large datasets or requiring cloud-native chunked storage.
+- Format conversion happens at import/export time using bioio plugins, removing the need for a separate format broker.
+
+### 4.3 Artifact References
+All tool inputs/outputs are passed by reference using a typed schema. Bioio handles the actual loading and data access from these references.
 
 Core types:
-- `BioImageRef` (OME-TIFF by default; OME-Zarr is a future goal; includes axes, physical pixel sizes, channel names)
-- `LabelImageRef`
-- `TableRef` (parquet/csv)
-- `ModelRef`
-- `LogRef`
+- `BioImageRef`: Primary microscopy images (OME-TIFF or OME-Zarr).
+- `LabelImageRef`: Segmentation masks or classification maps.
+- `TableRef`: Measurement/feature tables (parquet/csv).
+- `ModelRef`: Saved model weights or configurations.
+- `LogRef`: Run logs and stdout/stderr captures.
 
 **Artifact reference contract:**
 ```yaml
 ref:
-  uri: "file:///path/to/output.ome.tiff"  # v0.1: file:// only; S3 in upgrade path
+  uri: "file:///path/to/output.ome.tiff"
   mime_type: "image/tiff"
   format: "OME-TIFF"
   size: 1048576
   checksums: {sha256: "abc123..."}
-  metadata: {axes: "TCZYX", channels: ["DAPI", "GFP"], ...}
+  metadata: {axes: "TCZYX", channels: ["DAPI", "GFP"], ...} # Derived from BioImage.standard_metadata
 ```
 
-### 4.2 Preferred storage
-- Preferred intermediate format: **OME-TIFF** for single-file portability and broad tool support.
-- Future goal: **OME-Zarr (OME-NGFF)** for chunked, cloud-optimized storage when needed.
-- Use proven libraries:
-  - **bioio** + plugins (`bioio-ome-tiff`, optional `bioio-ome-zarr`) for reading diverse microscopy formats.
-  - **bioio-ome-tiff** (and/or `tifffile`) for writing OME-TIFF outputs.
-  - Future: **ngff-zarr** for OME-Zarr writing/conversion if/when enabled.
+### 4.4 Environment Plugin Matrix
+To support the interchange standards, each environment must include specific bioio plugins:
 
-### 4.3 In-Memory Session Cache (Performance Optimization)
+| Environment | Python | Interchange | Plugins Required |
+|-------------|--------|-------------|------------------|
+| bioimage-mcp-base | 3.13 | OME-TIFF | bioio, bioio-ome-tiff, bioio-bioformats |
+| bioimage-mcp-cellpose | 3.10 | OME-TIFF | bioio, bioio-ome-tiff |
+| bioimage-mcp-stardist | 3.10 | OME-TIFF | bioio, bioio-ome-tiff |
+
+### 4.5 In-Memory Session Cache (Performance Optimization)
 To reduce I/O latency in iterative workflows, artifacts may be cached in memory:
-- **SessionArtifactCache**: LRU cache holding `numpy` arrays for active session artifacts.
-- **Spilling**: Large artifacts spill to memory-mapped OME-Zarr temp files when memory limit is reached.
+- **SessionArtifactCache**: LRU cache holding `numpy` arrays extracted from `BioImage` objects for active session artifacts.
+- **Spilling**: Large arrays spill to memory-mapped OME-Zarr temp files when memory limits are reached.
 - **Transparency**: Tools interact with `ArtifactRef`s; the cache transparently serves data from memory or disk.
-- **Metadata**: Artifact refs include rich metadata (shape, dtype, inferred axes) to aid LLM reasoning without full data load.
 
 ## 5. Tool, Function & Dynamic Registry
 Each tool provides a manifest (YAML) containing:
 - Tool identity: `tool_id`, `env_id`, version, entrypoint
 - `python_version` (required Python for this tool)
 - `platforms_supported` (e.g., `[linux-64, osx-arm64, win-64]`)
+- `interchange_format` (preferred format: `OME-TIFF` or `OME-Zarr`)
 - Functions:
   - `fn_id` (stable), description, tags
   - `inputs` and `outputs` (typed ports)

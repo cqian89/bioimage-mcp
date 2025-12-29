@@ -1,0 +1,65 @@
+# Interchange Format Contract
+# Defines the schema for interchange configuration in manifest.yaml
+
+openapi: "3.0.3"
+info:
+  title: Interchange Format Schema
+  version: "0.1.0"
+  description: |
+    Schema for defining the preferred image interchange format and required
+    bioio plugins for a tool environment.
+
+components:
+  schemas:
+    InterchangeFormat:
+      type: string
+      description: |
+        The format used for passing image data between tool environments.
+        OME-TIFF is the default and preferred format for small to medium images.
+        OME-Zarr is preferred for large multi-scale datasets.
+      enum:
+        - OME-TIFF
+        - OME-Zarr
+
+    ToolPackInterchangeConfig:
+      type: object
+      description: |
+        Configuration for image data interchange within a tool pack's environment.
+      properties:
+        interchange_format:
+          $ref: "#/components/schemas/InterchangeFormat"
+          description: |
+            The preferred format for this environment. If not specified,
+            OME-TIFF is assumed as the default interchange format.
+          default: OME-TIFF
+
+        bioio_plugins:
+          type: array
+          description: |
+            List of bioio plugins required to be installed in this environment
+            to support the selected interchange format and other domain-specific needs.
+          items:
+            type: string
+          example: ["bioio-ome-tiff", "bioio-bioformats"]
+
+      required:
+        - interchange_format
+        - bioio_plugins
+
+# Example manifest.yaml usage:
+#
+# manifest_version: "1.0"
+# tool_id: tools.base
+# tool_version: "0.1.0"
+# name: Base Image Processing Toolkit
+# 
+# env_id: bioimage-mcp-base
+# entrypoint: bioimage_mcp_base/entrypoint.py
+# python_version: "3.13"
+# 
+# interchange:
+#   interchange_format: OME-TIFF
+#   bioio_plugins:
+#     - bioio-ome-tiff
+#     - bioio-bioformats
+#     - bioio-czi

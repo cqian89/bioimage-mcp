@@ -2,10 +2,10 @@ artifact_store_root: /home/qianchen/.bioimage-mcp/artifacts
 tool_manifest_roots:
 - /home/qianchen/.bioimage-mcp/tools
 - /mnt/c/Users/meqia/bioimage-mcp/tools/base
-- /mnt/c/Users/meqia/bioimage-mcp/tools/builtin
 - /mnt/c/Users/meqia/bioimage-mcp/tools/cellpose
 fs_allowlist_read:
 - /mnt/c/Users/meqia/bioimage-mcp/datasets
+- /home/qianchen/.bioimage-mcp/artifacts
 fs_allowlist_write:
 - /home/qianchen/.bioimage-mcp
 - /mnt/c/Users/meqia/bioimage-mcp/datasets/FLUTE_FLIM_data_tif/outputs
