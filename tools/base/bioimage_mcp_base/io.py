@@ -4,19 +4,13 @@ import os
 from pathlib import Path
 
 import numpy as np
-from bioimage_mcp_base.utils import (
-    _load_image_fallback_with_readers,
-    _try_bioio_bioformats,
-    _try_bioio_ome_tiff,
-    uri_to_path,
-)
+from bioio.writers import OmeTiffWriter
+from bioimage_mcp_base.utils import get_bioimage, load_image_fallback, uri_to_path
 
 __all__ = [
     "convert_to_ome_zarr",
     "export_ome_tiff",
     "load_image_fallback",
-    "_try_bioio_ome_tiff",
-    "_try_bioio_bioformats",
 ]
 
 
@@ -36,15 +30,6 @@ def _get_oversized_input_threshold_bytes() -> int:
     return threshold
 
 
-def load_image_fallback(path: Path) -> tuple[np.ndarray, list[dict[str, str]], str]:
-    """Proxy to utils.load_image_fallback with patchable readers."""
-    return _load_image_fallback_with_readers(
-        path,
-        _try_bioio_ome_tiff,
-        _try_bioio_bioformats,
-    )
-
-
 def _extract_image_uri(image_ref: object) -> str | None:
     if isinstance(image_ref, str):
         return image_ref
@@ -61,19 +46,16 @@ def convert_to_ome_zarr(*, inputs: dict, params: dict, work_dir: Path) -> Path:
         raise ValueError("Input 'image' must include uri")
 
     in_path = uri_to_path(str(uri))
+    format_hint = image_ref.get("format") if isinstance(image_ref, dict) else None
 
     try:
         import zarr
     except Exception as exc:
         raise RuntimeError("Missing dependencies for convert_to_ome_zarr") from exc
 
-    try:
-        from bioio import BioImage  # type: ignore
-
-        img = BioImage(str(in_path))
-        data = img.get_image_data()  # type: ignore[attr-defined]
-    except Exception:
-        data, _warnings, _reader = load_image_fallback(in_path)
+    img = get_bioimage(str(in_path), format_hint=format_hint)
+    data = img.data
+    data = data.compute() if hasattr(data, "compute") else data
 
     out_dir = work_dir / "converted.ome.zarr"
     if out_dir.exists():
@@ -95,69 +77,54 @@ def export_ome_tiff(*, inputs: dict, params: dict, work_dir: Path) -> dict:
         raise ValueError("Input 'image' must include uri")
 
     in_path = uri_to_path(str(uri))
+    format_hint = image_ref.get("format") if isinstance(image_ref, dict) else None
     compression = params.get("compression")
-    input_format = (image_ref.get("format") or "").lower() if isinstance(image_ref, dict) else ""
 
-    try:
-        from bioio.writers import OmeTiffWriter  # type: ignore
-    except Exception as exc:
-        raise RuntimeError("Missing dependencies for export_ome_tiff") from exc
-
-    # Load data based on format
-    data = None
     warnings: list[dict[str, str]] = []
     oversized_threshold = _get_oversized_input_threshold_bytes()
 
-    # Handle OME-Zarr directories
-    if "zarr" in input_format or in_path.suffix.lower() == ".zarr" or in_path.is_dir():
+    try:
+        img = get_bioimage(in_path, format_hint=format_hint)
+        data = img.data
+
+        # Check size before full materialization
+        size_bytes = data.nbytes if hasattr(data, "nbytes") else 0
+        if size_bytes > oversized_threshold:
+            gb_size = size_bytes / 1024**3
+            warnings.append(
+                {
+                    "code": "LARGE_MATERIALIZATION",
+                    "message": (
+                        f"Materializing large array ({gb_size:.1f}GB). "
+                        "This may consume significant memory."
+                    ),
+                }
+            )
+
+        data = data.compute() if hasattr(data, "compute") else data
+
+        # Preserve physical pixel sizes and channel names
         try:
-            import zarr
-
-            root = zarr.open_group(str(in_path), mode="r")
-            # Try common array paths in zarr stores
-            for array_path in ["0", "data", "image"]:
-                if array_path in root:
-                    arr = root[array_path]
-                    # Check size before full materialization
-                    size_bytes = arr.nbytes if hasattr(arr, "nbytes") else 0
-                    if size_bytes > oversized_threshold:
-                        gb_size = size_bytes / 1024**3
-                        warnings.append(
-                            {
-                                "code": "LARGE_ZARR_MATERIALIZATION",
-                                "message": (
-                                    f"Materializing large OME-Zarr array ({gb_size:.1f}GB). "
-                                    "This may consume significant memory."
-                                ),
-                            }
-                        )
-                    data = arr[:]
-                    break
-            if data is None:
-                # Try first array found
-                for key in root.array_keys():
-                    arr = root[key]
-                    size_bytes = arr.nbytes if hasattr(arr, "nbytes") else 0
-                    if size_bytes > oversized_threshold:
-                        gb_size = size_bytes / 1024**3
-                        warnings.append(
-                            {
-                                "code": "LARGE_ZARR_MATERIALIZATION",
-                                "message": (
-                                    f"Materializing large OME-Zarr array ({gb_size:.1f}GB). "
-                                    "This may consume significant memory."
-                                ),
-                            }
-                        )
-                    data = arr[:]
-                    break
+            physical_pixel_sizes = img.physical_pixel_sizes
         except Exception:
-            pass
+            physical_pixel_sizes = None
 
-    # Try BioImage for other formats
-    if data is None:
+        try:
+            channel_names = img.channel_names
+        except Exception:
+            channel_names = None
+
+    except Exception as e:
+        warnings.append(
+            {
+                "code": "BIOIMAGE_LOAD_FAILED",
+                "message": f"BioImage failed to load {in_path}: {e}. Using fallback.",
+            }
+        )
         data, fallback_warnings, _ = load_image_fallback(in_path)
         warnings.extend(fallback_warnings)
+        physical_pixel_sizes = None
+        channel_names = None
 
     out_path = work_dir / "export.ome.tiff"
     if out_path.exists():
@@ -191,7 +158,18 @@ def export_ome_tiff(*, inputs: dict, params: dict, work_dir: Path) -> dict:
         )
         data = data.astype(np.float64)
 
-    OmeTiffWriter.save(data, str(out_path), compression=compression)
+    # Ensure 5D TCZYX
+    while data.ndim < 5:
+        data = data[np.newaxis, ...]
+
+    OmeTiffWriter.save(
+        data,
+        str(out_path),
+        dim_order="TCZYX",
+        physical_pixel_sizes=physical_pixel_sizes,
+        channel_names=channel_names,
+        compression=compression,
+    )
     return {
         "outputs": {
             "output": {

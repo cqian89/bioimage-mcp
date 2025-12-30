@@ -21,7 +21,7 @@ Each tool pack (e.g., `tools/mytool`) requires:
 ### Steps
 1.  **Create the directory**: `tools/my_new_tool/`
 2.  **Create Manifest**: Write `manifest.yaml` defining your functions.
-3.  **Implement Functions**: Create the Python package and entrypoint. Functions should accept and return Artifact References.
+3.  **Implement Functions**: Create the Python package and entrypoint. Functions should accept and return Artifact References. See the [**Image Handling Guide**](image_handling.md) for standard I/O patterns.
 4.  **Tests**: Add contract tests in `tests/contract/` and unit tests in `tests/unit/`.
 
 ## Architecture Principles

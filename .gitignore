@@ -216,3 +216,8 @@ datasets/*/outputs/
 
 # Runtime artifacts
 artifacts/
+
+# Local scratch artifacts
+test.tif
+test_out.tif
+test_out2.tif

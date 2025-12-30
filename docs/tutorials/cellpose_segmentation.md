@@ -17,6 +17,14 @@ bioimage-mcp artifacts import ./data/cells.tif --type BioImageRef --format OME-T
 ```
 *Note the returned `ref_id` (e.g., `artifact-123...`).*
 
+## Image Loading and Standardization
+
+Cellpose segmentation in Bioimage-MCP uses the `bioio.BioImage` library for robust image loading. 
+
+*   **5D TCZYX Format**: Images are always loaded as a 5D array with dimensions (Time, Channel, Z, Y, X).
+*   **Automatic Squeezing**: Before being passed to the Cellpose model, the image is automatically squeezed to remove singleton dimensions (e.g., if Z=1, it is treated as a 2D image).
+*   **Format Compatibility**: This approach ensures consistent handling whether you are using OME-TIFF, standard TIFF, or other supported microscopy formats.
+
 ## Step 2: Run Segmentation
 
 You can run this via an MCP client or the Python API. Here is a Python example:

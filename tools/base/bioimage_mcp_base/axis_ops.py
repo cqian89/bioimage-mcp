@@ -75,12 +75,13 @@ class SwapAxesParams(AxisToolParams):
         return value
 
 
-def load_image(path: Path) -> np.ndarray:
+def load_image(path: Path, format_hint: str | None = None) -> np.ndarray:
     try:
-        from bioio import BioImage  # type: ignore
+        from bioimage_mcp_base.utils import get_bioimage
 
-        img = BioImage(str(path))
-        return img.get_image_data()  # type: ignore[attr-defined]
+        img = get_bioimage(str(path), format_hint=format_hint)
+        data = img.get_image_data()  # type: ignore[attr-defined]
+        return data.compute() if hasattr(data, "compute") else data
     except Exception:
         try:
             import tifffile
@@ -111,7 +112,8 @@ def relabel_axes(inputs: dict, params: dict, work_dir: Path) -> dict:
     if not uri:
         raise ValueError("Error in base.relabel_axes: Input 'image' must include uri")
 
-    data = load_image(uri_to_path(str(uri)))
+    format_hint = image_ref.get("format")
+    data = load_image(uri_to_path(str(uri)), format_hint=format_hint)
     metadata = image_ref.get("metadata") or {}
     axes = str(metadata.get("axes") or "")
 
@@ -172,7 +174,8 @@ def squeeze(inputs: dict, params: dict, work_dir: Path) -> dict:
     if not uri:
         raise ValueError("Error in base.squeeze: Input 'image' must include uri")
 
-    data = load_image(uri_to_path(str(uri)))
+    format_hint = image_ref.get("format")
+    data = load_image(uri_to_path(str(uri)), format_hint=format_hint)
     metadata = image_ref.get("metadata") or {}
     axes = str(metadata.get("axes") or "")
 
@@ -225,7 +228,8 @@ def expand_dims(inputs: dict, params: dict, work_dir: Path) -> dict:
     if not uri:
         raise ValueError("Error in base.expand_dims: Input 'image' must include uri")
 
-    data = load_image(uri_to_path(str(uri)))
+    format_hint = image_ref.get("format")
+    data = load_image(uri_to_path(str(uri)), format_hint=format_hint)
     metadata = image_ref.get("metadata") or {}
     axes = str(metadata.get("axes") or "")
 
@@ -273,7 +277,8 @@ def moveaxis(inputs: dict, params: dict, work_dir: Path) -> dict:
     if not uri:
         raise ValueError("Error in base.moveaxis: Input 'image' must include uri")
 
-    data = load_image(uri_to_path(str(uri)))
+    format_hint = image_ref.get("format")
+    data = load_image(uri_to_path(str(uri)), format_hint=format_hint)
     metadata = image_ref.get("metadata") or {}
     axes = str(metadata.get("axes") or "")
 
@@ -317,7 +322,8 @@ def swap_axes(inputs: dict, params: dict, work_dir: Path) -> dict:
     if not uri:
         raise ValueError("Error in base.swap_axes: Input 'image' must include uri")
 
-    data = load_image(uri_to_path(str(uri)))
+    format_hint = image_ref.get("format")
+    data = load_image(uri_to_path(str(uri)), format_hint=format_hint)
     metadata = image_ref.get("metadata") or {}
     axes = str(metadata.get("axes") or "")
 

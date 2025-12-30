@@ -28,3 +28,4 @@ Bioimage-MCP bridges the gap between Large Language Models (LLMs) and complex bi
 ## Developer
 
 *   [**Contributing**](developer/contributing.md): How to add new tools and contribute to the project.
+*   [**Image Handling**](developer/image_handling.md): Standard practices for image I/O and metadata access.

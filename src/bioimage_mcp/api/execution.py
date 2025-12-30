@@ -95,6 +95,7 @@ def _materialize_zarr_to_file(
 
     img = bioio.BioImage(str(path))
     data = img.data
+    data = data.compute() if hasattr(data, "compute") else data
     axes = img.dims.order
 
     ref_id = artifact_ref.get("ref_id", "materialized")

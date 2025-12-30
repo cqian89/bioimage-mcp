@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
@@ -9,12 +10,51 @@ from bioimage_mcp.api.schemas import FunctionHints
 from bioimage_mcp.registry.dynamic.models import IOPattern
 
 
+class InterchangeFormat(StrEnum):
+    """Canonical interchange formats for bioimaging data."""
+
+    OME_TIFF = "OME-TIFF"
+    OME_ZARR = "OME-Zarr"
+
+
+def validate_interchange_format(value: str | None, artifact_type: str | None = None) -> str | None:
+    """Validate and canonicalize interchange format.
+
+    If artifact_type is provided, validation only applies to image types.
+    """
+    if value is None:
+        return None
+
+    # Only validate format for image artifact types if artifact_type is known
+    if artifact_type is not None and artifact_type not in (
+        "BioImageRef",
+        "LabelImageRef",
+    ):
+        return value
+
+    try:
+        # Validate against InterchangeFormat enum
+        return InterchangeFormat(value).value
+    except ValueError:
+        valid_values = [f.value for f in InterchangeFormat]
+        suffix = f" for artifact_type '{artifact_type}'" if artifact_type else ""
+        raise ValueError(
+            f"Invalid format '{value}'{suffix}. Must be one of: {', '.join(valid_values)}"
+        ) from None
+
+
 class Port(BaseModel):
     name: str
     artifact_type: str
     description: str | None = None
     format: str | None = None
     required: bool = True
+
+    @model_validator(mode="after")
+    def _validate_format_for_image_types(self) -> Port:
+        """Only validate format for image artifact types."""
+        self.format = validate_interchange_format(self.format, self.artifact_type)
+        return self
 
 
 class Function(BaseModel):

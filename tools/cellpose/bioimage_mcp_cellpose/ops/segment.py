@@ -63,8 +63,27 @@ def run_segment(
             f"Please convert to OME-TIFF first. Got format: {image_ref.get('format')}"
         )
 
-    # Load image
-    img = tifffile.imread(str(image_path))
+    # Load image (T025)
+    from bioio import BioImage
+
+    # Robust reader selection for OME-TIFF (especially extensionless artifacts)
+    reader = None
+    if input_format == "ome-tiff":
+        try:
+            import bioio_ome_tiff
+
+            reader = bioio_ome_tiff.Reader
+        except ImportError:
+            pass
+
+    bio_img = BioImage(image_path, reader=reader)
+    img_data = bio_img.data
+    img_data = img_data.compute() if hasattr(img_data, "compute") else img_data  # 5D TCZYX
+
+    # Handle 5D normalization (T026)
+    # Squeeze singleton dimensions for cellpose
+    # Cellpose expects (Y, X) or (Z, Y, X) or (C, Y, X) or (Z, C, Y, X)
+    img = np.squeeze(img_data)
 
     # Extract parameters with defaults
     model_type = params.get("model_type", "cyto3")
@@ -72,6 +91,7 @@ def run_segment(
     flow_threshold = params.get("flow_threshold", 0.4)
     cellprob_threshold = params.get("cellprob_threshold", 0.0)
     do_3d = params.get("do_3D", False)
+    channels = params.get("channels", [0, 0])
 
     # Handle diameter=0 or None as "auto-estimate"
     if diameter is None or diameter == 0:
@@ -89,6 +109,7 @@ def run_segment(
         flow_threshold=flow_threshold,
         cellprob_threshold=cellprob_threshold,
         do_3D=do_3d,
+        channels=channels,
     )
 
     # Handle different return signatures

@@ -210,6 +210,23 @@ Cellpose environment:
 3. Write contract test in `tests/contract/`
 4. Write unit test (TDD: write failing test first)
 
+### Standard BioImage Loading Pattern
+When implementing image processing functions, use `bioio.BioImage` for consistent 5D TCZYX data access:
+
+```python
+from bioio import BioImage
+
+img = BioImage(path)
+data = img.data  # Always 5D TCZYX
+pixel_sizes = img.physical_pixel_sizes  # (Z, Y, X) in microns
+channels = img.channel_names  # List of channel names
+```
+
+This ensures:
+- Consistent handling of all supported formats (OME-TIFF, CZI, LIF, etc.)
+- Normalized 5D axis ordering (Time, Channel, Z, Y, X)
+- Access to physical metadata for downstream processing
+
 ### Running a workflow end-to-end
 ```bash
 # Ensure environments are installed

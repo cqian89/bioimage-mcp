@@ -144,11 +144,14 @@ def extract_image_metadata(path: Path) -> dict:
         return {}
 
     dims = getattr(image, "dims", None)
+    axes = getattr(image, "axes", None)
+    if not axes and dims and hasattr(dims, "order"):
+        axes = dims.order
     axes_inferred = not bool(dims)
 
     # Keep this intentionally minimal and JSON-serializable.
     meta: dict = {
-        "axes": getattr(image, "axes", None) or "",
+        "axes": axes or "",
         "shape": list(getattr(image, "shape", ()) or ()),
         "dtype": str(getattr(image, "dtype", "")),
         "axes_inferred": axes_inferred,

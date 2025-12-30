@@ -10,11 +10,14 @@ channels:
   - defaults
 
 dependencies:
-  - python=3.10
+  - python=3.11
   - pip
   - numpy>=1.20
   - scipy
   - tifffile
+  # Standard image I/O
+  - bioio
+  - bioio-ome-tiff
   # Use conda pytorch-cpu to avoid CUDA dependency resolution issues
   - pytorch>=2.0
   - cpuonly

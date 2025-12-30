@@ -8,6 +8,14 @@ This guide demonstrates how to perform Phasor analysis on Fluorescence Lifetime 
 *   Base environment installed (`bioimage-mcp install --profile cpu`).
 *   A FLIM dataset in OME-TIFF format (must have a time/bin dimension).
 
+## Data Preparation and Format
+
+FLIM phasor analysis is highly sensitive to metadata and pixel dimensions. To ensure accurate results, the following guidelines should be followed:
+
+*   **OME-TIFF Requirement**: The analysis tools specifically require the OME-TIFF format to correctly interpret time-resolved or binned FLIM data.
+*   **Converting Proprietary Formats**: If your data is in a proprietary format (e.g., Zeiss `.czi`, Leica `.lif`, Nikon `.nd2`), you must convert it to OME-TIFF first using the `base.wrapper.io.export_ome_tiff` tool.
+*   **Metadata Preservation**: Using `base.wrapper.io.export_ome_tiff` ensures that critical metadata (like voxel sizes and time-binning information) and all dimensions are preserved during the conversion process.
+
 ## Step 1: Compute Phasor Maps
 
 The `base.phasor_from_flim` tool converts time-resolved data into phasor coordinates (G and S) and an intensity image.

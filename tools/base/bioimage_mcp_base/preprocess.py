@@ -17,7 +17,8 @@ def normalize_intensity(*, inputs: dict, params: dict, work_dir: Path) -> Path:
     pmax = float(params.get("pmax", 99.8))
     clip = bool(params.get("clip", True))
 
-    data = load_image(uri_to_path(str(uri))).astype("float32")
+    format_hint = image_ref.get("format")
+    data = load_image(uri_to_path(str(uri)), format_hint=format_hint).astype("float32")
     vmin, vmax = np.percentile(data, (pmin, pmax))
     scaled = (data - vmin) / (vmax - vmin) if vmax != vmin else data
     if clip:
@@ -45,12 +46,14 @@ def _load_image_with_axes(image_ref: dict) -> tuple[np.ndarray, str]:
         raise ValueError("Input must be an OME-TIFF (.tif/.tiff) file")
 
     try:
-        from bioio import BioImage  # type: ignore
+        from bioimage_mcp_base.utils import get_bioimage
     except Exception as exc:
         raise RuntimeError("Missing dependencies for denoise_image") from exc
 
-    img = BioImage(str(path))
+    img = get_bioimage(str(path), format_hint=fmt)
     data = img.get_image_data()  # type: ignore[attr-defined]
+    if hasattr(data, "compute"):
+        data = data.compute()
     axes = (image_ref.get("metadata") or {}).get("axes", "")
     if not axes:
         axes = getattr(img, "axes", "") or getattr(getattr(img, "dims", None), "order", "")
