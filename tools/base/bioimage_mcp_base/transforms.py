@@ -7,12 +7,12 @@ from typing import Any
 
 import numpy as np
 from bioimage_mcp_base.utils import (
-    get_bioimage,
     load_image,
     resolve_axis,
     save_zarr,
     uri_to_path,
 )
+from bioio import BioImage
 
 
 class ToolInputError(ValueError):
@@ -53,8 +53,8 @@ def flip(*, inputs: dict, params: dict, work_dir: Path) -> Path:
     if axis is None:
         raise ValueError("'axis' is required")
 
-    format_hint = image_ref.get("format")
-    data = load_image(uri_to_path(str(uri)), format_hint=format_hint)
+    image_ref.get("format")
+    data = load_image(uri_to_path(str(uri)))
     idx = resolve_axis(axis, data.ndim)
     flipped = np.flip(data, axis=idx)
     return save_zarr(flipped, work_dir, "flipped.ome.zarr")
@@ -71,8 +71,8 @@ def crop(*, inputs: dict, params: dict, work_dir: Path) -> Path:
     if start is None or stop is None:
         raise ValueError("'start' and 'stop' are required")
 
-    format_hint = image_ref.get("format")
-    data = load_image(uri_to_path(str(uri)), format_hint=format_hint)
+    image_ref.get("format")
+    data = load_image(uri_to_path(str(uri)))
     if len(start) != data.ndim or len(stop) != data.ndim:
         raise ValueError("'start' and 'stop' must match image dimensions")
 
@@ -94,8 +94,8 @@ def pad(*, inputs: dict, params: dict, work_dir: Path) -> Path:
     mode = params.get("mode", "constant")
     constant_values = params.get("constant_values", 0)
 
-    format_hint = image_ref.get("format")
-    data = load_image(uri_to_path(str(uri)), format_hint=format_hint)
+    image_ref.get("format")
+    data = load_image(uri_to_path(str(uri)))
     padded = np.pad(data, pad_width=pad_width, mode=mode, constant_values=constant_values)
     return save_zarr(padded, work_dir, "padded.ome.zarr")
 
@@ -109,8 +109,8 @@ def project_sum(*, inputs: dict, params: dict, work_dir: Path) -> Path:
     axis = params.get("axis", 0)
     path = uri_to_path(str(uri))
     _assert_read_allowed(path)
-    format_hint = image_ref.get("format")
-    data = load_image(path, format_hint=format_hint)
+    image_ref.get("format")
+    data = load_image(path)
     idx = resolve_axis(axis, data.ndim)
     projected = np.sum(data, axis=idx)
     return save_zarr(projected, work_dir, "project_sum.ome.zarr")
@@ -123,8 +123,8 @@ def project_max(*, inputs: dict, params: dict, work_dir: Path) -> Path:
         raise ValueError("Input 'image' must include uri")
 
     axis = params.get("axis", 0)
-    format_hint = image_ref.get("format")
-    data = load_image(uri_to_path(str(uri)), format_hint=format_hint)
+    image_ref.get("format")
+    data = load_image(uri_to_path(str(uri)))
     idx = resolve_axis(axis, data.ndim)
     projected = np.max(data, axis=idx)
     return save_zarr(projected, work_dir, "project_max.ome.zarr")
@@ -202,8 +202,8 @@ def _load_flim_data(image_ref: dict) -> tuple[np.ndarray, str, dict, int, list[d
     used_tifffile_fallback = False
 
     try:
-        img = get_bioimage(str(path), format_hint=image_ref.get("format"))
-        data = img.get_image_data()  # type: ignore[attr-defined]
+        img = BioImage(str(path))
+        data = img.data
         if hasattr(data, "compute"):
             data = data.compute()
         axes = getattr(img, "axes", "") or getattr(getattr(img, "dims", None), "order", "")
@@ -545,8 +545,8 @@ def phasor_calibrate(*, inputs: dict, params: dict, work_dir: Path) -> dict[str,
     sample_path = uri_to_path(str(sample_uri))
     ref_path = uri_to_path(str(ref_uri))
 
-    sample_data = np.squeeze(load_image(sample_path, format_hint=sample_ref.get("format")))
-    ref_data = np.squeeze(load_image(ref_path, format_hint=ref_ref.get("format")))
+    sample_data = np.squeeze(load_image(sample_path))
+    ref_data = np.squeeze(load_image(ref_path))
 
     if sample_data.ndim != 3:
         raise ValueError(

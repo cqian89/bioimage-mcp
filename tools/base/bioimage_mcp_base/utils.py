@@ -24,18 +24,6 @@ def uri_to_path(uri: str) -> Path:
     return Path(uri)
 
 
-def get_bioimage(path: str | Path, format_hint: str | None = None) -> BioImage:
-    """Get a BioImage object, optionally with a format hint for extensionless files."""
-    if format_hint and format_hint.upper() == "OME-TIFF":
-        try:
-            import bioio_ome_tiff
-
-            return BioImage(path, reader=bioio_ome_tiff.Reader)
-        except ImportError:
-            pass
-    return BioImage(path)
-
-
 def load_image_fallback(
     path: Path, format_hint: str | None = None
 ) -> tuple[np.ndarray, list[dict[str, str]], str]:
@@ -44,7 +32,7 @@ def load_image_fallback(
 
     warnings: list[dict[str, str]] = []
     try:
-        img = get_bioimage(path, format_hint=format_hint)
+        img = BioImage(path)
         data = img.data
         data = data.compute() if hasattr(data, "compute") else data
         return data, warnings, "bioio"
@@ -89,13 +77,36 @@ def load_image_with_warnings(
 
 
 def save_zarr(data: np.ndarray, work_dir: Path, name: str) -> Path:
-    import zarr
+    """Save array as OME-Zarr."""
+    try:
+        from bioio_ome_zarr.writers import OMEZarrWriter
+    except ImportError:
+        import zarr
+
+        out_dir = work_dir / name
+        if out_dir.exists():
+            raise FileExistsError(out_dir) from None
+        root = zarr.open_group(str(out_dir), mode="w")
+        root.create_array("0", data=data, chunks=data.shape)
+        return out_dir
 
     out_dir = work_dir / name
     if out_dir.exists():
         raise FileExistsError(out_dir)
-    root = zarr.open_group(str(out_dir), mode="w")
-    root.create_array("0", data=data, chunks=data.shape)
+
+    # Ensure 5D for OMEZarrWriter
+    data_5d = data
+    while data_5d.ndim < 5:
+        data_5d = data_5d[np.newaxis, ...]
+
+    full_shape = data_5d.shape
+    writer = OMEZarrWriter(
+        store=str(out_dir),
+        level_shapes=[full_shape],
+        dtype=data_5d.dtype,
+        zarr_format=2,
+    )
+    writer.write_full_volume(data_5d)
     return out_dir
 
 

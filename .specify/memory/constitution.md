@@ -1,7 +1,7 @@
 <!--
 Sync Impact Report
-- Version change: 0.6.0 -> 0.7.0
-- Principles updated: Section III (Artifact References Only) updated with bioio architectural decision.
+- Version change: 0.7.0 -> 0.8.0
+- Principles updated: Section III (Artifact References Only) updated with bioio architectural decision and I/O standard.
 - Added sections: None
 - Removed sections: None
 - Templates requiring updates: None
@@ -62,6 +62,10 @@ Non-negotiables:
 Rationale: Reference-based I/O enables scale (large volumes), allows replay/debugging,
 and prevents protocol-level context bloat. Using `bioio` as the standard layer ensures 
 consistent 5D TCZYX normalization, metadata preservation, and reduces custom converter code.
+
+- Tool implementations MUST use `bioio.BioImage` for reading and `bioio.writers.*` 
+  (e.g., `OmeTiffWriter`, `OMEZarrWriter`) for writing. Custom I/O wrapper functions 
+  SHOULD NOT be created as they bypass plugin auto-detection and cause compatibility issues.
 
 ### IV. Reproducibility & Provenance (Record + Replay)
 The system MUST make analysis runs reproducible and auditable.
@@ -184,4 +188,4 @@ Compliance expectations:
 - Exceptions MUST be documented in the plan with rationale and mitigation, and MUST
   be approved in review.
 
-**Version**: 0.7.0 | **Ratified**: 2025-12-26 | **Last Amended**: 2025-12-29
+**Version**: 0.8.0 | **Ratified**: 2025-12-26 | **Last Amended**: 2025-12-30

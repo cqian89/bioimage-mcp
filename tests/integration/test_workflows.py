@@ -141,19 +141,19 @@ def test_flim_phasor_golden_path(mcp_test_client, sample_flim_image) -> None:
         pytest.skip(f"Missing FLIM dataset at {sample_path}")
 
     mcp_test_client.activate_functions(
-        ["base.wrapper.axis.relabel_axes", "base.wrapper.phasor.phasor_from_flim"]
+        ["base.wrapper.axis.swap_axes", "base.wrapper.phasor.phasor_from_flim"]
     )
 
-    relabeled = mcp_test_client.call_tool(
-        fn_id="base.wrapper.axis.relabel_axes",
+    swapped = mcp_test_client.call_tool(
+        fn_id="base.wrapper.axis.swap_axes",
         inputs={"image": sample_flim_image},
-        params={"axis_mapping": {"Z": "T", "T": "Z"}},
+        params={"axis1": "Z", "axis2": "T"},
     )
-    relabeled_output = _coerce_output_ref(relabeled["outputs"])
+    swapped_output = _coerce_output_ref(swapped["outputs"])
 
     phasor = mcp_test_client.call_tool(
         fn_id="base.wrapper.phasor.phasor_from_flim",
-        inputs={"dataset": relabeled_output},
+        inputs={"dataset": swapped_output},
         params={"harmonic": 1},
     )
     outputs = phasor["outputs"]

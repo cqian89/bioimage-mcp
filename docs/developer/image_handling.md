@@ -105,3 +105,50 @@ Ensure your `manifest.yaml` uses the canonical `OME-TIFF` or `OME-Zarr` format v
 
 ### 4. Use physical units
 Instead of assuming pixel units, check `img.physical_pixel_sizes` and use them in your calculations to ensure your tool works correctly across different datasets.
+
+## Anti-Patterns to Avoid
+
+### ❌ Don't Create I/O Wrapper Functions
+
+BioImage auto-detects formats correctly when plugins are installed. Custom wrappers that force specific readers cause compatibility issues:
+
+```python
+# BAD - Don't do this
+def get_bioimage(path, format_hint=None):
+    if format_hint == "OME-TIFF":
+        return BioImage(path, reader=bioio_ome_tiff.Reader)
+    return BioImage(path)
+
+# GOOD - Use BioImage directly
+img = BioImage(path)  # Auto-detects format
+```
+
+### ❌ Don't Use Raw Zarr for OME-Zarr Output
+
+Raw zarr stores lack OME-Zarr multiscales metadata and aren't readable by compliant tools:
+
+```python
+# BAD - Creates invalid OME-Zarr
+import zarr
+root = zarr.open_group(out_dir, mode="w")
+root.create_array("0", data=data)
+
+# GOOD - Use bioio-ome-zarr writer
+from bioio_ome_zarr.writers import OMEZarrWriter
+writer = OMEZarrWriter(store=out_dir, level_shapes=[data.shape], dtype=data.dtype)
+writer.write_full_volume(data)
+```
+
+### ❌ Don't Use tifffile or skimage.io for Artifacts
+
+These libraries don't preserve OME metadata or ensure consistent 5D normalization:
+
+```python
+# BAD - Loses metadata, no dimension normalization
+import tifffile
+data = tifffile.imread(path)
+
+# GOOD - Consistent 5D TCZYX, preserves metadata  
+from bioio import BioImage
+data = BioImage(path).data
+```

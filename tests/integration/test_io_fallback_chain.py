@@ -58,9 +58,9 @@ class TestIOFallbackChain:
         test_path = tmp_path / "test.tif"
         tifffile.imwrite(str(test_path), test_data)
 
-        # Mock get_bioimage to fail
-        with patch("bioimage_mcp_base.utils.get_bioimage") as mock_get_bioimage:
-            mock_get_bioimage.side_effect = Exception("BioImage error")
+        # Mock BioImage to fail
+        with patch("bioimage_mcp_base.utils.BioImage") as mock_bioimage:
+            mock_bioimage.side_effect = Exception("BioImage error")
 
             data, warnings, reader_used = load_image_fallback(test_path)
 

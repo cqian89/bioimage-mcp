@@ -4,8 +4,9 @@ import os
 from pathlib import Path
 
 import numpy as np
+from bioimage_mcp_base.utils import load_image_fallback, uri_to_path
+from bioio import BioImage
 from bioio.writers import OmeTiffWriter
-from bioimage_mcp_base.utils import get_bioimage, load_image_fallback, uri_to_path
 
 __all__ = [
     "convert_to_ome_zarr",
@@ -46,14 +47,15 @@ def convert_to_ome_zarr(*, inputs: dict, params: dict, work_dir: Path) -> Path:
         raise ValueError("Input 'image' must include uri")
 
     in_path = uri_to_path(str(uri))
-    format_hint = image_ref.get("format") if isinstance(image_ref, dict) else None
 
+    # Try to import bioio_ome_zarr writer - if import fails, raise RuntimeError
     try:
-        import zarr
-    except Exception as exc:
-        raise RuntimeError("Missing dependencies for convert_to_ome_zarr") from exc
+        from bioio_ome_zarr.writers import OMEZarrWriter
+    except ImportError as exc:
+        raise RuntimeError("Missing 'bioio-ome-zarr' dependency for OME-Zarr export") from exc
 
-    img = get_bioimage(str(in_path), format_hint=format_hint)
+    # Use BioImage directly for auto-detection
+    img = BioImage(str(in_path))
     data = img.data
     data = data.compute() if hasattr(data, "compute") else data
 
@@ -61,8 +63,18 @@ def convert_to_ome_zarr(*, inputs: dict, params: dict, work_dir: Path) -> Path:
     if out_dir.exists():
         raise FileExistsError(out_dir)
 
-    root = zarr.open_group(str(out_dir), mode="w")
-    root.create_array("0", data=data, chunks=data.shape)
+    # Use bioio-ome-zarr writer for spec-compliant output
+    # Data is 5D TCZYX, level_shapes must match data rank
+    full_shape = data.shape
+
+    writer = OMEZarrWriter(
+        store=str(out_dir),
+        level_shapes=[full_shape],
+        dtype=data.dtype,
+        zarr_format=2,  # OME-Zarr 0.4 uses Zarr v2
+    )
+    writer.write_full_volume(data)
+
     return out_dir
 
 
@@ -77,14 +89,13 @@ def export_ome_tiff(*, inputs: dict, params: dict, work_dir: Path) -> dict:
         raise ValueError("Input 'image' must include uri")
 
     in_path = uri_to_path(str(uri))
-    format_hint = image_ref.get("format") if isinstance(image_ref, dict) else None
     compression = params.get("compression")
 
     warnings: list[dict[str, str]] = []
     oversized_threshold = _get_oversized_input_threshold_bytes()
 
     try:
-        img = get_bioimage(in_path, format_hint=format_hint)
+        img = BioImage(in_path)
         data = img.data
 
         # Check size before full materialization

@@ -1,14 +1,13 @@
 - test_name: "flim_phasor_golden_path"
-  description: "End-to-end FLIM phasor workflow with axis relabeling"
+  description: "End-to-end FLIM phasor workflow with axis swapping"
   steps:
     - step_id: "fix_axes"
-      fn_id: "base.wrapper.axis.relabel_axes"
+      fn_id: "base.wrapper.axis.swap_axes"
       inputs:
         image: "datasets/FLUTE_FLIM_data_tif/Embryo.tif"
       params:
-        axis_mapping:
-          Z: "T"
-          T: "Z"
+        axis1: "Z"
+        axis2: "T"
       assertions:
         - type: "output_type"
           value: "BioImageRef"

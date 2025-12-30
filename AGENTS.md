@@ -227,6 +227,27 @@ This ensures:
 - Normalized 5D axis ordering (Time, Channel, Z, Y, X)
 - Access to physical metadata for downstream processing
 
+### Standard BioImage Writing Pattern
+When writing image artifacts, use bioio writers directly:
+
+**Writing OME-TIFF**:
+```python
+from bioio.writers import OmeTiffWriter
+OmeTiffWriter.save(data, path, dim_order="TCZYX")
+```
+
+**Writing OME-Zarr**:
+```python
+from bioio_ome_zarr.writers import OMEZarrWriter
+writer = OMEZarrWriter(store=path, level_shapes=[data.shape], dtype=data.dtype)
+writer.write_full_volume(data)
+```
+
+**Anti-patterns to avoid**:
+- ❌ Do NOT create custom I/O wrapper functions around BioImage
+- ❌ Do NOT use raw `zarr.open_group()` for OME-Zarr output
+- ❌ Do NOT use `tifffile` or `skimage.io` for artifact I/O
+
 ### Running a workflow end-to-end
 ```bash
 # Ensure environments are installed

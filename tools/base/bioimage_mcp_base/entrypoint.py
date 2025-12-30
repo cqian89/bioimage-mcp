@@ -16,8 +16,8 @@ if str(REPO_ROOT / "src") not in sys.path:
 if str(TOOLS_ROOT) not in sys.path:
     sys.path.insert(0, str(TOOLS_ROOT))
 
-from bioimage_mcp_base import descriptions as desc  # noqa: E402
-from bioimage_mcp_base.wrapper import (  # noqa: E402
+from bioimage_mcp_base import descriptions as desc  # noqa: I001, E402
+from bioimage_mcp_base.wrapper import (  # noqa: I001, E402
     axis as axis_wrappers,
     denoise as denoise_wrappers,
     edge_cases as edge_wrappers,
@@ -93,7 +93,9 @@ LEGACY_REDIRECTS = {
     "base.bioimage_mcp_base.axis_ops.expand_dims": "base.wrapper.axis.expand_dims",
     "base.bioimage_mcp_base.axis_ops.moveaxis": "base.wrapper.axis.moveaxis",
     "base.bioimage_mcp_base.axis_ops.swap_axes": "base.wrapper.axis.swap_axes",
-    "base.bioimage_mcp_base.preprocess.normalize_intensity": "base.wrapper.preprocess.normalize_intensity",
+    "base.bioimage_mcp_base.preprocess.normalize_intensity": (
+        "base.wrapper.preprocess.normalize_intensity"
+    ),
     "base.bioimage_mcp_base.transforms.phasor_from_flim": "base.wrapper.phasor.phasor_from_flim",
     "base.bioimage_mcp_base.preprocess.denoise_image": "base.wrapper.denoise.denoise_image",
     "base.bioimage_mcp_base.transforms.phasor_calibrate": "base.wrapper.phasor.phasor_calibrate",

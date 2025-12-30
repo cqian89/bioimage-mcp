@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-from bioimage_mcp_base.utils import load_image, resolve_axis, save_zarr, uri_to_path
+from bioimage_mcp_base.utils import load_image, save_zarr, uri_to_path
 
 
 def normalize_intensity(*, inputs: dict, params: dict, work_dir: Path) -> Path:
@@ -17,8 +17,8 @@ def normalize_intensity(*, inputs: dict, params: dict, work_dir: Path) -> Path:
     pmax = float(params.get("pmax", 99.8))
     clip = bool(params.get("clip", True))
 
-    format_hint = image_ref.get("format")
-    data = load_image(uri_to_path(str(uri)), format_hint=format_hint).astype("float32")
+    image_ref.get("format")
+    data = load_image(uri_to_path(str(uri))).astype("float32")
     vmin, vmax = np.percentile(data, (pmin, pmax))
     scaled = (data - vmin) / (vmax - vmin) if vmax != vmin else data
     if clip:
@@ -46,12 +46,12 @@ def _load_image_with_axes(image_ref: dict) -> tuple[np.ndarray, str]:
         raise ValueError("Input must be an OME-TIFF (.tif/.tiff) file")
 
     try:
-        from bioimage_mcp_base.utils import get_bioimage
+        from bioio import BioImage
     except Exception as exc:
         raise RuntimeError("Missing dependencies for denoise_image") from exc
 
-    img = get_bioimage(str(path), format_hint=fmt)
-    data = img.get_image_data()  # type: ignore[attr-defined]
+    img = BioImage(str(path))
+    data = img.data
     if hasattr(data, "compute"):
         data = data.compute()
     axes = (image_ref.get("metadata") or {}).get("axes", "")

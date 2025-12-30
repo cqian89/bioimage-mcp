@@ -43,8 +43,8 @@ def test_load_image_fallback_records_warnings(tmp_path: Path) -> None:
     tifffile.imwrite(str(test_path), test_data)
 
     # Force fallback to tifffile
-    with patch("bioimage_mcp_base.utils.get_bioimage") as mock_get_bioimage:
-        mock_get_bioimage.side_effect = Exception("BioImage error")
+    with patch("bioimage_mcp_base.utils.BioImage") as mock_bioimage:
+        mock_bioimage.side_effect = Exception("BioImage error")
 
         data, warnings, reader = load_image_fallback(test_path)
 
