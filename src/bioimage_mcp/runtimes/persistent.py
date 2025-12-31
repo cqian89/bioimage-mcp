@@ -21,6 +21,14 @@ class WorkerSession(BaseModel):
 
 
 class PersistentWorkerManager:
+    """Manages persistent worker processes for tools.
+
+    NOTE: In the current iteration (T016), this manager tracks worker state and
+    artifact ownership, but actual process reuse is planned for a future iteration.
+    For now, each step still spawns a new process, but the manager provides the
+    infrastructure for memory artifact tracking that persists across these calls.
+    """
+
     def __init__(self, memory_store: MemoryArtifactStore | None = None) -> None:
         self._workers: Dict[Tuple[str, str], WorkerSession] = {}
         self._lock = threading.Lock()

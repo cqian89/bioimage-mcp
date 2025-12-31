@@ -362,6 +362,10 @@ class ExecutionService:
                 mem_ref = self._memory_store.get(input_ref["ref_id"])
                 if mem_ref:
                     resolved = mem_ref.model_dump()
+                    # Use simulated file path for tool input (T016 Fix)
+                    simulated_path = mem_ref.metadata.get("_simulated_path")
+                    if simulated_path:
+                        resolved["uri"] = f"file://{simulated_path}"
                     resolved.update(input_ref)
                     inputs[input_name] = resolved
                     continue
