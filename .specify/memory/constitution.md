@@ -1,7 +1,7 @@
 <!--
 Sync Impact Report
-- Version change: 0.7.0 -> 0.8.0
-- Principles updated: Section III (Artifact References Only) updated with bioio architectural decision and I/O standard.
+- Version change: 0.8.0 -> 0.8.1
+- Principles updated: Section III (Artifact References Only) clarified for negotiated cross-env materialization (source export, target import).
 - Added sections: None
 - Removed sections: None
 - Templates requiring updates: None
@@ -53,6 +53,12 @@ Non-negotiables:
   their declared interchange format (e.g., `bioio-ome-tiff` for OME-TIFF environments).
 - Each tool environment declares its preferred interchange format in its manifest. The 
   MCP server ensures format compatibility before dispatching.
+- In-memory (managed session memory) artifacts are permitted for tool chaining within a single tool environment, provided they are addressable via a stable Reference URI.
+- When artifacts cross tool environments, the target tool environment declares the required interchange format via manifest defaults and per-function overrides (default: OME-TIFF unless otherwise declared).
+- The source tool environment MUST export/materialize the artifact to the negotiated file-backed interchange format (OME-TIFF/OME-Zarr) using `bioio` readers/writers and the required plugins.
+- The target tool environment MUST import the negotiated format using `bioio` readers/plugins and MAY re-materialize to managed session memory for same-env chaining.
+- The core server environment MUST remain free of heavy or fragile format stacks; it coordinates negotiation and dispatch only.
+
 - Interchange formats SHOULD be OME-TIFF (single-file portability) or OME-Zarr 
   (chunked cloud-native). The choice is per-environment based on tool requirements.
 - Artifact references MUST carry enough metadata to validate I/O compatibility
@@ -188,4 +194,4 @@ Compliance expectations:
 - Exceptions MUST be documented in the plan with rationale and mitigation, and MUST
   be approved in review.
 
-**Version**: 0.8.0 | **Ratified**: 2025-12-26 | **Last Amended**: 2025-12-30
+**Version**: 0.8.1 | **Ratified**: 2025-12-26 | **Last Amended**: 2025-12-31

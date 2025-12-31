@@ -1,0 +1,41 @@
+# io-bridge-schema.yaml
+# Schema for automatic format conversion (replaces base.wrapper.io.*)
+
+# This is a server-coordinated capability, not an MCP tool.
+# Cross-env handoff is negotiated: the target env declares required interchange format
+# (default OME-TIFF unless otherwise declared), the source env exports/materializes via bioio,
+# and the target env imports via bioio (may re-materialize to mem:// for same-env chaining).
+
+format_conversion:
+  supported_sources:
+    - OME-TIFF
+    - OME-Zarr
+    - CZI (via bioio-czi)
+    - LIF (via bioio-lif)
+    - ND2 (via bioio-nd2)
+  
+  supported_targets:
+    - OME-TIFF
+    - OME-Zarr
+  
+  converters:
+    to_ome_tiff:
+      writer: bioio.writers.OmeTiffWriter
+      params:
+        dim_order: auto  # Preserve from source
+        compression: zlib
+    
+    to_ome_zarr:
+      writer: bioio_ome_zarr.writers.OMEZarrWriter
+      params:
+        chunks: auto
+
+provenance_record:
+  type: object
+  properties:
+    source_ref_id: string
+    target_ref_id: string
+    source_format: string
+    target_format: string
+    converter: string
+    timestamp: string (ISO 8601)

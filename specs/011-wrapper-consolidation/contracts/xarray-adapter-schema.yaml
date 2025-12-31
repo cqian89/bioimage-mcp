@@ -1,0 +1,248 @@
+# xarray-adapter-schema.yaml
+# Schema for the curated `base.xarray.*` tool surface that replaces base.wrapper.* axis/transform wrappers.
+#
+# Notes:
+# - Each function is a separate MCP tool (no `base.xarray.operate`).
+# - Default outputs are managed session-memory artifacts (`mem://...`) for same-env chaining.
+# - Cross-environment handoff is negotiated and materialized to file-backed OME-TIFF/OME-Zarr.
+
+tool_id: base.xarray
+name: xarray Data Adapter
+description: Allowlisted axis/transform operations via xarray.DataArray methods (default mem:// outputs)
+
+functions:
+  - fn_id: base.xarray.rename
+    name: Rename dimensions
+    description: Rename dimension labels (e.g., Z -> T) while preserving metadata.
+    tags: [image, axes, xarray]
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+        description: Input image artifact (file-backed or mem://)
+    outputs:
+      - name: output
+        artifact_type: BioImageRef
+        storage: memory
+        uri_scheme: mem
+        required: true
+        description: Memory-backed transformed artifact (mem://)
+    params_schema:
+      type: object
+      required: [mapping]
+      properties:
+        mapping:
+          type: object
+          additionalProperties:
+            type: string
+          description: Map of old_dim -> new_dim
+      examples:
+        - mapping: {"Z": "T"}
+
+  - fn_id: base.xarray.squeeze
+    name: Squeeze singleton dimensions
+    description: Remove singleton dimensions.
+    tags: [image, axes, xarray]
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+        description: Input image artifact (file-backed or mem://)
+    outputs:
+      - name: output
+        artifact_type: BioImageRef
+        storage: memory
+        uri_scheme: mem
+        required: true
+        description: Memory-backed transformed artifact (mem://)
+    params_schema:
+      type: object
+      properties:
+        dim:
+          type: string
+          description: Optional dimension name to squeeze; if omitted, squeeze all singleton dims.
+      examples:
+        - {}
+        - dim: "C"
+
+  - fn_id: base.xarray.expand_dims
+    name: Expand dimensions
+    description: Add a new dimension.
+    tags: [image, axes, xarray]
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+        description: Input image artifact (file-backed or mem://)
+    outputs:
+      - name: output
+        artifact_type: BioImageRef
+        storage: memory
+        uri_scheme: mem
+        required: true
+        description: Memory-backed transformed artifact (mem://)
+    params_schema:
+      type: object
+      required: [dim]
+      properties:
+        dim:
+          type: string
+          description: Dimension name to add
+        axis:
+          type: integer
+          description: Optional insertion index
+      examples:
+        - dim: "C"
+          axis: 1
+
+  - fn_id: base.xarray.transpose
+    name: Transpose dimensions
+    description: Reorder dimensions.
+    tags: [image, axes, xarray]
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+        description: Input image artifact (file-backed or mem://)
+    outputs:
+      - name: output
+        artifact_type: BioImageRef
+        storage: memory
+        uri_scheme: mem
+        required: true
+        description: Memory-backed transformed artifact (mem://)
+    params_schema:
+      type: object
+      required: [dims]
+      properties:
+        dims:
+          type: array
+          items:
+            type: string
+          description: Ordered list of dimension names
+      examples:
+        - dims: ["T", "C", "Z", "Y", "X"]
+
+  - fn_id: base.xarray.isel
+    name: Index selection
+    description: Select along dimensions by integer indexing/slices.
+    tags: [image, transform, xarray]
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+        description: Input image artifact (file-backed or mem://)
+    outputs:
+      - name: output
+        artifact_type: BioImageRef
+        storage: memory
+        uri_scheme: mem
+        required: true
+        description: Memory-backed transformed artifact (mem://)
+    params_schema:
+      type: object
+      additionalProperties: true
+      description: Dimension selections (implementation-defined; mirrors xarray.isel kwargs).
+      examples:
+        - Y: {start: 10, stop: 50}
+
+  - fn_id: base.xarray.pad
+    name: Pad
+    description: Pad along dimensions.
+    tags: [image, transform, xarray]
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+        description: Input image artifact (file-backed or mem://)
+    outputs:
+      - name: output
+        artifact_type: BioImageRef
+        storage: memory
+        uri_scheme: mem
+        required: true
+        description: Memory-backed transformed artifact (mem://)
+    params_schema:
+      type: object
+      additionalProperties: true
+      description: Padding specification (implementation-defined; mirrors xarray.pad kwargs).
+      examples:
+        - Y: [10, 10]
+
+  - fn_id: base.xarray.sum
+    name: Sum reduction
+    description: Reduce along a named dimension.
+    tags: [image, reduction, xarray]
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+        description: Input image artifact (file-backed or mem://)
+    outputs:
+      - name: output
+        artifact_type: BioImageRef
+        storage: memory
+        uri_scheme: mem
+        required: true
+        description: Memory-backed transformed artifact (mem://)
+    params_schema:
+      type: object
+      required: [dim]
+      properties:
+        dim:
+          type: string
+          description: Dimension to reduce
+      examples:
+        - dim: "Z"
+
+  - fn_id: base.xarray.max
+    name: Max reduction
+    description: Reduce along a named dimension.
+    tags: [image, reduction, xarray]
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+        description: Input image artifact (file-backed or mem://)
+    outputs:
+      - name: output
+        artifact_type: BioImageRef
+        storage: memory
+        uri_scheme: mem
+        required: true
+        description: Memory-backed transformed artifact (mem://)
+    params_schema:
+      type: object
+      required: [dim]
+      properties:
+        dim:
+          type: string
+          description: Dimension to reduce
+      examples:
+        - dim: "Z"
+
+  - fn_id: base.xarray.mean
+    name: Mean reduction
+    description: Reduce along a named dimension.
+    tags: [image, reduction, xarray]
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+        description: Input image artifact (file-backed or mem://)
+    outputs:
+      - name: output
+        artifact_type: BioImageRef
+        storage: memory
+        uri_scheme: mem
+        required: true
+        description: Memory-backed transformed artifact (mem://)
+    params_schema:
+      type: object
+      required: [dim]
+      properties:
+        dim:
+          type: string
+          description: Dimension to reduce
+      examples:
+        - dim: "Z"
