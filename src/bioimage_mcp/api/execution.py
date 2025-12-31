@@ -1,17 +1,20 @@
-from __future__ import annotations
-
 import copy
 import hashlib
 import platform
 import sys
+import uuid
 from pathlib import Path
 from typing import Any
 
+from bioimage_mcp.artifacts.memory import MemoryArtifactStore, build_mem_uri
+from bioimage_mcp.artifacts.metadata import extract_image_metadata
+from bioimage_mcp.artifacts.models import ArtifactRef
 from bioimage_mcp.artifacts.store import ArtifactStore
 from bioimage_mcp.config.schema import Config
 from bioimage_mcp.registry.loader import load_manifests
 from bioimage_mcp.runs.store import RunStore
 from bioimage_mcp.runtimes.executor import execute_tool
+from bioimage_mcp.runtimes.persistent import PersistentWorkerManager
 from bioimage_mcp.runtimes.protocol import validate_workflow_compatibility
 
 
@@ -127,6 +130,8 @@ def execute_step(
     inputs: dict,
     work_dir: Path,
     timeout_seconds: int | None,
+    worker_manager: PersistentWorkerManager | None = None,
+    session_id: str = "default-session",
 ) -> tuple[dict, str, int]:
     manifests, _diagnostics = load_manifests(config.tool_manifest_roots)
 
@@ -150,6 +155,11 @@ def execute_step(
                 "work_dir": str(work_dir),
                 "fs_allowlist_read": [str(path) for path in config.fs_allowlist_read],
             }
+
+            if worker_manager:
+                # Register that we are using this worker (T016)
+                _worker = worker_manager.get_worker(session_id, manifest.env_id)
+
             return execute_tool(
                 entrypoint=entrypoint,
                 request=request,
@@ -215,12 +225,18 @@ class ExecutionService:
         *,
         artifact_store: ArtifactStore | None = None,
         run_store: RunStore | None = None,
+        memory_store: MemoryArtifactStore | None = None,
+        worker_manager: PersistentWorkerManager | None = None,
     ):
         self._config = config
         self._owns_artifact_store = artifact_store is None
         self._owns_run_store = run_store is None
         self._artifact_store = artifact_store or ArtifactStore(config)
         self._run_store = run_store or RunStore(config)
+        self._memory_store = memory_store or MemoryArtifactStore()
+        self._worker_manager = worker_manager or PersistentWorkerManager(
+            memory_store=self._memory_store
+        )
 
     @property
     def artifact_store(self) -> ArtifactStore:
@@ -302,15 +318,24 @@ class ExecutionService:
         fn_id = step["fn_id"]
         params = step.get("params") or {}
         inputs = step.get("inputs") or {}
-        timeout_seconds = (spec.get("run_opts") or {}).get("timeout_seconds")
+
+        run_opts = spec.get("run_opts") or {}
+        output_mode = run_opts.get("output_mode", "file")
+        session_id = run_opts.get("session_id", "default-session")
+        timeout_seconds = run_opts.get("timeout_seconds")
 
         input_metadata: dict[str, dict] = {}
         for name, inp in inputs.items():
             if isinstance(inp, dict) and "ref_id" in inp:
                 ref_id = inp["ref_id"]
                 try:
-                    ref = self._artifact_store.get(ref_id)
-                    input_metadata[name] = ref.metadata or {}
+                    # Resolve from memory store first (T016)
+                    mem_ref = self._memory_store.get(ref_id)
+                    if mem_ref:
+                        input_metadata[name] = mem_ref.metadata or {}
+                    else:
+                        ref = self._artifact_store.get(ref_id)
+                        input_metadata[name] = ref.metadata or {}
                 except KeyError:
                     input_metadata[name] = {}
 
@@ -333,6 +358,15 @@ class ExecutionService:
             if not isinstance(input_ref, dict):
                 continue
             if "ref_id" in input_ref and "uri" not in input_ref:
+                # Resolve from memory store first (mem://) (T016)
+                mem_ref = self._memory_store.get(input_ref["ref_id"])
+                if mem_ref:
+                    resolved = mem_ref.model_dump()
+                    resolved.update(input_ref)
+                    inputs[input_name] = resolved
+                    continue
+
+                # Resolve from file store
                 try:
                     ref = self._artifact_store.get(input_ref["ref_id"])
                 except KeyError:
@@ -366,6 +400,8 @@ class ExecutionService:
                 inputs=inputs,
                 work_dir=work_dir,
                 timeout_seconds=timeout_seconds,
+                worker_manager=self._worker_manager,
+                session_id=session_id,
             )
         except KeyError as exc:
             error_payload = {"message": f"Function not found: {exc}"}
@@ -420,12 +456,70 @@ class ExecutionService:
 
         outputs_payload: dict = {}
         outputs = response.get("outputs") or {}
+
+        # Find the manifest for this function to get env_id (required for mem:// URIs) (T016)
+        env_id = "default"
+        manifests, _ = load_manifests(self._config.tool_manifest_roots)
+        for manifest in manifests:
+            # Check explicit functions
+            if any(f.fn_id == fn_id for f in manifest.functions):
+                env_id = manifest.env_id
+                break
+            # Check dynamic sources
+            if any(
+                fn_id.startswith(f"{manifest.tool_id.replace('tools.', '')}.{ds.prefix}.")
+                for ds in manifest.dynamic_sources
+            ):
+                env_id = manifest.env_id
+                break
+            # Check overlays
+            if fn_id in manifest.function_overlays:
+                env_id = manifest.env_id
+                break
+            # Special case for 'base' prefix
+            if fn_id.startswith("base.") and manifest.tool_id == "tools.base":
+                env_id = manifest.env_id
+                break
+
         for name, out in outputs.items():
             out_type = out.get("type", "LogRef")
             fmt = out.get("format", "text")
             path = out.get("path")
             content = out.get("content")
-            if path:
+
+            if output_mode == "memory" and out_type in ["BioImageRef", "LabelImageRef"]:
+                # Requesting memory artifact (T016)
+                # For now, simulate by still using file storage but marking as memory type
+                ref_id = f"mem-{uuid.uuid4().hex[:8]}"
+                uri = build_mem_uri(session_id, env_id, ref_id)
+
+                # Extract metadata from the temporary file if available
+                meta = out.get("metadata") or {}
+                if path:
+                    # Keep track of the simulated file path (T016 simulation)
+                    meta["_simulated_path"] = str(Path(path).absolute())
+                    try:
+                        file_meta = extract_image_metadata(Path(path))
+                        if file_meta:
+                            meta = {**meta, **file_meta}
+                    except Exception:
+                        pass
+
+                ref = ArtifactRef(
+                    ref_id=ref_id,
+                    type=out_type,
+                    uri=uri,
+                    format=fmt,
+                    storage_type="memory",
+                    mime_type="application/octet-stream",
+                    size_bytes=0,
+                    created_at=ArtifactRef.now(),
+                    metadata=meta,
+                )
+                self._memory_store.register(ref)
+                self._worker_manager.register_artifact(session_id, env_id, ref_id)
+                outputs_payload[name] = ref.model_dump()
+            elif path:
                 p = Path(path)
                 p.parent.mkdir(parents=True, exist_ok=True)
                 if content is not None:

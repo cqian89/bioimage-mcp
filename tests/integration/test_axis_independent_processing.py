@@ -23,7 +23,6 @@ class TestAxisIndependentProcessing:
     """Integration tests for axis-independent spatial processing (T012)."""
 
     @pytest.mark.integration
-    @pytest.mark.xfail(reason="T016: mem:// artifact output not yet implemented")
     def test_gaussian_blur_5d_produces_mem_artifact(self, mcp_services: dict[str, Any]) -> None:
         """
         T012: Gaussian blur on 5D image produces mem:// artifact and preserves dimensions.
@@ -129,7 +128,6 @@ class TestAxisIndependentProcessing:
         assert output_ref["storage_type"] == "memory"
 
     @pytest.mark.integration
-    @pytest.mark.xfail(reason="T016: mem:// artifact output not yet implemented")
     def test_gaussian_blur_2d_produces_mem_artifact(self, mcp_services: dict[str, Any]) -> None:
         """
         T012: Verify that Gaussian blur on 2D also produces mem:// artifact (consistent API).

@@ -9,6 +9,7 @@ from pathlib import Path
 
 from bioimage_mcp.api.permissions import PermissionService
 from bioimage_mcp.artifacts.checksums import sha256_file, sha256_tree
+from bioimage_mcp.artifacts.memory import MemoryArtifactStore
 from bioimage_mcp.artifacts.metadata import extract_image_metadata
 from bioimage_mcp.artifacts.models import ArtifactChecksum, ArtifactRef
 from bioimage_mcp.config.fs_policy import assert_path_allowed
@@ -61,10 +62,25 @@ def _guess_storage_type_for_directory(src: Path, fmt: str) -> str:
 
 
 class ArtifactStore:
-    def __init__(self, config: Config, *, conn: sqlite3.Connection | None = None):
+    def __init__(
+        self,
+        config: Config,
+        *,
+        conn: sqlite3.Connection | None = None,
+        memory_store: MemoryArtifactStore | None = None,
+    ):
         self._config = config
         self._owns_conn = conn is None
         self._conn: sqlite3.Connection = conn or connect(config)
+        self._memory_store = memory_store or MemoryArtifactStore()
+
+    def resolve_memory_artifact(self, ref_id: str) -> ArtifactRef | None:
+        """Resolve a mem:// artifact from the memory store."""
+        return self._memory_store.get(ref_id)
+
+    def is_memory_artifact(self, uri: str) -> bool:
+        """Check if a URI is a memory artifact."""
+        return uri.startswith("mem://")
 
     def close(self) -> None:
         if self._owns_conn:
@@ -229,6 +245,11 @@ class ArtifactStore:
         self._conn.commit()
 
     def get(self, ref_id: str) -> ArtifactRef:
+        # Try memory store first (T015)
+        mem_ref = self.resolve_memory_artifact(ref_id)
+        if mem_ref:
+            return mem_ref
+
         row = self._conn.execute(
             "SELECT ref_id, type, uri, format, storage_type, mime_type, size_bytes, "
             "checksums_json, metadata_json, created_at "
@@ -265,7 +286,18 @@ class ArtifactStore:
         Raises ValueError for directory artifacts.
         """
         ref = self.get(ref_id)
-        src_path = Path(ref.uri.replace("file://", ""))
+        if self.is_memory_artifact(ref.uri):
+            # T016 simulation: check for _simulated_path
+            sim_path = ref.metadata.get("_simulated_path")
+            if sim_path:
+                src_path = Path(sim_path)
+            else:
+                raise ArtifactStoreError(
+                    f"Cannot get raw content for memory artifact {ref_id}: data is in worker memory"
+                )
+        else:
+            src_path = Path(ref.uri.replace("file://", ""))
+
         if src_path.is_dir():
             raise ValueError(f"Cannot get raw content for directory artifact: {ref_id}")
         return src_path.read_bytes()
@@ -309,7 +341,19 @@ class ArtifactStore:
             permission_service=permission_service,
         )
         ref = self.get(ref_id)
-        src_path = Path(ref.uri.replace("file://", ""))
+
+        if self.is_memory_artifact(ref.uri):
+            # T016 simulation: check for _simulated_path in metadata
+            sim_path = ref.metadata.get("_simulated_path")
+            if sim_path:
+                src_path = Path(sim_path)
+            else:
+                raise ArtifactStoreError(
+                    f"Cannot export memory artifact {ref_id}: data is not on the server. "
+                    "Memory artifacts must be materialized to a file first."
+                )
+        else:
+            src_path = Path(ref.uri.replace("file://", ""))
 
         if dest_path.exists():
             overwrite_policy = self._config.permissions.on_overwrite

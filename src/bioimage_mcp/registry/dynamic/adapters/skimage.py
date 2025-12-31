@@ -128,9 +128,6 @@ class SkimageAdapter(BaseAdapter):
 
     def _load_image(self, artifact: Artifact) -> np.ndarray:
         """Load image data from artifact reference."""
-        if tifffile is None:
-            raise RuntimeError("tifffile is required for loading images")
-
         # Handle both dict and Pydantic model
         if isinstance(artifact, dict):
             uri = artifact["uri"]
@@ -139,14 +136,26 @@ class SkimageAdapter(BaseAdapter):
 
         # Parse URI and get file path
         parsed = urlparse(uri)
-        if parsed.scheme != "file":
-            raise ValueError(f"Unsupported URI scheme: {parsed.scheme}")
-
-        # Remove leading slash on Windows if path starts with drive letter
         path = parsed.path
         if path.startswith("/") and len(path) > 2 and path[2] == ":":
             path = path[1:]
 
+        # Use bioio if available for consistent 5D loading (P0 requirement)
+        try:
+            from bioio import BioImage
+
+            img = BioImage(path)
+            # bioio always returns 5D TCZYX
+            data = img.data.compute() if hasattr(img.data, "compute") else img.data
+            if data is not None and data.size > 0:
+                return data
+        except Exception:
+            pass
+
+        if tifffile is None:
+            raise RuntimeError("tifffile is required for loading images")
+
+        # Fallback to tifffile but try to ensure it doesn't squeeze if it's OME-TIFF
         return tifffile.imread(path)
 
     def _extract_axes(self, artifact: Artifact) -> str:
@@ -173,13 +182,11 @@ class SkimageAdapter(BaseAdapter):
         axes: str | None = None,
     ) -> dict:
         """Save image array to file and return artifact reference dict."""
-        if tifffile is None:
-            raise RuntimeError("tifffile is required for saving images")
-
-        # Create temp file
+        # Use .ome.tiff extension for better compatibility
+        ext = ".ome.tiff"
         if work_dir is None:
             # Use system temp directory
-            fd, path_str = tempfile.mkstemp(suffix=".tif")
+            fd, path_str = tempfile.mkstemp(suffix=ext)
             import os
 
             os.close(fd)
@@ -187,34 +194,38 @@ class SkimageAdapter(BaseAdapter):
         else:
             # Use provided work directory
             work_dir.mkdir(parents=True, exist_ok=True)
-            path = work_dir / "output.tif"
+            path = work_dir / f"output{ext}"
 
-        metadata = None
-        if axes and len(axes) == array.ndim:
-            metadata = {"axes": axes}
-        else:
-            inferred_axes = self._infer_axes(array)
-            if inferred_axes:
-                metadata = {"axes": inferred_axes}
+        inferred_axes = axes or self._infer_axes(array)
 
-        # Save image
-        if metadata:
-            # Use photometric='minisblack' for single-channel/grayscale images
-            # and ensure we use the metadata dict which tifffile uses for OME-XML
+        # Save image using OmeTiffWriter for consistency
+        saved = False
+        try:
+            from bioio.writers import OmeTiffWriter
+
+            if len(inferred_axes) == array.ndim:
+                OmeTiffWriter.save(array, str(path), dim_order=inferred_axes)
+                saved = True
+        except Exception:
+            pass
+
+        if not saved:
+            if tifffile is None:
+                raise RuntimeError("tifffile is required for saving images")
+            metadata = {"axes": inferred_axes} if inferred_axes else None
             tifffile.imwrite(path, array, metadata=metadata, photometric="minisblack")
-        else:
-            tifffile.imwrite(path, array, photometric="minisblack")
 
         # Return artifact reference as dict (compatible with entrypoint protocol)
         ref = {
             "type": "BioImageRef",
             "format": "OME-TIFF",
             "path": str(path.absolute()),
+            "metadata": {
+                "axes": inferred_axes,
+                "shape": list(array.shape),
+                "dtype": str(array.dtype),
+            },
         }
-        if metadata:
-            ref["metadata"] = {**metadata, "shape": list(array.shape)}
-        else:
-            ref["metadata"] = {"shape": list(array.shape)}
         return ref
 
     def _save_table(self, table: dict, work_dir: Path | None = None) -> dict:
