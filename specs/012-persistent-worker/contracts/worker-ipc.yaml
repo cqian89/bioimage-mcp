@@ -1,0 +1,223 @@
+# bioimage-mcp Worker IPC Protocol Contract
+# Spec: 012-persistent-worker
+# Version: 1.0.0
+
+title: Bioimage-MCP Persistent Worker IPC
+description: |
+  API contract for the NDJSON IPC protocol between Core and Worker processes.
+  Transport: stdin/stdout pipes
+  Format: NDJSON (one JSON object per line, terminated by '\n')
+  Direction: Core -> Worker (requests), Worker -> Core (responses)
+
+definitions:
+  Error:
+    type: object
+    properties:
+      code:
+        type: string
+        description: Machine-readable error code
+      message:
+        type: string
+        description: Human-readable error message
+    required: [code, message]
+
+messages:
+  # --- Execution ---
+  
+  ExecuteRequest:
+    type: object
+    description: Request to execute a tool function within the worker environment.
+    required: [command, fn_id, inputs, params, work_dir]
+    properties:
+      command:
+        type: string
+        const: execute
+      fn_id:
+        type: string
+        description: Function identifier (e.g., "base.bioio.export")
+      inputs:
+        type: object
+        description: Input artifact references keyed by port name (URI strings)
+      params:
+        type: object
+        description: Function parameters (JSON-serializable)
+      work_dir:
+        type: string
+        description: Working directory for file outputs
+      ordinal:
+        type: integer
+        description: Request sequence number for correlation
+
+  ExecuteResponse:
+    type: object
+    description: Result of a function execution.
+    required: [command, ok]
+    properties:
+      command:
+        type: string
+        const: execute_result
+      ok:
+        type: boolean
+        description: True if execution succeeded
+      ordinal:
+        type: integer
+        description: Corresponds to the ordinal in the request
+      outputs:
+        type: object
+        description: Output artifact references (when ok=true)
+      log:
+        type: string
+        description: Merged stdout/stderr from the function execution
+      error:
+        $ref: "#/definitions/Error"
+      warnings:
+        type: array
+        items:
+          type: string
+      provenance:
+        type: object
+        description: Execution metadata (timing, environment, etc.)
+
+  # --- Memory Management ---
+
+  MaterializeRequest:
+    type: object
+    description: Request to save an in-memory (mem://) artifact to persistent storage.
+    required: [command, ref_id, target_format]
+    properties:
+      command:
+        type: string
+        const: materialize
+      ref_id:
+        type: string
+        description: mem:// artifact to materialize
+      target_format:
+        type: string
+        enum: [OME-TIFF, OME-Zarr]
+        default: OME-TIFF
+      dest_path:
+        type: string
+        description: Optional destination path (otherwise auto-generated)
+      ordinal:
+        type: integer
+
+  MaterializeResponse:
+    type: object
+    description: Result of a materialization request.
+    required: [command, ok]
+    properties:
+      command:
+        type: string
+        const: materialize_result
+      ok:
+        type: boolean
+      ordinal:
+        type: integer
+      path:
+        type: string
+        description: File path of materialized artifact (when ok=true)
+      error:
+        $ref: "#/definitions/Error"
+
+  EvictRequest:
+    type: object
+    description: Request to remove an artifact from the worker's memory.
+    required: [command, ref_id]
+    properties:
+      command:
+        type: string
+        const: evict
+      ref_id:
+        type: string
+        description: mem:// artifact to evict from memory
+      ordinal:
+        type: integer
+
+  EvictResponse:
+    type: object
+    description: Result of an eviction request.
+    required: [command, ok]
+    properties:
+      command:
+        type: string
+        const: evict_result
+      ok:
+        type: boolean
+      ordinal:
+        type: integer
+      error:
+        $ref: "#/definitions/Error"
+
+  # --- Lifecycle ---
+
+  ShutdownRequest:
+    type: object
+    description: Request to terminate the worker process.
+    required: [command]
+    properties:
+      command:
+        type: string
+        const: shutdown
+      graceful:
+        type: boolean
+        default: true
+        description: If true, complete in-flight operations first
+      ordinal:
+        type: integer
+
+  ShutdownResponse:
+    type: object
+    description: Acknowledgment of shutdown request.
+    required: [command, ok]
+    properties:
+      command:
+        type: string
+        const: shutdown_ack
+      ok:
+        type: boolean
+      ordinal:
+        type: integer
+
+examples:
+  execution_exchange:
+    description: Standard tool execution flow
+    sequence:
+      - core_request:
+          command: "execute"
+          fn_id: "base.skimage.gaussian"
+          inputs: { "image": "file:///tmp/input.ome.tif" }
+          params: { "sigma": 1.5 }
+          work_dir: "/tmp/run_123"
+          ordinal: 1
+      - worker_response:
+          command: "execute_result"
+          ok: true
+          ordinal: 1
+          outputs: { "result": "mem://7a8b9c..." }
+          log: "Applied gaussian filter with sigma=1.5\n"
+
+  materialization_handoff:
+    description: Materializing an in-memory artifact for cross-environment handoff
+    sequence:
+      - core_request:
+          command: "materialize"
+          ref_id: "mem://7a8b9c..."
+          target_format: "OME-TIFF"
+          ordinal: 2
+      - worker_response:
+          command: "materialize_result"
+          ok: true
+          ordinal: 2
+          path: "/tmp/run_123/result.ome.tif"
+
+  graceful_shutdown:
+    description: Shutting down the worker
+    sequence:
+      - core_request:
+          command: "shutdown"
+          graceful: true
+          ordinal: 3
+      - worker_response:
+          command: "shutdown_ack"
+          ok: true
+          ordinal: 3
