@@ -130,7 +130,7 @@
 
 - [X] T037 [P] Remove all legacy `base.wrapper.*` tools from `tools/base/manifest.yaml`
 - [X] T038 [P] Delete `tools/base/bioimage_mcp_base/wrapper/` directory and all its contents
-- [X] T039 [P] Clean up any wrapper-specific dependencies in `tools/base/pyproject.toml`
+- [X] T039 [P] Clean up wrapper-specific dependencies (N/A - tools/base uses conda env via envs/bioimage-mcp-base.yaml, no pyproject.toml present)
 
 **Checkpoint**: All 16 wrapper tools deleted, migration complete
 

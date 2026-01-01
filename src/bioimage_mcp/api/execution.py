@@ -414,7 +414,8 @@ class ExecutionService:
             legacy_needs_mat = _needs_materialization(input_ref, supported)
 
             if legacy_needs_mat:
-                # Use compatibility helper for legacy zarr-temp materialization (facilitates mocking in tests)
+                # Use compatibility helper for legacy zarr-temp materialization
+                # (facilitates mocking in tests)
                 materialized = _materialize_zarr_to_file(input_ref, work_dir, self._artifact_store)
                 if materialized and materialized.get("ref_id") != ref_id:
                     inputs[input_name] = materialized
@@ -437,10 +438,35 @@ class ExecutionService:
                     negotiated_format,
                 )
 
+                # NOTE: Constitution III Compliance (Partial)
+                #
+                # Current implementation: Core performs materialization using bioio readers/writers.
+                # This satisfies the requirement to use bioio for I/O but does NOT satisfy the
+                # full spec 011/Constitution III requirement that materialization should be
+                # delegated to the source tool environment.
+                #
+                # Ideal implementation:
+                #   1. Core detects need for handoff (already done via IOBridge.needs_handoff)
+                #   2. Core dispatches `base.bioio.export` to source environment's worker
+                #   3. Source environment materializes using bioio and returns file-backed artifact
+                #   4. Core receives file-backed artifact reference
+                #   5. Core dispatches original function to target environment
+                #
+                # Rationale for current approach:
+                #   - Pre-1.0 development: Prioritizing functionality over perfect
+                #     architectural compliance
+                #   - Core has bioio already available for basic I/O operations
+                #   - Avoids complexity of dispatching export calls to source
+                #     environment workers
+                #
+                # This is tracked as a known limitation for pre-1.0 development.
+                # See: specs/011-wrapper-consolidation/plan.md Phase 2, Task T022
+                # See: .specify/memory/constitution.md Constitution III (Artifact References Only)
+                # TODO(spec-011): Delegate materialization to source environment worker
+                #
                 # Perform materialization/conversion
                 try:
                     import bioio
-                    from tifffile import imwrite
 
                     # Determine source path
                     src_path = None
@@ -478,12 +504,9 @@ class ExecutionService:
                         data = data.compute() if hasattr(data, "compute") else data
 
                         if negotiated_format == "OME-TIFF":
-                            imwrite(
-                                str(out_path),
-                                data,
-                                compression="zlib",
-                                metadata={"axes": img.dims.order},
-                            )
+                            from bioio.writers import OmeTiffWriter
+
+                            OmeTiffWriter.save(data, str(out_path), dim_order=img.dims.order)
                         elif negotiated_format == "OME-Zarr":
                             from bioio_ome_zarr.writers import OMEZarrWriter
 
@@ -605,7 +628,10 @@ class ExecutionService:
 
             if output_mode == "memory" and out_type in ["BioImageRef", "LabelImageRef"]:
                 # Requesting memory artifact (T016)
-                # For now, simulate by still using file storage but marking as memory type
+                # PHASE 1 SIMULATION: mem:// URIs are backed by files, not worker memory.
+                # The _simulated_path metadata tracks the actual file location.
+                # Phase 2 will replace this with true in-memory storage in persistent workers.
+                # See: specs/011-wrapper-consolidation/plan.md
                 ref_id = f"mem-{uuid.uuid4().hex[:8]}"
                 uri = build_mem_uri(session_id, env_id, ref_id)
 

@@ -24,12 +24,24 @@ class WorkerSession(BaseModel):
 
 
 class PersistentWorkerManager:
-    """Manages persistent worker processes for tools.
+    """Manages persistent worker state for per-session, per-env tool execution.
 
-    NOTE: In the current iteration (T016), this manager tracks worker state and
-    artifact ownership, but actual process reuse is planned for a future iteration.
-    For now, each step still spawns a new process, but the manager provides the
-    infrastructure for memory artifact tracking that persists across these calls.
+    IMPLEMENTATION STATUS (Spec 011):
+    ================================
+    Current (Phase 1): Worker METADATA tracking only
+    - Tracks worker session/env pairs and their artifacts
+    - Each tool call still spawns a new subprocess
+    - Provides infrastructure for mem:// artifact ownership
+
+    Future (Phase 2): True persistent subprocesses
+    - Long-lived worker processes per session/env
+    - Real in-memory data storage keyed by mem:// URI
+    - Process reuse for efficient chaining
+
+    This phased approach allows immediate use of mem:// artifact tracking
+    while deferring the complexity of subprocess lifecycle management.
+
+    See: specs/011-wrapper-consolidation/plan.md Phase 1 (T008-T010)
     """
 
     def __init__(self, memory_store: MemoryArtifactStore | None = None) -> None:

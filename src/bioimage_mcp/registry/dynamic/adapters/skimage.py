@@ -238,6 +238,7 @@ class SkimageAdapter(BaseAdapter):
             "path": str(path.absolute()),
             "metadata": {
                 "axes": inferred_axes,
+                "dims": list(inferred_axes) if inferred_axes else [],
                 "shape": list(array.shape),
                 "dtype": str(array.dtype),
             },

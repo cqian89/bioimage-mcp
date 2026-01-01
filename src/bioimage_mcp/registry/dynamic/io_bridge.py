@@ -21,7 +21,25 @@ class IOBridgeHandoff(BaseModel):
 
 
 class IOBridge:
-    """Handles cross-environment format negotiation and materialization."""
+    """Handles cross-environment format negotiation and materialization.
+
+    Current Architecture (Pre-1.0):
+        - IOBridge coordinates handoff detection and format negotiation
+        - Actual materialization is performed by core execution layer (execution.py)
+        - Core uses bioio readers/writers directly for format conversion
+
+    Future Architecture (Constitution III Compliant):
+        - IOBridge should dispatch export calls to source environment's worker
+        - Source environment performs materialization using its own bioio instance
+        - Core receives file-backed artifact reference and dispatches to target environment
+
+    This partial compliance is acceptable for pre-1.0 development but should be
+    refactored before 1.0 release to fully satisfy Constitution III.
+
+    See:
+        - specs/011-wrapper-consolidation/plan.md Phase 2, Task T022
+        - .specify/memory/constitution.md Constitution III (Artifact References Only)
+    """
 
     DEFAULT_INTERCHANGE_FORMAT = "OME-TIFF"
     SUPPORTED_FORMATS = {"OME-TIFF", "OME-Zarr"}

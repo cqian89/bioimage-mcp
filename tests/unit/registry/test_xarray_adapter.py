@@ -47,6 +47,72 @@ def test_xarray_adapter_execution(tmp_path):
     assert outputs[0]["metadata"]["axes"] == "TCZYX"
 
 
+def test_axis_padding_standard_order_2d(tmp_path):
+    """Test that 2D results (YX) are padded to standard TCZYX order."""
+    if "xarray" not in ADAPTER_REGISTRY:
+        pytest.skip("Xarray adapter not registered")
+
+    adapter = ADAPTER_REGISTRY["xarray"]
+
+    # Create 2D input image (YX)
+    img_path = tmp_path / "test_2d.ome.tiff"
+    data = np.zeros((1, 1, 1, 10, 10), dtype=np.uint8)  # TCZYX
+    OmeTiffWriter.save(data, str(img_path), dim_order="TCZYX")
+
+    input_artifact = {
+        "type": "BioImageRef",
+        "format": "OME-TIFF",
+        "uri": img_path.as_uri(),
+        "metadata": {"axes": "TCZYX"},
+    }
+
+    # Squeeze to get 2D result (should drop T, C, Z)
+    outputs = adapter.execute(
+        fn_id="xarray.squeeze",
+        inputs=[("image", input_artifact)],
+        params={},
+        work_dir=tmp_path,
+    )
+
+    assert len(outputs) == 1
+    # The output should be padded to TCZYX (standard order), not ZCTYX
+    assert outputs[0]["metadata"]["axes"] == "TCZYX"
+    assert outputs[0]["metadata"]["shape"] == [1, 1, 1, 10, 10]
+
+
+def test_axis_padding_standard_order_3d(tmp_path):
+    """Test that 3D results (ZYX) are padded to standard TCZYX order."""
+    if "xarray" not in ADAPTER_REGISTRY:
+        pytest.skip("Xarray adapter not registered")
+
+    adapter = ADAPTER_REGISTRY["xarray"]
+
+    # Create 3D input image (ZYX after squeezing T and C)
+    img_path = tmp_path / "test_3d.ome.tiff"
+    data = np.zeros((1, 1, 5, 10, 10), dtype=np.uint8)  # TCZYX
+    OmeTiffWriter.save(data, str(img_path), dim_order="TCZYX")
+
+    input_artifact = {
+        "type": "BioImageRef",
+        "format": "OME-TIFF",
+        "uri": img_path.as_uri(),
+        "metadata": {"axes": "TCZYX"},
+    }
+
+    # Squeeze to get 3D result (drops T and C, keeps Z)
+    outputs = adapter.execute(
+        fn_id="xarray.squeeze",
+        inputs=[("image", input_artifact)],
+        params={},
+        work_dir=tmp_path,
+    )
+
+    assert len(outputs) == 1
+    # The output should be padded to TCZYX (standard order), not CTZYX
+    assert outputs[0]["metadata"]["axes"] == "TCZYX"
+    assert outputs[0]["metadata"]["shape"] == [1, 1, 5, 10, 10]
+
+
 def test_bioio_export_works(tmp_path):
     """Test that base.bioio.export works (statically mapped)."""
     # Add tools/base to sys.path
