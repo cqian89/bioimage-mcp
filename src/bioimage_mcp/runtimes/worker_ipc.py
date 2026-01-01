@@ -23,7 +23,6 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
-
 # ============================================================================
 # WorkerState Enum (T013)
 # ============================================================================
@@ -133,7 +132,7 @@ class MaterializeRequest(BaseModel):
     command: Literal["materialize"] = Field(..., description="Message type discriminator")
     ref_id: str = Field(..., description="mem:// artifact to materialize")
     target_format: Literal["OME-TIFF", "OME-Zarr"] = Field(
-        ..., description="Output format for materialized artifact"
+        "OME-TIFF", description="Output format for materialized artifact (default: OME-TIFF)"
     )
     dest_path: str | None = Field(
         None, description="Optional destination path (otherwise auto-generated)"

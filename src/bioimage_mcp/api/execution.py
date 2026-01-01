@@ -52,6 +52,69 @@ def _extract_env_from_uri(uri: str) -> str | None:
     return None
 
 
+def _needs_cross_env_materialization(artifact_uri: str, source_env: str, target_env: str) -> bool:
+    """Check if mem:// artifact needs materialization for cross-env handoff.
+
+    Args:
+        artifact_uri: URI of the artifact
+        source_env: Source environment ID from artifact
+        target_env: Target environment ID where function will execute
+
+    Returns:
+        True if artifact is mem:// and environments differ
+    """
+    if not artifact_uri.startswith("mem://"):
+        return False
+    return source_env != target_env
+
+
+def _materialize_memory_artifact_via_worker(
+    worker_manager: PersistentWorkerManager,
+    session_id: str,
+    source_env: str,
+    ref_id: str,
+    target_format: str = "OME-TIFF",
+    dest_path: str | None = None,
+) -> str | None:
+    """Delegate materialization to the source worker process.
+
+    This satisfies Constitution III by delegating I/O to the tool environment.
+
+    Args:
+        worker_manager: Worker manager instance
+        session_id: Session ID for worker lookup
+        source_env: Source environment ID where artifact lives
+        ref_id: Artifact reference ID to materialize
+        target_format: Output format (OME-TIFF or OME-Zarr)
+        dest_path: Optional destination path
+
+    Returns:
+        Path to materialized file, or None if failed
+    """
+    try:
+        # Get the worker that owns the memory artifact
+        worker = worker_manager.get_worker(session_id=session_id, env_id=source_env)
+
+        # Send materialize command to worker
+        response = worker.materialize(
+            ref_id=ref_id, target_format=target_format, dest_path=dest_path
+        )
+
+        if response.get("ok"):
+            return response.get("path")
+        else:
+            logger.error(
+                "Worker materialization failed: ref_id=%s error=%s",
+                ref_id,
+                response.get("error"),
+            )
+            return None
+
+    except Exception as e:  # noqa: BLE001
+        logger.error("Failed to materialize via worker: ref_id=%s error=%s", ref_id, e)
+        return None
+
+
 def _get_input_storage_requirements(
     config: Config,
     fn_id: str,
@@ -437,6 +500,54 @@ class ExecutionService:
                     target_format or "any",
                     negotiated_format,
                 )
+
+                # Check if this is a cross-env mem:// artifact (T045, T046)
+                if _needs_cross_env_materialization(artifact.uri, source_env, target_env):
+                    # Delegate materialization to source worker (Constitution III compliance)
+                    logger.info(
+                        "Cross-env mem:// artifact detected, delegating to worker: %s -> %s",
+                        source_env,
+                        target_env,
+                    )
+
+                    materialized_path = _materialize_memory_artifact_via_worker(
+                        worker_manager=self._worker_manager,
+                        session_id=session_id,
+                        source_env=source_env,
+                        ref_id=ref_id,
+                        target_format=negotiated_format,
+                        dest_path=str(out_path),
+                    )
+
+                    if materialized_path:
+                        # Import as new artifact
+                        new_ref = self._artifact_store.import_file(
+                            Path(materialized_path),
+                            artifact_type=artifact.type,
+                            format=negotiated_format,
+                        )
+
+                        # Record handoff
+                        handoff = self._io_bridge.record_handoff(
+                            source_ref_id=ref_id,
+                            target_ref_id=new_ref.ref_id,
+                            source_env=source_env,
+                            target_env=target_env,
+                            format=negotiated_format,
+                        )
+                        handoffs.append(handoff.model_dump(mode="json"))
+
+                        # Update inputs
+                        new_ref_data = new_ref.model_dump()
+                        new_ref_data["materialized_from"] = ref_id
+                        inputs[input_name] = new_ref_data
+                        materialized_inputs[input_name] = ref_id
+                        continue
+                    else:
+                        logger.error(
+                            "Worker materialization failed for %s, falling back to core", ref_id
+                        )
+                        # Fall through to core materialization
 
                 # NOTE: Constitution III Compliance (Partial)
                 #

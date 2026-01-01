@@ -5,8 +5,11 @@ from __future__ import annotations
 
 import json
 import sys
+import uuid
 from pathlib import Path
 from typing import Any
+
+import numpy as np
 
 BASE_DIR = Path(__file__).resolve().parent
 TOOLS_ROOT = BASE_DIR.parent
@@ -23,6 +26,18 @@ TOOL_VERSION = "0.1.0"
 TOOL_ENV_NAME = "bioimage-mcp-base"
 DYNAMIC_FN_PREFIXES = ("base.", f"{TOOL_ENV_NAME}.")
 
+# ==============================================================================
+# Global memory artifact storage (T032)
+# ==============================================================================
+
+# Global memory store in worker process
+# artifact_id -> numpy array
+_MEMORY_ARTIFACTS: dict[str, np.ndarray] = {}
+
+# Worker identity (set by initialization handshake or env vars)
+_SESSION_ID: str | None = None
+_ENV_ID: str | None = None
+
 
 FN_MAP = {
     "base.bioio.export": (io_ops.export, {}),
@@ -37,6 +52,145 @@ FN_MAP = {
 }
 
 LEGACY_REDIRECTS = {}
+
+
+# ==============================================================================
+# Memory artifact helpers (T032-T034)
+# ==============================================================================
+
+
+def _initialize_worker(session_id: str, env_id: str) -> None:
+    """Initialize worker identity for memory artifact URIs."""
+    global _SESSION_ID, _ENV_ID
+    _SESSION_ID = session_id
+    _ENV_ID = env_id
+
+
+def _store_in_memory(data: np.ndarray) -> tuple[str, str]:
+    """Store data in memory, return (artifact_id, mem:// URI).
+
+    Args:
+        data: Numpy array to store
+
+    Returns:
+        Tuple of (artifact_id, mem://session/env/artifact_id URI)
+
+    Raises:
+        RuntimeError: If worker identity not initialized
+    """
+    if _SESSION_ID is None or _ENV_ID is None:
+        raise RuntimeError("Worker identity not initialized. Cannot create mem:// URI.")
+
+    artifact_id = uuid.uuid4().hex
+    _MEMORY_ARTIFACTS[artifact_id] = data
+
+    mem_uri = f"mem://{_SESSION_ID}/{_ENV_ID}/{artifact_id}"
+    return artifact_id, mem_uri
+
+
+def _load_from_memory(uri: str) -> np.ndarray:
+    """Load data from memory by mem:// URI.
+
+    Args:
+        uri: mem://session/env/artifact_id URI
+
+    Returns:
+        Numpy array
+
+    Raises:
+        ValueError: If URI is invalid or artifact not found
+    """
+    if not uri.startswith("mem://"):
+        raise ValueError(f"Invalid memory URI: {uri}")
+
+    # Parse mem:// URI
+    parts = uri[6:].split("/")
+    if len(parts) != 3:
+        raise ValueError(f"Invalid memory URI format: {uri}")
+
+    session_id, env_id, artifact_id = parts
+
+    # Verify this URI belongs to this worker
+    if session_id != _SESSION_ID or env_id != _ENV_ID:
+        raise ValueError(
+            f"Memory artifact {uri} belongs to different worker (current: {_SESSION_ID}/{_ENV_ID})"
+        )
+
+    # Retrieve from memory
+    if artifact_id not in _MEMORY_ARTIFACTS:
+        raise KeyError(f"Memory artifact not found: {artifact_id}")
+
+    return _MEMORY_ARTIFACTS[artifact_id]
+
+
+def _load_input_data(input_ref: str | dict) -> np.ndarray:
+    """Load input data from file or memory.
+
+    Args:
+        input_ref: Either a file path string or a dict with 'uri' key
+
+    Returns:
+        Numpy array (5D TCZYX from bioio)
+    """
+    from bioio import BioImage
+
+    # Handle dict refs (artifact references)
+    if isinstance(input_ref, dict):
+        uri = input_ref.get("uri", "")
+        if uri.startswith("mem://"):
+            # Load from worker memory
+            return _load_from_memory(uri)
+        else:
+            # Load from file URI
+            path_str = uri.replace("file://", "")
+            img = BioImage(path_str)
+            return img.data
+    else:
+        # Load from file path string
+        img = BioImage(str(input_ref))
+        return img.data
+
+
+def _convert_memory_inputs_to_files(inputs: dict[str, Any], work_dir: Path) -> dict[str, Any]:
+    """Convert mem:// artifact inputs to temporary file paths.
+
+    This allows functions that expect file paths to work with memory artifacts.
+
+    Args:
+        inputs: Dict of input artifacts (may contain mem:// URIs)
+        work_dir: Working directory for temporary files
+
+    Returns:
+        Dict of inputs with mem:// URIs replaced by file paths
+    """
+    import tifffile
+
+    converted_inputs = {}
+
+    for key, value in inputs.items():
+        if isinstance(value, dict) and value.get("uri", "").startswith("mem://"):
+            # Load from memory and save to temp file
+            mem_uri = value["uri"]
+            data = _load_from_memory(mem_uri)
+
+            # Save to temporary file with unique name
+            import uuid
+
+            temp_id = uuid.uuid4().hex[:8]
+            temp_path = work_dir / f"_mem_{key}_{temp_id}.ome.tif"
+            tifffile.imwrite(temp_path, data)
+
+            # Replace with file URI
+            converted_inputs[key] = {
+                "uri": f"file://{temp_path}",
+                "type": value.get("type", "BioImageRef"),
+                "format": "OME-TIFF",
+            }
+        else:
+            # Keep as-is
+            converted_inputs[key] = value
+
+    return converted_inputs
 
 
 def handle_meta_describe(params: dict[str, Any]) -> dict[str, Any]:
@@ -66,6 +220,132 @@ def handle_meta_describe(params: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def handle_materialize(request: dict[str, Any]) -> dict[str, Any]:
+    """Handle materialize command - export mem:// artifact to OME-Zarr or OME-TIFF.
+
+    Args:
+        request: MaterializeRequest dict with ref_id, target_format, dest_path, and ordinal
+
+    Returns:
+        MaterializeResponse dict
+    """
+    ref_id = request.get("ref_id")
+    target_format = request.get("target_format", "OME-TIFF")
+    dest_path = request.get("dest_path")
+    ordinal = request.get("ordinal")
+
+    # Extract artifact_id from ref_id
+    artifact_id = ref_id
+
+    # Get data from memory
+    if artifact_id not in _MEMORY_ARTIFACTS:
+        return {
+            "command": "materialize_result",
+            "ok": False,
+            "ordinal": ordinal,
+            "error": {
+                "code": "NOT_FOUND",
+                "message": f"Memory artifact not found: {ref_id}",
+            },
+        }
+
+    data = _MEMORY_ARTIFACTS[artifact_id]
+
+    # Generate destination path if not provided
+    if dest_path is None:
+        import tempfile
+
+        suffix = ".ome.tif" if target_format == "OME-TIFF" else ".ome.zarr"
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+        dest_path = temp_file.name
+        temp_file.close()
+
+    dest_path = Path(dest_path)
+
+    try:
+        # Write to disk using bioio writers
+        if target_format == "OME-TIFF":
+            from bioio.writers import OmeTiffWriter
+
+            OmeTiffWriter.save(data, dest_path, dim_order="TCZYX")
+        elif target_format == "OME-Zarr":
+            from bioio_ome_zarr.writer import OmeZarrWriter
+
+            # OME-Zarr requires specific writer setup
+            writer = OmeZarrWriter(str(dest_path))
+            writer.write_image(
+                image_data=data,
+                image_name="materialized",
+                physical_pixel_sizes=None,
+                channel_names=None,
+                channel_colors=None,
+                dimension_order="TCZYX",
+            )
+        else:
+            return {
+                "command": "materialize_result",
+                "ok": False,
+                "ordinal": ordinal,
+                "error": {
+                    "code": "INVALID_FORMAT",
+                    "message": f"Unsupported target format: {target_format}",
+                },
+            }
+
+        return {
+            "command": "materialize_result",
+            "ok": True,
+            "ordinal": ordinal,
+            "path": str(dest_path),
+        }
+
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "command": "materialize_result",
+            "ok": False,
+            "ordinal": ordinal,
+            "error": {
+                "code": "MATERIALIZATION_FAILED",
+                "message": f"Failed to materialize artifact: {exc}",
+            },
+        }
+
+
+def handle_evict(request: dict[str, Any]) -> dict[str, Any]:
+    """Handle evict command - remove artifact from memory.
+
+    Args:
+        request: EvictRequest dict with ref_id and ordinal
+
+    Returns:
+        EvictResponse dict
+    """
+    ref_id = request.get("ref_id")
+    ordinal = request.get("ordinal")
+
+    # Extract artifact_id from ref_id (they're the same in current implementation)
+    artifact_id = ref_id
+
+    if artifact_id in _MEMORY_ARTIFACTS:
+        del _MEMORY_ARTIFACTS[artifact_id]
+        return {
+            "command": "evict_result",
+            "ok": True,
+            "ordinal": ordinal,
+        }
+
+    # Artifact not found
+    return {
+        "command": "evict_result",
+        "ok": False,
+        "ordinal": ordinal,
+        "error": {
+            "code": "NOT_FOUND",
+            "message": f"Memory artifact not found: {ref_id}",
+        },
+    }
+
+
 def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
     """Process a single execute request (new format or legacy format).
 
@@ -82,6 +362,9 @@ def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
     work_dir.mkdir(parents=True, exist_ok=True)
     ordinal = request.get("ordinal")
 
+    # Extract output_mode from params (T033)
+    output_mode = params.pop("output_mode", "file")  # 'file' or 'memory'
+
     warnings = []
     if fn_id in LEGACY_REDIRECTS:
         new_fn_id = LEGACY_REDIRECTS[fn_id]
@@ -92,6 +375,10 @@ def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
         fn_id = new_fn_id
 
     try:
+        # Convert mem:// inputs to file inputs (T034)
+        # This allows functions that expect file paths to work with memory artifacts
+        # IMPORTANT: This must be inside try/except to catch evicted artifact errors
+        inputs = _convert_memory_inputs_to_files(inputs, work_dir)
         if fn_id == "meta.describe":
             result_response = handle_meta_describe(params)
             # handle_meta_describe returns {"ok": bool, "result": ...} or {"ok": False, "error": ...}
@@ -118,6 +405,11 @@ def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
                 outputs = result.get("outputs")
                 if outputs is None:
                     raise ValueError(f"{fn_id} did not return outputs")
+
+                # Transform outputs to memory artifacts if requested (T033)
+                if output_mode == "memory":
+                    outputs = _convert_outputs_to_memory(outputs, work_dir)
+
                 response = {
                     "command": "execute_result",
                     "ok": True,
@@ -131,21 +423,62 @@ def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
                     response["provenance"] = result["provenance"]
             else:
                 out_path = result
-                fmt = "OME-Zarr"
-                response = {
-                    "command": "execute_result",
-                    "ok": True,
-                    "ordinal": ordinal,
-                    "outputs": {
-                        "output": {
-                            "type": "BioImageRef",
-                            "format": fmt,
-                            "path": str(out_path),
-                        }
-                    },
-                    "log": "ok",
-                    "warnings": warnings,
-                }
+
+                # Handle memory mode for legacy path return (T033)
+                if output_mode == "memory":
+                    # Load the file and store in memory
+                    data = _load_input_data(str(out_path))
+                    artifact_id, mem_uri = _store_in_memory(data)
+
+                    # Clean up the temporary file
+                    try:
+                        out_path.unlink()
+                    except Exception:  # noqa: BLE001
+                        pass  # Ignore cleanup errors
+
+                    # Build memory artifact reference
+                    ref_id = artifact_id  # Use same ID for both
+                    output_ref = {
+                        "ref_id": ref_id,
+                        "type": "BioImageRef",
+                        "uri": mem_uri,
+                        "format": "memory",
+                        "storage_type": "memory",
+                        "mime_type": "application/octet-stream",
+                        "size_bytes": data.nbytes,
+                        "created_at": _now_iso(),
+                        "metadata": {
+                            "shape": list(data.shape),
+                            "dtype": str(data.dtype),
+                            "dims": "TCZYX",
+                        },
+                    }
+
+                    response = {
+                        "command": "execute_result",
+                        "ok": True,
+                        "ordinal": ordinal,
+                        "outputs": {"output": output_ref},
+                        "log": "ok (memory)",
+                        "warnings": warnings,
+                    }
+                else:
+                    # File mode (original behavior)
+                    fmt = "OME-Zarr"
+                    response = {
+                        "command": "execute_result",
+                        "ok": True,
+                        "ordinal": ordinal,
+                        "outputs": {
+                            "output": {
+                                "type": "BioImageRef",
+                                "format": fmt,
+                                "path": str(out_path),
+                            }
+                        },
+                        "log": "ok",
+                        "warnings": warnings,
+                    }
         else:
             # Dynamic dispatch for functions not in FN_MAP
             from bioimage_mcp_base.dynamic_dispatch import dispatch_dynamic
@@ -162,11 +495,18 @@ def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
                 params=params,
                 work_dir=work_dir,
             )
+
+            outputs = result.get("outputs", {})
+
+            # Transform outputs to memory artifacts if requested (T033)
+            if output_mode == "memory":
+                outputs = _convert_outputs_to_memory(outputs, work_dir)
+
             response = {
                 "command": "execute_result",
                 "ok": True,
                 "ordinal": ordinal,
-                "outputs": result.get("outputs", {}),
+                "outputs": outputs,
                 "log": "ok (dynamic dispatch)",
             }
     except Exception as exc:  # noqa: BLE001
@@ -186,6 +526,91 @@ def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
     return response
 
 
+def _convert_outputs_to_memory(outputs: dict[str, Any], work_dir: Path) -> dict[str, Any]:
+    """Convert file-based outputs to memory artifacts.
+
+    Args:
+        outputs: Dict of output artifacts (may contain file paths or refs)
+        work_dir: Working directory for loading files
+
+    Returns:
+        Dict of memory artifact references
+    """
+    mem_outputs = {}
+
+    for key, value in outputs.items():
+        if isinstance(value, dict):
+            # Already an artifact reference
+            # If it has a path, load and convert to memory
+            if "path" in value:
+                path = Path(value["path"])
+                data = _load_input_data(str(path))
+                artifact_id, mem_uri = _store_in_memory(data)
+
+                # Clean up the temporary file
+                try:
+                    path.unlink()
+                except Exception:  # noqa: BLE001
+                    pass  # Ignore cleanup errors
+
+                mem_outputs[key] = {
+                    "ref_id": artifact_id,
+                    "type": value.get("type", "BioImageRef"),
+                    "uri": mem_uri,
+                    "format": "memory",
+                    "storage_type": "memory",
+                    "mime_type": "application/octet-stream",
+                    "size_bytes": data.nbytes,
+                    "created_at": _now_iso(),
+                    "metadata": {
+                        "shape": list(data.shape),
+                        "dtype": str(data.dtype),
+                        "dims": "TCZYX",
+                    },
+                }
+            else:
+                # Already a reference, keep as-is
+                mem_outputs[key] = value
+        elif isinstance(value, (str, Path)):
+            # File path
+            data = _load_input_data(str(value))
+            artifact_id, mem_uri = _store_in_memory(data)
+
+            # Clean up the temporary file
+            try:
+                Path(value).unlink()
+            except Exception:  # noqa: BLE001
+                pass  # Ignore cleanup errors
+
+            mem_outputs[key] = {
+                "ref_id": artifact_id,
+                "type": "BioImageRef",
+                "uri": mem_uri,
+                "format": "memory",
+                "storage_type": "memory",
+                "mime_type": "application/octet-stream",
+                "size_bytes": data.nbytes,
+                "created_at": _now_iso(),
+                "metadata": {
+                    "shape": list(data.shape),
+                    "dtype": str(data.dtype),
+                    "dims": "TCZYX",
+                },
+            }
+        else:
+            # Unknown type, keep as-is
+            mem_outputs[key] = value
+
+    return mem_outputs
+
+
+def _now_iso() -> str:
+    """Get current time in ISO format."""
+    from datetime import UTC, datetime
+
+    return datetime.now(UTC).isoformat()
+
+
 def main() -> int:
     """Main entrypoint that processes NDJSON requests from stdin.
 
@@ -196,6 +621,13 @@ def main() -> int:
     Returns:
         0 on success, 1 on failure
     """
+    import os
+
+    # Initialize worker identity from environment or use defaults (T032)
+    session_id = os.environ.get("BIOIMAGE_MCP_SESSION_ID", "default_session")
+    env_id = os.environ.get("BIOIMAGE_MCP_ENV_ID", "bioimage-mcp-base")
+    _initialize_worker(session_id, env_id)
+
     # Try to detect if we're in legacy mode (single JSON blob) or NDJSON loop mode
     # Legacy mode: stdin.read() until EOF (no newline in first request)
     # NDJSON mode: read line-by-line with explicit commands
@@ -221,7 +653,15 @@ def main() -> int:
                 if request.get("command") == "execute":
                     response = process_execute_request(request)
                     print(json.dumps(response), flush=True)
+                elif request.get("command") == "materialize":
+                    response = handle_materialize(request)
+                    print(json.dumps(response), flush=True)
+                elif request.get("command") == "evict":
+                    response = handle_evict(request)
+                    print(json.dumps(response), flush=True)
                 elif request.get("command") == "shutdown":
+                    # T073: Release memory artifacts before shutdown
+                    _MEMORY_ARTIFACTS.clear()
                     response = {
                         "command": "shutdown_ack",
                         "ok": True,
@@ -241,7 +681,15 @@ def main() -> int:
                     if request.get("command") == "execute":
                         response = process_execute_request(request)
                         print(json.dumps(response), flush=True)
+                    elif request.get("command") == "materialize":
+                        response = handle_materialize(request)
+                        print(json.dumps(response), flush=True)
+                    elif request.get("command") == "evict":
+                        response = handle_evict(request)
+                        print(json.dumps(response), flush=True)
                     elif request.get("command") == "shutdown":
+                        # T073: Release memory artifacts before shutdown
+                        _MEMORY_ARTIFACTS.clear()
                         response = {
                             "command": "shutdown_ack",
                             "ok": True,

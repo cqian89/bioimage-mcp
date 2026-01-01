@@ -13,36 +13,36 @@ Transition from one-shot subprocess execution to persistent worker subprocesses 
 
 ## Phase 1: Setup
 
-- [ ] T001 [P] Create worker IPC contract file at `specs/012-persistent-worker/contracts/worker-ipc.yaml`
-- [ ] T002 [P] Create worker resilience test file stub at `tests/integration/test_worker_resilience.py`
-- [ ] T003 [P] Create persistent worker test file stub at `tests/integration/test_persistent_worker.py`
-- [ ] T004 [P] Create worker IPC unit test file stub at `tests/unit/runtimes/test_worker_ipc.py`
+- [X] T001 [P] Create worker IPC contract file at `specs/012-persistent-worker/contracts/worker-ipc.yaml`
+- [X] T002 [P] Create worker resilience test file stub at `tests/integration/test_worker_resilience.py`
+- [X] T003 [P] Create persistent worker test file stub at `tests/integration/test_persistent_worker.py`
+- [X] T004 [P] Create worker IPC unit test file stub at `tests/unit/runtimes/test_worker_ipc.py`
 
 ---
 
 ## Phase 2: Foundational (BLOCKING)
 
 ### Configuration Schema
-- [ ] T005 Write failing test for worker config settings in `tests/unit/config/test_schema.py`
-- [ ] T006 Add worker settings to ConfigSchema in `src/bioimage_mcp/config/schema.py` (worker_timeout_seconds=600, max_workers=8, session_timeout_seconds=1800)
-- [ ] T007 Verify worker config test passes
+- [X] T005 Write failing test for worker config settings in `tests/unit/config/test_schema.py`
+- [X] T006 Add worker settings to ConfigSchema in `src/bioimage_mcp/config/schema.py` (worker_timeout_seconds=600, max_workers=8, session_timeout_seconds=1800)
+- [X] T007 Verify worker config test passes
 
 ### IPC Message Types
-- [ ] T008 Write failing contract test for IPC message schemas in `tests/contract/test_worker_ipc_schema.py`
-- [ ] T009 Create `src/bioimage_mcp/runtimes/worker_ipc.py` with Pydantic models (ExecuteRequest, ExecuteResponse, MaterializeRequest, MaterializeResponse, EvictRequest, EvictResponse, ShutdownRequest, ShutdownResponse)
-- [ ] T010 Add NDJSON framing helpers (encode_message, decode_message) to `src/bioimage_mcp/runtimes/worker_ipc.py`
-- [ ] T011 Verify IPC contract tests pass
+- [X] T008 Write failing contract test for IPC message schemas in `tests/contract/test_worker_ipc_schema.py`
+- [X] T009 Create `src/bioimage_mcp/runtimes/worker_ipc.py` with Pydantic models (ExecuteRequest, ExecuteResponse, MaterializeRequest, MaterializeResponse, EvictRequest, EvictResponse, ShutdownRequest, ShutdownResponse)
+- [X] T010 Add NDJSON framing helpers (encode_message, decode_message) to `src/bioimage_mcp/runtimes/worker_ipc.py`
+- [X] T011 Verify IPC contract tests pass
 
 ### Worker State Enum
-- [ ] T012 Write failing test for WorkerState enum in `tests/unit/runtimes/test_worker_ipc.py`
-- [ ] T013 Add WorkerState enum to `src/bioimage_mcp/runtimes/worker_ipc.py` (spawning, ready, busy, terminated)
-- [ ] T014 Verify WorkerState test passes
+- [X] T012 Write failing test for WorkerState enum in `tests/unit/runtimes/test_worker_ipc.py`
+- [X] T013 Add WorkerState enum to `src/bioimage_mcp/runtimes/worker_ipc.py` (spawning, ready, busy, terminated)
+- [X] T014 Verify WorkerState test passes
 
 ### Tool Entrypoint Update
-- [ ] T015 Write failing test for NDJSON loop in base tool entrypoint in `tests/integration/test_persistent_worker.py`
-- [ ] T016 Update `tools/base/bioimage_mcp_base/entrypoint.py` to NDJSON loop (stdin read, dispatch, stdout write)
-- [ ] T017 Add execute handler in `tools/base/bioimage_mcp_base/entrypoint.py`
-- [ ] T018 Verify NDJSON loop test passes
+- [X] T015 Write failing test for NDJSON loop in base tool entrypoint in `tests/integration/test_persistent_worker.py`
+- [X] T016 Update `tools/base/bioimage_mcp_base/entrypoint.py` to NDJSON loop (stdin read, dispatch, stdout write)
+- [X] T017 Add execute handler in `tools/base/bioimage_mcp_base/entrypoint.py`
+- [X] T018 Verify NDJSON loop test passes
 
 ---
 
@@ -51,31 +51,31 @@ Transition from one-shot subprocess execution to persistent worker subprocesses 
 **Goal**: Eliminate conda activation overhead; workers persist across calls; second call 5x faster than cold-start
 
 ### Tests First (TDD)
-- [ ] T019 [US1] Write failing test for PID reuse across sequential calls in `tests/integration/test_persistent_worker.py`
-- [ ] T020 [US1] Write failing test for warm/cold latency ratio (target 5x speedup) in `tests/integration/test_persistent_worker.py` (mark absolute <200ms threshold as non-gating/local-only)
-- [ ] T093 [US1] Write failing test for per-worker request queueing (FR-015) in `tests/integration/test_persistent_worker.py`
-- [ ] T095 [US1] Write failing test for max worker limit enforcement (FR-016) in `tests/integration/test_persistent_worker.py`
-- [ ] T097 [US1] Write failing test for per-operation timeout enforcement (FR-017) in `tests/integration/test_persistent_worker.py`
+- [X] T019 [US1] Write failing test for PID reuse across sequential calls in `tests/integration/test_persistent_worker.py`
+- [X] T020 [US1] Write failing test for warm/cold latency ratio (target 5x speedup) in `tests/integration/test_persistent_worker.py` (mark absolute <200ms threshold as non-gating/local-only)
+- [X] T093 [US1] Write failing test for per-worker request queueing (FR-015) in `tests/integration/test_persistent_worker.py`
+- [X] T095 [US1] Write failing test for max worker limit enforcement (FR-016) in `tests/integration/test_persistent_worker.py`
+- [X] T097 [US1] Write failing test for per-operation timeout enforcement (FR-017) in `tests/integration/test_persistent_worker.py`
 
 ### Subprocess Spawning
-- [ ] T021 [US1] Create WorkerProcess class in `src/bioimage_mcp/runtimes/persistent.py` (subprocess.Popen with stdin=PIPE, stdout=PIPE, stderr=PIPE)
-- [ ] T022 [US1] Add stdin/stdout pipe handling in `src/bioimage_mcp/runtimes/persistent.py`
-- [ ] T023 [US1] Add stderr capture thread in `src/bioimage_mcp/runtimes/persistent.py`
+- [X] T021 [US1] Create WorkerProcess class in `src/bioimage_mcp/runtimes/persistent.py` (subprocess.Popen with stdin=PIPE, stdout=PIPE, stderr=PIPE)
+- [X] T022 [US1] Add stdin/stdout pipe handling in `src/bioimage_mcp/runtimes/persistent.py`
+- [X] T023 [US1] Add stderr capture thread in `src/bioimage_mcp/runtimes/persistent.py`
 
 ### Worker Management
-- [ ] T024 [US1] Create WorkerManager class in `src/bioimage_mcp/runtimes/persistent.py` (registry, get_or_spawn, send_command)
-- [ ] T025 [US1] Add worker lifecycle tracking (spawning -> ready -> busy -> ready) in `src/bioimage_mcp/runtimes/persistent.py`
-- [ ] T094 [US1] Implement per-worker request queue in `src/bioimage_mcp/runtimes/persistent.py` (ensure one request at a time per worker)
-- [ ] T096 [US1] Implement max worker limit enforcement and queueing in WorkerManager in `src/bioimage_mcp/runtimes/persistent.py`
-- [ ] T098 [US1] Implement per-operation timeout enforcement and worker termination on timeout in `src/bioimage_mcp/runtimes/persistent.py`
+- [X] T024 [US1] Create WorkerManager class in `src/bioimage_mcp/runtimes/persistent.py` (registry, get_or_spawn, send_command)
+- [X] T025 [US1] Add worker lifecycle tracking (spawning -> ready -> busy -> ready) in `src/bioimage_mcp/runtimes/persistent.py`
+- [X] T094 [US1] Implement per-worker request queue in `src/bioimage_mcp/runtimes/persistent.py` (ensure one request at a time per worker)
+- [X] T096 [US1] Implement max worker limit enforcement and queueing in WorkerManager in `src/bioimage_mcp/runtimes/persistent.py`
+- [X] T098 [US1] Implement per-operation timeout enforcement and worker termination on timeout in `src/bioimage_mcp/runtimes/persistent.py`
 
 ### Execute Command
-- [ ] T026 [US1] Add execute command dispatch in `src/bioimage_mcp/runtimes/persistent.py` (send ExecuteRequest, await ExecuteResponse)
-- [ ] T027 [US1] Update `src/bioimage_mcp/runtimes/executor.py` to use WorkerManager for persistent pipes
+- [X] T026 [US1] Add execute command dispatch in `src/bioimage_mcp/runtimes/persistent.py` (send ExecuteRequest, await ExecuteResponse)
+- [X] T027 [US1] Update `src/bioimage_mcp/runtimes/executor.py` to use WorkerManager for persistent pipes
 
 ### Verification
-- [ ] T028 [US1] Verify PID reuse test passes
-- [ ] T029 [US1] Verify warm/cold latency ratio test passes
+- [X] T028 [US1] Verify PID reuse test passes
+- [X] T029 [US1] Verify warm/cold latency ratio test passes
 
 ---
 
@@ -84,31 +84,31 @@ Transition from one-shot subprocess execution to persistent worker subprocesses 
 **Goal**: mem:// artifacts stay in worker process memory without disk I/O; data accessed directly from memory
 
 ### Tests First (TDD)
-- [ ] T030 [US2] Write failing test for memory artifact creation in `tests/integration/test_persistent_worker.py`
-- [ ] T031 [US2] Write failing test to verify no disk I/O in artifact store for mem:// transfers in `tests/integration/test_persistent_worker.py`
-- [ ] T089 [US2] Write failing test for explicit artifact eviction (FR-010) in `tests/integration/test_persistent_worker.py`
+- [X] T030 [US2] Write failing test for memory artifact creation in `tests/integration/test_persistent_worker.py`
+- [X] T031 [US2] Write failing test to verify no disk I/O in artifact store for mem:// transfers in `tests/integration/test_persistent_worker.py`
+- [X] T089 [US2] Write failing test for explicit artifact eviction (FR-010) in `tests/integration/test_persistent_worker.py`
 
 ### Memory Artifact Store in Worker
-- [ ] T032 [US2] Add in-memory artifact storage dict to `tools/base/bioimage_mcp_base/entrypoint.py`
-- [ ] T033 [US2] Update execute handler to store outputs with mem:// URIs in `tools/base/bioimage_mcp_base/entrypoint.py`
-- [ ] T034 [US2] Add artifact retrieval from memory in `tools/base/bioimage_mcp_base/entrypoint.py`
-- [ ] T090 [US2] Add eviction handler in `tools/base/bioimage_mcp_base/entrypoint.py` (remove from memory dict)
+- [X] T032 [US2] Add in-memory artifact storage dict to `tools/base/bioimage_mcp_base/entrypoint.py`
+- [X] T033 [US2] Update execute handler to store outputs with mem:// URIs in `tools/base/bioimage_mcp_base/entrypoint.py`
+- [X] T034 [US2] Add artifact retrieval from memory in `tools/base/bioimage_mcp_base/entrypoint.py`
+- [X] T090 [US2] Add eviction handler in `tools/base/bioimage_mcp_base/entrypoint.py` (remove from memory dict)
 
 ### Eviction Logic
-- [ ] T091 [US2] Add eviction command dispatch in `src/bioimage_mcp/runtimes/persistent.py`
-- [ ] T092 [US2] Update ArtifactStore to trigger worker eviction on `delete_artifact` for mem:// in `src/bioimage_mcp/storage/artifact_store.py`
+- [X] T091 [US2] Add eviction command dispatch in `src/bioimage_mcp/runtimes/persistent.py`
+- [X] T092 [US2] Update ArtifactStore to trigger worker eviction on `delete_artifact` for mem:// in `src/bioimage_mcp/storage/artifact_store.py`
 
 ### mem:// URI Scheme
-- [ ] T035 [US2] Add mem:// URI parsing helper in `src/bioimage_mcp/artifacts/reference.py` (parse session_id, env_id, artifact_id)
-- [ ] T036 [US2] Update ArtifactReference model to support storage_type="memory" in `src/bioimage_mcp/artifacts/reference.py`
+- [X] T035 [US2] Add mem:// URI parsing helper in `src/bioimage_mcp/artifacts/reference.py` (parse session_id, env_id, artifact_id)
+- [X] T036 [US2] Update ArtifactReference model to support storage_type="memory" in `src/bioimage_mcp/artifacts/reference.py`
 
 ### Core Routing
-- [ ] T037 [US2] Update ArtifactStore to route mem:// access to owning worker in `src/bioimage_mcp/storage/artifact_store.py`
-- [ ] T038 [US2] Add worker routing logic in WorkerManager in `src/bioimage_mcp/runtimes/persistent.py`
+- [X] T037 [US2] Update ArtifactStore to route mem:// access to owning worker in `src/bioimage_mcp/storage/artifact_store.py`
+- [X] T038 [US2] Add worker routing logic in WorkerManager in `src/bioimage_mcp/runtimes/persistent.py`
 
 ### Verification
-- [ ] T039 [US2] Verify memory artifact creation test passes
-- [ ] T040 [US2] Verify no disk I/O in artifact store for mem:// transfers test passes
+- [X] T039 [US2] Verify memory artifact creation test passes
+- [X] T040 [US2] Verify no disk I/O in artifact store for mem:// transfers test passes
 
 ---
 
@@ -117,29 +117,29 @@ Transition from one-shot subprocess execution to persistent worker subprocesses 
 **Goal**: Automatic materialization when mem:// artifact crosses environments; output in OME-Zarr or OME-TIFF
 
 ### Tests First (TDD)
-- [ ] T041 [US3] Write failing test for cross-env handoff in `tests/integration/test_persistent_worker.py`
-- [ ] T042 [US3] Write failing test for automatic materialization in `tests/integration/test_persistent_worker.py`
-- [ ] T101 [US3] Write failing test for cleanup of partial files on worker death during materialization (U2) in `tests/integration/test_worker_resilience.py`
+- [X] T041 [US3] Write failing test for cross-env handoff in `tests/integration/test_persistent_worker.py`
+- [X] T042 [US3] Write failing test for automatic materialization in `tests/integration/test_persistent_worker.py`
+- [X] T101 [US3] Write failing test for cleanup of partial files on worker death during materialization (U2) in `tests/integration/test_worker_resilience.py`
 
 ### Materialize Command
-- [ ] T043 [US3] Add materialize handler in `tools/base/bioimage_mcp_base/entrypoint.py` (export mem:// to OME-Zarr/OME-TIFF, fallback OME-TIFF)
-- [ ] T099 [US3] Update MaterializeRequest schema to include `format` negotiation (OME-Zarr, OME-TIFF) in `src/bioimage_mcp/runtimes/worker_ipc.py` (default OME-TIFF)
-- [ ] T100 [US3] Update materialize handler to use requested format and bioio writers in `tools/base/bioimage_mcp_base/entrypoint.py`
-- [ ] T044 [US3] Add materialize command dispatch in `src/bioimage_mcp/runtimes/persistent.py` (send MaterializeRequest, await MaterializeResponse)
-- [ ] T102 [US3] Implement cleanup of partial files in WorkerManager/ArtifactStore in `src/bioimage_mcp/runtimes/persistent.py`
+- [X] T043 [US3] Add materialize handler in `tools/base/bioimage_mcp_base/entrypoint.py` (export mem:// to OME-Zarr/OME-TIFF, fallback OME-TIFF)
+- [X] T099 [US3] Update MaterializeRequest schema to include `format` negotiation (OME-Zarr, OME-TIFF) in `src/bioimage_mcp/runtimes/worker_ipc.py` (default OME-TIFF)
+- [X] T100 [US3] Update materialize handler to use requested format and bioio writers in `tools/base/bioimage_mcp_base/entrypoint.py`
+- [X] T044 [US3] Add materialize command dispatch in `src/bioimage_mcp/runtimes/persistent.py` (send MaterializeRequest, await MaterializeResponse)
+- [X] T102 [US3] Implement cleanup of partial files in WorkerManager/ArtifactStore in `src/bioimage_mcp/runtimes/persistent.py`
 
 ### Cross-Env Trigger
-- [ ] T045 [US3] Add cross-env detection logic in `src/bioimage_mcp/api/execution.py` (detect env mismatch)
-- [ ] T046 [US3] Add automatic materialization trigger in `src/bioimage_mcp/api/execution.py` (call materialize before cross-env call)
+- [X] T045 [US3] Add cross-env detection logic in `src/bioimage_mcp/api/execution.py` (detect env mismatch)
+- [X] T046 [US3] Add automatic materialization trigger in `src/bioimage_mcp/api/execution.py` (call materialize before cross-env call)
 
 ### Remove bioio from Core (Constitution III compliance)
-- [ ] T047 [US3] Remove bioio imports from `src/bioimage_mcp/api/execution.py`
-- [ ] T048 [US3] Remove bioio imports from `src/bioimage_mcp/api/artifacts.py`
-- [ ] T049 [US3] Verify no bioio references in `src/bioimage_mcp/` (grep check)
+- [X] T047 [US3] Remove bioio imports from `src/bioimage_mcp/api/execution.py`
+- [X] T048 [US3] Remove bioio imports from `src/bioimage_mcp/api/artifacts.py`
+- [X] T049 [US3] Verify no bioio references in `src/bioimage_mcp/` (grep check)
 
 ### Verification
-- [ ] T050 [US3] Verify cross-env handoff test passes
-- [ ] T051 [US3] Verify automatic materialization test passes
+- [X] T050 [US3] Verify cross-env handoff test passes
+- [X] T051 [US3] Verify automatic materialization test passes
 
 ---
 
@@ -148,29 +148,29 @@ Transition from one-shot subprocess execution to persistent worker subprocesses 
 **Goal**: Detect crash within 5s; invalidate mem:// artifacts; auto-spawn new worker; clear error messages
 
 ### Tests First (TDD)
-- [ ] T052 [US4] Write failing test for crash detection in `tests/integration/test_worker_resilience.py`
-- [ ] T053 [US4] Write failing test for artifact invalidation in `tests/integration/test_worker_resilience.py`
-- [ ] T054 [US4] Write failing test for automatic respawn in `tests/integration/test_worker_resilience.py`
+- [X] T052 [US4] Write failing test for crash detection in `tests/integration/test_worker_resilience.py`
+- [X] T053 [US4] Write failing test for artifact invalidation in `tests/integration/test_worker_resilience.py`
+- [X] T054 [US4] Write failing test for automatic respawn in `tests/integration/test_worker_resilience.py`
 
 ### Process Health Monitoring
-- [ ] T055 [US4] Add process health check in `src/bioimage_mcp/runtimes/persistent.py` (poll subprocess.returncode)
-- [ ] T056 [US4] Add periodic health monitoring thread in `src/bioimage_mcp/runtimes/persistent.py`
+- [X] T055 [US4] Add process health check in `src/bioimage_mcp/runtimes/persistent.py` (poll subprocess.returncode)
+- [X] T056 [US4] Add periodic health monitoring thread in `src/bioimage_mcp/runtimes/persistent.py`
 
 ### Crash Detection
-- [ ] T057 [US4] Add crash detection within 5 seconds in `src/bioimage_mcp/runtimes/persistent.py` (mark worker as terminated)
-- [ ] T058 [US4] Add stderr log capture on crash in `src/bioimage_mcp/runtimes/persistent.py`
+- [X] T057 [US4] Add crash detection within 5 seconds in `src/bioimage_mcp/runtimes/persistent.py` (mark worker as terminated)
+- [X] T058 [US4] Add stderr log capture on crash in `src/bioimage_mcp/runtimes/persistent.py`
 
 ### Artifact Invalidation
-- [ ] T059 [US4] Add mem:// artifact invalidation on crash in `src/bioimage_mcp/storage/artifact_store.py` (mark as unavailable)
-- [ ] T060 [US4] Add clear error message for invalid mem:// artifacts in `src/bioimage_mcp/storage/artifact_store.py`
+- [X] T059 [US4] Add mem:// artifact invalidation on crash in `src/bioimage_mcp/storage/artifact_store.py` (mark as unavailable)
+- [X] T060 [US4] Add clear error message for invalid mem:// artifacts in `src/bioimage_mcp/storage/artifact_store.py`
 
 ### Automatic Respawn
-- [ ] T061 [US4] Add automatic worker respawn in `src/bioimage_mcp/runtimes/persistent.py` (spawn new worker for subsequent calls)
+- [X] T061 [US4] Add automatic worker respawn in `src/bioimage_mcp/runtimes/persistent.py` (spawn new worker for subsequent calls)
 
 ### Verification
-- [ ] T062 [US4] Verify crash detection test passes
-- [ ] T063 [US4] Verify artifact invalidation test passes
-- [ ] T064 [US4] Verify automatic respawn test passes
+- [X] T062 [US4] Verify crash detection test passes
+- [X] T063 [US4] Verify artifact invalidation test passes
+- [X] T064 [US4] Verify automatic respawn test passes
 
 ---
 
@@ -179,25 +179,25 @@ Transition from one-shot subprocess execution to persistent worker subprocesses 
 **Goal**: Complete in-flight ops; release memory; auto-shutdown after idle timeout
 
 ### Tests First (TDD)
-- [ ] T065 [US5] Write failing test for graceful shutdown in `tests/integration/test_worker_resilience.py`
-- [ ] T066 [US5] Write failing test for idle timeout in `tests/integration/test_worker_resilience.py`
+- [X] T065 [US5] Write failing test for graceful shutdown in `tests/integration/test_worker_resilience.py`
+- [X] T066 [US5] Write failing test for idle timeout in `tests/integration/test_worker_resilience.py`
 
 ### Shutdown Command
-- [ ] T067 [US5] Add shutdown handler in `tools/base/bioimage_mcp_base/entrypoint.py` (release memory, exit loop)
-- [ ] T068 [US5] Add shutdown command dispatch in `src/bioimage_mcp/runtimes/persistent.py` (send ShutdownRequest, await ShutdownResponse)
+- [X] T067 [US5] Add shutdown handler in `tools/base/bioimage_mcp_base/entrypoint.py` (release memory, exit loop)
+- [X] T068 [US5] Add shutdown command dispatch in `src/bioimage_mcp/runtimes/persistent.py` (send ShutdownRequest, await ShutdownResponse)
 
 ### Idle Timeout
-- [ ] T069 [US5] Add idle time tracking in `src/bioimage_mcp/runtimes/persistent.py` (last_activity_at)
-- [ ] T070 [US5] Add idle timeout check in WorkerManager in `src/bioimage_mcp/runtimes/persistent.py` (session_timeout_seconds)
-- [ ] T071 [US5] Add automatic shutdown trigger for idle workers in `src/bioimage_mcp/runtimes/persistent.py`
+- [X] T069 [US5] Add idle time tracking in `src/bioimage_mcp/runtimes/persistent.py` (last_activity_at)
+- [X] T070 [US5] Add idle timeout check in WorkerManager in `src/bioimage_mcp/runtimes/persistent.py` (session_timeout_seconds)
+- [X] T071 [US5] Add automatic shutdown trigger for idle workers in `src/bioimage_mcp/runtimes/persistent.py`
 
 ### Graceful Shutdown
-- [ ] T072 [US5] Add in-flight operation completion before shutdown in `src/bioimage_mcp/runtimes/persistent.py` (wait for busy -> ready)
-- [ ] T073 [US5] Add memory release verification in shutdown handler in `tools/base/bioimage_mcp_base/entrypoint.py`
+- [X] T072 [US5] Add in-flight operation completion before shutdown in `src/bioimage_mcp/runtimes/persistent.py` (wait for busy -> ready)
+- [X] T073 [US5] Add memory release verification in shutdown handler in `tools/base/bioimage_mcp_base/entrypoint.py`
 
 ### Verification
-- [ ] T074 [US5] Verify graceful shutdown test passes
-- [ ] T075 [US5] Verify idle timeout test passes
+- [X] T074 [US5] Verify graceful shutdown test passes
+- [X] T075 [US5] Verify idle timeout test passes
 
 ---
 
