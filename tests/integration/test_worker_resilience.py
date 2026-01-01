@@ -1,8 +1,10 @@
-import pytest
 from datetime import UTC, datetime
-from bioimage_mcp.runtimes.persistent import PersistentWorkerManager
+
+import pytest
+
 from bioimage_mcp.artifacts.memory import MemoryArtifactStore, build_mem_uri
 from bioimage_mcp.artifacts.models import ArtifactRef
+from bioimage_mcp.runtimes.persistent import PersistentWorkerManager
 
 
 class TestWorkerResilience:
@@ -138,3 +140,88 @@ class TestWorkerResilience:
         assert not memory_store.exists(art1)
         assert not memory_store.exists(art2)
         assert len(memory_store.get_by_session(session_id)) == 0
+
+
+class TestWorkerCrashRecovery:
+    """Integration tests for worker crash detection and recovery (US4)."""
+
+    @pytest.mark.skip("T052: Not implemented yet - US4 crash detection")
+    def test_crash_detection_within_5_seconds(self):
+        """Verify that worker crashes are detected within 5 seconds.
+
+        Related: T052 [US4] - Crash detection
+
+        Expected behavior:
+        1. Spawn a worker
+        2. Simulate crash (kill -9 or process.terminate())
+        3. Verify WorkerManager detects crash within 5 seconds
+        4. Verify worker state transitions to 'terminated'
+        5. Verify crash is logged with stderr capture
+        """
+        pytest.fail("Test not implemented")
+
+    @pytest.mark.skip("T053: Not implemented yet - US4 artifact invalidation")
+    def test_artifact_invalidation_on_crash(self):
+        """Verify that all mem:// artifacts are invalidated when worker crashes.
+
+        Related: T053 [US4] - Artifact invalidation
+
+        Expected behavior:
+        1. Worker has multiple mem:// artifacts in memory
+        2. Simulate worker crash
+        3. Verify all artifacts for that worker are marked as unavailable
+        4. Verify subsequent access to those artifacts fails with clear error message
+        5. Verify other workers' artifacts are unaffected
+        """
+        pytest.fail("Test not implemented")
+
+    @pytest.mark.skip("T054: Not implemented yet - US4 automatic respawn")
+    def test_automatic_respawn_after_crash(self):
+        """Verify that a new worker is spawned automatically after a crash.
+
+        Related: T054 [US4] - Automatic respawn
+
+        Expected behavior:
+        1. Worker crashes during operation
+        2. Subsequent tool call to same (session_id, env_id)
+        3. Verify WorkerManager spawns a new worker (different PID)
+        4. Verify new worker starts in 'ready' state
+        5. Verify tool call completes successfully on new worker
+        """
+        pytest.fail("Test not implemented")
+
+
+class TestWorkerShutdown:
+    """Integration tests for graceful worker shutdown (US5)."""
+
+    @pytest.mark.skip("T065: Not implemented yet - US5 graceful shutdown")
+    def test_graceful_shutdown_completes_in_flight_operations(self):
+        """Verify that shutdown waits for in-flight operations to complete.
+
+        Related: T065 [US5] - Graceful shutdown
+
+        Expected behavior:
+        1. Send tool request to worker (starts processing)
+        2. Send shutdown request while operation is in flight
+        3. Verify worker completes the operation first
+        4. Verify worker returns operation result before shutdown
+        5. Verify worker then sends ShutdownAck and exits cleanly
+        """
+        pytest.fail("Test not implemented")
+
+    @pytest.mark.skip("T066: Not implemented yet - US5 idle timeout")
+    @pytest.mark.slow
+    def test_idle_timeout_triggers_automatic_shutdown(self):
+        """Verify that idle workers are shut down after session_timeout_seconds.
+
+        Related: T066 [US5] - Idle timeout
+
+        Expected behavior:
+        1. Configure session_timeout_seconds=10
+        2. Spawn worker and complete one operation
+        3. Wait 10+ seconds with no activity
+        4. Verify worker is automatically shut down
+        5. Verify memory artifacts are invalidated
+        6. Verify subsequent call spawns new worker
+        """
+        pytest.fail("Test not implemented")
