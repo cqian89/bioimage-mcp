@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -79,6 +79,14 @@ class Function(BaseModel):
         description=(
             "How params_schema was derived: "
             "'python_api', 'argparse', 'manual', or None if from manifest"
+        ),
+    )
+    input_mode: Literal["path", "numpy", "xarray"] = Field(
+        default="numpy",
+        description=(
+            "How input artifacts should be resolved: "
+            "'path' (file path), 'numpy' (numpy array via BioImage.data), "
+            "or 'xarray' (xarray.DataArray via BioImage.xarray_data)"
         ),
     )
 

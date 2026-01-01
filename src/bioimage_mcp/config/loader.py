@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from pathlib import Path
 import re
-from typing import Iterable, TYPE_CHECKING
+from collections.abc import Iterable
+from pathlib import Path
+from typing import TYPE_CHECKING
 
 import yaml
 
@@ -97,7 +98,7 @@ def is_canonical_fn_id(fn_id: str, *, allow_meta: bool = True) -> bool:
 
 
 def validate_manifest_fn_ids(
-    manifests: Iterable["ToolManifest"],
+    manifests: Iterable[ToolManifest],
     *,
     allow_meta: bool = True,
 ) -> None:

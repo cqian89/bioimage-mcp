@@ -18,9 +18,9 @@
 
 **Purpose**: Verify existing infrastructure and prepare for feature development
 
-- [ ] T001 Verify project structure matches plan.md (src/bioimage_mcp/registry/dynamic/ exists)
-- [ ] T002 [P] Verify bioio and xarray dependencies in pyproject.toml
-- [ ] T003 [P] Create feature branch `011-wrapper-consolidation` if not exists
+- [X] T001 Verify project structure matches plan.md (src/bioimage_mcp/registry/dynamic/ exists)
+- [X] T002 [P] Verify bioio and xarray dependencies in pyproject.toml
+- [X] T003 [P] Create feature branch `011-wrapper-consolidation` if not exists
 
 ---
 
@@ -32,17 +32,17 @@
 
 ### Data Models
 
-- [ ] T004 [P] Add `input_mode` field (Literal["path", "numpy", "xarray"]) to FunctionDef in src/bioimage_mcp/registry/manifest_schema.py
-- [ ] T005 [P] Add `ApplyUfuncConfig` model (input_core_dims, output_core_dims, vectorize, dask, output_dtypes) in src/bioimage_mcp/registry/dynamic/models.py
-- [ ] T006 [P] Update `ArtifactRef` to support `mem://` URI scheme and memory storage type in src/bioimage_mcp/artifacts/models.py
-- [ ] T007 [P] Define `XARRAY_ALLOWLIST` and `XARRAY_DENYLIST` constants in src/bioimage_mcp/registry/dynamic/allowlists.py (NEW file)
+- [X] T004 [P] Add `input_mode` field (Literal["path", "numpy", "xarray"]) to FunctionDef in src/bioimage_mcp/registry/manifest_schema.py
+- [X] T005 [P] Add `ApplyUfuncConfig` model (input_core_dims, output_core_dims, vectorize, dask, output_dtypes) in src/bioimage_mcp/registry/dynamic/models.py
+- [X] T006 [P] Update `ArtifactRef` to support `mem://` URI scheme and memory storage type in src/bioimage_mcp/artifacts/models.py
+- [X] T007 [P] Define `XARRAY_ALLOWLIST` and `XARRAY_DENYLIST` constants in src/bioimage_mcp/registry/dynamic/allowlists.py (NEW file)
 
 ### Infrastructure - Persistent Workers & Memory Store
 
 
-- [ ] T008 [P] Implement `PersistentWorkerManager` for per-session, per-env workers in src/bioimage_mcp/runtimes/persistent.py
-- [ ] T009 [P] Implement `MemoryArtifactStore` for tracking `mem://` references in src/bioimage_mcp/artifacts/memory.py
-- [ ] T010 Implement worker crash detection and `mem://` reference invalidation logic in src/bioimage_mcp/runtimes/persistent.py
+- [X] T008 [P] Implement `PersistentWorkerManager` for per-session, per-env workers in src/bioimage_mcp/runtimes/persistent.py
+- [X] T009 [P] Implement `MemoryArtifactStore` for tracking `mem://` references in src/bioimage_mcp/artifacts/memory.py
+- [X] T010 Implement worker crash detection and `mem://` reference invalidation logic in src/bioimage_mcp/runtimes/persistent.py
 
 **Checkpoint**: Foundation ready - data models validated, user story implementation can begin
 
@@ -56,17 +56,17 @@
 
 ### Tests for User Story 1
 
-- [ ] T011 [P] [US1] Contract test for `mem://` artifact reference schema in tests/contract/test_memory_artifact_schema.py
-- [ ] T012 [P] [US1] Integration test: Gaussian blur on 5D image produces `mem://` artifact and preserves all dimensions in tests/integration/test_axis_independent_processing.py
-- [ ] T013 [P] [US1] Integration test: Worker restart invalidates existing `mem://` references in tests/integration/test_worker_resilience.py
+- [X] T011 [P] [US1] Contract test for `mem://` artifact reference schema in tests/contract/test_memory_artifact_schema.py
+- [X] T012 [P] [US1] Integration test: Gaussian blur on 5D image produces `mem://` artifact and preserves all dimensions in tests/integration/test_axis_independent_processing.py
+- [X] T013 [P] [US1] Integration test: Worker restart invalidates existing `mem://` references in tests/integration/test_worker_resilience.py
 
 ### Implementation for User Story 1
 
-- [ ] T014 [US1] Implement `XarrayAdapter` in src/bioimage_mcp/registry/dynamic/xarray_adapter.py to expose `base.xarray.*` tools
-- [ ] T015 [US1] Implement `mem://` resolution in `ArtifactManager`
-- [ ] T016 [US1] Update `ExecutionBridge` to use persistent workers and handle `mem://` artifact resolution in src/bioimage_mcp/api/execution.py
-- [ ] T017 [US1] Implement `apply_ufunc` dispatch logic for numpy libraries in src/bioimage_mcp/api/execution.py
-- [ ] T018 [US1] Add logging for axis-aware processing operations and worker lifecycle events
+- [X] T014 [US1] Implement `XarrayAdapter` in src/bioimage_mcp/registry/dynamic/xarray_adapter.py to expose `base.xarray.*` tools
+- [X] T015 [US1] Implement `mem://` resolution in `ArtifactManager`
+- [X] T016 [US1] Update `ExecutionBridge` to use persistent workers and handle `mem://` artifact resolution in src/bioimage_mcp/api/execution.py
+- [X] T017 [US1] Implement `apply_ufunc` dispatch logic for numpy libraries in src/bioimage_mcp/api/execution.py
+- [X] T018 [US1] Add logging for axis-aware processing operations and worker lifecycle events
 
 **Checkpoint**: User Story 1 complete - spatial filters work across any dimensionality
 
@@ -80,15 +80,15 @@
 
 ### Tests for User Story 2
 
-- [ ] T019 [P] [US2] Integration test: Cross-env handoff negotiates OME-TIFF materialization in tests/integration/test_cross_env_handoff.py
-- [ ] T020 [P] [US2] Integration test: `base.bioio.export` successfully materializes `mem://` to file-backed artifact in tests/integration/test_artifact_export.py
+- [X] T019 [P] [US2] Integration test: Cross-env handoff negotiates OME-TIFF materialization in tests/integration/test_cross_env_handoff.py
+- [X] T020 [P] [US2] Integration test: `base.bioio.export` successfully materializes `mem://` to file-backed artifact in tests/integration/test_artifact_export.py
 
 ### Implementation for User Story 2
 
-- [ ] T021 [US2] Implement cross-env format negotiation in `IOBridge`
-- [ ] T022 [US2] Implement coordination for source-side materialization in `IOBridge` (invokes `bioio` in worker)
-- [ ] T023 [US2] Implement `base.bioio.export` (agent tool) in `tools/base/manifest.yaml` and dynamic implementation
-- [ ] T024 [US2] Integrate `IOBridge` handoff with `ExecutionBridge`
+- [X] T021 [US2] Implement cross-env format negotiation in `IOBridge`
+- [X] T022 [US2] Implement coordination for source-side materialization in `IOBridge` (invokes `bioio` in worker)
+- [X] T023 [US2] Implement `base.bioio.export` (agent tool) in `tools/base/manifest.yaml` and dynamic implementation
+- [X] T024 [US2] Integrate `IOBridge` handoff with `ExecutionBridge`
 
 **Checkpoint**: User Story 2 complete - proprietary formats work transparently with any tool
 
@@ -102,21 +102,21 @@
 
 ### Tests for User Story 3
 
-- [ ] T033 [US3] Integration test: rename('Z' → 'T') updates metadata correctly in tests/integration/test_axis_manipulation.py
-- [ ] T034 [US3] Integration test: squeeze() removes singleton dimensions in tests/integration/test_axis_manipulation.py
-- [ ] T035 [US3] Integration test: transpose() reorders dimensions correctly in tests/integration/test_axis_manipulation.py
-- [ ] T036 [US3] Integration test: isel() selects along dimensions without data corruption in tests/integration/test_axis_manipulation.py
+- [X] T033 [US3] Integration test: rename('Z' → 'T') updates metadata correctly in tests/integration/test_axis_manipulation.py
+- [X] T034 [US3] Integration test: squeeze() removes singleton dimensions in tests/integration/test_axis_manipulation.py
+- [X] T035 [US3] Integration test: transpose() reorders dimensions correctly in tests/integration/test_axis_manipulation.py
+- [X] T036 [US3] Integration test: isel() selects along dimensions without data corruption in tests/integration/test_axis_manipulation.py
 
 ### Implementation for User Story 3
 
-- [ ] T025 [US3] Register `base.xarray.rename`, `base.xarray.squeeze`, etc. as individual tools in `tools/base/manifest.yaml`
-- [ ] T026 [US3] Add `rename` method implementation to `XarrayAdapter` in src/bioimage_mcp/registry/dynamic/xarray_adapter.py
-- [ ] T027 [US3] Add `squeeze` method implementation to `XarrayAdapter`
-- [ ] T028 [US3] Add `expand_dims` method implementation to `XarrayAdapter`
-- [ ] T029 [US3] Add `transpose` method implementation to `XarrayAdapter`
-- [ ] T030 [US3] Add `isel` method implementation to `XarrayAdapter`
-- [ ] T031 [US3] Add `pad` method implementation to `XarrayAdapter`
-- [ ] T032 [US3] Add `sum/max/mean` reduction methods to `XarrayAdapter`
+- [X] T025 [US3] Register `base.xarray.rename`, `base.xarray.squeeze`, etc. as individual tools in `tools/base/manifest.yaml`
+- [X] T026 [US3] Add `rename` method implementation to `XarrayAdapter` in src/bioimage_mcp/registry/dynamic/xarray_adapter.py
+- [X] T027 [US3] Add `squeeze` method implementation to `XarrayAdapter`
+- [X] T028 [US3] Add `expand_dims` method implementation to `XarrayAdapter`
+- [X] T029 [US3] Add `transpose` method implementation to `XarrayAdapter`
+- [X] T030 [US3] Add `isel` method implementation to `XarrayAdapter`
+- [X] T031 [US3] Add `pad` method implementation to `XarrayAdapter`
+- [X] T032 [US3] Add `sum/max/mean` reduction methods to `XarrayAdapter`
 
 **Checkpoint**: User Story 3 complete - all axis manipulations available through unified interface
 
@@ -128,9 +128,9 @@
 
 ### Manifest Cleanup
 
-- [ ] T037 [P] Remove all legacy `base.wrapper.*` tools from `tools/base/manifest.yaml`
-- [ ] T038 [P] Delete `tools/base/bioimage_mcp_base/wrapper/` directory and all its contents
-- [ ] T039 [P] Clean up any wrapper-specific dependencies in `tools/base/pyproject.toml`
+- [X] T037 [P] Remove all legacy `base.wrapper.*` tools from `tools/base/manifest.yaml`
+- [X] T038 [P] Delete `tools/base/bioimage_mcp_base/wrapper/` directory and all its contents
+- [X] T039 [P] Clean up any wrapper-specific dependencies in `tools/base/pyproject.toml`
 
 **Checkpoint**: All 16 wrapper tools deleted, migration complete
 
@@ -142,24 +142,24 @@
 
 ### Documentation
 
-- [ ] T040 [P] Update `docs/reference/tools.md` with new `base.xarray.*` documentation
-- [ ] T041 [P] Update `docs/developer/architecture.md` with persistent workers and `mem://` sections
+- [X] T040 [P] Update `docs/reference/tools.md` with new `base.xarray.*` documentation
+- [X] T041 [P] Update `docs/developer/architecture.md` with persistent workers and `mem://` sections
 
 ### Provenance & Artifact Validation
 
-- [ ] T042 Integration test: CZI → Squeeze → Denoise chain records all transformations in `tests/integration/test_provenance_chain.py`
-- [ ] T043 [P] Verify `mem://` artifacts record minimal provenance, and materialized files record full history
+- [X] T042 Integration test: CZI → Squeeze → Denoise chain records all transformations in `tests/integration/test_provenance_chain.py`
+- [X] T043 [P] Verify `mem://` artifacts record minimal provenance, and materialized files record full history
 
 ### Performance
 
-- [ ] T044 Benchmark memory-backed artifact performance vs legacy file-backed wrappers
-- [ ] T045 [P] Verify worker reuse across tool calls in a single session
+- [X] T044 Benchmark memory-backed artifact performance vs legacy file-backed wrappers
+- [X] T045 [P] Verify worker reuse across tool calls in a single session
 
 ### Final Validation
 
-- [ ] T046 Run `quickstart.md` validation scenarios
-- [ ] T047 Verify registry tool count reduced by at least 15 tools
-- [ ] T048 Run full test suite: `pytest tests/`
+- [X] T046 Run `quickstart.md` validation scenarios
+- [X] T047 Verify registry tool count reduced by at least 15 tools
+- [X] T048 Run full test suite: `pytest tests/`
 
 ---
 

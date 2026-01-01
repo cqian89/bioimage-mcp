@@ -1,0 +1,130 @@
+{
+  "schema_version": "0.1",
+  "run_id": "8604102db34648e99d1d95f4f68d1e02",
+  "created_at": "2025-12-31T16:46:11.637701+00:00",
+  "workflow_spec": {
+    "steps": [
+      {
+        "fn_id": "base.skimage.filters.gaussian",
+        "params": {
+          "sigma": 1.0
+        },
+        "inputs": {
+          "image": {
+            "ref_id": "6d24460f12434a57a8d4ea326572419c",
+            "type": "BioImageRef",
+            "uri": "file:///mnt/c/Users/meqia/bioimage-mcp/test_store/objects/6d24460f12434a57a8d4ea326572419c",
+            "format": "OME-TIFF",
+            "storage_type": "file",
+            "mime_type": "image/tiff",
+            "size_bytes": 822,
+            "checksums": [
+              {
+                "algorithm": "sha256",
+                "value": "df414a867f8ee21ccc9cfc9ba8651598cc8b29f897afbc13a96c95591b9caacb"
+              }
+            ],
+            "created_at": "2025-12-31T16:46:11.078631+00:00",
+            "metadata": {},
+            "schema_version": null
+          }
+        }
+      }
+    ],
+    "run_opts": {
+      "output_mode": "memory"
+    }
+  },
+  "inputs": {
+    "image": {
+      "ref_id": "6d24460f12434a57a8d4ea326572419c",
+      "type": "BioImageRef",
+      "uri": "file:///mnt/c/Users/meqia/bioimage-mcp/test_store/objects/6d24460f12434a57a8d4ea326572419c",
+      "format": "OME-TIFF",
+      "storage_type": "file",
+      "mime_type": "image/tiff",
+      "size_bytes": 822,
+      "checksums": [
+        {
+          "algorithm": "sha256",
+          "value": "df414a867f8ee21ccc9cfc9ba8651598cc8b29f897afbc13a96c95591b9caacb"
+        }
+      ],
+      "created_at": "2025-12-31T16:46:11.078631+00:00",
+      "metadata": {},
+      "schema_version": null
+    }
+  },
+  "params": {
+    "sigma": 1.0
+  },
+  "outputs": {
+    "output": {
+      "ref_id": "mem-5f5f0344",
+      "type": "BioImageRef",
+      "uri": "mem://default-session/bioimage-mcp-base/mem-5f5f0344",
+      "format": "OME-TIFF",
+      "storage_type": "memory",
+      "mime_type": "application/octet-stream",
+      "size_bytes": 0,
+      "checksums": [],
+      "created_at": "2025-12-31T16:46:16.279317+00:00",
+      "metadata": {
+        "axes": "TCZYX",
+        "shape": [
+          1,
+          1,
+          1,
+          64,
+          64
+        ],
+        "dtype": "float32",
+        "_simulated_path": "/mnt/c/Users/meqia/bioimage-mcp/test_store/work/runs/8604102db34648e99d1d95f4f68d1e02/output.ome.tiff",
+        "axes_inferred": false,
+        "file_metadata": {
+          "ome_xml_summary": "<OME xmlns=\"http://www.openmicroscopy.org/Schemas/OME/2016-06\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://www.openmicroscopy.org/Schemas/OME/2016-06 http://www.openmicroscopy.org/Schemas/OME/2016-06/ome.xsd\" Creator=\"bioio_ome_tiff 1.4.0\">\n  <Image ID=\"Image:0\">\n    <Pixels ID=\"Pixels:0:0\" DimensionOrder=\"XYZCT\" Type=\"float\" SizeX=\"64\" SizeY=\"64\" SizeZ=\"1\" SizeC=\"1\" SizeT=\"1\">\n      <Channel ID=\"Channel:0:0\" Name=\"C:0\" SamplesPerPixel=\"1\"/>\n      <TiffData IFD=\"0\" PlaneCount=\"1\"/>\n    </Pixels>\n  </Image>\n</OME>\n",
+          "custom_attributes": {}
+        },
+        "channel_names": [
+          "C:0"
+        ],
+        "physical_pixel_sizes": {}
+      },
+      "schema_version": null
+    }
+  },
+  "log_ref": {
+    "ref_id": "da4d7eb56457424d90f84b36491c8a7e",
+    "type": "LogRef",
+    "uri": "file:///mnt/c/Users/meqia/bioimage-mcp/test_store/objects/da4d7eb56457424d90f84b36491c8a7e",
+    "format": "text",
+    "storage_type": "file",
+    "mime_type": "text/plain",
+    "size_bytes": 294,
+    "checksums": [
+      {
+        "algorithm": "sha256",
+        "value": "205e9e44ee093b478752d324e32498a886c90d244bc2b31dc7538d19ba35dfc8"
+      }
+    ],
+    "created_at": "2025-12-31T16:46:16.034116+00:00",
+    "metadata": {},
+    "schema_version": null
+  },
+  "provenance": {
+    "fn_id": "base.skimage.filters.gaussian"
+  },
+  "tool_manifests": [
+    {
+      "tool_id": "tools.base",
+      "tool_version": "0.1.0",
+      "env_id": "bioimage-mcp-base",
+      "manifest_checksum": "5228c6eff86ccad6a6602553099c256b4195a08f353ddbb2b2162654f1f68239"
+    }
+  ],
+  "env_fingerprint": {
+    "python_version": "3.13.11 | packaged by conda-forge | (main, Dec  6 2025, 11:24:03) [GCC 14.3.0]",
+    "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+    "machine": "x86_64"
+  }
+}

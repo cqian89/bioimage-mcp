@@ -2,91 +2,122 @@
 
 ## Tools.Base (`bioimage-mcp-base`)
 
-General purpose image processing tools powered by `scikit-image`.
+General purpose image processing tools for bioimage analysis.
 
-### Image I/O & Utils
-*   `base.convert_to_ome_zarr`: Convert image to OME-Zarr.
-*   `base.export_ome_tiff`: Export image to OME-TIFF.
+### Image I/O & Export
 
-### Transforms
-*   `base.project_sum`: Sum projection.
-*   `base.project_max`: Max projection.
-*   `base.resize`: Resize image.
-*   `base.rescale`: Rescale image by factor.
-*   `base.rotate`: Rotate image.
-*   `base.flip`: Flip image.
-*   `base.crop`: Crop image.
-*   `base.pad`: Pad image.
+*   `base.bioio.export`: Export image to file-backed artifact (OME-TIFF or OME-Zarr). Used for explicit materialization or cross-environment handoff.
+    *   **Inputs**: `image` (BioImageRef, required)
+    *   **Params**:
+        *   `format` (string): Output format (`OME-TIFF` or `OME-Zarr`). Default: `OME-TIFF`.
+        *   `path` (string, optional): Target file path.
+    *   **Outputs**: `output` (BioImageRef, file-backed)
 
-### Axis Manipulation
+### Axis Manipulation (xarray-based)
 
-#### `base.relabel_axes`
-Description: Relabel axis names (e.g., Z to T) for pipeline compatibility.
+> **Note**: These tools produce memory-backed artifacts (`mem://`) by default for efficient chaining within the same tool environment. Use `base.bioio.export` to materialize to disk when needed.
+
+#### `base.xarray.rename`
+Description: Rename dimension labels (e.g., Z -> T) while preserving metadata.
 Inputs:
 *   `image` (BioImageRef, required)
 Parameters:
-*   `axis_mapping` (object, required): Mapping from existing axis names to new axis names (applied atomically).
+*   `mapping` (object, required): Map of `old_dim` -> `new_dim`.
 Outputs:
-*   `output` (BioImageRef)
+*   `output` (BioImageRef, mem://)
 Example usage:
 ```
-base.relabel_axes(image=<BioImageRef>, axis_mapping={"Z": "T", "T": "Z"})
+base.xarray.rename(image=<ref>, mapping={"Z": "T"})
 ```
 
-#### `base.squeeze`
-Description: Remove singleton (size=1) dimensions from an image.
+#### `base.xarray.squeeze`
+Description: Remove singleton (size=1) dimensions.
 Inputs:
 *   `image` (BioImageRef, required)
 Parameters:
-*   `axis` (string | integer, optional): Axis name or index to squeeze. Omit or set null to squeeze all singleton axes.
+*   `dim` (string, optional): Specific dimension name to squeeze. If omitted, squeezes all singleton dimensions.
 Outputs:
-*   `output` (BioImageRef)
+*   `output` (BioImageRef, mem://)
 Example usage:
 ```
-base.squeeze(image=<BioImageRef>, axis="Z")
+base.xarray.squeeze(image=<ref>, dim="C")
 ```
 
-#### `base.expand_dims`
+#### `base.xarray.expand_dims`
 Description: Add a new dimension at a specified position.
 Inputs:
 *   `image` (BioImageRef, required)
 Parameters:
-*   `axis` (integer, required): Position to insert new axis (0=first, -1=before last).
-*   `new_axis_name` (string, required): Name for new axis (single uppercase letter).
+*   `dim` (string, required): Name for the new dimension.
+*   `axis` (integer, optional): Position to insert new dimension (0=first, -1=before last).
 Outputs:
-*   `output` (BioImageRef)
+*   `output` (BioImageRef, mem://)
 Example usage:
 ```
-base.expand_dims(image=<BioImageRef>, axis=0, new_axis_name="T")
+base.xarray.expand_dims(image=<ref>, dim="T", axis=0)
 ```
 
-#### `base.moveaxis`
-Description: Move an axis from one position to another.
+#### `base.xarray.transpose`
+Description: Reorder dimensions (replaces `base.moveaxis`, `base.swap_axes`).
 Inputs:
 *   `image` (BioImageRef, required)
 Parameters:
-*   `source` (string | integer, required): Source axis name or index.
-*   `destination` (integer, required): Destination position (index).
+*   `dims` (array of strings, required): Ordered list of dimension names.
 Outputs:
-*   `output` (BioImageRef)
+*   `output` (BioImageRef, mem://)
 Example usage:
 ```
-base.moveaxis(image=<BioImageRef>, source="C", destination=0)
+base.xarray.transpose(image=<ref>, dims=["T", "C", "Z", "Y", "X"])
 ```
 
-#### `base.swap_axes`
-Description: Swap two axes in an image.
+### Reductions (xarray-based)
+
+#### `base.xarray.sum`
+Description: Reduce along a named dimension using sum projection.
 Inputs:
 *   `image` (BioImageRef, required)
 Parameters:
-*   `axis1` (string | integer, required): First axis name or index.
-*   `axis2` (string | integer, required): Second axis name or index.
+*   `dim` (string, required): Dimension to reduce.
 Outputs:
-*   `output` (BioImageRef)
-Example usage:
-```
-base.swap_axes(image=<BioImageRef>, axis1="Z", axis2="T")
-```
+*   `output` (BioImageRef, mem://)
+
+#### `base.xarray.max`
+Description: Reduce along a named dimension using maximum projection.
+Inputs:
+*   `image` (BioImageRef, required)
+Parameters:
+*   `dim` (string, required): Dimension to reduce.
+Outputs:
+*   `output` (BioImageRef, mem://)
+
+#### `base.xarray.mean`
+Description: Reduce along a named dimension using mean average.
+Inputs:
+*   `image` (BioImageRef, required)
+Parameters:
+*   `dim` (string, required): Dimension to reduce.
+Outputs:
+*   `output` (BioImageRef, mem://)
+
+### Transforms (xarray-based)
+
+#### `base.xarray.isel`
+Description: Select along dimensions by integer indexing or slices (replaces `base.crop`).
+Inputs:
+*   `image` (BioImageRef, required)
+Parameters:
+*   `selections` (kwargs): Dimension names mapped to indices or slices (e.g., `Y={"start": 10, "stop": 50}`).
+Outputs:
+*   `output` (BioImageRef, mem://)
+
+#### `base.xarray.pad`
+Description: Pad along dimensions.
+Inputs:
+*   `image` (BioImageRef, required)
+Parameters:
+*   `padding` (kwargs): Dimension names mapped to padding widths (e.g., `Y=[10, 10]`).
+Outputs:
+*   `output` (BioImageRef, mem://)
 
 ### Pre-processing & Filters
 *   `base.normalize_intensity`: Normalize intensities.
@@ -106,14 +137,31 @@ base.swap_axes(image=<BioImageRef>, axis1="Z", axis2="T")
 
 ### FLIM Analysis
 *   `base.phasor_from_flim`: Compute phasor coordinates (G, S) and intensity from FLIM data.
+*   `base.phasor_calibrate`: Calibrate phasor coordinates using a known reference lifetime.
+
+### Legacy Tools (Deprecated)
+
+> ⚠️ **DEPRECATED**: The following legacy tools are deprecated and will be removed in v1.0.0. Use the new `base.xarray.*` or `base.bioio.*` tools instead.
+
+*   `base.convert_to_ome_zarr` -> Use `base.bioio.export(format="OME-Zarr")`
+*   `base.export_ome_tiff` -> Use `base.bioio.export(format="OME-TIFF")`
+*   `base.project_sum` -> Use `base.xarray.sum`
+*   `base.project_max` -> Use `base.xarray.max`
+*   `base.crop` -> Use `base.xarray.isel`
+*   `base.pad` -> Use `base.xarray.pad`
+*   `base.relabel_axes` -> Use `base.xarray.rename`
+*   `base.squeeze` -> Use `base.xarray.squeeze`
+*   `base.expand_dims` -> Use `base.xarray.expand_dims`
+*   `base.moveaxis` -> Use `base.xarray.transpose`
+*   `base.swap_axes` -> Use `base.xarray.transpose`
 
 ---
 
 ## Tools.Cellpose (`bioimage-mcp-cellpose`)
 
-Deep learning-based segmentation.
+Deep learning-based segmentation using the Cellpose framework.
 
 *   `cellpose.segment`: Segment cells or nuclei.
     *   **Inputs**: `BioImageRef`
     *   **Outputs**: `LabelImageRef` (mask), `cellpose_bundle` (npy)
-    *   **Params**: `model_type` (e.g., 'cyto3', 'nuclei'), `diameter`, etc.
+    *   **Params**: `model_type` (e.g., 'cyto3', 'nuclei'), `diameter`, `channels`, `flow_threshold`, `cellprob_threshold`.

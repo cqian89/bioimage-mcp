@@ -21,6 +21,7 @@ def _mock_execute_step_format_check(
     inputs: dict,
     work_dir: Path,
     timeout_seconds: int | None,
+    **kwargs,
 ) -> tuple[dict[str, Any], str, int]:
     """Mock execute_step that checks format and fails on OME-Zarr."""
     # Check inputs for unsupported format

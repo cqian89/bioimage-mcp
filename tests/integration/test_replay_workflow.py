@@ -25,6 +25,7 @@ def _mock_execute_step_success(
     inputs: dict,
     work_dir: Path,
     timeout_seconds: int | None,
+    **kwargs,
 ) -> tuple[dict[str, Any], str, int]:
     """Mock execute_step that simulates successful execution."""
     labels_path = work_dir / "labels.ome.tiff"

@@ -103,8 +103,8 @@ def test_skimage_adapter_execute_calls_gaussian(mock_gaussian, mock_imread):
     assert outputs[0]["type"] == "BioImageRef"
 
 
-@patch("tifffile.imwrite")
-def test_skimage_adapter_save_image_writes_axes_metadata(mock_imwrite, tmp_path):
+@patch("bioio.writers.OmeTiffWriter.save")
+def test_skimage_adapter_save_image_writes_axes_metadata(mock_save, tmp_path):
     """_save_image() should include axes metadata for OME-TIFF output."""
     import numpy as np
 
@@ -113,9 +113,10 @@ def test_skimage_adapter_save_image_writes_axes_metadata(mock_imwrite, tmp_path)
     array = np.zeros((8, 6), dtype=np.uint8)
     adapter._save_image(array, work_dir=tmp_path)
 
-    assert mock_imwrite.call_count == 1
-    _, kwargs = mock_imwrite.call_args
-    assert kwargs["metadata"] == {"axes": "YX"}
+    assert mock_save.call_count == 1
+    _, kwargs = mock_save.call_args
+    # OmeTiffWriter uses dim_order parameter
+    assert kwargs["dim_order"] == "YX"
 
 
 @patch("tifffile.imread")

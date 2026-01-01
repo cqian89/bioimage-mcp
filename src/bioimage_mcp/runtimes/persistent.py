@@ -1,22 +1,25 @@
 from __future__ import annotations
 
 import errno
+import logging
 import os
 import threading
-from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Dict, List, Tuple
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, Field
 
 if TYPE_CHECKING:
     from bioimage_mcp.artifacts.memory import MemoryArtifactStore
 
+logger = logging.getLogger(__name__)
+
 
 class WorkerSession(BaseModel):
     session_id: str
     env_id: str
     process_id: int
-    started_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    started_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     active_artifacts: list[str] = Field(default_factory=list)  # ref_ids in worker memory
 
 
@@ -30,7 +33,7 @@ class PersistentWorkerManager:
     """
 
     def __init__(self, memory_store: MemoryArtifactStore | None = None) -> None:
-        self._workers: Dict[Tuple[str, str], WorkerSession] = {}
+        self._workers: dict[tuple[str, str], WorkerSession] = {}
         self._lock = threading.Lock()
         self._memory_store = memory_store
 
@@ -45,6 +48,12 @@ class PersistentWorkerManager:
                     env_id=env_id,
                     process_id=0,
                 )
+                logger.info(
+                    "Worker started: session=%s env=%s pid=%s",
+                    session_id,
+                    env_id,
+                    self._workers[key].process_id,
+                )
             return self._workers[key]
 
     def shutdown_worker(self, session_id: str, env_id: str) -> None:
@@ -53,12 +62,15 @@ class PersistentWorkerManager:
         with self._lock:
             if key in self._workers:
                 # In the future, this will involve killing the subprocess
+                logger.info("Worker shutdown: session=%s env=%s", session_id, env_id)
                 del self._workers[key]
 
     def shutdown_all(self) -> None:
         """Stop all workers (for server shutdown)."""
         with self._lock:
             # In the future, iterate and kill all subprocesses
+            if self._workers:
+                logger.info("Shutting down %d workers", len(self._workers))
             self._workers.clear()
 
     def register_artifact(self, session_id: str, env_id: str, ref_id: str) -> None:
@@ -101,6 +113,13 @@ class PersistentWorkerManager:
         """Handle worker crash - returns list of invalidated artifact ref_ids."""
         # Get artifacts that were in the worker
         artifacts = self.get_artifacts(session_id, env_id)
+
+        logger.warning(
+            "Worker crashed: session=%s env=%s invalidated=%d artifacts",
+            session_id,
+            env_id,
+            len(artifacts),
+        )
 
         # Remove worker from registry
         self.shutdown_worker(session_id, env_id)

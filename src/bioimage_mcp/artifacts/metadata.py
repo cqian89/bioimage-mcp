@@ -141,7 +141,31 @@ def extract_image_metadata(path: Path) -> dict:
     try:
         image = BioImage(str(path))
     except Exception:  # noqa: BLE001
-        return {}
+        # Fallback for files without extensions: try to guess format or use tifffile
+        try:
+            import tifffile
+
+            with tifffile.TiffFile(str(path)) as tif:
+                axes = ""
+                shape = []
+                if hasattr(tif, "series") and tif.series:
+                    series = tif.series[0]
+                    axes = getattr(series, "axes", "")
+                    shape = list(series.shape)
+                elif hasattr(tif, "pages") and tif.pages:
+                    page = tif.pages[0]
+                    axes = getattr(page, "axes", "")
+                    shape = list(page.shape)
+
+                return {
+                    "axes": axes,
+                    "shape": shape,
+                    "dtype": str(tif.pages[0].dtype) if tif.pages else "",
+                    "axes_inferred": True,
+                    "file_metadata": {"_method": "tifffile_fallback"},
+                }
+        except Exception:
+            return {}
 
     dims = getattr(image, "dims", None)
     axes = getattr(image, "axes", None)
@@ -163,7 +187,7 @@ def extract_image_metadata(path: Path) -> dict:
 
     channel_names = getattr(image, "channel_names", None)
     if channel_names:
-        meta["channel_names"] = list(channel_names)
+        meta["channel_names"] = [str(name) for name in channel_names]
 
     pps = getattr(image, "physical_pixel_sizes", None)
     if pps:

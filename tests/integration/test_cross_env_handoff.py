@@ -109,19 +109,80 @@ def test_io_bridge_create_materialization_path(io_bridge: IOBridge, tmp_path: Pa
     assert path_zarr == tmp_path / "session1" / "art2.zarr"
 
 
-@pytest.mark.xfail(reason="T024: IOBridge not yet integrated with ExecutionBridge")
-def test_cross_env_materialization_integration(io_bridge: IOBridge):
+def test_cross_env_materialization_integration(tmp_path: Path):
     """Test that the system automatically materializes cross-env handoffs.
 
-    This requires ExecutionBridge integration (T024).
+    Verified for T024.
     """
-    # This is a placeholder for the integration test that will be fully implemented in T024.
-    # It should verify that when tool A (env1) produces a memory artifact
-    # and tool B (env2) consumes it, the system:
-    # 1. Detects the need for handoff via IOBridge
-    # 2. Negotiates OME-TIFF
-    # 3. Materializes the memory artifact to disk
-    # 4. Updates Tool B's input to the new file-backed artifact
-    # 5. Records the handoff in provenance
+    from bioimage_mcp.api.execution import ExecutionService
+    from bioimage_mcp.config.schema import Config
+    from bioimage_mcp.artifacts.store import ArtifactStore
+    from bioimage_mcp.artifacts.memory import build_mem_uri
+    import uuid
 
-    raise NotImplementedError("T024 not yet implemented")
+    # Setup config and service
+    config = Config(
+        artifact_store_root=tmp_path,
+        tool_manifest_roots=[Path("tools").absolute()],
+    )
+    with ExecutionService(config) as service:
+        # 1. Create a simulated memory artifact from "env-other"
+        session_id = "test-session"
+        env_id_src = "env-other"
+        ref_id_src = f"mem-{uuid.uuid4().hex[:8]}"
+        uri_src = build_mem_uri(session_id, env_id_src, ref_id_src)
+
+        # Create a real file to back the memory artifact (simulating T016 behavior)
+        sim_path = tmp_path / "simulated.ome.tiff"
+        import numpy as np
+        from bioio.writers import OmeTiffWriter
+
+        data = np.zeros((1, 1, 1, 10, 10), dtype=np.uint8)
+        OmeTiffWriter.save(data, str(sim_path), dim_order="TCZYX")
+
+        ref_src = ArtifactRef(
+            ref_id=ref_id_src,
+            type="BioImageRef",
+            uri=uri_src,
+            format="OME-TIFF",
+            storage_type="memory",
+            mime_type="image/tiff",
+            size_bytes=sim_path.stat().st_size,
+            created_at=ArtifactRef.now(),
+            metadata={"_simulated_path": str(sim_path)},
+        )
+        service._memory_store.register(ref_src)
+
+        # 2. Run a tool in "bioimage-mcp-base" (different env) that consumes it
+        # We'll use a simple base tool
+        spec = {
+            "steps": [
+                {
+                    "fn_id": "base.xarray.rename",
+                    "inputs": {"image": {"ref_id": ref_id_src}},
+                    "params": {"mapping": {"Z": "T", "T": "Z"}},
+                }
+            ],
+            "run_opts": {"session_id": session_id},
+        }
+
+        # Execute
+        result = service.run_workflow(spec)
+        assert result["status"] == "succeeded"
+
+        # 3. Verify handoff record in provenance
+        run = service._run_store.get(result["run_id"])
+        assert "handoffs" in run.provenance
+        handoffs = run.provenance["handoffs"]
+        assert len(handoffs) == 1
+        handoff = handoffs[0]
+        assert handoff["source_ref_id"] == ref_id_src
+        assert handoff["source_env"] == env_id_src
+        assert handoff["target_env"] == "bioimage-mcp-base"
+        assert handoff["negotiated_format"] == "OME-TIFF"
+
+        # 4. Verify that a new file-backed artifact was created
+        materialized_ref_id = handoff["target_ref_id"]
+        mat_ref = service._artifact_store.get(materialized_ref_id)
+        assert mat_ref.storage_type == "file"
+        assert Path(mat_ref.uri.replace("file://", "")).exists()

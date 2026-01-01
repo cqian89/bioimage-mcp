@@ -131,8 +131,10 @@ class SkimageAdapter(BaseAdapter):
         # Handle both dict and Pydantic model
         if isinstance(artifact, dict):
             uri = artifact["uri"]
+            fmt = artifact.get("format")
         else:
             uri = artifact.uri
+            fmt = getattr(artifact, "format", None)
 
         # Parse URI and get file path
         parsed = urlparse(uri)
@@ -144,7 +146,17 @@ class SkimageAdapter(BaseAdapter):
         try:
             from bioio import BioImage
 
-            img = BioImage(path)
+            reader = None
+            if fmt == "OME-TIFF":
+                from bioio_ome_tiff import Reader as OmeTiffReader
+
+                reader = OmeTiffReader
+            elif fmt == "OME-Zarr":
+                from bioio_ome_zarr import Reader as OmeZarrReader
+
+                reader = OmeZarrReader
+
+            img = BioImage(path, reader=reader)
             # bioio always returns 5D TCZYX
             data = img.data.compute() if hasattr(img.data, "compute") else img.data
             if data is not None and data.size > 0:
@@ -196,7 +208,11 @@ class SkimageAdapter(BaseAdapter):
             work_dir.mkdir(parents=True, exist_ok=True)
             path = work_dir / f"output{ext}"
 
-        inferred_axes = axes or self._infer_axes(array)
+        # Only use passed axes if they match the output array dimensions
+        if axes and len(axes) == array.ndim:
+            inferred_axes = axes
+        else:
+            inferred_axes = self._infer_axes(array)
 
         # Save image using OmeTiffWriter for consistency
         saved = False

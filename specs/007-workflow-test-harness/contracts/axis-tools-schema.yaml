@@ -23,87 +23,57 @@ $defs:
         description: "Axis name (single uppercase letter)"
 
 schemas:
-  # base.relabel_axes
-  relabel_axes:
+  # base.xarray.rename
+  rename:
     type: object
-    required: [axis_mapping]
+    required: [mapping]
     properties:
-      axis_mapping:
-        $ref: "#/$defs/AxisMapping"
-        description: "Mapping from old axis names to new names. Applied atomically."
-    additionalProperties: false
+      mapping:
+        type: object
+        additionalProperties:
+          type: string
+        description: "Mapping from old dimension names to new names."
     examples:
-      - axis_mapping: {"Z": "T", "T": "Z"}
-      - axis_mapping: {"Y": "Z", "Z": "Y"}
+      - mapping: {"Z": "T", "T": "Z"}
 
-  # base.squeeze
+  # base.xarray.squeeze
   squeeze:
     type: object
     properties:
-      axis:
-        $ref: "#/$defs/AxisSpec"
-        description: "Axis to squeeze. If null, squeeze all singleton axes."
-        nullable: true
-    additionalProperties: false
+      dim:
+        type: string
+        description: "Optional dimension name to squeeze."
     examples:
-      - axis: 0
-      - axis: "Z"
+      - dim: "Z"
       - {} # Squeeze all singletons
 
-  # base.expand_dims
+  # base.xarray.expand_dims
   expand_dims:
     type: object
-    required: [axis, new_axis_name]
+    required: [dim]
     properties:
+      dim:
+        type: string
+        description: "Name for new dimension"
       axis:
         type: integer
-        description: "Position to insert new axis (0=first, -1=before last)"
-      new_axis_name:
-        type: string
-        pattern: "^[A-Z]$"
-        description: "Name for new axis (single uppercase letter)"
-    additionalProperties: false
+        description: "Position to insert new dimension (0=first, -1=before last)"
     examples:
-      - axis: 0
-        new_axis_name: "Z"
-      - axis: -1
-        new_axis_name: "C"
+      - dim: "Z"
+        axis: 0
 
-  # base.moveaxis
-  moveaxis:
+  # base.xarray.transpose
+  transpose:
     type: object
-    required: [source, destination]
+    required: [dims]
     properties:
-      source:
-        $ref: "#/$defs/AxisSpec"
-        description: "Source axis to move"
-      destination:
-        type: integer
-        description: "Destination position (index)"
-    additionalProperties: false
+      dims:
+        type: array
+        items:
+          type: string
+        description: "New order of dimensions"
     examples:
-      - source: 0
-        destination: 2
-      - source: "C"
-        destination: -1
-
-  # base.swap_axes
-  swap_axes:
-    type: object
-    required: [axis1, axis2]
-    properties:
-      axis1:
-        $ref: "#/$defs/AxisSpec"
-        description: "First axis to swap"
-      axis2:
-        $ref: "#/$defs/AxisSpec"
-        description: "Second axis to swap"
-    additionalProperties: false
-    examples:
-      - axis1: "Z"
-        axis2: "Y"
-      - axis1: 0
-        axis2: 2
+      - dims: ["T", "C", "Z", "Y", "X"]
 
 # Input/Output contracts for all axis tools
 io_contracts:
@@ -111,14 +81,12 @@ io_contracts:
     - name: image
       artifact_type: BioImageRef
       required: true
-      description: "Input image to manipulate"
+      description: "Input image artifact"
   
   common_output:
     - name: output
       artifact_type: BioImageRef
-      format: OME-TIFF
-      required: true
-      description: "Image with modified axis configuration"
+      description: "Memory-backed transformed artifact"
 
 # Error codes
 error_codes:

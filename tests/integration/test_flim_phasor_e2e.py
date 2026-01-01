@@ -76,7 +76,7 @@ def test_flim_phasor_e2e(tmp_path: Path) -> None:
     workflow1 = {
         "steps": [
             {
-                "fn_id": "base.wrapper.phasor.phasor_from_flim",
+                "fn_id": "base.bioimage_mcp_base.transforms.phasor_from_flim",
                 "inputs": {
                     "dataset": {
                         "type": "BioImageRef",
@@ -88,6 +88,7 @@ def test_flim_phasor_e2e(tmp_path: Path) -> None:
             }
         ]
     }
+
     run1 = execution.run_workflow(workflow1)
     status1 = execution.get_run_status(run1["run_id"])
     assert status1["status"] == "succeeded"

@@ -16,14 +16,8 @@ if str(REPO_ROOT / "src") not in sys.path:
 if str(TOOLS_ROOT) not in sys.path:
     sys.path.insert(0, str(TOOLS_ROOT))
 
-from bioimage_mcp_base import descriptions as desc  # noqa: I001, E402
-from bioimage_mcp_base.wrapper import (  # noqa: I001, E402
-    axis as axis_wrappers,
-    denoise as denoise_wrappers,
-    edge_cases as edge_wrappers,
-    io as io_wrappers,
-    phasor as phasor_wrappers,
-)
+from bioimage_mcp_base import io as io_ops
+from bioimage_mcp_base import transforms as transform_ops
 
 TOOL_VERSION = "0.1.0"
 TOOL_ENV_NAME = "bioimage-mcp-base"
@@ -31,75 +25,18 @@ DYNAMIC_FN_PREFIXES = ("base.", f"{TOOL_ENV_NAME}.")
 
 
 FN_MAP = {
-    # New wrapper namespace
-    "base.wrapper.io.convert_to_ome_zarr": (
-        io_wrappers.convert_to_ome_zarr,
-        desc.CONVERT_TO_OME_ZARR_DESCRIPTIONS,
+    "base.bioio.export": (io_ops.export, {}),
+    "base.bioimage_mcp_base.transforms.phasor_from_flim": (
+        transform_ops.phasor_from_flim,
+        {},
     ),
-    "base.wrapper.io.export_ome_tiff": (
-        io_wrappers.export_ome_tiff,
-        desc.EXPORT_OME_TIFF_DESCRIPTIONS,
+    "base.bioimage_mcp_base.transforms.phasor_calibrate": (
+        transform_ops.phasor_calibrate,
+        {},
     ),
-    "base.wrapper.axis.relabel_axes": (
-        axis_wrappers.relabel_axes,
-        desc.RELABEL_AXES_DESCRIPTIONS,
-    ),
-    "base.wrapper.axis.squeeze": (axis_wrappers.squeeze, desc.SQUEEZE_DESCRIPTIONS),
-    "base.wrapper.axis.expand_dims": (
-        axis_wrappers.expand_dims,
-        desc.EXPAND_DIMS_DESCRIPTIONS,
-    ),
-    "base.wrapper.axis.moveaxis": (axis_wrappers.moveaxis, desc.MOVEAXIS_DESCRIPTIONS),
-    "base.wrapper.axis.swap_axes": (axis_wrappers.swap_axes, desc.SWAP_AXES_DESCRIPTIONS),
-    "base.wrapper.phasor.phasor_from_flim": (
-        phasor_wrappers.phasor_from_flim,
-        desc.PHASOR_FROM_FLIM_DESCRIPTIONS,
-    ),
-    "base.wrapper.phasor.phasor_calibrate": (
-        phasor_wrappers.phasor_calibrate,
-        desc.PHASOR_CALIBRATE_DESCRIPTIONS,
-    ),
-    "base.wrapper.denoise.denoise_image": (
-        denoise_wrappers.denoise_image,
-        desc.DENOISE_IMAGE_DESCRIPTIONS,
-    ),
-    "base.wrapper.transform.crop": (edge_wrappers.crop, desc.CROP_DESCRIPTIONS),
-    "base.wrapper.preprocess.normalize_intensity": (
-        edge_wrappers.normalize_intensity,
-        desc.NORMALIZE_INTENSITY_DESCRIPTIONS,
-    ),
-    "base.wrapper.transform.project_sum": (
-        edge_wrappers.project_sum,
-        desc.PROJECT_SUM_DESCRIPTIONS,
-    ),
-    "base.wrapper.transform.project_max": (
-        edge_wrappers.project_max,
-        desc.PROJECT_MAX_DESCRIPTIONS,
-    ),
-    "base.wrapper.transform.flip": (edge_wrappers.flip, desc.FLIP_DESCRIPTIONS),
-    "base.wrapper.transform.pad": (edge_wrappers.pad, desc.PAD_DESCRIPTIONS),
 }
 
-LEGACY_REDIRECTS = {
-    "base.bioimage_mcp_base.io.convert_to_ome_zarr": "base.wrapper.io.convert_to_ome_zarr",
-    "base.bioimage_mcp_base.io.export_ome_tiff": "base.wrapper.io.export_ome_tiff",
-    "base.bioimage_mcp_base.transforms.project_sum": "base.wrapper.transform.project_sum",
-    "base.bioimage_mcp_base.transforms.project_max": "base.wrapper.transform.project_max",
-    "base.bioimage_mcp_base.transforms.flip": "base.wrapper.transform.flip",
-    "base.bioimage_mcp_base.transforms.crop": "base.wrapper.transform.crop",
-    "base.bioimage_mcp_base.transforms.pad": "base.wrapper.transform.pad",
-    "base.bioimage_mcp_base.axis_ops.relabel_axes": "base.wrapper.axis.relabel_axes",
-    "base.bioimage_mcp_base.axis_ops.squeeze": "base.wrapper.axis.squeeze",
-    "base.bioimage_mcp_base.axis_ops.expand_dims": "base.wrapper.axis.expand_dims",
-    "base.bioimage_mcp_base.axis_ops.moveaxis": "base.wrapper.axis.moveaxis",
-    "base.bioimage_mcp_base.axis_ops.swap_axes": "base.wrapper.axis.swap_axes",
-    "base.bioimage_mcp_base.preprocess.normalize_intensity": (
-        "base.wrapper.preprocess.normalize_intensity"
-    ),
-    "base.bioimage_mcp_base.transforms.phasor_from_flim": "base.wrapper.phasor.phasor_from_flim",
-    "base.bioimage_mcp_base.preprocess.denoise_image": "base.wrapper.denoise.denoise_image",
-    "base.bioimage_mcp_base.transforms.phasor_calibrate": "base.wrapper.phasor.phasor_calibrate",
-}
+LEGACY_REDIRECTS = {}
 
 
 def handle_meta_describe(params: dict[str, Any]) -> dict[str, Any]:

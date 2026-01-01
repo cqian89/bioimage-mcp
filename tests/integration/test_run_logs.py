@@ -21,6 +21,7 @@ def _mock_execute_step_failure(
     inputs: dict,
     work_dir: Path,
     timeout_seconds: int | None,
+    **kwargs,
 ) -> tuple[dict[str, Any], str, int]:
     """Mock execute_step that simulates a Cellpose failure."""
     return (
@@ -46,6 +47,7 @@ def _mock_execute_step_crash(
     inputs: dict,
     work_dir: Path,
     timeout_seconds: int | None,
+    **kwargs,
 ) -> tuple[dict[str, Any], str, int]:
     """Mock execute_step that simulates a crash with stderr output."""
     return (

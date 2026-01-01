@@ -136,14 +136,17 @@ class TestAxisIndependentProcessing:
         execution_service = mcp_services["execution"]
         tmp_path = mcp_services["tmp_path"]
 
-        shape = (64, 64)
-        data = np.random.rand(*shape).astype(np.float32)
+        # Create 2D data but expand to 5D TCZYX for OME-TIFF compatibility
+        shape_2d = (64, 64)
+        data_2d = np.random.rand(*shape_2d).astype(np.float32)
+        # Expand to 5D TCZYX for OME-TIFF compatibility
+        data = data_2d[np.newaxis, np.newaxis, np.newaxis, :, :]  # (1, 1, 1, 64, 64)
 
-        image_path = tmp_path / "test_2d.tiff"
-        imwrite(str(image_path), data)
+        image_path = tmp_path / "test_2d.ome.tiff"
+        OmeTiffWriter.save(data, str(image_path), dim_order="TCZYX")
 
         ref = execution_service.artifact_store.import_file(
-            image_path, artifact_type="BioImageRef", format="TIFF"
+            image_path, artifact_type="BioImageRef", format="OME-TIFF"
         )
 
         workflow = {

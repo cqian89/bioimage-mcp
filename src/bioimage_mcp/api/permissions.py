@@ -3,14 +3,15 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from urllib.parse import unquote, urlparse
 
 from mcp.types import ClientCapabilities, ElicitationCapability, RootsCapability
 
-from bioimage_mcp.api.schemas import PermissionDecision, PermissionMode as ApiPermissionMode
+from bioimage_mcp.api.schemas import PermissionDecision
+from bioimage_mcp.api.schemas import PermissionMode as ApiPermissionMode
 from bioimage_mcp.config.schema import Config, OverwritePolicy, PermissionMode
 
 logger = logging.getLogger(__name__)
@@ -26,11 +27,11 @@ def _is_within(path: Path, root: Path) -> bool:
 
 def _session_identifier(session: Any) -> str:
     if hasattr(session, "session_id"):
-        value = getattr(session, "session_id")
+        value = session.session_id
         if value:
             return str(value)
     if hasattr(session, "id"):
-        value = getattr(session, "id")
+        value = session.id
         if value:
             return str(value)
     return f"session_{id(session)}"
@@ -72,7 +73,7 @@ class PermissionService:
         if roots_result is None:
             roots = []
         elif hasattr(roots_result, "roots"):
-            roots = getattr(roots_result, "roots") or []
+            roots = roots_result.roots or []
         elif isinstance(roots_result, dict):
             roots = roots_result.get("roots") or []
         elif isinstance(roots_result, (list, tuple)):
@@ -89,7 +90,7 @@ class PermissionService:
             elif isinstance(root, dict):
                 uri = root.get("uri")
             elif hasattr(root, "uri"):
-                uri = getattr(root, "uri")
+                uri = root.uri
 
             if root_path is not None:
                 parsed_roots.append(root_path.expanduser().absolute())
@@ -138,7 +139,7 @@ class PermissionService:
                     mode=decision_mode,
                     decision="DENIED",
                     reason=reason,
-                    timestamp=datetime.now(tz=timezone.utc),
+                    timestamp=datetime.now(tz=UTC),
                 )
                 logger.info(
                     "Permission %s for %s: %s (Reason: %s)",
@@ -169,7 +170,7 @@ class PermissionService:
                 mode=decision_mode,
                 decision="DENIED",
                 reason=reason,
-                timestamp=datetime.now(tz=timezone.utc),
+                timestamp=datetime.now(tz=UTC),
             )
             logger.info(
                 "Permission %s for %s: %s (Reason: %s)",
@@ -194,7 +195,7 @@ class PermissionService:
                     mode=decision_mode,
                     decision="ALLOWED",
                     reason=reason,
-                    timestamp=datetime.now(tz=timezone.utc),
+                    timestamp=datetime.now(tz=UTC),
                 )
                 logger.info(
                     "Permission %s for %s: %s (Reason: %s)",
@@ -212,7 +213,7 @@ class PermissionService:
             mode=decision_mode,
             decision="DENIED",
             reason=reason,
-            timestamp=datetime.now(tz=timezone.utc),
+            timestamp=datetime.now(tz=UTC),
         )
         logger.info(
             "Permission %s for %s: %s (Reason: %s)",
@@ -282,7 +283,7 @@ class PermissionService:
             if content is None and "overwrite" in response:
                 content = {"overwrite": response.get("overwrite")}
         elif hasattr(response, "action"):
-            action = getattr(response, "action")
+            action = response.action
             content = getattr(response, "content", None)
 
         overwrite_allowed = False

@@ -86,13 +86,16 @@ def _assert_output_type(output: Any, expected_type: str) -> None:
             assert output["type"] == expected_type
             return
         if output:
+            # Check if it's a mapping of name -> artifact ref
             for value in output.values():
                 if isinstance(value, dict) and "type" in value:
                     assert value["type"] == expected_type
                     continue
-                raise AssertionError("Output is not an artifact reference with a type field")
+                # It might be the workflow_record which has no type field
+                # but we already filtered it out in _coerce_output_ref
+                raise AssertionError(f"Output value {value} is not an artifact reference")
             return
-    raise AssertionError("Output is not an artifact reference with a type field")
+    raise AssertionError(f"Output {output} is not an artifact reference")
 
 
 @pytest.mark.mock_execution
@@ -100,25 +103,28 @@ def _assert_output_type(output: Any, expected_type: str) -> None:
 def test_full_discovery_to_execution_flow(mcp_test_client, sample_flim_image) -> None:
     search_results = mcp_test_client.search_functions("phasor FLIM")
     fn_ids = {fn["fn_id"] for fn in search_results["functions"]}
-    assert "base.wrapper.phasor.phasor_from_flim" in fn_ids
+    assert "base.phasorpy.phasor.phasor_from_signal" in fn_ids
 
     mcp_test_client.activate_functions(
-        ["base.wrapper.axis.relabel_axes", "base.wrapper.phasor.phasor_from_flim"]
+        [
+            "base.xarray.rename",
+            "base.bioimage_mcp_base.transforms.phasor_from_flim",
+        ]
     )
 
-    schema = mcp_test_client.describe_function("base.wrapper.axis.relabel_axes")
-    assert schema["fn_id"] == "base.wrapper.axis.relabel_axes"
+    schema = mcp_test_client.describe_function("base.xarray.rename")
+    assert schema["fn_id"] == "base.xarray.rename"
     assert schema["schema"]["type"] == "object"
 
     relabeled = mcp_test_client.call_tool(
-        fn_id="base.wrapper.axis.relabel_axes",
+        fn_id="base.xarray.rename",
         inputs={"image": sample_flim_image},
-        params={"axis_mapping": {"Z": "T", "T": "Z"}},
+        params={"mapping": {"Z": "T", "T": "Z"}},
     )
     relabeled_output = _coerce_output_ref(relabeled["outputs"])
 
     phasor = mcp_test_client.call_tool(
-        fn_id="base.wrapper.phasor.phasor_from_flim",
+        fn_id="base.bioimage_mcp_base.transforms.phasor_from_flim",
         inputs={"dataset": relabeled_output},
         params={"harmonic": 1},
     )
@@ -141,21 +147,28 @@ def test_flim_phasor_golden_path(mcp_test_client, sample_flim_image) -> None:
         pytest.skip(f"Missing FLIM dataset at {sample_path}")
 
     mcp_test_client.activate_functions(
-        ["base.wrapper.axis.swap_axes", "base.wrapper.phasor.phasor_from_flim"]
+        [
+            "base.xarray.transpose",
+            "base.bioimage_mcp_base.transforms.phasor_from_flim",
+        ]
     )
 
     swapped = mcp_test_client.call_tool(
-        fn_id="base.wrapper.axis.swap_axes",
+        fn_id="base.xarray.transpose",
         inputs={"image": sample_flim_image},
-        params={"axis1": "Z", "axis2": "T"},
+        params={"dims": ["Z", "C", "T", "Y", "X"]},
     )
+    if "outputs" not in swapped:
+        pytest.fail(f"Transpose failed: {swapped.get('error') or swapped}")
     swapped_output = _coerce_output_ref(swapped["outputs"])
 
     phasor = mcp_test_client.call_tool(
-        fn_id="base.wrapper.phasor.phasor_from_flim",
+        fn_id="base.bioimage_mcp_base.transforms.phasor_from_flim",
         inputs={"dataset": swapped_output},
-        params={"harmonic": 1},
+        params={"harmonic": 1, "time_axis": "Z"},
     )
+    if "outputs" not in phasor:
+        pytest.fail(f"Phasor failed: {phasor.get('error') or phasor}")
     outputs = phasor["outputs"]
 
     assert "g_image" in outputs

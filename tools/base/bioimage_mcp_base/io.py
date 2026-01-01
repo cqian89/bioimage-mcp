@@ -11,6 +11,7 @@ from bioio.writers import OmeTiffWriter
 __all__ = [
     "convert_to_ome_zarr",
     "export_ome_tiff",
+    "export",
     "load_image_fallback",
 ]
 
@@ -192,3 +193,36 @@ def export_ome_tiff(*, inputs: dict, params: dict, work_dir: Path) -> dict:
         "warnings": warnings,
         "log": "ok",
     }
+
+
+def export(*, inputs: dict, params: dict, work_dir: Path) -> dict:
+    """Materialize artifact to file-backed artifact.
+
+    Supports OME-TIFF (default) and OME-Zarr.
+    """
+    image_ref = inputs.get("image") or {}
+    source_ref_id = image_ref.get("ref_id")
+
+    fmt = params.get("format", "OME-TIFF")
+    if fmt == "OME-TIFF":
+        result = export_ome_tiff(inputs=inputs, params=params, work_dir=work_dir)
+        if source_ref_id:
+            result["outputs"]["output"].setdefault("metadata", {})["source_ref_id"] = source_ref_id
+        return result
+    if fmt == "OME-Zarr":
+        out_path = convert_to_ome_zarr(inputs=inputs, params=params, work_dir=work_dir)
+        output_metadata = {}
+        if source_ref_id:
+            output_metadata["source_ref_id"] = source_ref_id
+        return {
+            "outputs": {
+                "output": {
+                    "type": "BioImageRef",
+                    "format": "OME-Zarr",
+                    "path": str(out_path),
+                    "metadata": output_metadata,
+                }
+            },
+            "log": "ok",
+        }
+    raise ValueError(f"Unsupported export format: {fmt}")

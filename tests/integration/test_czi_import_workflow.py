@@ -74,7 +74,7 @@ def test_czi_import_workflow(tmp_path: Path, monkeypatch) -> None:
         workflow = {
             "steps": [
                 {
-                    "fn_id": "base.wrapper.io.export_ome_tiff",
+                    "fn_id": "base.bioio.export",
                     "inputs": {
                         "image": {
                             "type": "BioImageRef",
@@ -82,7 +82,7 @@ def test_czi_import_workflow(tmp_path: Path, monkeypatch) -> None:
                             "uri": FIXTURE_CZI.as_uri(),
                         }
                     },
-                    "params": {},
+                    "params": {"format": "OME-TIFF"},
                 }
             ]
         }

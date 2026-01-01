@@ -13,19 +13,17 @@ CONTRACT_PATH = (
 )
 
 AXIS_TOOL_IDS = {
-    "base.wrapper.axis.relabel_axes",
-    "base.wrapper.axis.squeeze",
-    "base.wrapper.axis.expand_dims",
-    "base.wrapper.axis.moveaxis",
-    "base.wrapper.axis.swap_axes",
+    "base.xarray.rename",
+    "base.xarray.squeeze",
+    "base.xarray.expand_dims",
+    "base.xarray.transpose",
 }
 
 AXIS_TOOL_SCHEMA_KEYS = {
-    "base.wrapper.axis.relabel_axes": "relabel_axes",
-    "base.wrapper.axis.squeeze": "squeeze",
-    "base.wrapper.axis.expand_dims": "expand_dims",
-    "base.wrapper.axis.moveaxis": "moveaxis",
-    "base.wrapper.axis.swap_axes": "swap_axes",
+    "base.xarray.rename": "rename",
+    "base.xarray.squeeze": "squeeze",
+    "base.xarray.expand_dims": "expand_dims",
+    "base.xarray.transpose": "transpose",
 }
 
 
@@ -84,12 +82,12 @@ def test_axis_tools_registered_in_manifest() -> None:
         assert spec["http_status"] == 400
 
 
-def test_relabel_axes_schema_matches_contract() -> None:
+def test_rename_schema_matches_contract() -> None:
     contract = _load_contract()
     base_manifest = _load_base_manifest()
 
-    fn = _get_function(base_manifest, "base.wrapper.axis.relabel_axes")
-    expected_schema = _expected_params_schema(fn.params_schema, contract, "relabel_axes")
+    fn = _get_function(base_manifest, "base.xarray.rename")
+    expected_schema = _expected_params_schema(fn.params_schema, contract, "rename")
 
     assert fn.params_schema == expected_schema
 
@@ -98,7 +96,7 @@ def test_squeeze_schema_matches_contract() -> None:
     contract = _load_contract()
     base_manifest = _load_base_manifest()
 
-    fn = _get_function(base_manifest, "base.wrapper.axis.squeeze")
+    fn = _get_function(base_manifest, "base.xarray.squeeze")
     expected_schema = _expected_params_schema(fn.params_schema, contract, "squeeze")
 
     assert fn.params_schema == expected_schema
@@ -108,28 +106,18 @@ def test_expand_dims_schema_matches_contract() -> None:
     contract = _load_contract()
     base_manifest = _load_base_manifest()
 
-    fn = _get_function(base_manifest, "base.wrapper.axis.expand_dims")
+    fn = _get_function(base_manifest, "base.xarray.expand_dims")
     expected_schema = _expected_params_schema(fn.params_schema, contract, "expand_dims")
 
     assert fn.params_schema == expected_schema
 
 
-def test_moveaxis_schema_matches_contract() -> None:
+def test_transpose_schema_matches_contract() -> None:
     contract = _load_contract()
     base_manifest = _load_base_manifest()
 
-    fn = _get_function(base_manifest, "base.wrapper.axis.moveaxis")
-    expected_schema = _expected_params_schema(fn.params_schema, contract, "moveaxis")
-
-    assert fn.params_schema == expected_schema
-
-
-def test_swap_axes_schema_matches_contract() -> None:
-    contract = _load_contract()
-    base_manifest = _load_base_manifest()
-
-    fn = _get_function(base_manifest, "base.wrapper.axis.swap_axes")
-    expected_schema = _expected_params_schema(fn.params_schema, contract, "swap_axes")
+    fn = _get_function(base_manifest, "base.xarray.transpose")
+    expected_schema = _expected_params_schema(fn.params_schema, contract, "transpose")
 
     assert fn.params_schema == expected_schema
 

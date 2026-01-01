@@ -142,9 +142,10 @@ class ArtifactStore:
         checksums = [ArtifactChecksum(algorithm="sha256", value=checksum)]
 
         # Extract image metadata for image artifact types
+        # Use src instead of dest because src has the correct file extension (T020 fix)
         meta = {}
         if artifact_type in {"BioImageRef", "LabelImageRef"}:
-            meta = extract_image_metadata(dest)
+            meta = extract_image_metadata(src)
 
         ref = ArtifactRef(
             ref_id=ref_id,

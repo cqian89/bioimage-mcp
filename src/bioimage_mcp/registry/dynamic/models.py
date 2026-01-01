@@ -6,7 +6,7 @@ discovered functions from Python libraries.
 """
 
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -50,3 +50,17 @@ class FunctionMetadata(BaseModel):
     parameters: dict[str, ParameterSchema] = Field(default_factory=dict)
     io_pattern: IOPattern = IOPattern.GENERIC
     tags: list[str] = Field(default_factory=list)
+
+
+class ApplyUfuncConfig(BaseModel):
+    """Configuration for xarray.apply_ufunc execution."""
+
+    input_core_dims: list[list[str]] = Field(
+        description="Core dimensions for each input (e.g., [['Y', 'X']] for spatial filters)"
+    )
+    output_core_dims: list[list[str]] = Field(description="Core dimensions for each output")
+    vectorize: bool = Field(default=True, description="Loop over non-core dimensions")
+    dask: Literal["forbidden", "allowed", "parallelized"] = Field(
+        default="parallelized", description="Dask handling"
+    )
+    output_dtypes: list[str] | None = Field(default=None, description="Optional output dtype hints")

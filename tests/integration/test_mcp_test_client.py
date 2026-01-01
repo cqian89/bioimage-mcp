@@ -81,7 +81,7 @@ def test_mock_executor_default_returns_success(tmp_path: Path) -> None:
     executor = MockExecutor({})
 
     result, log, exit_code = executor.execute_step(
-        fn_id="base.wrapper.axis.relabel_axes",
+        fn_id="base.xarray.rename",
         work_dir=tmp_path,
         inputs={},
         params={},
@@ -112,13 +112,13 @@ def test_mock_executor_registry_override(tmp_path: Path) -> None:
             0,
         )
 
-    executor = MockExecutor({"base.wrapper.axis.relabel_axes": _mock_fn})
+    executor = MockExecutor({"base.xarray.rename": _mock_fn})
 
     result, log, exit_code = executor.execute_step(
-        fn_id="base.wrapper.axis.relabel_axes",
+        fn_id="base.xarray.rename",
         work_dir=tmp_path,
         inputs={"image": {"type": "BioImageRef"}},
-        params={"axis_mapping": {"Z": "T"}},
+        params={"mapping": {"Z": "T"}},
     )
 
     assert result["ok"] is True
@@ -136,9 +136,9 @@ def test_mcp_test_client_list_and_search(mcp_services) -> None:
     tools_result = client.list_tools()
     assert tools_result["tools"]
 
-    search_result = client.search_functions("relabel")
+    search_result = client.search_functions("rename")
     fn_ids = [fn["fn_id"] for fn in search_result["functions"]]
-    assert "base.wrapper.axis.relabel_axes" in fn_ids
+    assert "base.xarray.rename" in fn_ids
 
 
 def test_mcp_test_client_call_tool_uses_mock_and_tracks_context(mcp_services) -> None:
@@ -160,22 +160,22 @@ def test_mcp_test_client_call_tool_uses_mock_and_tracks_context(mcp_services) ->
             0,
         )
 
-    executor = MockExecutor({"base.wrapper.axis.relabel_axes": _mock_fn})
+    executor = MockExecutor({"base.xarray.rename": _mock_fn})
     client = MCPTestClient(
         discovery=mcp_services["discovery"],
         execution=mcp_services["execution"],
         mock_executor=executor,
     )
 
-    client.activate_functions(["base.wrapper.axis.relabel_axes"])
+    client.activate_functions(["base.xarray.rename"])
 
     result = client.call_tool(
-        fn_id="base.wrapper.axis.relabel_axes",
+        fn_id="base.xarray.rename",
         inputs={"image": {"type": "BioImageRef", "uri": "file://mock"}},
-        params={"axis_mapping": {"Z": "T"}},
+        params={"mapping": {"Z": "T"}},
     )
 
     assert result["status"] == "succeeded"
     assert "outputs" in result
     assert "output" in result["outputs"]
-    assert "base.wrapper.axis.relabel_axes.output" in client.context
+    assert "base.xarray.rename.output" in client.context

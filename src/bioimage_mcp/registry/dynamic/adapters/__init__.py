@@ -70,10 +70,12 @@ def _populate_default_adapters() -> None:
     from bioimage_mcp.registry.dynamic.adapters.phasorpy import PhasorPyAdapter
     from bioimage_mcp.registry.dynamic.adapters.scipy_ndimage import ScipyNdimageAdapter
     from bioimage_mcp.registry.dynamic.adapters.skimage import SkimageAdapter
+    from bioimage_mcp.registry.dynamic.adapters.xarray import XarrayAdapterForRegistry
 
     ADAPTER_REGISTRY["phasorpy"] = PhasorPyAdapter()
     ADAPTER_REGISTRY["scipy"] = ScipyNdimageAdapter()
     ADAPTER_REGISTRY["skimage"] = SkimageAdapter()
+    ADAPTER_REGISTRY["xarray"] = XarrayAdapterForRegistry()
 
 
 # Populate on module import

@@ -2,17 +2,16 @@
   description: "End-to-end FLIM phasor workflow with axis swapping"
   steps:
     - step_id: "fix_axes"
-      fn_id: "base.wrapper.axis.swap_axes"
+      fn_id: "base.xarray.transpose"
       inputs:
         image: "datasets/FLUTE_FLIM_data_tif/Embryo.tif"
       params:
-        axis1: "Z"
-        axis2: "T"
+        dims: ["Z", "C", "T", "Y", "X"]
       assertions:
         - type: "output_type"
           value: "BioImageRef"
     - step_id: "compute_phasor"
-      fn_id: "base.wrapper.phasor.phasor_from_flim"
+      fn_id: "base.bioimage_mcp_base.transforms.phasor_from_flim"
       inputs:
         dataset: "{fix_axes.output}"
       params:
@@ -26,37 +25,36 @@
   description: "Verify expand_dims then squeeze restores axes"
   steps:
     - step_id: "add_dim"
-      fn_id: "base.wrapper.axis.expand_dims"
+      fn_id: "base.xarray.expand_dims"
       inputs:
         image: "datasets/synthetic/test.tif"
       params:
         axis: 0
-        new_axis_name: "Z"
+        dim: "Z"
       assertions:
         - type: "metadata_check"
           key: "axes"
-          value: "ZYX"
+          value: "TCZYX"
     - step_id: "remove_dim"
-      fn_id: "base.wrapper.axis.squeeze"
+      fn_id: "base.xarray.squeeze"
       inputs:
         image: "{add_dim.output}"
       params:
-        axis: 0
+        dim: "Z"
       assertions:
         - type: "metadata_check"
           key: "axes"
-          value: "YX"
+          value: "TCZYX"
 
 - test_name: "axis_swap_test"
-  description: "Verify swap_axes exchanges Z and Y axes"
+  description: "Verify transpose exchanges Z and Y axes"
   steps:
     - step_id: "swap_axes"
-      fn_id: "base.wrapper.axis.swap_axes"
+      fn_id: "base.xarray.transpose"
       inputs:
         image: "datasets/synthetic/test.tif"
       params:
-        axis1: "Z"
-        axis2: "Y"
+        dims: ["Y", "Z", "X"]
       assertions:
         - type: "output_type"
           value: "BioImageRef"

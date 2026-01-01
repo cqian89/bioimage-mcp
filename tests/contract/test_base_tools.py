@@ -5,17 +5,19 @@ from pathlib import Path
 from bioimage_mcp.registry.loader import load_manifests
 
 EXPECTED_BASE_FUNCTIONS = {
-    "base.wrapper.io.convert_to_ome_zarr",
-    "base.wrapper.io.export_ome_tiff",
-    "base.wrapper.transform.project_sum",
-    "base.wrapper.transform.project_max",
+    "base.xarray.rename",
+    "base.xarray.squeeze",
+    "base.xarray.expand_dims",
+    "base.xarray.transpose",
+    "base.xarray.isel",
+    "base.xarray.pad",
+    "base.xarray.sum",
+    "base.xarray.max",
+    "base.xarray.mean",
+    "base.bioio.export",
     "base.skimage.transform.resize",
     "base.skimage.transform.rescale",
     "base.skimage.transform.rotate",
-    "base.wrapper.transform.flip",
-    "base.wrapper.transform.crop",
-    "base.wrapper.transform.pad",
-    "base.wrapper.preprocess.normalize_intensity",
     "base.skimage.filters.gaussian",
     "base.skimage.filters.median",
     "base.skimage.restoration.denoise_bilateral",
@@ -26,9 +28,6 @@ EXPECTED_BASE_FUNCTIONS = {
     "base.skimage.filters.threshold_otsu",
     "base.skimage.filters.threshold_yen",
     "base.skimage.morphology.remove_small_objects",
-    "base.wrapper.phasor.phasor_from_flim",
-    "base.wrapper.denoise.denoise_image",
-    "base.wrapper.phasor.phasor_calibrate",
     "meta.describe",
 }
 
