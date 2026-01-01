@@ -30,7 +30,12 @@ def serve(*, stdio: bool) -> int:
     for diag in diagnostics:
         service.record_diagnostic(diag)
 
+    # Collect valid IDs for pruning stale entries
+    valid_tool_ids: set[str] = set()
+    valid_fn_ids: set[str] = set()
+
     for manifest in manifests:
+        valid_tool_ids.add(manifest.tool_id)
         service.upsert_tool(
             tool_id=manifest.tool_id,
             name=manifest.name,
@@ -42,6 +47,7 @@ def serve(*, stdio: bool) -> int:
             installed=True,
         )
         for fn in manifest.functions:
+            valid_fn_ids.add(fn.fn_id)
             service.upsert_function(
                 fn_id=fn.fn_id,
                 tool_id=fn.tool_id,
@@ -53,6 +59,10 @@ def serve(*, stdio: bool) -> int:
                 params_schema=fn.params_schema,
                 introspection_source=fn.introspection_source,
             )
+
+    # Prune stale functions and tools that are no longer in manifests
+    service.prune_stale_functions(valid_fn_ids)
+    service.prune_stale_tools(valid_tool_ids)
 
     artifact_store = ArtifactStore(config, conn=conn)
     run_store = RunStore(config, conn=conn)

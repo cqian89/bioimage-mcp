@@ -44,6 +44,14 @@ class DiscoveryService:
     def record_diagnostic(self, diagnostic) -> None:  # type: ignore[no-untyped-def]
         self._index.record_diagnostic(diagnostic)
 
+    def prune_stale_functions(self, valid_fn_ids: set[str]) -> int:
+        """Delete functions not in the valid set."""
+        return self._index.prune_stale_functions(valid_fn_ids)
+
+    def prune_stale_tools(self, valid_tool_ids: set[str]) -> int:
+        """Delete tools not in the valid set."""
+        return self._index.prune_stale_tools(valid_tool_ids)
+
     def list_tools(
         self,
         *,

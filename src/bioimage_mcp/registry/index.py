@@ -336,6 +336,50 @@ class RegistryIndex:
         )
         self._conn.commit()
 
+    def prune_stale_functions(self, valid_fn_ids: set[str]) -> int:
+        """Delete functions not in the valid set.
+
+        Args:
+            valid_fn_ids: Set of fn_ids that should be kept.
+
+        Returns:
+            Number of deleted rows.
+        """
+        if not valid_fn_ids:
+            # If no valid functions provided, delete all
+            cursor = self._conn.execute("DELETE FROM functions")
+        else:
+            placeholders = ",".join("?" for _ in valid_fn_ids)
+            cursor = self._conn.execute(
+                f"DELETE FROM functions WHERE fn_id NOT IN ({placeholders})",
+                tuple(valid_fn_ids),
+            )
+        deleted = cursor.rowcount
+        self._conn.commit()
+        return deleted
+
+    def prune_stale_tools(self, valid_tool_ids: set[str]) -> int:
+        """Delete tools not in the valid set.
+
+        Args:
+            valid_tool_ids: Set of tool_ids that should be kept.
+
+        Returns:
+            Number of deleted rows.
+        """
+        if not valid_tool_ids:
+            # If no valid tools provided, delete all
+            cursor = self._conn.execute("DELETE FROM tools")
+        else:
+            placeholders = ",".join("?" for _ in valid_tool_ids)
+            cursor = self._conn.execute(
+                f"DELETE FROM tools WHERE tool_id NOT IN ({placeholders})",
+                tuple(valid_tool_ids),
+            )
+        deleted = cursor.rowcount
+        self._conn.commit()
+        return deleted
+
 
 class _HierarchyNode:
     def __init__(
