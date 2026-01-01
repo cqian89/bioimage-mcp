@@ -54,5 +54,5 @@ intensity_ref = phasor_res.outputs["intensity_image"]
 
 # 2. Segment (using existing cellpose tool)
 seg_res = await mcp.call_tool("cellpose.segment", inputs={"image": intensity_ref})
-mask_ref = seg_res.outputs["mask"]
+mask_ref = seg_res.outputs["labels"]
 ```

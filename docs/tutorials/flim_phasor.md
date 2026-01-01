@@ -13,12 +13,12 @@ This guide demonstrates how to perform Phasor analysis on Fluorescence Lifetime 
 FLIM phasor analysis is highly sensitive to metadata and pixel dimensions. To ensure accurate results, the following guidelines should be followed:
 
 *   **OME-TIFF Requirement**: The analysis tools specifically require the OME-TIFF format to correctly interpret time-resolved or binned FLIM data.
-*   **Converting Proprietary Formats**: If your data is in a proprietary format (e.g., Zeiss `.czi`, Leica `.lif`, Nikon `.nd2`), you must convert it to OME-TIFF first using the `base.wrapper.io.export_ome_tiff` tool.
-*   **Metadata Preservation**: Using `base.wrapper.io.export_ome_tiff` ensures that critical metadata (like voxel sizes and time-binning information) and all dimensions are preserved during the conversion process.
+*   **Converting Proprietary Formats**: If your data is in a proprietary format (e.g., Zeiss `.czi`, Leica `.lif`, Nikon `.nd2`), you must convert it to OME-TIFF first using the `base.bioio.export` tool.
+*   **Metadata Preservation**: Using `base.bioio.export` ensures that critical metadata (like voxel sizes and time-binning information) and all dimensions are preserved during the conversion process.
 
 ## Step 1: Compute Phasor Maps
 
-The `base.phasor_from_flim` tool converts time-resolved data into phasor coordinates (G and S) and an intensity image.
+The `base.phasorpy.phasor.phasor_from_signal` tool converts time-resolved data into phasor coordinates (real and imaginary) and an average intensity image.
 
 Assuming you have an MCP client connected (or using Python API):
 
@@ -28,14 +28,14 @@ Assuming you have an MCP client connected (or using Python API):
 
 # 2. Run Phasor Transform
 result = await mcp.call_tool(
-    "base.phasor_from_flim",
-    inputs={"dataset": flim_ref},
+    "base.phasorpy.phasor.phasor_from_signal",
+    inputs={"signal": flim_ref},
     params={"harmonic": 1}
 )
 
-g_ref = result.outputs["g_image"]
-s_ref = result.outputs["s_image"]
-int_ref = result.outputs["intensity_image"]
+int_ref = result.outputs["output"]     # Mean intensity
+g_ref = result.outputs["output_1"]     # Real (G) coordinates
+s_ref = result.outputs["output_2"]     # Imaginary (S) coordinates
 ```
 
 ## Step 2: Denoise (Optional)
@@ -44,11 +44,10 @@ Phasor maps can be noisy. You can apply a filter to clean them up.
 
 ```python
 denoised_g = await mcp.call_tool(
-    "base.denoise_image",
+    "base.skimage.filters.gaussian",
     inputs={"image": g_ref},
     params={
-        "method": "median",
-        "radius": 3
+        "sigma": 1.0
     }
 )
 ```
@@ -59,10 +58,13 @@ A common workflow is to use the intensity image derived from the FLIM data to pe
 
 ```python
 # 1. Get intensity image from Phasor tool
-phasor_res = await mcp.call_tool("base.phasor_from_flim", inputs={"dataset": flim_ref})
-intensity_ref = phasor_res.outputs["intensity_image"]
+phasor_res = await mcp.call_tool(
+    "base.phasorpy.phasor.phasor_from_signal", 
+    inputs={"signal": flim_ref}
+)
+intensity_ref = phasor_res.outputs["output"]
 
 # 2. Segment using Cellpose (requires cellpose env installed)
 seg_res = await mcp.call_tool("cellpose.segment", inputs={"image": intensity_ref})
-mask_ref = seg_res.outputs["mask"]
+mask_ref = seg_res.outputs["labels"]
 ```

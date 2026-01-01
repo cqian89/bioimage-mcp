@@ -177,12 +177,12 @@ def mock_executor() -> MockExecutor:
         output_path = _resolve_input_path(inputs, repo_root) or default_image
         return {"ok": True, "outputs": {"output": _mock_output(output_path)}}, "Mock relabel", 0
 
-    def _mock_phasor_from_flim(work_dir: Path, inputs: dict, params: dict):
+    def _mock_phasor_from_signal(work_dir: Path, inputs: dict, params: dict):
         output_path = _resolve_input_path(inputs, repo_root) or default_image
         outputs = {
-            "g_image": _mock_output(output_path),
-            "s_image": _mock_output(output_path),
-            "intensity_image": _mock_output(output_path),
+            "output": _mock_output(output_path),
+            "output_1": _mock_output(output_path),
+            "output_2": _mock_output(output_path),
         }
         return {"ok": True, "outputs": outputs}, "Mock phasor", 0
 
@@ -200,7 +200,7 @@ def mock_executor() -> MockExecutor:
 
     registry = {
         "base.xarray.rename": _mock_relabel_axes,
-        "base.bioimage_mcp_base.transforms.phasor_from_flim": _mock_phasor_from_flim,
+        "base.phasorpy.phasor.phasor_from_signal": _mock_phasor_from_signal,
         "base.xarray.expand_dims": _mock_expand_dims,
         "base.xarray.squeeze": _mock_squeeze,
         "base.xarray.transpose": _mock_swap_axes,

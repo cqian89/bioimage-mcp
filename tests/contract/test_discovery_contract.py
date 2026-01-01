@@ -190,13 +190,13 @@ def test_search_functions_returns_matching_results() -> None:
 
     # Add phasor-related function
     service.upsert_function(
-        fn_id="base.bioimage_mcp_base.transforms.phasor_from_flim",
+        fn_id="base.phasorpy.phasor.phasor_from_signal",
         tool_id="tools.base",
         name="Phasor from FLIM",
         description="Calculate phasor coordinates from FLIM data",
         tags=["flim", "phasor"],
-        inputs=[{"name": "flim_image", "artifact_type": "BioImageRef", "required": True}],
-        outputs=[{"name": "phasor_coords", "artifact_type": "BioImageRef", "required": True}],
+        inputs=[{"name": "signal", "artifact_type": "BioImageRef", "required": True}],
+        outputs=[{"name": "output", "artifact_type": "BioImageRef", "required": True}],
         params_schema={"type": "object", "properties": {"harmonic": {"type": "integer"}}},
     )
 

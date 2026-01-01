@@ -35,6 +35,7 @@ FORBIDDEN_IMPORTS = ["bioio", "bioio_ome_tiff", "bioio_ome_zarr"]
 LAZY_IMPORT_ALLOWLIST = [
     "registry/dynamic/adapters/skimage.py",
     "registry/dynamic/adapters/xarray.py",
+    "registry/dynamic/adapters/phasorpy.py",
     "artifacts/metadata.py",  # Uses graceful fallback if bioio not available
 ]
 

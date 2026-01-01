@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -67,4 +67,4 @@ class ArtifactRef(BaseModel):
 
     @classmethod
     def now(cls) -> str:
-        return datetime.now(UTC).isoformat()
+        return datetime.now(timezone.utc).isoformat()

@@ -5,7 +5,7 @@ import os
 import subprocess
 import sys
 import threading
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from queue import Empty, Queue
 from typing import TYPE_CHECKING, Any
@@ -88,7 +88,7 @@ class WorkerProcess:
         self._ordinal_counter = 0
         self._lock = threading.Lock()
         self._request_lock = threading.Lock()  # T094: Serialize requests to this worker
-        self._last_activity_at = datetime.now(UTC)  # T069: Track idle time
+        self._last_activity_at = datetime.now(timezone.utc)  # T069: Track idle time
 
         # Spawn the subprocess
         cmd = _build_worker_command(entrypoint, env_id=env_id)
@@ -110,7 +110,7 @@ class WorkerProcess:
         )
 
         self.process_id = self._process.pid
-        self.started_at = datetime.now(UTC)
+        self.started_at = datetime.now(timezone.utc)
 
         # Start stderr capture thread
         self._stderr_lines: Queue[str] = Queue()
@@ -212,7 +212,7 @@ class WorkerProcess:
                 env_id,
             )
             # T069: Reset idle timer after successful ready handshake
-            self._last_activity_at = datetime.now(UTC)
+            self._last_activity_at = datetime.now(timezone.utc)
 
         except RuntimeError:
             # Re-raise RuntimeError (our handshake failures)
@@ -264,7 +264,7 @@ class WorkerProcess:
 
         MUST be called while holding self._lock.
         """
-        self._last_activity_at = datetime.now(UTC)
+        self._last_activity_at = datetime.now(timezone.utc)
 
     def _update_activity(self) -> None:
         """Update last activity timestamp (T069)."""
@@ -278,7 +278,7 @@ class WorkerProcess:
             Seconds since last activity
         """
         with self._lock:
-            return (datetime.now(UTC) - self._last_activity_at).total_seconds()
+            return (datetime.now(timezone.utc) - self._last_activity_at).total_seconds()
 
     def execute(
         self,
@@ -710,7 +710,7 @@ class WorkerSession(BaseModel):
     session_id: str
     env_id: str
     process_id: int
-    started_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    started_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     active_artifacts: list[str] = Field(default_factory=list)  # ref_ids in worker memory
 
 

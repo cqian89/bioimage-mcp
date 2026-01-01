@@ -69,8 +69,8 @@ def test_error_hints_selected_by_error_code(tmp_path: Path, monkeypatch) -> None
             "AXIS_SAMPLES_ERROR": {
                 "diagnosis": "Time axis has too few samples",
                 "suggested_fix": {
-                    "fn_id": "base.phasor_from_flim",
-                    "params": {"time_axis": "T"},
+                    "fn_id": "base.bioio.export",
+                    "params": {"format": "OME-TIFF"},
                     "explanation": "Provide a dataset with multiple time samples.",
                 },
             },
@@ -95,7 +95,7 @@ def test_error_hints_selected_by_error_code(tmp_path: Path, monkeypatch) -> None
 
     assert response["status"] == "failed"
     assert response["hints"]["diagnosis"] == "Time axis has too few samples"
-    assert response["hints"]["suggested_fix"]["fn_id"] == "base.phasor_from_flim"
+    assert response["hints"]["suggested_fix"]["fn_id"] == "base.bioio.export"
 
 
 def test_error_hints_fallback_to_general(tmp_path: Path, monkeypatch) -> None:

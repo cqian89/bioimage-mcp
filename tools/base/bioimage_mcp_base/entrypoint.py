@@ -41,14 +41,6 @@ _ENV_ID: str | None = None
 
 FN_MAP = {
     "base.bioio.export": (io_ops.export, {}),
-    "base.bioimage_mcp_base.transforms.phasor_from_flim": (
-        transform_ops.phasor_from_flim,
-        {},
-    ),
-    "base.bioimage_mcp_base.transforms.phasor_calibrate": (
-        transform_ops.phasor_calibrate,
-        {},
-    ),
 }
 
 LEGACY_REDIRECTS = {}
@@ -659,9 +651,9 @@ def _convert_outputs_to_memory(outputs: dict[str, Any], work_dir: Path) -> dict[
 
 def _now_iso() -> str:
     """Get current time in ISO format."""
-    from datetime import UTC, datetime
+    from datetime import datetime, timezone
 
-    return datetime.now(UTC).isoformat()
+    return datetime.now(timezone.utc).isoformat()
 
 
 def main() -> int:
@@ -675,6 +667,10 @@ def main() -> int:
         0 on success, 1 on failure
     """
     import os
+
+    import sys
+
+    print(f"DEBUG: BASE ENTRYPOINT CALLED with PID {os.getpid()}", file=sys.stderr)
 
     # Initialize worker identity from environment or use defaults (T032)
     session_id = os.environ.get("BIOIMAGE_MCP_SESSION_ID", "default_session")

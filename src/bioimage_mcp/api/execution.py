@@ -156,11 +156,18 @@ def execute_step(
                 continue
 
             entrypoint = manifest.entrypoint
+
             entry_path = Path(entrypoint)
             if not entry_path.is_absolute():
                 candidate = manifest.manifest_path.parent / entry_path
                 if candidate.exists():
                     entrypoint = str(candidate)
+
+            print(
+                f"DEBUG: Selected tool {manifest.tool_id} (Env: {manifest.env_id}) for function {fn_id}",
+                file=sys.stderr,
+            )
+            print(f"DEBUG: Entrypoint: {entrypoint}", file=sys.stderr)
 
             work_dir.mkdir(parents=True, exist_ok=True)
             request = {
@@ -193,7 +200,6 @@ def execute_step(
                     # Extract exit code (worker responses use ok/error, not exit codes)
                     exit_code = 0 if response.get("ok") else 1
 
-                    # Return in expected format: (response, log_text, exit_code)
                     return response, log_text, exit_code
 
                 except Exception as e:

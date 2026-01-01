@@ -276,58 +276,6 @@ functions:
           default: OME-TIFF
           description: Output format
 
-  - fn_id: base.bioimage_mcp_base.transforms.phasor_from_flim
-    tool_id: tools.base
-    name: Phasor from FLIM
-    description: Compute phasor coordinates from FLIM signal.
-    tags: [phasor, flim]
-    inputs:
-      - name: dataset
-        artifact_type: BioImageRef
-        required: true
-    outputs:
-      - name: g_image
-        artifact_type: BioImageRef
-      - name: s_image
-        artifact_type: BioImageRef
-      - name: intensity_image
-        artifact_type: BioImageRef
-    params_schema:
-      type: object
-      properties:
-        time_axis:
-          type: [string, integer]
-        harmonic:
-          type: integer
-          default: 1
-
-  - fn_id: base.bioimage_mcp_base.transforms.phasor_calibrate
-    tool_id: tools.base
-    name: Phasor Calibrate
-    description: Calibrate phasor coordinates.
-    tags: [phasor, calibration]
-    inputs:
-      - name: sample_phasors
-        artifact_type: BioImageRef
-        required: true
-      - name: reference_phasors
-        artifact_type: BioImageRef
-        required: true
-    outputs:
-      - name: calibrated_phasors
-        artifact_type: BioImageRef
-    params_schema:
-      type: object
-      required: [lifetime, frequency]
-      properties:
-        lifetime:
-          type: number
-        frequency:
-          type: number
-        harmonic:
-          type: integer
-          default: 1
-
   # Required for on-demand schema enrichment
   - fn_id: meta.describe
     tool_id: tools.base

@@ -108,7 +108,7 @@ def test_full_discovery_to_execution_flow(mcp_test_client, sample_flim_image) ->
     mcp_test_client.activate_functions(
         [
             "base.xarray.rename",
-            "base.bioimage_mcp_base.transforms.phasor_from_flim",
+            "base.phasorpy.phasor.phasor_from_signal",
         ]
     )
 
@@ -124,18 +124,18 @@ def test_full_discovery_to_execution_flow(mcp_test_client, sample_flim_image) ->
     relabeled_output = _coerce_output_ref(relabeled["outputs"])
 
     phasor = mcp_test_client.call_tool(
-        fn_id="base.bioimage_mcp_base.transforms.phasor_from_flim",
-        inputs={"dataset": relabeled_output},
+        fn_id="base.phasorpy.phasor.phasor_from_signal",
+        inputs={"signal": relabeled_output},
         params={"harmonic": 1},
     )
 
     outputs = phasor["outputs"]
-    assert "g_image" in outputs
-    assert "s_image" in outputs
-    assert "intensity_image" in outputs
-    _assert_output_type(outputs["g_image"], "BioImageRef")
-    _assert_output_type(outputs["s_image"], "BioImageRef")
-    _assert_output_type(outputs["intensity_image"], "BioImageRef")
+    assert "output" in outputs
+    assert "output_1" in outputs
+    assert "output_2" in outputs
+    _assert_output_type(outputs["output"], "BioImageRef")
+    _assert_output_type(outputs["output_1"], "BioImageRef")
+    _assert_output_type(outputs["output_2"], "BioImageRef")
 
 
 @pytest.mark.real_execution
@@ -149,7 +149,7 @@ def test_flim_phasor_golden_path(mcp_test_client, sample_flim_image) -> None:
     mcp_test_client.activate_functions(
         [
             "base.xarray.transpose",
-            "base.bioimage_mcp_base.transforms.phasor_from_flim",
+            "base.phasorpy.phasor.phasor_from_signal",
         ]
     )
 
@@ -163,20 +163,20 @@ def test_flim_phasor_golden_path(mcp_test_client, sample_flim_image) -> None:
     swapped_output = _coerce_output_ref(swapped["outputs"])
 
     phasor = mcp_test_client.call_tool(
-        fn_id="base.bioimage_mcp_base.transforms.phasor_from_flim",
-        inputs={"dataset": swapped_output},
-        params={"harmonic": 1, "time_axis": "Z"},
+        fn_id="base.phasorpy.phasor.phasor_from_signal",
+        inputs={"signal": swapped_output},
+        params={"harmonic": 1, "axis": 0},
     )
     if "outputs" not in phasor:
         pytest.fail(f"Phasor failed: {phasor.get('error') or phasor}")
     outputs = phasor["outputs"]
 
-    assert "g_image" in outputs
-    assert "s_image" in outputs
-    assert "intensity_image" in outputs
-    _assert_output_type(outputs["g_image"], "BioImageRef")
-    _assert_output_type(outputs["s_image"], "BioImageRef")
-    _assert_output_type(outputs["intensity_image"], "BioImageRef")
+    assert "mean" in outputs
+    assert "real" in outputs
+    assert "imag" in outputs
+    _assert_output_type(outputs["mean"], "BioImageRef")
+    _assert_output_type(outputs["real"], "BioImageRef")
+    _assert_output_type(outputs["imag"], "BioImageRef")
 
 
 @pytest.mark.mock_execution

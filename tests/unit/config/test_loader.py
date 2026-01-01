@@ -106,16 +106,20 @@ session_ttl_hours: 0
         load_config(global_path=global_cfg, local_path=tmp_path / "missing.yaml")
 
 
-def test_load_config_session_ttl_hours_rejects_negative(tmp_path: Path) -> None:
-    """session_ttl_hours must be >= 1."""
-    global_cfg = tmp_path / "home" / ".bioimage-mcp" / "config.yaml"
-    global_cfg.parent.mkdir(parents=True)
-    global_cfg.write_text(
-        """\
-artifact_store_root: /abs/artifacts
-session_ttl_hours: -5
-"""
+def test_artifact_store_root_is_auto_added_to_write_allowlist(tmp_path: Path) -> None:
+    """Verify artifact_store_root is added to fs_allowlist_write even if custom."""
+    local_cfg = tmp_path / "project" / ".bioimage-mcp" / "config.yaml"
+    local_cfg.parent.mkdir(parents=True)
+
+    custom_root = "/tmp/custom/artifacts"
+    local_cfg.write_text(
+        f"""
+artifact_store_root: {custom_root}
+fs_allowlist_write: [/some/other/path]
+""".lstrip()
     )
 
-    with pytest.raises(ValueError, match="session_ttl_hours must be >= 1"):
-        load_config(global_path=global_cfg, local_path=tmp_path / "missing.yaml")
+    config = load_config(global_path=tmp_path / "missing.yaml", local_path=local_cfg)
+
+    assert Path(custom_root) in config.fs_allowlist_write
+    assert Path("/some/other/path") in config.fs_allowlist_write

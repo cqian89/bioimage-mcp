@@ -11,9 +11,9 @@
         - type: "output_type"
           value: "BioImageRef"
     - step_id: "compute_phasor"
-      fn_id: "base.bioimage_mcp_base.transforms.phasor_from_flim"
+      fn_id: "base.phasorpy.phasor.phasor_from_signal"
       inputs:
-        dataset: "{fix_axes.output}"
+        signal: "{fix_axes.output}"
       params:
         harmonic: 1
       assertions:

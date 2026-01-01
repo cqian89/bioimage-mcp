@@ -7,13 +7,13 @@ def test_rank_prioritizes_match_count_then_score() -> None:
     index = SearchIndex()
     candidates = [
         {
-            "fn_id": "base.phasor_calibrate",
+            "fn_id": "base.phasorpy.phasor.phasor_transform",
             "name": "Phasor calibrate",
             "description": "Calibrate phasor coordinates",
             "tags": ["phasor", "calibration"],
         },
         {
-            "fn_id": "base.phasor_from_flim",
+            "fn_id": "base.phasorpy.phasor.phasor_from_signal",
             "name": "Phasor from FLIM",
             "description": "Compute phasor coordinates from FLIM",
             "tags": ["phasor", "flim"],
@@ -23,8 +23,8 @@ def test_rank_prioritizes_match_count_then_score() -> None:
     ranked = index.rank(keywords=["phasor", "calibrate"], candidates=candidates)
 
     assert [entry["fn_id"] for entry in ranked] == [
-        "base.phasor_calibrate",
-        "base.phasor_from_flim",
+        "base.phasorpy.phasor.phasor_transform",
+        "base.phasorpy.phasor.phasor_from_signal",
     ]
     assert ranked[0]["match_count"] > ranked[1]["match_count"]
 

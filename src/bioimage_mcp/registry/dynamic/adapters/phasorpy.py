@@ -5,8 +5,14 @@ Provides integration with phasorpy library for FLIM phasor analysis.
 """
 
 import importlib
-from datetime import UTC
+import inspect
+import tempfile
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
+
+import numpy as np
 
 from bioimage_mcp.artifacts.base import Artifact
 from bioimage_mcp.artifacts.models import ArtifactRef
@@ -71,8 +77,6 @@ class PhasorPyAdapter:
                 func = getattr(module, func_name)
 
                 # Resolve I/O pattern based on function name
-                import inspect
-
                 signature = inspect.signature(func)
                 io_pattern = self.resolve_io_pattern(func_name, signature)
 
@@ -109,13 +113,86 @@ class PhasorPyAdapter:
         else:
             return IOPattern.PHASOR_TO_OTHER
 
-    def execute(self, fn_id: str, inputs: list[Artifact], params: dict[str, Any]) -> list[Artifact]:
+    def _load_image(self, artifact: Artifact) -> np.ndarray:
+        """Load image data from artifact reference."""
+        if isinstance(artifact, dict):
+            uri = artifact.get("uri", "")
+            fmt = artifact.get("format")
+        else:
+            uri = getattr(artifact, "uri", "")
+            fmt = getattr(artifact, "format", None)
+
+        if not uri:
+            raise ValueError(f"Artifact missing URI: {artifact}")
+
+        # Parse URI and get file path
+        parsed = urlparse(uri)
+        path = parsed.path
+        if path.startswith("/") and len(path) > 2 and path[2] == ":":
+            path = path[1:]
+
+        from bioio import BioImage
+
+        img = BioImage(path)
+        data = img.data
+        if hasattr(data, "compute"):
+            data = data.compute()
+        return data
+
+    def _save_image(
+        self,
+        array: np.ndarray,
+        work_dir: Path | None = None,
+        name: str = "output",
+        axes: str = "TCZYX",
+    ) -> dict[str, Any]:
+        """Save image array to file and return artifact reference dict."""
+        ext = ".ome.tiff"
+        if work_dir is None:
+            fd, path_str = tempfile.mkstemp(suffix=ext)
+            import os
+
+            os.close(fd)
+            path = Path(path_str)
+        else:
+            work_dir.mkdir(parents=True, exist_ok=True)
+            path = work_dir / f"{name}{ext}"
+
+        # Ensure axes match dimensions
+        if len(axes) > array.ndim:
+            axes = axes[-array.ndim :]
+        elif len(axes) < array.ndim:
+            axes = "TCZYX"[-array.ndim :]
+
+        from bioio.writers import OmeTiffWriter
+
+        OmeTiffWriter.save(array, str(path), dim_order=axes)
+
+        return {
+            "type": "BioImageRef",
+            "format": "OME-TIFF",
+            "path": str(path.absolute()),
+            "metadata": {
+                "axes": axes,
+                "shape": list(array.shape),
+                "dtype": str(array.dtype),
+            },
+        }
+
+    def execute(
+        self,
+        fn_id: str,
+        inputs: list[Artifact],
+        params: dict[str, Any],
+        work_dir: Path | None = None,
+    ) -> list[Artifact]:
         """Execute a phasorpy function.
 
         Args:
             fn_id: Function ID like "phasorpy.phasor_from_signal"
             inputs: Input artifacts (BioImageRef)
             params: Parameters for the function
+            work_dir: Optional working directory for execution
 
         Returns:
             List of output artifacts
@@ -123,98 +200,65 @@ class PhasorPyAdapter:
         # Extract function name from fn_id
         func_name = fn_id.split(".")[-1]
 
-        # For now, just call the function (test mocks it)
-        # In production, we'd load the input data from artifacts
+        # Get the actual function
         if func_name == "phasor_from_signal":
-            result = phasor_from_signal(**params)
-
-            # SIGNAL_TO_PHASOR pattern: phasor_from_signal returns (mean, real, imag)
-            # Create 3 separate artifacts for each output
-            from datetime import datetime
-
-            outputs = []
-
-            # Unpack the 3-tuple result
-            mean, real, imag = result
-
-            # Create artifact for mean
-            outputs.append(
-                ArtifactRef(
-                    ref_id="phasor-mean",
-                    type="BioImageRef",
-                    uri="file:///tmp/phasor_mean.tif",
-                    format="OME-TIFF",
-                    mime_type="image/tiff",
-                    size_bytes=1024,
-                    created_at=datetime.now(UTC).isoformat(),
-                )
-            )
-
-            # Create artifact for real
-            outputs.append(
-                ArtifactRef(
-                    ref_id="phasor-real",
-                    type="BioImageRef",
-                    uri="file:///tmp/phasor_real.tif",
-                    format="OME-TIFF",
-                    mime_type="image/tiff",
-                    size_bytes=1024,
-                    created_at=datetime.now(UTC).isoformat(),
-                )
-            )
-
-            # Create artifact for imag
-            outputs.append(
-                ArtifactRef(
-                    ref_id="phasor-imag",
-                    type="BioImageRef",
-                    uri="file:///tmp/phasor_imag.tif",
-                    format="OME-TIFF",
-                    mime_type="image/tiff",
-                    size_bytes=1024,
-                    created_at=datetime.now(UTC).isoformat(),
-                )
-            )
-
-            return outputs
+            target_fn = phasor_from_signal
         elif func_name == "phasor_transform":
-            result = phasor_transform(**params)
-
-            # PHASOR_TRANSFORM pattern: phasor_transform returns (real, imag)
-            # Create 2 separate artifacts for each output
-            from datetime import datetime
-
-            outputs = []
-
-            # Unpack the 2-tuple result
-            real, imag = result
-
-            # Create artifact for real
-            outputs.append(
-                ArtifactRef(
-                    ref_id="phasor-real",
-                    type="BioImageRef",
-                    uri="file:///tmp/phasor_real.tif",
-                    format="OME-TIFF",
-                    mime_type="image/tiff",
-                    size_bytes=1024,
-                    created_at=datetime.now(UTC).isoformat(),
-                )
-            )
-
-            # Create artifact for imag
-            outputs.append(
-                ArtifactRef(
-                    ref_id="phasor-imag",
-                    type="BioImageRef",
-                    uri="file:///tmp/phasor_imag.tif",
-                    format="OME-TIFF",
-                    mime_type="image/tiff",
-                    size_bytes=1024,
-                    created_at=datetime.now(UTC).isoformat(),
-                )
-            )
-
-            return outputs
+            target_fn = phasor_transform
         else:
             raise ValueError(f"Unknown function: {func_name}")
+
+        if target_fn is None:
+            raise RuntimeError(f"phasorpy is not installed, cannot execute {func_name}")
+
+        # Resolve inputs
+        args = []
+        kwargs = dict(params)
+
+        # Map inputs to function parameters
+        # For phasor_from_signal: takes 'signal'
+        # For phasor_transform: takes 'real', 'imag', 'real_zero', 'imag_zero', etc.
+        input_map = (
+            dict(inputs)
+            if isinstance(inputs, list) and inputs and isinstance(inputs[0], tuple)
+            else {}
+        )
+        if not input_map and inputs:
+            # Fallback for simple list of artifacts
+            if func_name == "phasor_from_signal":
+                input_map = {"signal": inputs[0]}
+            elif func_name == "phasor_transform" and len(inputs) >= 2:
+                input_map = {"real": inputs[0], "imag": inputs[1]}
+                if len(inputs) >= 4:
+                    input_map["real_zero"] = inputs[2]
+                    input_map["imag_zero"] = inputs[3]
+
+        # Load and set image data in kwargs
+        for name, artifact in input_map.items():
+            kwargs[name] = self._load_image(artifact)
+
+        # Execute
+        if func_name == "phasor_from_signal":
+            # phasor_from_signal(signal, /, ...)
+            signal_data = kwargs.pop("signal", None)
+            if signal_data is None:
+                raise ValueError("Missing 'signal' input for phasor_from_signal")
+            result = target_fn(signal_data, **kwargs)
+        else:
+            result = target_fn(**kwargs)
+
+        # Handle outputs
+        outputs = []
+        if func_name == "phasor_from_signal":
+            # returns (mean, real, imag)
+            mean, real, imag = result
+            outputs.append(self._save_image(mean, work_dir, "phasor-mean", "TCZYX"))
+            outputs.append(self._save_image(real, work_dir, "phasor-real", "TCZYX"))
+            outputs.append(self._save_image(imag, work_dir, "phasor-imag", "TCZYX"))
+        elif func_name == "phasor_transform":
+            # returns (real, imag)
+            real, imag = result
+            outputs.append(self._save_image(real, work_dir, "phasor-real", "TCZYX"))
+            outputs.append(self._save_image(imag, work_dir, "phasor-imag", "TCZYX"))
+
+        return outputs

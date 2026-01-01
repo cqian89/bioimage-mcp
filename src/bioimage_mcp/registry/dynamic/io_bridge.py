@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import threading
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from pydantic import BaseModel, Field
@@ -17,7 +17,7 @@ class IOBridgeHandoff(BaseModel):
     source_env: str
     target_env: str
     negotiated_format: str  # e.g., "OME-TIFF"
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class IOBridge:

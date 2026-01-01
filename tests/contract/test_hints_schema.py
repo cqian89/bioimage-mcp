@@ -145,12 +145,12 @@ def test_function_hints_schema() -> None:
 def test_describe_function_response_structure() -> None:
     """Validate describe_function response includes inputs and outputs with hints."""
     response = {
-        "fn_id": "base.bioimage_mcp_base.transforms.phasor_from_flim",
+        "fn_id": "base.phasorpy.phasor.phasor_from_signal",
         "name": "Phasor transform",
         "description": "Convert FLIM dataset to phasor coordinates",
         "schema": {"type": "object", "properties": {}},
         "inputs": {
-            "dataset": {
+            "signal": {
                 "type": "BioImageRef",
                 "required": True,
                 "description": "FLIM image data",
@@ -159,10 +159,14 @@ def test_describe_function_response_structure() -> None:
             }
         },
         "outputs": {
-            "g_image": {
+            "output": {
+                "type": "BioImageRef",
+                "description": "Mean intensity",
+            },
+            "output_1": {
                 "type": "BioImageRef",
                 "description": "Phasor G coordinates",
-            }
+            },
         },
     }
 
@@ -182,11 +186,11 @@ def test_run_function_success_response_with_hints() -> None:
     response = {
         "result": {
             "status": "succeeded",
-            "outputs": {"g_image": {"ref_id": "abc123", "type": "BioImageRef"}},
+            "outputs": {"output_1": {"ref_id": "abc123", "type": "BioImageRef"}},
             "hints": {
                 "next_steps": [
                     {
-                        "fn_id": "base.bioimage_mcp_base.transforms.phasor_calibrate",
+                        "fn_id": "base.phasorpy.phasor.phasor_transform",
                         "reason": "Apply calibration using reference standard",
                     }
                 ],
@@ -213,8 +217,8 @@ def test_run_function_error_response_with_hints() -> None:
             "hints": {
                 "diagnosis": "The T axis has only 1 sample",
                 "suggested_fix": {
-                    "fn_id": "base.bioimage_mcp_base.axis_ops.relabel_axes",
-                    "params": {"axis_mapping": {"Z": "T", "T": "Z"}},
+                    "fn_id": "base.xarray.rename",
+                    "params": {"mapping": {"Z": "T", "T": "Z"}},
                     "explanation": "Swap Z and T axes",
                 },
                 "related_metadata": {
