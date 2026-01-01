@@ -61,6 +61,11 @@ class Config(BaseModel):
     max_pagination_limit: int = 200
     session_ttl_hours: int = 24
 
+    # Worker process settings
+    worker_timeout_seconds: int = 600  # Maximum time for a single operation
+    max_workers: int = 8  # Maximum number of concurrent worker processes
+    session_timeout_seconds: int = 1800  # Idle timeout before worker shutdown (30 min)
+
     @field_validator(
         "artifact_store_root",
         "tool_manifest_roots",
@@ -88,4 +93,10 @@ class Config(BaseModel):
             raise ValueError("default_pagination_limit must be <= max_pagination_limit")
         if self.session_ttl_hours < 1:
             raise ValueError("session_ttl_hours must be >= 1")
+        if self.worker_timeout_seconds < 1:
+            raise ValueError("worker_timeout_seconds must be >= 1")
+        if self.max_workers < 1:
+            raise ValueError("max_workers must be >= 1")
+        if self.session_timeout_seconds < 1:
+            raise ValueError("session_timeout_seconds must be >= 1")
         return self
