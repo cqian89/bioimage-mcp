@@ -37,7 +37,7 @@ messages:
         description: Function identifier (e.g., "base.bioio.export")
       inputs:
         type: object
-        description: Input artifact references keyed by port name (URI strings)
+        description: Input artifact references (URI strings or full ArtifactRef objects)
       params:
         type: object
         description: Function parameters (JSON-serializable)
@@ -64,7 +64,7 @@ messages:
         description: Corresponds to the ordinal in the request
       outputs:
         type: object
-        description: Output artifact references (when ok=true)
+        description: Map of port names to full ArtifactRef objects (when ok=true)
       log:
         type: string
         description: Merged stdout/stderr from the function execution
@@ -90,7 +90,7 @@ messages:
         const: materialize
       ref_id:
         type: string
-        description: mem:// artifact to materialize
+        description: mem:// URI or artifact_id to materialize
       target_format:
         type: string
         enum: [OME-TIFF, OME-Zarr]
@@ -129,7 +129,7 @@ messages:
         const: evict
       ref_id:
         type: string
-        description: mem:// artifact to evict from memory
+        description: mem:// URI or artifact_id to evict from memory
       ordinal:
         type: integer
 
@@ -193,7 +193,13 @@ examples:
           command: "execute_result"
           ok: true
           ordinal: 1
-          outputs: { "result": "mem://7a8b9c..." }
+          outputs:
+            result:
+              ref_id: "7a8b9c"
+              uri: "mem://test_session/bioimage-mcp-base/7a8b9c"
+              type: "BioImageRef"
+              format: "memory"
+              metadata: { "shape": [1, 1, 1, 512, 512], "dtype": "uint16" }
           log: "Applied gaussian filter with sigma=1.5\n"
 
   materialization_handoff:
@@ -201,7 +207,7 @@ examples:
     sequence:
       - core_request:
           command: "materialize"
-          ref_id: "mem://7a8b9c..."
+          ref_id: "mem://test_session/bioimage-mcp-base/7a8b9c"
           target_format: "OME-TIFF"
           ordinal: 2
       - worker_response:
@@ -209,6 +215,7 @@ examples:
           ok: true
           ordinal: 2
           path: "/tmp/run_123/result.ome.tif"
+
 
   graceful_shutdown:
     description: Shutting down the worker

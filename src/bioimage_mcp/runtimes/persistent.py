@@ -121,6 +121,117 @@ class WorkerProcess:
         )
         self._stderr_thread.start()
 
+        # T021: Wait for ready handshake from worker before transitioning to READY
+        # The worker MUST send {"command": "ready", "version": "..."} on startup
+        # STRICT: Fail if handshake is not received or invalid (spec012 requirement)
+        try:
+            import threading as _threading
+
+            ready_line = None
+            read_error = None
+
+            def read_ready():
+                nonlocal ready_line, read_error
+                try:
+                    assert self._process.stdout is not None
+                    ready_line = self._process.stdout.readline()
+                except Exception as e:
+                    read_error = e
+
+            reader = _threading.Thread(target=read_ready, daemon=True)
+            reader.start()
+            reader.join(timeout=30.0)  # 30 second timeout for ready handshake (spec012)
+
+            # Check for timeout or errors - STRICT mode: kill and raise
+            if reader.is_alive():
+                # Timeout waiting for ready handshake
+                logger.error(
+                    "Timeout waiting for ready handshake after 30s (session=%s env=%s)",
+                    session_id,
+                    env_id,
+                )
+                self._process.kill()
+                self._process.wait()
+                self.state = WorkerState.TERMINATED
+                raise RuntimeError(
+                    f"Worker failed to send ready handshake within 30 seconds "
+                    f"(session={session_id}, env={env_id})"
+                )
+
+            if read_error:
+                logger.error(
+                    "Failed to read ready handshake: %s (session=%s env=%s)",
+                    read_error,
+                    session_id,
+                    env_id,
+                )
+                self._process.kill()
+                self._process.wait()
+                self.state = WorkerState.TERMINATED
+                raise RuntimeError(
+                    f"Worker ready handshake read failed: {read_error} "
+                    f"(session={session_id}, env={env_id})"
+                ) from read_error
+
+            if not ready_line:
+                logger.error(
+                    "Worker closed stdout before sending ready handshake (session=%s env=%s)",
+                    session_id,
+                    env_id,
+                )
+                self._process.kill()
+                self._process.wait()
+                self.state = WorkerState.TERMINATED
+                raise RuntimeError(
+                    f"Worker closed stdout without ready handshake "
+                    f"(session={session_id}, env={env_id})"
+                )
+
+            # Successfully read a line - check if it's a valid ready handshake
+            ready_msg = decode_message(ready_line)
+            if ready_msg.get("command") != "ready":
+                logger.error(
+                    "Expected ready handshake, got: %s (session=%s env=%s)",
+                    ready_msg.get("command"),
+                    session_id,
+                    env_id,
+                )
+                self._process.kill()
+                self._process.wait()
+                self.state = WorkerState.TERMINATED
+                raise RuntimeError(
+                    f"Worker sent invalid handshake: expected 'ready', got '{ready_msg.get('command')}' "
+                    f"(session={session_id}, env={env_id})"
+                )
+
+            # Valid ready handshake received
+            logger.info(
+                "Received ready handshake: version=%s (session=%s env=%s)",
+                ready_msg.get("version"),
+                session_id,
+                env_id,
+            )
+            # T069: Reset idle timer after successful ready handshake
+            self._last_activity_at = datetime.now(UTC)
+
+        except RuntimeError:
+            # Re-raise RuntimeError (our handshake failures)
+            raise
+        except Exception as e:
+            logger.error(
+                "Unexpected error during ready handshake: %s (session=%s env=%s)",
+                e,
+                session_id,
+                env_id,
+            )
+            self._process.kill()
+            self._process.wait()
+            self.state = WorkerState.TERMINATED
+            raise RuntimeError(
+                f"Worker ready handshake failed unexpectedly: {e} "
+                f"(session={session_id}, env={env_id})"
+            ) from e
+
         # Transition to READY state
         self.state = WorkerState.READY
         logger.info(
@@ -148,10 +259,17 @@ class WorkerProcess:
             self._ordinal_counter += 1
             return self._ordinal_counter
 
+    def _update_activity_unsafe(self) -> None:
+        """Update last activity timestamp without acquiring lock (T069).
+
+        MUST be called while holding self._lock.
+        """
+        self._last_activity_at = datetime.now(UTC)
+
     def _update_activity(self) -> None:
         """Update last activity timestamp (T069)."""
         with self._lock:
-            self._last_activity_at = datetime.now(UTC)
+            self._update_activity_unsafe()
 
     def get_idle_seconds(self) -> float:
         """Get seconds since last activity (T069).
@@ -205,7 +323,7 @@ class WorkerProcess:
             # Transition to BUSY
             with self._lock:
                 self.state = WorkerState.BUSY
-                self._update_activity()  # T069: Track activity on request start
+                self._update_activity_unsafe()  # T069: Track activity on request start
 
             try:
                 # Send request
@@ -301,7 +419,7 @@ class WorkerProcess:
                 with self._lock:
                     if self.state == WorkerState.BUSY:
                         self.state = WorkerState.READY
-                        self._update_activity()  # T069: Track activity on completion
+                        self._update_activity_unsafe()  # T069: Track activity on completion
 
     def evict(self, ref_id: str) -> dict[str, Any]:
         """Send evict command to worker to remove artifact from memory.
@@ -614,12 +732,37 @@ class PersistentWorkerManager:
     """
 
     def __init__(
-        self, memory_store: MemoryArtifactStore | None = None, max_workers: int = 8
+        self,
+        memory_store: MemoryArtifactStore | None = None,
+        max_workers: int = 8,
+        worker_wait_timeout: float = 60.0,
+        session_timeout_seconds: int = 1800,
+        monitor_interval_seconds: float = 2.0,
     ) -> None:
         self._workers: dict[tuple[str, str], WorkerProcess] = {}
         self._lock = threading.Lock()
+        self._worker_available = threading.Condition(
+            self._lock
+        )  # Condition for worker availability
         self._memory_store = memory_store
         self.max_workers = max_workers
+        self.worker_wait_timeout = worker_wait_timeout
+        self.session_timeout_seconds = session_timeout_seconds
+        self.monitor_interval_seconds = monitor_interval_seconds
+
+        # Background monitor thread (spec012)
+        self._monitor_stop = threading.Event()
+        self._monitor_thread = threading.Thread(
+            target=self._monitor_workers,
+            daemon=True,
+            name="worker-monitor",
+        )
+        self._monitor_thread.start()
+        logger.info(
+            "Worker monitor thread started (interval=%.1fs, session_timeout=%ds)",
+            monitor_interval_seconds,
+            session_timeout_seconds,
+        )
 
     @staticmethod
     def _create_worker_direct(session_id: str, env_id: str, entrypoint: str) -> WorkerProcess:
@@ -697,14 +840,40 @@ class PersistentWorkerManager:
                     # Remove dead worker from registry
                     del self._workers[key]
 
-            # T096: Enforce max worker limit
-            # Count currently alive workers
-            alive_workers = sum(1 for w in self._workers.values() if w.is_alive())
-            if alive_workers >= self.max_workers:
-                raise RuntimeError(
-                    f"Maximum worker limit reached ({self.max_workers}). "
-                    f"Cannot spawn new worker for {session_id}/{env_id}"
+            # T096: Enforce max worker limit with queueing (FR-016)
+            # Wait for worker availability if at limit
+            import time
+
+            wait_start = time.time()
+            while True:
+                # Count currently alive workers
+                alive_workers = sum(1 for w in self._workers.values() if w.is_alive())
+                if alive_workers < self.max_workers:
+                    # Space available, proceed to spawn
+                    break
+
+                # Check if we've exceeded timeout
+                elapsed = time.time() - wait_start
+                if elapsed >= self.worker_wait_timeout:
+                    raise RuntimeError(
+                        f"Maximum worker limit reached ({self.max_workers}). "
+                        f"Timed out after {self.worker_wait_timeout:.1f}s "
+                        f"waiting for worker availability. "
+                        f"Cannot spawn new worker for {session_id}/{env_id}"
+                    )
+
+                # Wait for notification that a worker was released
+                remaining_timeout = self.worker_wait_timeout - elapsed
+                logger.info(
+                    "Worker limit reached (%d/%d), waiting up to %.1fs "
+                    "for availability: session=%s env=%s",
+                    alive_workers,
+                    self.max_workers,
+                    remaining_timeout,
+                    session_id,
+                    env_id,
                 )
+                self._worker_available.wait(timeout=min(remaining_timeout, 1.0))
 
             # Spawn new worker
             # Locate the entrypoint script
@@ -745,18 +914,40 @@ class PersistentWorkerManager:
                 worker.shutdown(graceful=True)
                 logger.info("Worker shutdown: session=%s env=%s", session_id, env_id)
                 del self._workers[key]
+                # Notify waiting threads that a worker slot is available
+                self._worker_available.notify_all()
 
     def shutdown_all(self) -> None:
         """Stop all workers (for server shutdown)."""
+        # Stop monitor thread first (without holding lock)
+        if hasattr(self, "_monitor_stop"):
+            self._monitor_stop.set()
+
+        # Join monitor thread (without holding lock to avoid deadlock)
+        if hasattr(self, "_monitor_thread") and self._monitor_thread.is_alive():
+            logger.info("Stopping worker monitor thread...")
+            self._monitor_thread.join(timeout=5.0)
+            if self._monitor_thread.is_alive():
+                logger.warning("Worker monitor thread did not stop in time")
+
+        # Now shutdown workers
         with self._lock:
-            if self._workers:
-                logger.info("Shutting down %d workers", len(self._workers))
-                for worker in self._workers.values():
-                    try:
-                        worker.shutdown(graceful=True)
-                    except Exception as e:  # noqa: BLE001
-                        logger.warning("Failed to shutdown worker %s: %s", worker.process_id, e)
+            workers_to_shutdown = list(self._workers.values())
+
+        # Shutdown workers without holding lock (avoid blocking on I/O)
+        if workers_to_shutdown:
+            logger.info("Shutting down %d workers", len(workers_to_shutdown))
+            for worker in workers_to_shutdown:
+                try:
+                    worker.shutdown(graceful=True)
+                except Exception as e:  # noqa: BLE001
+                    logger.warning("Failed to shutdown worker %s: %s", worker.process_id, e)
+
+        # Clear workers registry
+        with self._lock:
             self._workers.clear()
+            # Notify all waiting threads (though server is shutting down)
+            self._worker_available.notify_all()
 
     def check_idle_workers(self, session_timeout_seconds: int = 1800) -> list[tuple[str, str]]:
         """Check for idle workers and shut them down (T070-T071).
@@ -767,37 +958,133 @@ class PersistentWorkerManager:
         Returns:
             List of (session_id, env_id) tuples for workers that were shut down
         """
-        shutdown_workers = []
+        # Identify idle workers (with lock)
+        idle_workers = []
         with self._lock:
             for key, worker in list(self._workers.items()):
                 if worker.get_idle_seconds() > session_timeout_seconds:
                     session_id, env_id = key
                     logger.info(
-                        "Shutting down idle worker: session=%s env=%s idle=%.1fs",
+                        "Marking idle worker for shutdown: session=%s env=%s idle=%.1fs",
                         session_id,
                         env_id,
                         worker.get_idle_seconds(),
                     )
-                    try:
-                        worker.shutdown(graceful=True)
-                    except Exception as e:  # noqa: BLE001
-                        logger.warning(
-                            "Failed to shutdown idle worker %s: %s", worker.process_id, e
-                        )
-                    del self._workers[key]
-                    shutdown_workers.append(key)
+                    idle_workers.append((key, worker))
 
-                    # Invalidate memory artifacts for this worker
+        # Shutdown idle workers WITHOUT holding lock (avoid blocking)
+        shutdown_workers = []
+        for key, worker in idle_workers:
+            session_id, env_id = key
+            try:
+                worker.shutdown(graceful=True)
+            except Exception as e:  # noqa: BLE001
+                logger.warning("Failed to shutdown idle worker %s: %s", worker.process_id, e)
+
+            # Remove from registry and track
+            with self._lock:
+                if key in self._workers:
+                    del self._workers[key]
+            shutdown_workers.append(key)
+
+            # Invalidate memory artifacts for this worker
+            if self._memory_store:
+                invalidated = self._memory_store.invalidate_worker(session_id, env_id)
+                logger.info(
+                    "Invalidated %d artifacts after idle shutdown: session=%s env=%s",
+                    len(invalidated),
+                    session_id,
+                    env_id,
+                )
+
+        # Notify waiting threads if any workers were shut down
+        if shutdown_workers:
+            with self._lock:
+                self._worker_available.notify_all()
+
+        return shutdown_workers
+
+    def _monitor_workers(self) -> None:
+        """Background thread to monitor worker health and reap idle workers.
+
+        This thread runs every ~monitor_interval_seconds and:
+        1. Detects crashed workers proactively (within 5s as per spec012)
+        2. Captures stderr from crashed workers
+        3. Invalidates mem:// artifacts via MemoryArtifactStore.invalidate_worker
+        4. Removes crashed workers from _workers registry
+        5. Reaps idle workers by calling check_idle_workers
+        6. Notifies waiting threads when workers are freed
+
+        Related: spec012 US4 - Graceful Worker Crash Recovery
+        """
+        import time
+
+        logger.info("Worker monitor thread started")
+
+        while not self._monitor_stop.is_set():
+            try:
+                # Sleep first (interruptible)
+                if self._monitor_stop.wait(timeout=self.monitor_interval_seconds):
+                    # Stop event was set
+                    break
+
+                # Check for crashed workers
+                crashed_workers = []
+                with self._lock:
+                    for key, worker in list(self._workers.items()):
+                        if not worker.is_alive():
+                            crashed_workers.append((key, worker))
+
+                # Handle crashes outside the lock (avoid blocking on I/O)
+                for key, worker in crashed_workers:
+                    session_id, env_id = key
+                    # T058: Capture stderr logs on crash
+                    stderr_lines = worker.get_stderr_lines()
+                    if stderr_lines:
+                        logger.error(
+                            "Worker crash stderr [%s/%s]: %s",
+                            session_id,
+                            env_id,
+                            "\n".join(stderr_lines[-10:]),  # Last 10 lines
+                        )
+
+                    logger.warning(
+                        "Monitor detected worker crash: session=%s env=%s pid=%s",
+                        session_id,
+                        env_id,
+                        worker.process_id,
+                    )
+
+                    # T059: Invalidate mem:// artifacts on crash
                     if self._memory_store:
                         invalidated = self._memory_store.invalidate_worker(session_id, env_id)
-                        logger.info(
-                            "Invalidated %d artifacts after idle shutdown: session=%s env=%s",
+                        logger.warning(
+                            "Invalidated %d artifacts after worker crash: session=%s env=%s",
                             len(invalidated),
                             session_id,
                             env_id,
                         )
 
-        return shutdown_workers
+                    # Remove dead worker from registry (with lock)
+                    with self._lock:
+                        if key in self._workers:
+                            del self._workers[key]
+                            # Notify waiting threads that a worker slot is available
+                            self._worker_available.notify_all()
+
+                # Reap idle workers
+                reaped = self.check_idle_workers(
+                    session_timeout_seconds=self.session_timeout_seconds
+                )
+                if reaped:
+                    logger.info("Monitor reaped %d idle workers: %s", len(reaped), reaped)
+
+            except Exception as e:  # noqa: BLE001
+                logger.error("Worker monitor thread error: %s", e, exc_info=True)
+                # Continue monitoring despite errors
+                time.sleep(1.0)
+
+        logger.info("Worker monitor thread stopped")
 
     def register_artifact(self, session_id: str, env_id: str, ref_id: str) -> None:
         """Register a new in-memory artifact.

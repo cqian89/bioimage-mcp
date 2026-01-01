@@ -155,19 +155,14 @@ def _write_ome_tiff(
     name: str,
     axes: str,
 ) -> Path:
-    import tifffile
+    """Write array as OME-TIFF using bioio.writers.OmeTiffWriter."""
+    from bioio.writers import OmeTiffWriter
 
     out_path = work_dir / name
     if out_path.exists():
         raise FileExistsError(out_path)
 
-    tifffile.imwrite(
-        str(out_path),
-        array,
-        compression="zlib",
-        photometric="minisblack",
-        metadata={"axes": axes},
-    )
+    OmeTiffWriter.save(array, str(out_path), dim_order=axes)
     return out_path
 
 

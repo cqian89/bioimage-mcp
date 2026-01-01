@@ -133,7 +133,11 @@ def export_ome_tiff(*, inputs: dict, params: dict, work_dir: Path) -> dict:
                 "message": f"BioImage failed to load {in_path}: {e}. Using fallback.",
             }
         )
-        data, fallback_warnings, _ = load_image_fallback(in_path)
+        # Extract format hint from image_ref metadata
+        format_hint = None
+        if isinstance(image_ref, dict):
+            format_hint = image_ref.get("format")
+        data, fallback_warnings, _ = load_image_fallback(in_path, format_hint=format_hint)
         warnings.extend(fallback_warnings)
         physical_pixel_sizes = None
         channel_names = None

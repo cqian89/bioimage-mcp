@@ -71,3 +71,52 @@ def test_extract_image_metadata_helper():
     assert pps["X"] > 0
     assert pps["Y"] > 0
     assert pps["Z"] > 0
+
+
+def test_extract_metadata_graceful_fallback_nonexistent(tmp_path):
+    """Test graceful fallback when file doesn't exist."""
+    from bioimage_mcp.artifacts.metadata import extract_image_metadata
+
+    nonexistent = tmp_path / "does_not_exist.tif"
+    meta = extract_image_metadata(nonexistent)
+
+    # Should return None for nonexistent files
+    assert meta is None
+
+
+def test_extract_metadata_graceful_fallback_minimal(tmp_path, monkeypatch):
+    """Test graceful fallback when bioio is not available."""
+    from bioimage_mcp.artifacts.metadata import extract_image_metadata
+
+    # Create a dummy file
+    dummy = tmp_path / "dummy.tif"
+    dummy.write_bytes(b"FAKE TIFF DATA")
+
+    # Mock ImportError for bioio
+    import sys
+    import builtins
+
+    # Create a fake module that raises ImportError when bioio is imported
+    original_import = builtins.__import__
+
+    def fail_import(name, *args, **kwargs):
+        if name == "bioio":
+            raise ImportError("bioio not available")
+        return original_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", fail_import)
+
+    # Clear any cached bioio import
+    if "bioio" in sys.modules:
+        del sys.modules["bioio"]
+
+    meta = extract_image_metadata(dummy)
+
+    # Should return minimal metadata with file size
+    assert meta is not None
+    assert "file_size_bytes" in meta
+    assert meta["file_size_bytes"] == len(b"FAKE TIFF DATA")
+
+    # Should not have rich metadata fields
+    assert "axes" not in meta
+    assert "shape" not in meta

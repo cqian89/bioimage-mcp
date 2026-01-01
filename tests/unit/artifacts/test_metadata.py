@@ -31,7 +31,8 @@ def test_extract_metadata_from_nonexistent_file_returns_empty(tmp_path: Path) ->
     path = tmp_path / "does_not_exist.tiff"
 
     meta = extract_image_metadata(path)
-    assert meta == {}
+    # Should return None for nonexistent files
+    assert meta is None
 
 
 def test_extract_metadata_from_invalid_file_returns_empty(tmp_path: Path) -> None:
@@ -39,7 +40,10 @@ def test_extract_metadata_from_invalid_file_returns_empty(tmp_path: Path) -> Non
     path.write_text("hello world")
 
     meta = extract_image_metadata(path)
-    assert meta == {}
+    # Should return minimal metadata with file_size_bytes when bioio can't read the file
+    assert meta is not None
+    assert "file_size_bytes" in meta
+    assert meta["file_size_bytes"] == 11  # "hello world" is 11 bytes
 
 
 def test_extract_metadata_from_empty_file_returns_empty(tmp_path: Path) -> None:
@@ -47,7 +51,10 @@ def test_extract_metadata_from_empty_file_returns_empty(tmp_path: Path) -> None:
     path.write_bytes(b"")
 
     meta = extract_image_metadata(path)
-    assert meta == {}
+    # Should return minimal metadata with file_size_bytes when bioio can't read the file
+    assert meta is not None
+    assert "file_size_bytes" in meta
+    assert meta["file_size_bytes"] == 0
 
 
 def test_custom_attributes_bounded_when_large() -> None:

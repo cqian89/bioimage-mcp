@@ -163,7 +163,7 @@ def _convert_memory_inputs_to_files(inputs: dict[str, Any], work_dir: Path) -> d
     Returns:
         Dict of inputs with mem:// URIs replaced by file paths
     """
-    import tifffile
+    from bioio.writers import OmeTiffWriter
 
     converted_inputs = {}
 
@@ -178,7 +178,7 @@ def _convert_memory_inputs_to_files(inputs: dict[str, Any], work_dir: Path) -> d
 
             temp_id = uuid.uuid4().hex[:8]
             temp_path = work_dir / f"_mem_{key}_{temp_id}.ome.tif"
-            tifffile.imwrite(temp_path, data)
+            OmeTiffWriter.save(data, temp_path, dim_order="TCZYX")
 
             # Replace with file URI
             converted_inputs[key] = {
@@ -220,6 +220,37 @@ def handle_meta_describe(params: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _extract_artifact_id(ref_id: str | None) -> str:
+    """Extract artifact_id from ref_id (supports both mem:// URI and plain ID).
+
+    Args:
+        ref_id: Either "mem://session/env/artifact_id" or just "artifact_id"
+
+    Returns:
+        artifact_id portion
+
+    Raises:
+        ValueError: If ref_id is None, not a string, or mem:// URI is malformed
+    """
+    if ref_id is None:
+        raise ValueError("ref_id cannot be None")
+    if not isinstance(ref_id, str):
+        raise ValueError(f"ref_id must be a string, got {type(ref_id).__name__}")
+    if not ref_id:
+        raise ValueError("ref_id cannot be empty")
+
+    if ref_id.startswith("mem://"):
+        # Parse mem:// URI to extract artifact_id
+        parts = ref_id[6:].split("/")
+        if len(parts) != 3:
+            raise ValueError(f"Invalid memory URI format: {ref_id}")
+        _session_id, _env_id, artifact_id = parts
+        return artifact_id
+    else:
+        # Already just the artifact_id
+        return ref_id
+
+
 def handle_materialize(request: dict[str, Any]) -> dict[str, Any]:
     """Handle materialize command - export mem:// artifact to OME-Zarr or OME-TIFF.
 
@@ -234,8 +265,19 @@ def handle_materialize(request: dict[str, Any]) -> dict[str, Any]:
     dest_path = request.get("dest_path")
     ordinal = request.get("ordinal")
 
-    # Extract artifact_id from ref_id
-    artifact_id = ref_id
+    # Extract artifact_id from ref_id (supports both mem:// URI and plain ID)
+    try:
+        artifact_id = _extract_artifact_id(ref_id)
+    except ValueError as exc:
+        return {
+            "command": "materialize_result",
+            "ok": False,
+            "ordinal": ordinal,
+            "error": {
+                "code": "INVALID_REF_ID",
+                "message": str(exc),
+            },
+        }
 
     # Get data from memory
     if artifact_id not in _MEMORY_ARTIFACTS:
@@ -323,8 +365,19 @@ def handle_evict(request: dict[str, Any]) -> dict[str, Any]:
     ref_id = request.get("ref_id")
     ordinal = request.get("ordinal")
 
-    # Extract artifact_id from ref_id (they're the same in current implementation)
-    artifact_id = ref_id
+    # Extract artifact_id from ref_id (supports both mem:// URI and plain ID)
+    try:
+        artifact_id = _extract_artifact_id(ref_id)
+    except ValueError as exc:
+        return {
+            "command": "evict_result",
+            "ok": False,
+            "ordinal": ordinal,
+            "error": {
+                "code": "INVALID_REF_ID",
+                "message": str(exc),
+            },
+        }
 
     if artifact_id in _MEMORY_ARTIFACTS:
         del _MEMORY_ARTIFACTS[artifact_id]
@@ -628,56 +681,88 @@ def main() -> int:
     env_id = os.environ.get("BIOIMAGE_MCP_ENV_ID", "bioimage-mcp-base")
     _initialize_worker(session_id, env_id)
 
-    # Try to detect if we're in legacy mode (single JSON blob) or NDJSON loop mode
-    # Legacy mode: stdin.read() until EOF (no newline in first request)
-    # NDJSON mode: read line-by-line with explicit commands
+    # Detect mode from environment variables:
+    # If BIOIMAGE_MCP_SESSION_ID is set, we're spawned by persistent manager (NDJSON mode)
+    # Otherwise, we're in legacy mode (single request)
+    is_persistent_mode = "BIOIMAGE_MCP_SESSION_ID" in os.environ
 
-    # Read first line to detect mode
-    first_line = sys.stdin.readline()
-    if not first_line:
-        # Empty stdin, exit cleanly
+    if is_persistent_mode:
+        # NDJSON loop mode with persistent worker
+        # Send ready handshake immediately to signal worker is initialized
+        ready_message = json.dumps({"command": "ready", "version": TOOL_VERSION})
+        print(ready_message, flush=True)
+
+        # Process requests in loop
+        for line in sys.stdin:
+            line = line.strip()
+            if not line:
+                continue
+
+            try:
+                request = json.loads(line)
+            except json.JSONDecodeError:
+                response = {
+                    "command": "error",
+                    "ok": False,
+                    "error": {"message": "Invalid JSON in request"},
+                }
+                print(json.dumps(response), flush=True)
+                continue
+
+            if request.get("command") == "execute":
+                response = process_execute_request(request)
+                print(json.dumps(response), flush=True)
+            elif request.get("command") == "materialize":
+                response = handle_materialize(request)
+                print(json.dumps(response), flush=True)
+            elif request.get("command") == "evict":
+                response = handle_evict(request)
+                print(json.dumps(response), flush=True)
+            elif request.get("command") == "shutdown":
+                # T073: Release memory artifacts before shutdown
+                _MEMORY_ARTIFACTS.clear()
+                response = {
+                    "command": "shutdown_ack",
+                    "ok": True,
+                    "ordinal": request.get("ordinal"),
+                }
+                print(json.dumps(response), flush=True)
+                break
+            else:
+                # Unknown command
+                response = {
+                    "command": "error",
+                    "ok": False,
+                    "error": {"message": f"Unknown command: {request.get('command')}"},
+                }
+                print(json.dumps(response), flush=True)
+
         return 0
 
-    first_line = first_line.strip()
-    if not first_line:
-        # Empty line, continue to NDJSON loop
-        pass
     else:
-        try:
-            request = json.loads(first_line)
+        # Legacy mode: single request without persistent worker
+        # Try to detect if we're in legacy mode (single JSON blob) or NDJSON loop mode
+        # Legacy mode: stdin.read() until EOF (no newline in first request)
+        # NDJSON mode: read line-by-line with explicit commands
 
-            # Check if this is new format (has "command" field) or legacy format
-            if "command" in request:
-                # NDJSON loop mode
-                # Process first request
-                if request.get("command") == "execute":
-                    response = process_execute_request(request)
-                    print(json.dumps(response), flush=True)
-                elif request.get("command") == "materialize":
-                    response = handle_materialize(request)
-                    print(json.dumps(response), flush=True)
-                elif request.get("command") == "evict":
-                    response = handle_evict(request)
-                    print(json.dumps(response), flush=True)
-                elif request.get("command") == "shutdown":
-                    # T073: Release memory artifacts before shutdown
-                    _MEMORY_ARTIFACTS.clear()
-                    response = {
-                        "command": "shutdown_ack",
-                        "ok": True,
-                        "ordinal": request.get("ordinal"),
-                    }
-                    print(json.dumps(response), flush=True)
-                    return 0
+        # Read first line to detect mode
+        first_line = sys.stdin.readline()
+        if not first_line:
+            # Empty stdin, exit cleanly
+            return 0
 
-                # Continue processing subsequent lines
-                for line in sys.stdin:
-                    line = line.strip()
-                    if not line:
-                        continue
+        first_line = first_line.strip()
+        if not first_line:
+            # Empty line, continue to NDJSON loop
+            pass
+        else:
+            try:
+                request = json.loads(first_line)
 
-                    request = json.loads(line)
-
+                # Check if this is new format (has "command" field) or legacy format
+                if "command" in request:
+                    # NDJSON loop mode
+                    # Process first request
                     if request.get("command") == "execute":
                         response = process_execute_request(request)
                         print(json.dumps(response), flush=True)
@@ -696,48 +781,76 @@ def main() -> int:
                             "ordinal": request.get("ordinal"),
                         }
                         print(json.dumps(response), flush=True)
-                        break
-                    else:
-                        # Unknown command
-                        response = {
-                            "command": "error",
-                            "ok": False,
-                            "error": {"message": f"Unknown command: {request.get('command')}"},
-                        }
-                        print(json.dumps(response), flush=True)
+                        return 0
 
-                return 0
-            else:
-                # Legacy format: single request without "command" field
-                # Read the rest of stdin (backward compatibility)
-                rest = sys.stdin.read()
-                if rest:
-                    # If there's more data, it was a multi-line JSON blob
-                    first_line = first_line + rest
-                    request = json.loads(first_line)
+                    # Continue processing subsequent lines
+                    for line in sys.stdin:
+                        line = line.strip()
+                        if not line:
+                            continue
 
-                # Process as legacy request
-                response = process_execute_request(request)
+                        request = json.loads(line)
 
-                # Legacy format doesn't have "command" field in response
-                # Remove it for backward compatibility
-                legacy_response = {
-                    k: v for k, v in response.items() if k != "command" and k != "ordinal"
+                        if request.get("command") == "execute":
+                            response = process_execute_request(request)
+                            print(json.dumps(response), flush=True)
+                        elif request.get("command") == "materialize":
+                            response = handle_materialize(request)
+                            print(json.dumps(response), flush=True)
+                        elif request.get("command") == "evict":
+                            response = handle_evict(request)
+                            print(json.dumps(response), flush=True)
+                        elif request.get("command") == "shutdown":
+                            # T073: Release memory artifacts before shutdown
+                            _MEMORY_ARTIFACTS.clear()
+                            response = {
+                                "command": "shutdown_ack",
+                                "ok": True,
+                                "ordinal": request.get("ordinal"),
+                            }
+                            print(json.dumps(response), flush=True)
+                            break
+                        else:
+                            # Unknown command
+                            response = {
+                                "command": "error",
+                                "ok": False,
+                                "error": {"message": f"Unknown command: {request.get('command')}"},
+                            }
+                            print(json.dumps(response), flush=True)
+
+                    return 0
+                else:
+                    # Legacy format: single request without "command" field
+                    # Read the rest of stdin (backward compatibility)
+                    rest = sys.stdin.read()
+                    if rest:
+                        # If there's more data, it was a multi-line JSON blob
+                        first_line = first_line + rest
+                        request = json.loads(first_line)
+
+                    # Process as legacy request
+                    response = process_execute_request(request)
+
+                    # Legacy format doesn't have "command" field in response
+                    # Remove it for backward compatibility
+                    legacy_response = {
+                        k: v for k, v in response.items() if k != "command" and k != "ordinal"
+                    }
+                    print(json.dumps(legacy_response))
+                    return 0 if response.get("ok") else 1
+
+            except json.JSONDecodeError:
+                # Invalid JSON
+                response = {
+                    "command": "error",
+                    "ok": False,
+                    "error": {"message": "Invalid JSON in request"},
                 }
-                print(json.dumps(legacy_response))
-                return 0 if response.get("ok") else 1
+                print(json.dumps(response), flush=True)
+                return 1
 
-        except json.JSONDecodeError:
-            # Invalid JSON
-            response = {
-                "command": "error",
-                "ok": False,
-                "error": {"message": "Invalid JSON in request"},
-            }
-            print(json.dumps(response), flush=True)
-            return 1
-
-    return 0
+        return 0
 
 
 if __name__ == "__main__":

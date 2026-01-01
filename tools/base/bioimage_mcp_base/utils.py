@@ -27,24 +27,57 @@ def uri_to_path(uri: str) -> Path:
 def load_image_fallback(
     path: Path, format_hint: str | None = None
 ) -> tuple[np.ndarray, list[dict[str, str]], str]:
-    """Load image using BioImage with fallback to tifffile."""
-    import tifffile
+    """Load image using BioImage.
 
+    If the initial BioImage load fails and format_hint indicates OME-TIFF/OME-Zarr
+    (or path has no suffix), retry with an explicit Reader.
+
+    Note: tifffile fallback has been removed. Use bioio.BioImage exclusively.
+    """
     warnings: list[dict[str, str]] = []
+
     try:
         img = BioImage(path)
         data = img.data
         data = data.compute() if hasattr(data, "compute") else data
         return data, warnings, "bioio"
-    except Exception as e:
-        warnings.append(
-            {
-                "code": "BIOIMAGE_FALLBACK",
-                "message": f"BioImage failed: {e}. Falling back to tifffile.",
-            }
+    except Exception as first_error:
+        # If initial load fails AND (format_hint indicates OME-TIFF/OME-Zarr OR no suffix),
+        # retry with explicit Reader
+        path_str = str(path)
+        has_no_suffix = not path.suffix
+        is_ome_format = format_hint and (
+            "OME-TIFF" in format_hint.upper() or "OME-ZARR" in format_hint.upper()
         )
-        data = tifffile.imread(str(path))
-        return data, warnings, "tifffile"
+
+        if has_no_suffix or is_ome_format:
+            # Try OME-TIFF reader first
+            if not format_hint or "OME-TIFF" in format_hint.upper() or has_no_suffix:
+                try:
+                    from bioio_ome_tiff.reader import Reader as OmeTiffReader
+
+                    img = BioImage(path_str, reader=OmeTiffReader)
+                    data = img.data
+                    data = data.compute() if hasattr(data, "compute") else data
+                    return data, warnings, "bioio+ome-tiff-reader"
+                except Exception:
+                    # If OME-TIFF reader fails, try OME-Zarr reader if appropriate
+                    pass
+
+            # Try OME-Zarr reader if format hint suggests it or if OME-TIFF failed
+            if format_hint and "OME-ZARR" in format_hint.upper():
+                try:
+                    from bioio_ome_zarr.reader import Reader as OmeZarrReader
+
+                    img = BioImage(path_str, reader=OmeZarrReader)
+                    data = img.data
+                    data = data.compute() if hasattr(data, "compute") else data
+                    return data, warnings, "bioio+ome-zarr-reader"
+                except Exception:
+                    pass
+
+        # If all retries failed, raise the original error
+        raise first_error
 
 
 def load_image(path: Path, format_hint: str | None = None) -> np.ndarray:

@@ -127,45 +127,36 @@ def _extract_custom_attributes(image: Any) -> dict:
     return {}
 
 
-def extract_image_metadata(path: Path) -> dict:
-    """Extract minimal BioImageRef metadata.
+def extract_image_metadata(path: Path) -> dict | None:
+    """Extract metadata from an image file.
 
-    Uses bioio when available. Falls back to an empty dict.
+    Returns minimal metadata if bioio is not available in the environment.
+    Returns None if the file doesn't exist or metadata cannot be extracted.
+
+    Args:
+        path: Path to the image file
+
+    Returns:
+        Dictionary with image metadata, or None if extraction failed
     """
 
+    # Try to import bioio - it may not be available in core environment
     try:
         from bioio import BioImage  # type: ignore
-    except Exception:
-        return {}
+    except ImportError:
+        # bioio not available in core environment, return minimal metadata
+        if path.exists():
+            return {"file_size_bytes": path.stat().st_size}
+        return None
 
+    # bioio is available, try to extract full metadata
     try:
         image = BioImage(str(path))
     except Exception:  # noqa: BLE001
-        # Fallback for files without extensions: try to guess format or use tifffile
-        try:
-            import tifffile
-
-            with tifffile.TiffFile(str(path)) as tif:
-                axes = ""
-                shape = []
-                if hasattr(tif, "series") and tif.series:
-                    series = tif.series[0]
-                    axes = getattr(series, "axes", "")
-                    shape = list(series.shape)
-                elif hasattr(tif, "pages") and tif.pages:
-                    page = tif.pages[0]
-                    axes = getattr(page, "axes", "")
-                    shape = list(page.shape)
-
-                return {
-                    "axes": axes,
-                    "shape": shape,
-                    "dtype": str(tif.pages[0].dtype) if tif.pages else "",
-                    "axes_inferred": True,
-                    "file_metadata": {"_method": "tifffile_fallback"},
-                }
-        except Exception:
-            return {}
+        # If BioImage fails, return minimal metadata
+        if path.exists():
+            return {"file_size_bytes": path.stat().st_size}
+        return None
 
     dims = getattr(image, "dims", None)
     axes = getattr(image, "axes", None)

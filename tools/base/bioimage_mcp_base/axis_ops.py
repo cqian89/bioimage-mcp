@@ -76,18 +76,15 @@ class SwapAxesParams(AxisToolParams):
 
 
 def load_image(path: Path, format_hint: str | None = None) -> np.ndarray:
-    try:
-        from bioio import BioImage
+    """Load an image from disk using bioio.BioImage.
 
-        img = BioImage(str(path))
-        data = img.data
-        return data.compute() if hasattr(data, "compute") else data
-    except Exception:
-        try:
-            import tifffile
-        except Exception as exc:
-            raise RuntimeError("Missing dependencies for axis operations") from exc
-        return tifffile.imread(str(path))
+    Note: tifffile fallback has been removed. Use bioio.BioImage exclusively.
+    """
+    from bioio import BioImage
+
+    img = BioImage(str(path))
+    data = img.data
+    return data.compute() if hasattr(data, "compute") else data
 
 
 def _write_ome_tiff(array: np.ndarray, work_dir: Path, name: str, axes: str) -> Path:

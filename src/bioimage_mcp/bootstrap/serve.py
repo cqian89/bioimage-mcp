@@ -69,5 +69,12 @@ def serve(*, stdio: bool) -> int:
         artifacts=artifacts,
         session_manager=session_manager,
     )
-    mcp.run(transport="stdio")
+
+    try:
+        mcp.run(transport="stdio")
+    finally:
+        execution.close()
+        artifact_store.close()
+        run_store.close()
+
     return 0

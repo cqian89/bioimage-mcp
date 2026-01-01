@@ -193,13 +193,12 @@ def _load_flim_data(image_ref: dict) -> tuple[np.ndarray, str, dict, int, list[d
     if not fmt and path.suffix.lower() not in {".tif", ".tiff"}:
         raise ValueError("Input must be an OME-TIFF (.tif/.tiff) file")
 
-    # Try BioImage first, fallback to tifffile for datasets with problematic OME-XML
+    # Try BioImage first
     img = None
     data = None
     axes = ""
     metadata: dict[str, Any] = {}
     load_warnings: list[dict[str, str]] = []
-    used_tifffile_fallback = False
 
     try:
         img = BioImage(str(path))
@@ -211,38 +210,11 @@ def _load_flim_data(image_ref: dict) -> tuple[np.ndarray, str, dict, int, list[d
         if time_increment is not None:
             metadata["time_increment"] = time_increment
     except Exception as exc:
-        # Fallback: use tifffile for datasets with incompatible OME-XML metadata
-        import tifffile
-
-        used_tifffile_fallback = True
-        load_warnings.append(
-            {
-                "code": "TIFFFILE_FALLBACK",
-                "message": (
-                    f"BioImage failed to load file ({type(exc).__name__}); "
-                    "using tifffile fallback. Metadata may be incomplete."
-                ),
-            }
-        )
-
-        data = tifffile.imread(str(path))
-        # Try to extract axes from tifffile metadata
-        with tifffile.TiffFile(str(path)) as tif:
-            if tif.ome_metadata:
-                try:
-                    import xml.etree.ElementTree as ET
-
-                    root = ET.fromstring(tif.ome_metadata)
-                    pixels = root.find(".//{*}Pixels")
-                    if pixels is not None:
-                        dim_order = pixels.get("DimensionOrder", "")
-                        if dim_order:
-                            # DimensionOrder is like XYZCT; reverse for array order
-                            axes = dim_order[::-1]
-                except Exception:
-                    pass
-            if not axes and tif.pages and hasattr(tif.pages[0], "axes"):
-                axes = tif.pages[0].axes or ""
+        # If BioImage fails, raise error with helpful message
+        raise RuntimeError(
+            f"Failed to load FLIM data with BioImage ({type(exc).__name__}: {exc}). "
+            "Ensure the file is a valid OME-TIFF or supported format."
+        ) from exc
 
     # Override axes from image_ref metadata if provided
     axes_from_ref = (image_ref.get("metadata") or {}).get("axes", "")
@@ -300,7 +272,7 @@ def _load_flim_data(image_ref: dict) -> tuple[np.ndarray, str, dict, int, list[d
         axes = inferred_axes
 
     # Record provenance about loading method
-    metadata["_load_method"] = "tifffile" if used_tifffile_fallback else "bioio"
+    metadata["_load_method"] = "bioio"
     if axes_inferred:
         metadata["_axes_inferred"] = True
         metadata["_inferred_axes"] = inferred_axes
@@ -388,19 +360,14 @@ def _write_ome_tiff(
     name: str,
     axes: str,
 ) -> Path:
-    import tifffile
+    """Write array as OME-TIFF using bioio.writers.OmeTiffWriter."""
+    from bioio.writers import OmeTiffWriter
 
     out_path = work_dir / name
     if out_path.exists():
         raise FileExistsError(out_path)
 
-    tifffile.imwrite(
-        str(out_path),
-        array,
-        compression="zlib",
-        photometric="minisblack",
-        metadata={"axes": axes},
-    )
+    OmeTiffWriter.save(array, str(out_path), dim_order=axes)
     return out_path
 
 

@@ -16,7 +16,10 @@ class TestWorkerResilience:
 
     @pytest.fixture
     def worker_manager(self, memory_store):
-        return PersistentWorkerManager(memory_store=memory_store)
+        manager = PersistentWorkerManager(memory_store=memory_store)
+        yield manager
+        # Cleanup to avoid leaking subprocesses
+        manager.shutdown_all()
 
     def _create_memory_artifact(
         self, session_id: str, env_id: str, artifact_id: str
@@ -37,7 +40,7 @@ class TestWorkerResilience:
     def test_worker_crash_invalidates_artifacts(self, worker_manager, memory_store):
         """Test that crashing a worker invalidates its memory artifacts."""
         session_id = "session1"
-        env_id = "env1"
+        env_id = "bioimage-mcp-base"
         artifact_id = "art1"
 
         # 1. Register worker and artifact
@@ -61,7 +64,7 @@ class TestWorkerResilience:
     def test_worker_restart_creates_new_instance(self, worker_manager, memory_store):
         """Test that after crash, getting worker returns new instance."""
         session_id = "session1"
-        env_id = "env1"
+        env_id = "bioimage-mcp-base"
 
         # 1. Get initial worker
         worker1 = worker_manager.get_worker(session_id, env_id)
@@ -84,44 +87,42 @@ class TestWorkerResilience:
     def test_multiple_workers_independent(self, worker_manager, memory_store):
         """Test that crashing one worker doesn't affect another."""
         session_id = "session1"
-        env1 = "env1"
-        env2 = "env2"
+        env1 = "bioimage-mcp-base"
+        env2 = "bioimage-mcp-base"  # Use same env but different session for independence
 
-        # 1. Setup two workers
-        worker_manager.get_worker(session_id, env1)
-        worker_manager.get_worker(session_id, env2)
+        # Use different sessions to create truly independent workers
+        # 1. Setup two workers in different sessions
+        worker_manager.get_worker(f"{session_id}-1", env1)
+        worker_manager.get_worker(f"{session_id}-2", env2)
 
         art1 = "art-env1"
         art2 = "art-env2"
 
-        memory_store.register(self._create_memory_artifact(session_id, env1, art1))
-        memory_store.register(self._create_memory_artifact(session_id, env2, art2))
+        memory_store.register(self._create_memory_artifact(f"{session_id}-1", env1, art1))
+        memory_store.register(self._create_memory_artifact(f"{session_id}-2", env2, art2))
 
-        worker_manager.register_artifact(session_id, env1, art1)
-        worker_manager.register_artifact(session_id, env2, art2)
+        worker_manager.register_artifact(f"{session_id}-1", env1, art1)
+        worker_manager.register_artifact(f"{session_id}-2", env2, art2)
 
         # 2. Crash worker 1
-        worker_manager.handle_worker_crash(session_id, env1)
+        worker_manager.handle_worker_crash(f"{session_id}-1", env1)
 
         # 3. Verify worker 1 artifacts gone, worker 2 artifacts remain
         assert not memory_store.exists(art1)
         assert memory_store.exists(art2)
-        assert art2 in worker_manager.get_artifacts(session_id, env2)
+        assert art2 in worker_manager.get_artifacts(f"{session_id}-2", env2)
 
-        # Verify worker 2 is still alive (in our mock world where process_id=0 means alive)
-        assert worker_manager.is_worker_alive(session_id, env2)
-        assert not worker_manager.is_worker_alive(session_id, env1)
+        # Verify worker 2 is still alive, worker 1 is not
+        assert worker_manager.is_worker_alive(f"{session_id}-2", env2)
+        assert not worker_manager.is_worker_alive(f"{session_id}-1", env1)
 
     def test_session_invalidation_clears_all_workers(self, worker_manager, memory_store):
         """Test that invalidating a session clears all artifacts."""
         session_id = "session-to-clear"
-        env1 = "env1"
-        env2 = "env2"
+        env1 = "bioimage-mcp-base"
+        env2 = "bioimage-mcp-base"
 
-        # 1. Setup multiple workers in the same session
-        worker_manager.get_worker(session_id, env1)
-        worker_manager.get_worker(session_id, env2)
-
+        # 1. Setup artifacts for multiple workers in the same session (no actual worker spawning needed)
         art1 = "art1"
         art2 = "art2"
 
@@ -236,7 +237,9 @@ class TestWorkerCrashRecovery:
         """
         session_id = "artifact-test-session"
         env_id = "bioimage-mcp-base"
-        other_env_id = "bioimage-mcp-cellpose"
+        # Use different session for "other env" since we need real envs now
+        other_session_id = "other-artifact-test-session"
+        other_env_id = "bioimage-mcp-base"
 
         # 1. Spawn worker and create artifacts
         worker = worker_manager.get_worker(session_id, env_id)
@@ -246,9 +249,9 @@ class TestWorkerCrashRecovery:
             artifact = self._create_memory_artifact(session_id, env_id, art_id)
             memory_store.register(artifact)
 
-        # Create artifact in different worker
-        worker_manager.get_worker(session_id, other_env_id)
-        other_artifact = self._create_memory_artifact(session_id, other_env_id, "other_art")
+        # Create artifact in different session to test isolation
+        worker_manager.get_worker(other_session_id, other_env_id)
+        other_artifact = self._create_memory_artifact(other_session_id, other_env_id, "other_art")
         memory_store.register(other_artifact)
 
         # Verify all artifacts exist

@@ -227,7 +227,7 @@ class TestPersistentWorkerLifecycle:
         2. Spawn 2 workers (session1/env1, session2/env2)
         3. Attempt to spawn a 3rd worker (session3/env3)
         4. Verify 3rd request is queued until one of the first 2 workers is freed
-        5. Complete request 1, verify request 3 starts
+        5. Shutdown worker 1, verify request 3 proceeds
         """
         import threading
         import time
@@ -236,13 +236,26 @@ class TestPersistentWorkerLifecycle:
         from bioimage_mcp.runtimes.persistent import PersistentWorkerManager
 
         memory_store = MemoryArtifactStore()
-        manager = PersistentWorkerManager(memory_store=memory_store)
-        manager.max_workers = 2  # Configure limit
+        manager = PersistentWorkerManager(
+            memory_store=memory_store, max_workers=2, worker_wait_timeout=10.0
+        )
+
+        # Track which workers have been spawned
+        spawned_workers = []
+        spawn_lock = threading.Lock()
 
         # Prepare requests for different sessions
-        def execute_simple_request(session_id: str, results: list):
+        def execute_simple_request(
+            session_id: str, results: list, delay_before_shutdown: float = 0
+        ):
             try:
+                start_time = time.time()
                 worker = manager.get_worker(session_id=session_id, env_id="bioimage-mcp-base")
+                spawn_time = time.time()
+
+                with spawn_lock:
+                    spawned_workers.append((session_id, spawn_time - start_time))
+
                 request = {
                     "fn_id": "meta.describe",
                     "inputs": {},
@@ -250,44 +263,67 @@ class TestPersistentWorkerLifecycle:
                     "work_dir": str(tmp_path),
                 }
                 response = worker.execute(request, memory_store=memory_store)
+
+                # Delay before completing (allows third thread to start waiting)
+                if delay_before_shutdown > 0:
+                    time.sleep(delay_before_shutdown)
+
                 results.append((session_id, response, time.time()))
             except Exception as e:
                 results.append((session_id, e, time.time()))
 
         results = []
 
-        # Start 3 concurrent requests for different sessions
-        thread1 = threading.Thread(target=execute_simple_request, args=("session1", results))
-        thread2 = threading.Thread(target=execute_simple_request, args=("session2", results))
-        thread3 = threading.Thread(target=execute_simple_request, args=("session3", results))
+        # Start first 2 workers
+        thread1 = threading.Thread(target=execute_simple_request, args=("session1", results, 0.5))
+        thread2 = threading.Thread(target=execute_simple_request, args=("session2", results, 1.0))
 
-        time.time()
         thread1.start()
         thread2.start()
-        time.sleep(0.1)  # Ensure first two start before third
-        time.time()
+
+        # Wait for first two to spawn (increased to account for worker startup time including handshake)
+        # Workers take ~2-3 seconds each to spawn and complete the ready handshake
+        time.sleep(6.0)
+
+        # Verify we have 2 workers at the limit
+        assert len(spawned_workers) == 2, f"Expected 2 workers spawned, got {len(spawned_workers)}"
+
+        # Start third thread - it should queue
+        thread3_started = time.time()
+        thread3 = threading.Thread(target=execute_simple_request, args=("session3", results, 0))
         thread3.start()
 
-        # Wait for all to complete
-        thread1.join(timeout=15)
-        thread2.join(timeout=15)
-        thread3.join(timeout=15)
+        # Give it more time to ensure it's queued
+        time.sleep(1.0)
+
+        # Verify third worker hasn't spawned yet (still at 2)
+        assert len(spawned_workers) == 2, f"Third worker spawned too early: {len(spawned_workers)}"
+
+        # Shutdown first worker to make space
+        manager.shutdown_worker("session1", "bioimage-mcp-base")
+
+        # Wait for all threads to complete
+        thread1.join(timeout=5)
+        thread2.join(timeout=5)
+        thread3.join(timeout=15)  # Longer timeout for third (was queued)
 
         # Verify all completed
-        assert len(results) == 3, f"Expected 3 results, got {len(results)}"
+        assert len(results) == 3, f"Expected 3 results, got {len(results)}: {results}"
 
-        # Check if third request was queued/delayed due to worker limit
-        # Since we can only have 2 workers at once, the third should be delayed
-        # This is a bit tricky to test without introspecting the manager state
-        # For now, just verify all completed successfully
+        # Verify third worker eventually spawned (after first was shut down)
+        assert len(spawned_workers) == 3, f"Expected 3 workers total, got {len(spawned_workers)}"
 
+        # Verify third worker had to wait (spawn time should be > 0.5s after it started)
+        session3_spawn = next((st for sid, st in spawned_workers if sid == "session3"), None)
+        assert session3_spawn is not None, "Session3 spawn time not found"
+        assert session3_spawn > 0.4, (
+            f"Third worker should have waited (spawn_time={session3_spawn:.3f}s)"
+        )
+
+        # Verify all requests succeeded
         for session_id, response_or_error, _timestamp in results:
             if isinstance(response_or_error, Exception):
-                # Check if it's a WorkerLimitExceeded error (expected behavior)
-                assert (
-                    "max" in str(response_or_error).lower()
-                    or "limit" in str(response_or_error).lower()
-                ), f"Unexpected error for {session_id}: {response_or_error}"
+                pytest.fail(f"Request failed for {session_id}: {response_or_error}")
             else:
                 assert response_or_error.get("ok") is True, (
                     f"Request failed for {session_id}: {response_or_error.get('error')}"
@@ -489,6 +525,7 @@ class TestMemoryArtifacts:
 
         from bioimage_mcp.artifacts.memory import MemoryArtifactStore
         from bioimage_mcp.runtimes.persistent import PersistentWorkerManager
+        from bioio.writers import OmeTiffWriter
 
         # Create memory artifact store and worker manager
         memory_store = MemoryArtifactStore()
@@ -499,14 +536,12 @@ class TestMemoryArtifacts:
         env_id = "bioimage-mcp-base"
         worker = manager.get_worker(session_id=session_id, env_id=env_id)
 
-        # Create a simple test image file
-        test_data = np.random.randint(0, 255, (10, 10), dtype=np.uint8)
-        test_image = tmp_path / "test_input.tif"
+        # Create a simple test image file as 5D TCZYX
+        test_data = np.random.randint(0, 255, (1, 1, 1, 10, 10), dtype=np.uint8)
+        test_image = tmp_path / "test_input.ome.tif"
 
-        # Save using tifffile for simplicity
-        import tifffile
-
-        tifffile.imwrite(test_image, test_data)
+        # Write valid OME-TIFF using bioio
+        OmeTiffWriter.save(test_data, test_image, dim_order="TCZYX")
 
         # Execute a tool that should create a memory artifact
         # We'll use a transform operation with output_mode='memory' in params
@@ -573,6 +608,7 @@ class TestMemoryArtifacts:
         from bioimage_mcp.artifacts.memory import MemoryArtifactStore
         from bioimage_mcp.config.loader import load_config
         from bioimage_mcp.runtimes.persistent import PersistentWorkerManager
+        from bioio.writers import OmeTiffWriter
 
         # Create memory artifact store and worker manager
         memory_store = MemoryArtifactStore()
@@ -592,13 +628,12 @@ class TestMemoryArtifacts:
         env_id = "bioimage-mcp-base"
         worker = manager.get_worker(session_id=session_id, env_id=env_id)
 
-        # Create a simple test image file
-        test_data = np.random.randint(0, 255, (10, 10), dtype=np.uint8)
-        test_image = tmp_path / "test_input.tif"
+        # Create a simple test image file as 5D TCZYX
+        test_data = np.random.randint(0, 255, (1, 1, 1, 10, 10), dtype=np.uint8)
+        test_image = tmp_path / "test_input.ome.tif"
 
-        import tifffile
-
-        tifffile.imwrite(test_image, test_data)
+        # Write valid OME-TIFF using bioio
+        OmeTiffWriter.save(test_data, test_image, dim_order="TCZYX")
 
         # Step 1: Execute tool A with output_mode='memory'
         request_a = {
@@ -667,6 +702,7 @@ class TestMemoryArtifacts:
 
         from bioimage_mcp.artifacts.memory import MemoryArtifactStore
         from bioimage_mcp.runtimes.persistent import PersistentWorkerManager
+        from bioio.writers import OmeTiffWriter
 
         # Create memory artifact store and worker manager
         memory_store = MemoryArtifactStore()
@@ -677,13 +713,12 @@ class TestMemoryArtifacts:
         env_id = "bioimage-mcp-base"
         worker = manager.get_worker(session_id=session_id, env_id=env_id)
 
-        # Create a simple test image file
-        test_data = np.random.randint(0, 255, (10, 10), dtype=np.uint8)
-        test_image = tmp_path / "test_input.tif"
+        # Create a simple test image file as 5D TCZYX
+        test_data = np.random.randint(0, 255, (1, 1, 1, 10, 10), dtype=np.uint8)
+        test_image = tmp_path / "test_input.ome.tif"
 
-        import tifffile
-
-        tifffile.imwrite(test_image, test_data)
+        # Write valid OME-TIFF using bioio
+        OmeTiffWriter.save(test_data, test_image, dim_order="TCZYX")
 
         # Step 1: Create a mem:// artifact in worker
         request = {
@@ -768,6 +803,7 @@ class TestCrossEnvironmentHandoff:
         from bioimage_mcp.api.execution import ExecutionService
         from bioimage_mcp.artifacts.memory import MemoryArtifactStore
         from bioimage_mcp.runtimes.persistent import PersistentWorkerManager
+        from bioio.writers import OmeTiffWriter
 
         # Use mcp_services fixture for proper setup
         config = mcp_services["config"]
@@ -784,13 +820,12 @@ class TestCrossEnvironmentHandoff:
             worker_manager=manager,
         )
 
-        # Create test data
-        test_data = np.random.randint(0, 255, (10, 10), dtype=np.uint8)
-        test_image = tmp_path / "test_input.tif"
+        # Create test data as 5D TCZYX
+        test_data = np.random.randint(0, 255, (1, 1, 1, 10, 10), dtype=np.uint8)
+        test_image = tmp_path / "test_input.ome.tif"
 
-        import tifffile
-
-        tifffile.imwrite(test_image, test_data)
+        # Write valid OME-TIFF using bioio
+        OmeTiffWriter.save(test_data, test_image, dim_order="TCZYX")
 
         # Import test image to artifact store
         test_artifact = artifact_store.import_file(
@@ -883,17 +918,17 @@ class TestCrossEnvironmentHandoff:
 
         from bioimage_mcp.artifacts.memory import MemoryArtifactStore
         from bioimage_mcp.runtimes.persistent import PersistentWorkerManager
+        from bioio.writers import OmeTiffWriter
 
         memory_store = MemoryArtifactStore()
         manager = PersistentWorkerManager(memory_store=memory_store)
 
-        # Create test data
-        test_data = np.random.randint(0, 255, (10, 10), dtype=np.uint8)
-        test_image = tmp_path / "test_input.tif"
+        # Create test data as 5D TCZYX
+        test_data = np.random.randint(0, 255, (1, 1, 1, 10, 10), dtype=np.uint8)
+        test_image = tmp_path / "test_input.ome.tif"
 
-        import tifffile
-
-        tifffile.imwrite(test_image, test_data)
+        # Write valid OME-TIFF using bioio
+        OmeTiffWriter.save(test_data, test_image, dim_order="TCZYX")
 
         # Step 1: Create mem:// artifact
         session_id = "test_session"
@@ -973,17 +1008,17 @@ class TestCrossEnvironmentHandoff:
 
         from bioimage_mcp.artifacts.memory import MemoryArtifactStore
         from bioimage_mcp.runtimes.persistent import PersistentWorkerManager
+        from bioio.writers import OmeTiffWriter
 
         memory_store = MemoryArtifactStore()
         manager = PersistentWorkerManager(memory_store=memory_store)
 
-        # Create test data
-        test_data = np.random.randint(0, 255, (100, 100), dtype=np.uint8)  # Larger for crash timing
-        test_image = tmp_path / "test_input.tif"
+        # Create test data as 5D TCZYX (larger for crash timing)
+        test_data = np.random.randint(0, 255, (1, 1, 1, 100, 100), dtype=np.uint8)
+        test_image = tmp_path / "test_input.ome.tif"
 
-        import tifffile
-
-        tifffile.imwrite(test_image, test_data)
+        # Write valid OME-TIFF using bioio
+        OmeTiffWriter.save(test_data, test_image, dim_order="TCZYX")
 
         # Step 1: Create mem:// artifact
         session_id = "test_session"

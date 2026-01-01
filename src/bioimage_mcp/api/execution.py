@@ -2,7 +2,6 @@ import copy
 import hashlib
 import logging
 import platform
-import shutil
 import sys
 import uuid
 from pathlib import Path
@@ -173,9 +172,48 @@ def execute_step(
             }
 
             if worker_manager:
-                # Register that we are using this worker (T016)
-                _worker = worker_manager.get_worker(session_id, manifest.env_id)
+                # Use persistent worker for execution (T016, spec 012)
+                worker = worker_manager.get_worker(session_id, manifest.env_id)
 
+                # Send request to persistent worker
+                try:
+                    response = worker.execute(
+                        request=request,
+                        memory_store=worker_manager._memory_store,
+                        timeout_seconds=timeout_seconds,
+                    )
+
+                    # Parse worker response to match expected format
+                    # WorkerProcess.execute() returns ExecuteResponse dict
+                    # Need to convert to tuple[dict, str, int] format
+
+                    # Extract log from response (if available)
+                    log_text = response.get("log", "")
+
+                    # Extract exit code (worker responses use ok/error, not exit codes)
+                    exit_code = 0 if response.get("ok") else 1
+
+                    # Return in expected format: (response, log_text, exit_code)
+                    return response, log_text, exit_code
+
+                except Exception as e:
+                    # On worker error, return error response in expected format
+                    logger.error(
+                        "Worker execution failed: session=%s env=%s error=%s",
+                        session_id,
+                        manifest.env_id,
+                        e,
+                    )
+                    error_response = {
+                        "ok": False,
+                        "error": {
+                            "code": "WORKER_ERROR",
+                            "message": f"Worker execution failed: {e}",
+                        },
+                    }
+                    return error_response, str(e), 1
+
+            # Fall back to one-shot execution when worker_manager is None
             return execute_tool(
                 entrypoint=entrypoint,
                 request=request,
@@ -260,11 +298,14 @@ class ExecutionService:
         self._config = config
         self._owns_artifact_store = artifact_store is None
         self._owns_run_store = run_store is None
+        self._owns_worker_manager = worker_manager is None
         self._artifact_store = artifact_store or ArtifactStore(config)
         self._run_store = run_store or RunStore(config)
         self._memory_store = memory_store or MemoryArtifactStore()
         self._worker_manager = worker_manager or PersistentWorkerManager(
-            memory_store=self._memory_store
+            memory_store=self._memory_store,
+            max_workers=config.max_workers,
+            session_timeout_seconds=config.session_timeout_seconds,
         )
         self._io_bridge = IOBridge(artifact_store_path=config.artifact_store_root)
 
@@ -273,6 +314,8 @@ class ExecutionService:
         return self._artifact_store
 
     def close(self) -> None:
+        if self._owns_worker_manager:
+            self._worker_manager.shutdown_all()
         if self._owns_artifact_store:
             self._artifact_store.close()
         if self._owns_run_store:
@@ -544,118 +587,21 @@ class ExecutionService:
                         materialized_inputs[input_name] = ref_id
                         continue
                     else:
+                        # Constitution III Compliance: Core MUST NOT import bioio for I/O.
+                        # Worker-delegated materialization is the ONLY path for cross-env handoff.
+                        # If worker materialization fails, the operation should fail cleanly.
+                        #
+                        # See: .specify/memory/constitution.md Constitution III
+                        #      (Artifact References Only)
+                        # See: specs/012-persistent-worker/plan.md for worker delegation design
                         logger.error(
-                            "Worker materialization failed for %s, falling back to core", ref_id
+                            "Worker materialization failed for %s. Core cannot perform I/O "
+                            "(Constitution III). Operation will fail.",
+                            ref_id,
                         )
-                        # Fall through to core materialization
-
-                # NOTE: Constitution III Compliance (Partial)
-                #
-                # Current implementation: Core performs materialization using bioio readers/writers.
-                # This satisfies the requirement to use bioio for I/O but does NOT satisfy the
-                # full spec 011/Constitution III requirement that materialization should be
-                # delegated to the source tool environment.
-                #
-                # Ideal implementation:
-                #   1. Core detects need for handoff (already done via IOBridge.needs_handoff)
-                #   2. Core dispatches `base.bioio.export` to source environment's worker
-                #   3. Source environment materializes using bioio and returns file-backed artifact
-                #   4. Core receives file-backed artifact reference
-                #   5. Core dispatches original function to target environment
-                #
-                # Rationale for current approach:
-                #   - Pre-1.0 development: Prioritizing functionality over perfect
-                #     architectural compliance
-                #   - Core has bioio already available for basic I/O operations
-                #   - Avoids complexity of dispatching export calls to source
-                #     environment workers
-                #
-                # This is tracked as a known limitation for pre-1.0 development.
-                # See: specs/011-wrapper-consolidation/plan.md Phase 2, Task T022
-                # See: .specify/memory/constitution.md Constitution III (Artifact References Only)
-                # TODO(spec-011): Delegate materialization to source environment worker
-                #
-                # Perform materialization/conversion
-                try:
-                    import bioio
-
-                    # Determine source path
-                    src_path = None
-                    if artifact.storage_type == "memory":
-                        src_path = artifact.metadata.get("_simulated_path")
-                    else:
-                        uri = artifact.uri
-                        if uri.startswith("file://"):
-                            src_path = uri[7:]
-                        else:
-                            src_path = uri
-
-                    if not src_path or not Path(src_path).exists():
-                        raise ValueError(f"Source path for {ref_id} not found: {src_path}")
-
-                    src_path = Path(src_path)
-
-                    if negotiated_format == artifact.format and artifact.storage_type != "memory":
-                        # Just copy if formats match and it's already a file
-                        shutil.copy2(src_path, out_path)
-                    else:
-                        # Convert or materialize from memory
-                        reader = None
-                        if artifact.format == "OME-TIFF":
-                            from bioio_ome_tiff import Reader as OmeTiffReader
-
-                            reader = OmeTiffReader
-                        elif artifact.format == "OME-Zarr":
-                            from bioio_ome_zarr import Reader as OmeZarrReader
-
-                            reader = OmeZarrReader
-
-                        img = bioio.BioImage(str(src_path), reader=reader)
-                        data = img.data
-                        data = data.compute() if hasattr(data, "compute") else data
-
-                        if negotiated_format == "OME-TIFF":
-                            from bioio.writers import OmeTiffWriter
-
-                            OmeTiffWriter.save(data, str(out_path), dim_order=img.dims.order)
-                        elif negotiated_format == "OME-Zarr":
-                            from bioio_ome_zarr.writers import OMEZarrWriter
-
-                            writer = OMEZarrWriter(
-                                store=out_path, level_shapes=[data.shape], dtype=data.dtype
-                            )
-                            writer.write_full_volume(data)
-                        else:
-                            # Fallback to simple copy if unknown negotiated format
-                            shutil.copy2(src_path, out_path)
-
-                    # Import as new artifact
-                    new_ref = self._artifact_store.import_file(
-                        out_path,
-                        artifact_type=artifact.type,
-                        format=negotiated_format,
-                    )
-
-                    # Record handoff
-                    handoff = self._io_bridge.record_handoff(
-                        source_ref_id=ref_id,
-                        target_ref_id=new_ref.ref_id,
-                        source_env=source_env,
-                        target_env=target_env,
-                        format=negotiated_format,
-                    )
-                    handoffs.append(handoff.model_dump(mode="json"))
-
-                    # Update inputs
-                    new_ref_data = new_ref.model_dump()
-                    new_ref_data["materialized_from"] = ref_id
-                    inputs[input_name] = new_ref_data
-                    materialized_inputs[input_name] = ref_id
-
-                except Exception as e:
-                    logger.error("Failed to materialize artifact %s: %s", ref_id, e)
-                    # For now, continue and let the tool fail if it can't handle the original input
-                    continue
+                        # Continue with original input - tool execution will likely fail,
+                        # which is correct behavior per Constitution III
+                        continue
 
         if materialized_inputs:
             run.provenance["materialized_inputs"] = materialized_inputs
