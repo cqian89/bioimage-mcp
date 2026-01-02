@@ -19,9 +19,9 @@ if str(REPO_ROOT / "src") not in sys.path:
 if str(TOOLS_ROOT) not in sys.path:
     sys.path.insert(0, str(TOOLS_ROOT))
 
-from datetime import UTC
+from datetime import UTC  # noqa: E402
 
-from bioimage_mcp_base import io as io_ops
+from bioimage_mcp_base import io as io_ops  # noqa: E402
 
 TOOL_VERSION = "0.1.0"
 TOOL_ENV_NAME = "bioimage-mcp-base"
@@ -144,6 +144,46 @@ def _load_input_data(input_ref: str | dict) -> np.ndarray:
         return img.data
 
 
+def _infer_dims_from_shape(shape: tuple[int, ...]) -> str:
+    """Infer dimension labels from array shape.
+
+    Args:
+        shape: Array shape tuple
+
+    Returns:
+        Dimension string (e.g., "YX", "ZYX", "TCZYX")
+    """
+    ndim = len(shape)
+    dims_map = {
+        2: "YX",
+        3: "ZYX",
+        4: "CZYX",
+        5: "TCZYX",
+    }
+    if ndim in dims_map:
+        return dims_map[ndim]
+
+    # Fallback for other dimensions: last N characters of "TCZYX"
+    full_dims = "TCZYX"
+    if ndim <= 0:
+        return ""
+    return full_dims[-ndim:] if ndim <= len(full_dims) else full_dims
+
+
+def _expand_to_5d(data: np.ndarray) -> np.ndarray:
+    """Expand array to 5D by prepending singleton dimensions.
+
+    Args:
+        data: Numpy array of any dimension
+
+    Returns:
+        5D (or higher) numpy array
+    """
+    while data.ndim < 5:
+        data = np.expand_dims(data, axis=0)
+    return data
+
+
 def _convert_memory_inputs_to_files(inputs: dict[str, Any], work_dir: Path) -> dict[str, Any]:
     """Convert mem:// artifact inputs to temporary file paths.
 
@@ -171,7 +211,8 @@ def _convert_memory_inputs_to_files(inputs: dict[str, Any], work_dir: Path) -> d
 
             temp_id = uuid.uuid4().hex[:8]
             temp_path = work_dir / f"_mem_{key}_{temp_id}.ome.tif"
-            OmeTiffWriter.save(data, temp_path, dim_order="TCZYX")
+            data_5d = _expand_to_5d(data)
+            OmeTiffWriter.save(data_5d, temp_path, dim_order="TCZYX")
 
             # Replace with file URI
             converted_inputs[key] = {
@@ -296,20 +337,21 @@ def handle_materialize(request: dict[str, Any]) -> dict[str, Any]:
         temp_file.close()
 
     dest_path = Path(dest_path)
+    data_5d = _expand_to_5d(data)
 
     try:
         # Write to disk using bioio writers
         if target_format == "OME-TIFF":
             from bioio.writers import OmeTiffWriter
 
-            OmeTiffWriter.save(data, dest_path, dim_order="TCZYX")
+            OmeTiffWriter.save(data_5d, dest_path, dim_order="TCZYX")
         elif target_format == "OME-Zarr":
             from bioio_ome_zarr.writer import OmeZarrWriter
 
             # OME-Zarr requires specific writer setup
             writer = OmeZarrWriter(str(dest_path))
             writer.write_image(
-                image_data=data,
+                image_data=data_5d,
                 image_name="materialized",
                 physical_pixel_sizes=None,
                 channel_names=None,
@@ -427,7 +469,8 @@ def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
         inputs = _convert_memory_inputs_to_files(inputs, work_dir)
         if fn_id == "meta.describe":
             result_response = handle_meta_describe(params)
-            # handle_meta_describe returns {"ok": bool, "result": ...} or {"ok": False, "error": ...}
+            # handle_meta_describe returns {"ok": bool, "result": ...}
+            # or {"ok": False, "error": ...}
             if result_response.get("ok"):
                 response = {
                     "command": "execute_result",
@@ -496,7 +539,7 @@ def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
                         "metadata": {
                             "shape": list(data.shape),
                             "dtype": str(data.dtype),
-                            "dims": "TCZYX",
+                            "dims": _infer_dims_from_shape(data.shape),
                         },
                     }
 
@@ -611,7 +654,7 @@ def _convert_outputs_to_memory(outputs: dict[str, Any], work_dir: Path) -> dict[
                     "metadata": {
                         "shape": list(data.shape),
                         "dtype": str(data.dtype),
-                        "dims": "TCZYX",
+                        "dims": _infer_dims_from_shape(data.shape),
                     },
                 }
             else:
@@ -640,7 +683,7 @@ def _convert_outputs_to_memory(outputs: dict[str, Any], work_dir: Path) -> dict[
                 "metadata": {
                     "shape": list(data.shape),
                     "dtype": str(data.dtype),
-                    "dims": "TCZYX",
+                    "dims": _infer_dims_from_shape(data.shape),
                 },
             }
         else:
