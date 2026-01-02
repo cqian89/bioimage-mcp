@@ -59,6 +59,17 @@ class TestBaseAdapterProtocol:
         resolve_attr = BaseAdapter.resolve_io_pattern
         assert callable(resolve_attr) or inspect.isfunction(resolve_attr)
 
+    def test_base_adapter_has_generate_dimension_hints_method(self):
+        """BaseAdapter protocol should define generate_dimension_hints method."""
+        from bioimage_mcp.registry.dynamic.adapters import BaseAdapter
+
+        # Check that generate_dimension_hints method exists
+        assert hasattr(BaseAdapter, "generate_dimension_hints")
+
+        # Verify it's a method (not just an attribute)
+        hints_attr = BaseAdapter.generate_dimension_hints
+        assert callable(hints_attr) or inspect.isfunction(hints_attr)
+
     def test_concrete_class_satisfies_protocol(self):
         """A concrete class implementing all methods should satisfy BaseAdapter protocol."""
         from typing import Any
@@ -84,6 +95,10 @@ class TestBaseAdapterProtocol:
             def resolve_io_pattern(self, func_name: str, signature: Any) -> IOPattern:
                 """Resolve I/O pattern from function signature."""
                 return IOPattern.GENERIC
+
+            def generate_dimension_hints(self, module_name: str, func_name: str) -> Any:
+                """Generate dimension hints for agent guidance."""
+                return None
 
         # Create an instance
         adapter = DummyAdapter()
