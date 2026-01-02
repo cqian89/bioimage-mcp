@@ -45,8 +45,7 @@ class PhasorPyAdapter:
             module_config: Configuration from manifest with:
                 - modules: list of module names to scan
                 - module_name: single module name (alternative)
-                - include_patterns: patterns for function names (currently unused
-                  - hardcoded for US1)
+                - include_patterns: patterns for function names (currently unused)
                 - exclude_patterns: patterns to exclude (currently unused)
         """
         # Support both 'modules' (list) and 'module_name' (single string)
@@ -55,15 +54,10 @@ class PhasorPyAdapter:
         else:
             modules = module_config.get("modules", [])
 
-        # For US1: Hardcode the functions we need
-        # TODO: Implement full pattern matching in later phases
-        target_functions = {
-            "phasorpy.phasor": ["phasor_from_signal", "phasor_transform"],
-        }
-
         discovered = []
         for module_name in modules:
-            if module_name not in target_functions:
+            # Skip phasorpy.io as per constitution (external I/O)
+            if module_name == "phasorpy.io":
                 continue
 
             # Import the module
@@ -72,16 +66,18 @@ class PhasorPyAdapter:
             except ImportError:
                 continue
 
-            for func_name in target_functions[module_name]:
-                # Get function from module
-                if not hasattr(module, func_name):
+            # Use inspect.getmembers to find all functions in the module
+            for func_name, func in inspect.getmembers(module, inspect.isfunction):
+                # Filter: no private functions, no tests
+                if func_name.startswith("_") or func_name.startswith("test_"):
                     continue
 
-                func = getattr(module, func_name)
+                # Ensure function belongs to phasorpy package
+                if not getattr(func, "__module__", "").startswith("phasorpy"):
+                    continue
 
-                # Resolve I/O pattern based on function name
-                signature = inspect.signature(func)
-                io_pattern = self.resolve_io_pattern(func_name, signature)
+                # Resolve I/O pattern
+                io_pattern = self.resolve_io_pattern(func_name, module_name)
 
                 # Introspect function
                 metadata = self.introspector.introspect(
@@ -91,30 +87,53 @@ class PhasorPyAdapter:
                 )
 
                 # Override metadata fields to match expected fn_id format
+                # Ensure module is the full name, not just the last part (introspector default)
                 metadata.module = module_name
                 metadata.qualified_name = f"{module_name}.{func_name}"
                 metadata.fn_id = f"{module_name}.{func_name}"
+
+                # Add dimension hints
+                metadata.hints = self.generate_dimension_hints(module_name, func_name)
 
                 discovered.append(metadata)
 
         return discovered
 
-    def resolve_io_pattern(self, func_name: str, signature: Any) -> IOPattern:
-        """Resolve I/O pattern from function name.
+    def resolve_io_pattern(self, func_name: str, module_name: str) -> IOPattern:
+        """Resolve I/O pattern from function name and module.
 
         Args:
             func_name: Name of the function
-            signature: Function signature (unused, pattern is name-based)
+            module_name: Name of the module
 
         Returns:
             Categorized I/O pattern
         """
+        # PLOT: functions in phasorpy.plot module or with "plot" in name
+        if "phasorpy.plot" in module_name or "plot" in func_name.lower():
+            return IOPattern.PLOT
+
+        # SIGNAL_TO_PHASOR: phasor_from_signal
         if func_name == "phasor_from_signal":
             return IOPattern.SIGNAL_TO_PHASOR
-        elif func_name == "phasor_transform":
+
+        # PHASOR_TRANSFORM: phasor_transform, phasor_calibrate
+        if func_name in ("phasor_transform", "phasor_calibrate"):
             return IOPattern.PHASOR_TRANSFORM
-        else:
+
+        # PHASOR_TO_SCALAR: phasor_to_apparent_lifetime, phasor_to_polar
+        if "to_apparent_lifetime" in func_name or "to_polar" in func_name:
+            return IOPattern.PHASOR_TO_SCALAR
+
+        # SCALAR_TO_PHASOR: phasor_from_lifetime, phasor_from_polar
+        if "from_lifetime" in func_name or "from_polar" in func_name:
+            return IOPattern.SCALAR_TO_PHASOR
+
+        # DEFAULT
+        if "phasor" in func_name:
             return IOPattern.PHASOR_TO_OTHER
+
+        return IOPattern.GENERIC
 
     def _load_image(self, artifact: Artifact) -> np.ndarray:
         """Load image data from artifact reference."""
@@ -211,14 +230,14 @@ class PhasorPyAdapter:
     def execute(
         self,
         fn_id: str,
-        inputs: list[Artifact],
+        inputs: list[Artifact] | list[tuple[str, Artifact]],
         params: dict[str, Any],
         work_dir: Path | None = None,
     ) -> list[Artifact]:
         """Execute a phasorpy function.
 
         Args:
-            fn_id: Function ID like "phasorpy.phasor_from_signal"
+            fn_id: Function ID like "phasorpy.phasor.phasor_from_signal"
             inputs: Input artifacts (BioImageRef)
             params: Parameters for the function
             work_dir: Optional working directory for execution
@@ -226,73 +245,156 @@ class PhasorPyAdapter:
         Returns:
             List of output artifacts
         """
-        # Extract function name from fn_id
-        func_name = fn_id.split(".")[-1]
+        # Parse fn_id to get module and function name
+        parts = fn_id.split(".")
+        if len(parts) < 2:
+            raise ValueError(f"Invalid fn_id: {fn_id}")
 
-        # Get the actual function
-        if func_name == "phasor_from_signal":
-            target_fn = phasor_from_signal
-        elif func_name == "phasor_transform":
-            target_fn = phasor_transform
+        module_name = ".".join(parts[:-1])
+        func_name = parts[-1]
+
+        # Import module and get function dynamically
+        try:
+            module = importlib.import_module(module_name)
+            target_fn = getattr(module, func_name)
+        except (ImportError, AttributeError) as e:
+            raise RuntimeError(f"Could not load function {fn_id}: {e}")
+
+        # Match inputs to function parameters
+        sig = inspect.signature(target_fn)
+        bound_args = {}
+
+        # Handle inputs
+        # If inputs is a list of tuples (name, artifact), use it
+        input_items = []
+        if inputs and isinstance(inputs[0], tuple):
+            input_items = inputs
         else:
-            raise ValueError(f"Unknown function: {func_name}")
+            # Match by order for positional parameters
+            # PhasorPy functions usually take arrays as their first arguments
+            param_names = [
+                p.name
+                for p in sig.parameters.values()
+                if p.kind
+                in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)
+            ]
+            for i, art in enumerate(inputs):
+                if i < len(param_names):
+                    input_items.append((param_names[i], art))
 
-        if target_fn is None:
-            raise RuntimeError(f"phasorpy is not installed, cannot execute {func_name}")
+        # Load image data for all artifact inputs
+        for name, artifact in input_items:
+            bound_args[name] = self._load_image(artifact)
 
-        # Resolve inputs
-        kwargs = dict(params)
-
-        # Map inputs to function parameters
-        # For phasor_from_signal: takes 'signal'
-        # For phasor_transform: takes 'real', 'imag', 'real_zero', 'imag_zero', etc.
-        input_map = (
-            dict(inputs)
-            if isinstance(inputs, list) and inputs and isinstance(inputs[0], tuple)
-            else {}
-        )
-        if not input_map and inputs:
-            # Fallback for simple list of artifacts
-            if func_name == "phasor_from_signal":
-                input_map = {"signal": inputs[0]}
-            elif func_name == "phasor_transform" and len(inputs) >= 2:
-                input_map = {"real": inputs[0], "imag": inputs[1]}
-                if len(inputs) >= 4:
-                    input_map["real_zero"] = inputs[2]
-                    input_map["imag_zero"] = inputs[3]
-
-        # Load and set image data in kwargs
-        for name, artifact in input_map.items():
-            kwargs[name] = self._load_image(artifact)
+        # Add other parameters
+        for name, value in params.items():
+            if name in sig.parameters:
+                bound_args[name] = value
 
         # Execute
-        if func_name == "phasor_from_signal":
-            # phasor_from_signal(signal, /, ...)
-            signal_data = kwargs.pop("signal", None)
-            if signal_data is None:
-                raise ValueError("Missing 'signal' input for phasor_from_signal")
-            result = target_fn(signal_data, **kwargs)
-        else:
-            result = target_fn(**kwargs)
+        # Handle positional-only arguments correctly
+        pos_args = []
+        kw_args = {}
+        for param in sig.parameters.values():
+            if param.name in bound_args:
+                if param.kind == inspect.Parameter.POSITIONAL_ONLY:
+                    pos_args.append(bound_args[param.name])
+                else:
+                    kw_args[param.name] = bound_args[param.name]
+
+        # Prepare execution environment for plots
+        is_plot = "phasorpy.plot" in module_name or "plot" in func_name.lower()
+        if is_plot:
+            import matplotlib
+
+            matplotlib.use("Agg")  # T020: Use Agg backend for headless plot capture
+
+        result = target_fn(*pos_args, **kw_args)
 
         # Handle outputs
         outputs = []
-        if func_name == "phasor_from_signal":
-            # returns (mean, real, imag)
-            mean, real, imag = result
-            outputs.append(self._save_image(mean, work_dir, "phasor-mean", "TCZYX"))
-            outputs.append(self._save_image(real, work_dir, "phasor-real", "TCZYX"))
-            outputs.append(self._save_image(imag, work_dir, "phasor-imag", "TCZYX"))
-        elif func_name == "phasor_transform":
-            # returns (real, imag)
-            real, imag = result
-            outputs.append(self._save_image(real, work_dir, "phasor-real", "TCZYX"))
-            outputs.append(self._save_image(imag, work_dir, "phasor-imag", "TCZYX"))
+        if isinstance(result, tuple) and not is_plot:
+            for i, item in enumerate(result):
+                if isinstance(item, np.ndarray):
+                    # Try to give a meaningful name
+                    name_hint = f"output-{i}"
+                    if func_name == "phasor_from_signal" and i < 3:
+                        name_hint = ["mean", "real", "imag"][i]
+                    elif "phasor" in func_name and len(result) == 2 and i < 2:
+                        name_hint = ["real", "imag"][i]
+
+                    outputs.append(self._save_image(item, work_dir, f"{func_name}-{name_hint}"))
+        elif isinstance(result, np.ndarray) and not is_plot:
+            outputs.append(self._save_image(result, work_dir, f"{func_name}-output"))
+        elif is_plot:
+            # Handle plot functions - they might return a figure or axis
+            import matplotlib.pyplot as plt
+
+            from bioimage_mcp.artifacts.store import write_plot
+
+            fig = plt.gcf()
+            if fig:
+                ext = ".png"
+                if work_dir:
+                    path = work_dir / f"{func_name}-plot{ext}"
+                else:
+                    fd, path_str = tempfile.mkstemp(suffix=ext)
+                    import os
+
+                    os.close(fd)
+                    path = Path(path_str)
+
+                # T022: Connect PlotRef creation to write_plot()
+                plot_ref = write_plot(fig, path, dpi=100, plot_type=func_name)
+                outputs.append(plot_ref)
+
+                # Clean up to avoid figure accumulation
+                plt.close(fig)
 
         return outputs
 
-    def generate_dimension_hints(
-        self, module_name: str, func_name: str
-    ) -> DimensionRequirement | None:
+    def generate_dimension_hints(self, module_name: str, func_name: str) -> Any | None:
         """Generate dimension hints for agent guidance."""
+        # Use local imports to avoid circular dependencies if any
+        from bioimage_mcp.api.schemas import (
+            DimensionRequirement,
+            FunctionHints,
+            InputRequirement,
+        )
+
+        if func_name == "phasor_from_signal":
+            return FunctionHints(
+                inputs={
+                    "signal": InputRequirement(
+                        type="BioImageRef",
+                        required=True,
+                        description="Input signal array (decay or spectrum)",
+                        dimension_requirements=DimensionRequirement(
+                            preprocessing_instructions=[
+                                "Ensure the decay/spectrum dimension is at axis -1"
+                            ],
+                            expected_axes=["T", "C", "Z", "Y", "X"],
+                        ),
+                    )
+                }
+            )
+
+        if "phasorpy.filter" in module_name:
+            return FunctionHints(
+                inputs={
+                    "real": InputRequirement(
+                        type="BioImageRef",
+                        required=True,
+                        description="Real part of phasor",
+                        dimension_requirements=DimensionRequirement(spatial_axes=["Y", "X"]),
+                    ),
+                    "imag": InputRequirement(
+                        type="BioImageRef",
+                        required=True,
+                        description="Imaginary part of phasor",
+                        dimension_requirements=DimensionRequirement(spatial_axes=["Y", "X"]),
+                    ),
+                }
+            )
+
         return None

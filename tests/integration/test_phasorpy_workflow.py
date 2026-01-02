@@ -4,7 +4,7 @@ import pytest
 import numpy as np
 from pathlib import Path
 from bioimage_mcp.registry.dynamic.adapters.phasorpy import PhasorPyAdapter
-from bioimage_mcp.artifacts.models import ArtifactRef
+from bioimage_mcp.artifacts.models import ArtifactRef, PlotRef, PlotMetadata
 
 
 @pytest.fixture
@@ -60,7 +60,7 @@ def test_provenance_recording(adapter, tmp_path):
 
     # Execute
     outputs = adapter.execute(
-        fn_id="phasorpy.phasor_from_signal",
+        fn_id="phasorpy.phasor.phasor_from_signal",
         inputs=[input_artifact],
         params={"frequency": 80.0},
         work_dir=tmp_path,
@@ -115,7 +115,7 @@ def test_phasor_from_signal_execution_returns_gs(adapter, tmp_path):
     input_artifact = create_mock_artifact("signal-1", input_path)
 
     outputs = adapter.execute(
-        fn_id="phasorpy.phasor_from_signal",
+        fn_id="phasorpy.phasor.phasor_from_signal",
         inputs=[input_artifact],
         params={"frequency": 80.0},
         work_dir=tmp_path,
@@ -154,7 +154,7 @@ def test_phasor_calibrate_execution_range(adapter, tmp_path):
 
     # This is expected to FAIL until implementation (not in hardcoded list)
     outputs = adapter.execute(
-        fn_id="phasorpy.phasor.phasor_calibrate",
+        fn_id="phasorpy.lifetime.phasor_calibrate",
         inputs=[input_g, input_s],
         params={"tau": 4.0, "frequency": 80.0},
         work_dir=tmp_path,
@@ -168,3 +168,82 @@ def test_phasor_calibrate_execution_range(adapter, tmp_path):
         # (Though noise can push them slightly outside [0,1])
         assert np.all(calibrated_data >= -1.1)
         assert np.all(calibrated_data <= 1.1)
+
+
+@pytest.mark.slow
+@pytest.mark.integration
+def test_plot_phasor_execution_returns_plotref(adapter, tmp_path):
+    """T018: plot_phasor execution returns a PlotRef with metadata."""
+    # Create mock real/imag data
+    real = np.random.rand(1, 1, 1, 32, 32).astype(np.float32)
+    imag = np.random.rand(1, 1, 1, 32, 32).astype(np.float32)
+
+    real_path = tmp_path / "real.ome.tiff"
+    imag_path = tmp_path / "imag.ome.tiff"
+    from bioio.writers import OmeTiffWriter
+
+    OmeTiffWriter.save(real, str(real_path), dim_order="TCZYX")
+    OmeTiffWriter.save(imag, str(imag_path), dim_order="TCZYX")
+
+    input_real = create_mock_artifact("real", real_path)
+    input_imag = create_mock_artifact("imag", imag_path)
+
+    outputs = adapter.execute(
+        fn_id="phasorpy.plot.plot_phasor",
+        inputs=[("real", input_real), ("imag", input_imag)],
+        params={},
+        work_dir=tmp_path,
+    )
+
+    assert len(outputs) == 1
+    plot_ref = outputs[0]
+
+    assert isinstance(plot_ref, PlotRef)
+    assert plot_ref.type == "PlotRef"
+    assert plot_ref.format == "PNG"
+    assert isinstance(plot_ref.metadata, PlotMetadata)
+    assert plot_ref.metadata.width_px > 0
+    assert plot_ref.metadata.height_px > 0
+    assert plot_ref.metadata.dpi == 100
+
+
+@pytest.mark.slow
+@pytest.mark.integration
+def test_plot_artifact_accessibility(adapter, tmp_path):
+    """T019: PlotRef artifact is accessible and readable as a PNG image."""
+    # Create mock real/imag data
+    real = np.random.rand(1, 1, 1, 16, 16).astype(np.float32)
+    imag = np.random.rand(1, 1, 1, 16, 16).astype(np.float32)
+
+    real_path = tmp_path / "real2.ome.tiff"
+    imag_path = tmp_path / "imag2.ome.tiff"
+    from bioio.writers import OmeTiffWriter
+
+    OmeTiffWriter.save(real, str(real_path), dim_order="TCZYX")
+    OmeTiffWriter.save(imag, str(imag_path), dim_order="TCZYX")
+
+    input_real = create_mock_artifact("real", real_path)
+    input_imag = create_mock_artifact("imag", imag_path)
+
+    outputs = adapter.execute(
+        fn_id="phasorpy.plot.plot_phasor",
+        inputs=[input_real, input_imag],
+        params={},
+        work_dir=tmp_path,
+    )
+
+    plot_ref = outputs[0]
+    from urllib.parse import urlparse
+
+    parsed = urlparse(plot_ref.uri)
+    path = Path(parsed.path)
+    if str(path).startswith("/") and len(str(path)) > 2 and str(path)[2] == ":":
+        path = Path(str(path)[1:])
+
+    assert path.exists()
+    assert path.suffix == ".png"
+
+    # Verify it's a valid PNG by checking magic number or using PIL
+    with open(path, "rb") as f:
+        header = f.read(8)
+        assert header == b"\x89PNG\r\n\x1a\n"
