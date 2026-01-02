@@ -119,22 +119,50 @@ class PhasorPyAdapter:
     def _load_image(self, artifact: Artifact) -> np.ndarray:
         """Load image data from artifact reference."""
         if isinstance(artifact, dict):
-            uri = artifact.get("uri", "")
+            uri = artifact.get("uri") or artifact.get("path") or ""
+            metadata = artifact.get("metadata") or {}
+            fmt = artifact.get("format")
         else:
-            uri = getattr(artifact, "uri", "")
+            uri = getattr(artifact, "uri", None) or getattr(artifact, "path", None) or ""
+            metadata = getattr(artifact, "metadata", {}) or {}
+            fmt = getattr(artifact, "format", None)
 
         if not uri:
             raise ValueError(f"Artifact missing URI: {artifact}")
 
-        # Parse URI and get file path
-        parsed = urlparse(uri)
-        path = parsed.path
-        if path.startswith("/") and len(path) > 2 and path[2] == ":":
-            path = path[1:]
+        # Handle mem:// URIs by checking metadata for _simulated_path
+        if str(uri).startswith("mem://"):
+            path = metadata.get("_simulated_path")
+            if not path:
+                raise ValueError(
+                    f"Cannot load mem:// URI without _simulated_path in metadata: {uri}"
+                )
+        else:
+            # Parse URI and get file path
+            parsed = urlparse(str(uri))
+            path = parsed.path
+            if path.startswith("/") and len(path) > 2 and path[2] == ":":
+                path = path[1:]
 
         from bioio import BioImage
 
-        img = BioImage(path)
+        reader = None
+        if fmt == "OME-TIFF":
+            try:
+                from bioio_ome_tiff import Reader as OmeTiffReader
+
+                reader = OmeTiffReader
+            except ImportError:
+                pass
+        elif fmt == "OME-Zarr":
+            try:
+                from bioio_ome_zarr import Reader as OmeZarrReader
+
+                reader = OmeZarrReader
+            except ImportError:
+                pass
+
+        img = BioImage(str(path), reader=reader)
         data = img.data
         if hasattr(data, "compute"):
             data = data.compute()
