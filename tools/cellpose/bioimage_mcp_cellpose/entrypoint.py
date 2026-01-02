@@ -194,7 +194,7 @@ def handle_meta_describe(params: dict[str, Any]) -> dict[str, Any]:
     """Handle meta.describe requests for Cellpose functions."""
     target_fn = params.get("target_fn", "")
 
-    if target_fn == "cellpose.segment":
+    if target_fn in ("cellpose.segment", "cellpose.eval"):
         schema = _introspect_cellpose_eval()
         return {
             "ok": True,
@@ -222,6 +222,26 @@ def handle_segment(
         "outputs": outputs,
         "log": "Segmentation complete",
     }
+
+
+def handle_train_seg(
+    inputs: dict[str, Any],
+    params: dict[str, Any],
+    work_dir: Path,
+) -> dict[str, Any]:
+    """Handle cellpose.train_seg execution (Not Implemented)."""
+    return {
+        "ok": False,
+        "error": "cellpose.train_seg is not yet implemented",
+    }
+
+
+# Function dispatch table
+FUNCTION_HANDLERS = {
+    "cellpose.segment": handle_segment,
+    "cellpose.eval": handle_segment,  # Same implementation
+    "cellpose.train_seg": handle_train_seg,
+}
 
 
 def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
@@ -254,22 +274,33 @@ def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
                     "error": {"message": result_response.get("error", "Unknown error")},
                     "log": "failed",
                 }
-        elif fn_id == "cellpose.segment":
-            result = handle_segment(inputs, params, work_dir)
-            outputs = result.get("outputs")
-            if outputs is None:
-                raise ValueError(f"{fn_id} did not return outputs")
+        elif fn_id in FUNCTION_HANDLERS:
+            handler = FUNCTION_HANDLERS[fn_id]
+            result = handler(inputs, params, work_dir)
 
-            if output_mode == "memory":
-                outputs = _convert_outputs_to_memory(outputs, work_dir)
+            if not result.get("ok"):
+                response = {
+                    "command": "execute_result",
+                    "ok": False,
+                    "ordinal": ordinal,
+                    "error": {"message": result.get("error", "Function execution failed")},
+                    "log": "failed",
+                }
+            else:
+                outputs = result.get("outputs")
+                if outputs is None:
+                    raise ValueError(f"{fn_id} did not return outputs")
 
-            response = {
-                "command": "execute_result",
-                "ok": True,
-                "ordinal": ordinal,
-                "outputs": outputs,
-                "log": result.get("log", "ok"),
-            }
+                if output_mode == "memory":
+                    outputs = _convert_outputs_to_memory(outputs, work_dir)
+
+                response = {
+                    "command": "execute_result",
+                    "ok": True,
+                    "ordinal": ordinal,
+                    "outputs": outputs,
+                    "log": result.get("log", "ok"),
+                }
         else:
             response = {
                 "command": "execute_result",
@@ -596,8 +627,8 @@ def main() -> int:
 
                 if fn_id == "meta.describe":
                     response = handle_meta_describe(params)
-                elif fn_id == "cellpose.segment":
-                    response = handle_segment(inputs, params, work_dir)
+                elif fn_id in FUNCTION_HANDLERS:
+                    response = FUNCTION_HANDLERS[fn_id](inputs, params, work_dir)
                 else:
                     response = {"ok": False, "error": f"Unknown fn_id: {fn_id}"}
                 print(json.dumps(response))
