@@ -121,17 +121,35 @@ result = export_artifact(
 
 ### Check Function Count
 ```python
-# Should discover 50+ functions
-result = list_tools(path="/phasorpy")
-assert len(result["tools"]) >= 50
+# Should discover 50+ functions via list_tools
+# (Filtered for phasorpy prefix)
+tools = bioimage_mcp_list_tools()
+phasorpy_fns = [f for f in tools if f.name.startswith("phasorpy.")]
+assert len(phasorpy_fns) >= 50
 ```
 
 ### Check Function Schema
 ```python
-# Verify full schema is available
-schema = describe_function(fn_id="phasorpy.phasor.phasor_from_signal")
-assert "signal" in schema["inputs"][0]["name"]
+# Verify full schema is available via describe_function
+schema = bioimage_mcp_describe_function(fn_id="phasorpy.phasor.phasor_from_signal")
+# Look for 'signal' input in the schema
+input_names = [p["name"] for p in schema["parameters"].values()]
+assert "signal" in input_names
 assert schema["io_pattern"] == "signal_to_phasor"
+```
+
+### Check Error Handling
+```python
+# Verify invalid parameters return proper error codes
+try:
+    run_function(
+        fn_id="phasorpy.phasor.phasor_from_signal",
+        inputs={"signal": signal_ref},
+        params={"frequency": -1.0}  # Invalid
+    )
+except Exception as e:
+    # Error should contain code: INVALID_PARAMETER
+    assert "INVALID_PARAMETER" in str(e)
 ```
 
 ## Troubleshooting

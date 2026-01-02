@@ -72,7 +72,7 @@ def test_phasorpy_adapter_resolves_phasor_transform_pattern():
 
 @patch("bioio.writers.OmeTiffWriter")
 @patch("bioio.BioImage")
-@patch("bioimage_mcp.registry.dynamic.adapters.phasorpy.phasor_from_signal")
+@patch("phasorpy.phasor.phasor_from_signal")
 def test_phasorpy_adapter_executes_phasor_from_signal(mock_phasor_fn, mock_bioimage, mock_writer):
     """execute() should call phasorpy.phasor.phasor_from_signal with correct args."""
     adapter = PhasorPyAdapter()
@@ -106,7 +106,7 @@ def test_phasorpy_adapter_executes_phasor_from_signal(mock_phasor_fn, mock_bioim
     }
 
     outputs = adapter.execute(
-        fn_id="phasorpy.phasor_from_signal",
+        fn_id="phasorpy.phasor.phasor_from_signal",
         inputs=[input_artifact],
         params=params,
     )
@@ -151,7 +151,7 @@ def test_phasorpy_adapter_discover_returns_function_metadata_fields():
 
 @patch("bioio.writers.OmeTiffWriter")
 @patch("bioio.BioImage")
-@patch("bioimage_mcp.registry.dynamic.adapters.phasorpy.phasor_from_signal")
+@patch("phasorpy.phasor.phasor_from_signal")
 def test_execute_phasor_from_signal_returns_three_artifacts(
     mock_phasor_fn, mock_bioimage, mock_writer
 ):
@@ -191,7 +191,7 @@ def test_execute_phasor_from_signal_returns_three_artifacts(
     }
 
     outputs = adapter.execute(
-        fn_id="phasorpy.phasor_from_signal",
+        fn_id="phasorpy.phasor.phasor_from_signal",
         inputs=[input_artifact],
         params=params,
     )
@@ -222,7 +222,7 @@ def test_execute_phasor_from_signal_returns_three_artifacts(
 
 @patch("bioio.writers.OmeTiffWriter")
 @patch("bioio.BioImage")
-@patch("bioimage_mcp.registry.dynamic.adapters.phasorpy.phasor_transform")
+@patch("phasorpy.phasor.phasor_transform")
 def test_execute_phasor_transform_returns_two_artifacts(
     mock_phasor_transform, mock_bioimage, mock_writer
 ):
@@ -270,7 +270,7 @@ def test_execute_phasor_transform_returns_two_artifacts(
     }
 
     outputs = adapter.execute(
-        fn_id="phasorpy.phasor_transform",
+        fn_id="phasorpy.phasor.phasor_transform",
         inputs=[input_g, input_s],
         params=params,
     )

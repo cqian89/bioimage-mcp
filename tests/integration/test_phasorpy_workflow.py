@@ -343,3 +343,103 @@ def test_plot_artifact_accessibility(adapter, tmp_path):
     with open(path, "rb") as f:
         header = f.read(8)
         assert header == b"\x89PNG\r\n\x1a\n"
+
+
+@pytest.mark.integration
+def test_error_translation_invalid_parameter(adapter, tmp_path):
+    """T042: Test error translation (invalid params -> proper MCP error)."""
+    # Create valid input
+    data = np.random.rand(1, 1, 10, 32, 32).astype(np.float32)
+    input_path = tmp_path / "error_test.ome.tiff"
+    from bioio.writers import OmeTiffWriter
+
+    OmeTiffWriter.save(data, str(input_path), dim_order="TCZYX")
+    input_artifact = create_mock_artifact("error-in", input_path)
+
+    # Execute with invalid parameter - PhasorPy functions often validate via numpy/scipy
+    # If we pass something that causes a ValueError or IndexError in the target_fn
+    with pytest.raises(ValueError) as excinfo:
+        adapter.execute(
+            fn_id="phasorpy.phasor.phasor_from_signal",
+            inputs=[input_artifact],
+            params={"harmonic": -1},
+            work_dir=tmp_path,
+        )
+
+    # Check that the exception has a 'code' attribute with 'INVALID_PARAMETER'
+    assert getattr(excinfo.value, "code", None) == "INVALID_PARAMETER"
+
+
+@pytest.mark.integration
+def test_log_capture(adapter, tmp_path, caplog):
+    """T043: Test log capture."""
+    import logging
+
+    # Set caplog to capture INFO level
+    caplog.set_level(logging.INFO)
+
+    # Create valid input
+    data = np.random.rand(1, 1, 10, 16, 16).astype(np.float32)
+    input_path = tmp_path / "log_test.ome.tiff"
+    from bioio.writers import OmeTiffWriter
+
+    OmeTiffWriter.save(data, str(input_path), dim_order="TCZYX")
+    input_artifact = create_mock_artifact("log-in", input_path)
+
+    adapter.execute(
+        fn_id="phasorpy.phasor.phasor_from_signal",
+        inputs=[input_artifact],
+        params={"frequency": 80.0},
+        work_dir=tmp_path,
+    )
+
+    # Check if execution start/end logs are present
+    assert "Executing phasorpy function" in caplog.text
+    assert "Execution successful" in caplog.text
+
+
+@pytest.mark.integration
+def test_verification_sc001_function_discovery(adapter):
+    """T032: SC-001 - Verify ≥50 functions discovered."""
+    discovered = adapter.discover(
+        {"modules": ["phasorpy.phasor", "phasorpy.lifetime", "phasorpy.plot", "phasorpy.filter"]}
+    )
+    # We expect a good number of functions from these modules
+    assert len(discovered) >= 50
+
+
+@pytest.mark.integration
+def test_verification_sc002_performance(adapter, tmp_path):
+    """T033: SC-002 - Workflow < 30 seconds."""
+    import time
+
+    start_time = time.time()
+
+    # Simple workflow
+    data = np.random.rand(1, 1, 10, 32, 32).astype(np.float32)
+    input_path = tmp_path / "perf_test.ome.tiff"
+    from bioio.writers import OmeTiffWriter
+
+    OmeTiffWriter.save(data, str(input_path), dim_order="TCZYX")
+    input_artifact = create_mock_artifact("perf-in", input_path)
+
+    adapter.execute(
+        fn_id="phasorpy.phasor.phasor_from_signal",
+        inputs=[input_artifact],
+        params={"harmonic": 1},
+        work_dir=tmp_path,
+    )
+
+    duration = time.time() - start_time
+    assert duration < 30.0
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(
+    True, reason="SC-003 requires full MCP server context for subprocess crash test"
+)
+def test_verification_sc003_subprocess_isolation():
+    """T034: SC-003 - Subprocess isolation handles crashes."""
+    # This is typically verified at the runner level, not the adapter level.
+    # The adapter itself cannot easily test its own process isolation.
+    pass

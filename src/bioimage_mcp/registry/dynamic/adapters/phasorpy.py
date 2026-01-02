@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import importlib
 import inspect
+import logging
 import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -21,6 +22,10 @@ if TYPE_CHECKING:
 from bioimage_mcp.artifacts.base import Artifact
 from bioimage_mcp.registry.dynamic.introspection import Introspector
 from bioimage_mcp.registry.dynamic.models import FunctionMetadata, IOPattern
+
+# Setup logger
+logger = logging.getLogger(__name__)
+
 
 # Import phasorpy functions at module level for patching in tests
 try:
@@ -63,13 +68,25 @@ class PhasorPyAdapter:
             # Import the module
             try:
                 module = importlib.import_module(module_name)
+                logger.debug("Scanning module: %s", module_name)
             except ImportError:
+                logger.warning("Could not import phasorpy module: %s", module_name)
                 continue
+
+            # Get include/exclude patterns from config
+            include = module_config.get("include", [])
+            exclude = module_config.get("exclude", [])
 
             # Use inspect.getmembers to find all functions in the module
             for func_name, func in inspect.getmembers(module, inspect.isfunction):
                 # Filter: no private functions, no tests
                 if func_name.startswith("_") or func_name.startswith("test_"):
+                    continue
+
+                # Filter by include/exclude if provided
+                if include and func_name not in include:
+                    continue
+                if exclude and func_name in exclude:
                     continue
 
                 # Ensure function belongs to phasorpy package
@@ -252,142 +269,168 @@ class PhasorPyAdapter:
         Returns:
             List of output artifacts
         """
-        # Parse fn_id to get module and function name
-        parts = fn_id.split(".")
-        if len(parts) < 2:
-            raise ValueError(f"Invalid fn_id: {fn_id}")
-
-        module_name = ".".join(parts[:-1])
-        func_name = parts[-1]
-
-        # Import module and get function dynamically
+        logger.info("Executing phasorpy function: %s", fn_id)
         try:
-            module = importlib.import_module(module_name)
-            target_fn = getattr(module, func_name)
-        except (ImportError, AttributeError) as e:
-            raise RuntimeError(f"Could not load function {fn_id}: {e}")
+            # Parse fn_id to get module and function name
+            parts = fn_id.split(".")
+            if len(parts) < 2:
+                raise ValueError(f"Invalid fn_id: {fn_id}")
 
-        # Match inputs to function parameters
-        sig = inspect.signature(target_fn)
-        bound_args = {}
+            module_name = ".".join(parts[:-1])
+            func_name = parts[-1]
 
-        # Handle inputs
-        # If inputs is a list of tuples (name, artifact), use it
-        input_items = []
-        if inputs and isinstance(inputs[0], tuple):
-            input_items = inputs
-        else:
-            # Match by order for positional parameters
-            # PhasorPy functions usually take arrays as their first arguments
-            param_names = [
-                p.name
-                for p in sig.parameters.values()
-                if p.kind
-                in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)
-            ]
-            for i, art in enumerate(inputs):
-                if i < len(param_names):
-                    input_items.append((param_names[i], art))
+            # Import module and get function dynamically
+            try:
+                module = importlib.import_module(module_name)
+                target_fn = getattr(module, func_name)
+            except (ImportError, AttributeError) as e:
+                raise RuntimeError(f"Could not load function {fn_id}: {e}")
 
-        # Load image data for all artifact inputs
-        for name, artifact in input_items:
-            bound_args[name] = self._load_image(artifact)
+            # Match inputs to function parameters
+            sig = inspect.signature(target_fn)
+            bound_args = {}
 
-        # Add other parameters
-        for name, value in params.items():
-            if name in sig.parameters:
-                bound_args[name] = value
+            # Handle inputs
+            # If inputs is a list of tuples (name, artifact), use it
+            input_items = []
+            if inputs and isinstance(inputs[0], tuple):
+                input_items = inputs
+            else:
+                # Match by order for positional parameters
+                # PhasorPy functions usually take arrays as their first arguments
+                param_names = [
+                    p.name
+                    for p in sig.parameters.values()
+                    if p.kind
+                    in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)
+                ]
+                for i, art in enumerate(inputs):
+                    if i < len(param_names):
+                        input_items.append((param_names[i], art))
 
-        # Execute
-        # Handle positional-only arguments correctly
-        pos_args = []
-        kw_args = {}
-        for param in sig.parameters.values():
-            if param.name in bound_args:
-                if param.kind == inspect.Parameter.POSITIONAL_ONLY:
-                    pos_args.append(bound_args[param.name])
-                else:
-                    kw_args[param.name] = bound_args[param.name]
+            # Load image data for all artifact inputs
+            for name, artifact in input_items:
+                bound_args[name] = self._load_image(artifact)
 
-        # Prepare execution environment for plots
-        is_plot = "phasorpy.plot" in module_name or "plot" in func_name.lower()
-        if is_plot:
-            import matplotlib
+            # Add other parameters
+            for name, value in params.items():
+                if name in sig.parameters:
+                    bound_args[name] = value
 
-            matplotlib.use("Agg")  # T020: Use Agg backend for headless plot capture
+            # Execute
+            # Handle positional-only arguments correctly
+            pos_args = []
+            kw_args = {}
+            for param in sig.parameters.values():
+                if param.name in bound_args:
+                    if param.kind == inspect.Parameter.POSITIONAL_ONLY:
+                        pos_args.append(bound_args[param.name])
+                    else:
+                        kw_args[param.name] = bound_args[param.name]
 
-        result = target_fn(*pos_args, **kw_args)
+            # Prepare execution environment for plots
+            is_plot = "phasorpy.plot" in module_name or "plot" in func_name.lower()
+            if is_plot:
+                import matplotlib
 
-        # Prepare metadata for output (T026, T039)
-        extra_metadata = {}
-        try:
-            import phasorpy
+                matplotlib.use("Agg")  # T020: Use Agg backend for headless plot capture
 
-            extra_metadata["phasorpy_version"] = getattr(phasorpy, "__version__", "unknown")
-        except ImportError:
-            pass
+            result = target_fn(*pos_args, **kw_args)
 
-        # Include parameters in metadata
-        if params:
-            extra_metadata["parameters"] = params
-            # Also flatten common ones for easier access
-            if "frequency" in params:
-                extra_metadata["frequency"] = params["frequency"]
-            if "harmonic" in params:
-                extra_metadata["harmonic"] = params["harmonic"]
+            # Prepare metadata for output (T026, T039)
+            extra_metadata = {}
+            try:
+                import phasorpy
 
-        # Handle outputs
-        outputs = []
-        if isinstance(result, tuple) and not is_plot:
-            for i, item in enumerate(result):
-                if isinstance(item, np.ndarray):
-                    # Try to give a meaningful name
-                    name_hint = f"output-{i}"
-                    if func_name == "phasor_from_signal" and i < 3:
-                        name_hint = ["mean", "real", "imag"][i]
-                    elif "phasor" in func_name and len(result) == 2 and i < 2:
-                        name_hint = ["real", "imag"][i]
+                extra_metadata["phasorpy_version"] = getattr(phasorpy, "__version__", "unknown")
+            except ImportError:
+                pass
 
-                    outputs.append(
-                        self._save_image(
-                            item,
-                            work_dir,
-                            f"{func_name}-{name_hint}",
-                            extra_metadata=extra_metadata,
+            # Include parameters in metadata
+            if params:
+                extra_metadata["parameters"] = params
+                # Also flatten common ones for easier access
+                if "frequency" in params:
+                    extra_metadata["frequency"] = params["frequency"]
+                if "harmonic" in params:
+                    extra_metadata["harmonic"] = params["harmonic"]
+
+            # Handle outputs
+            outputs = []
+            if isinstance(result, tuple) and not is_plot:
+                for i, item in enumerate(result):
+                    if isinstance(item, np.ndarray):
+                        # Try to give a meaningful name
+                        name_hint = f"output-{i}"
+                        if func_name == "phasor_from_signal" and i < 3:
+                            name_hint = ["mean", "real", "imag"][i]
+                        elif "phasor" in func_name and len(result) == 2 and i < 2:
+                            name_hint = ["real", "imag"][i]
+
+                        outputs.append(
+                            self._save_image(
+                                item,
+                                work_dir,
+                                f"{func_name}-{name_hint}",
+                                extra_metadata=extra_metadata,
+                            )
                         )
+            elif isinstance(result, np.ndarray) and not is_plot:
+                outputs.append(
+                    self._save_image(
+                        result, work_dir, f"{func_name}-output", extra_metadata=extra_metadata
                     )
-        elif isinstance(result, np.ndarray) and not is_plot:
-            outputs.append(
-                self._save_image(
-                    result, work_dir, f"{func_name}-output", extra_metadata=extra_metadata
                 )
-            )
-        elif is_plot:
-            # Handle plot functions - they might return a figure or axis
-            import matplotlib.pyplot as plt
+            elif is_plot:
+                # Handle plot functions - they might return a figure or axis
+                import matplotlib.pyplot as plt
 
-            from bioimage_mcp.artifacts.store import write_plot
+                from bioimage_mcp.artifacts.store import write_plot
 
-            fig = plt.gcf()
-            if fig:
-                ext = ".png"
-                if work_dir:
-                    path = work_dir / f"{func_name}-plot{ext}"
-                else:
-                    fd, path_str = tempfile.mkstemp(suffix=ext)
-                    import os
+                fig = plt.gcf()
+                if fig:
+                    ext = ".png"
+                    if work_dir:
+                        path = work_dir / f"{func_name}-plot{ext}"
+                    else:
+                        fd, path_str = tempfile.mkstemp(suffix=ext)
+                        import os
 
-                    os.close(fd)
-                    path = Path(path_str)
+                        os.close(fd)
+                        path = Path(path_str)
 
-                # T022: Connect PlotRef creation to write_plot()
-                plot_ref = write_plot(fig, path, dpi=100, plot_type=func_name)
-                outputs.append(plot_ref)
+                    # T022: Connect PlotRef creation to write_plot()
+                    plot_ref = write_plot(fig, path, dpi=100, plot_type=func_name)
+                    outputs.append(plot_ref)
 
-                # Clean up to avoid figure accumulation
-                plt.close(fig)
+                    # Clean up to avoid figure accumulation
+                    plt.close(fig)
 
-        return outputs
+            logger.info("Execution successful for %s, produced %d outputs", fn_id, len(outputs))
+            return outputs
+
+        except (ValueError, IndexError) as e:
+            logger.error("Invalid parameter in %s: %s", fn_id, e)
+            new_e = ValueError(f"Invalid parameter: {e}")
+            setattr(new_e, "code", "INVALID_PARAMETER")
+            raise new_e from e
+        except FileNotFoundError as e:
+            logger.error("Artifact not found during %s: %s", fn_id, e)
+            new_e = FileNotFoundError(f"Artifact not found: {e}")
+            setattr(new_e, "code", "ARTIFACT_NOT_FOUND")
+            raise new_e from e
+        except TypeError as e:
+            logger.error("Invalid input type in %s: %s", fn_id, e)
+            new_e = TypeError(f"Invalid input type: {e}")
+            setattr(new_e, "code", "INVALID_INPUT_TYPE")
+            raise new_e from e
+        except Exception as e:
+            logger.error("Execution failed for %s: %s", fn_id, e)
+            if hasattr(e, "code"):
+                raise e
+            new_e = RuntimeError(f"Execution failed: {e}")
+            setattr(new_e, "code", "EXECUTION_FAILED")
+            raise new_e from e
 
     def generate_dimension_hints(self, module_name: str, func_name: str) -> Any | None:
         """Generate dimension hints for agent guidance."""
