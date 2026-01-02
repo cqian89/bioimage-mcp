@@ -1,14 +1,12 @@
-"""
-Adapter protocol for dynamic function registry.
+from __future__ import annotations
 
-Defines the base protocol that all library adapters must implement
-to integrate with the dynamic registry system.
-"""
-
-from typing import Any, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 from bioimage_mcp.artifacts.base import Artifact
 from bioimage_mcp.registry.dynamic.models import FunctionMetadata, IOPattern
+
+if TYPE_CHECKING:
+    from bioimage_mcp.api.schemas import DimensionRequirement
 
 
 @runtime_checkable
@@ -55,6 +53,20 @@ class BaseAdapter(Protocol):
         """
         ...
 
+    def generate_dimension_hints(
+        self, module_name: str, func_name: str
+    ) -> DimensionRequirement | None:
+        """Generate dimension hints for agent guidance.
+
+        Args:
+            module_name: Name of the module containing the function.
+            func_name: Name of the function.
+
+        Returns:
+            DimensionRequirement or None if no specific requirements.
+        """
+        ...
+
 
 # Global adapter registry - populated with default adapters
 # This registry is shared across server and tool processes
@@ -76,6 +88,14 @@ def _populate_default_adapters() -> None:
     ADAPTER_REGISTRY["scipy"] = ScipyNdimageAdapter()
     ADAPTER_REGISTRY["skimage"] = SkimageAdapter()
     ADAPTER_REGISTRY["xarray"] = XarrayAdapterForRegistry()
+
+    # Import cellpose adapter (optional - may not be installed)
+    try:
+        from bioimage_mcp.registry.dynamic.adapters.cellpose import CellposeAdapter
+
+        ADAPTER_REGISTRY["cellpose"] = CellposeAdapter()
+    except ImportError:
+        pass  # cellpose not installed, skip adapter
 
 
 # Populate on module import
