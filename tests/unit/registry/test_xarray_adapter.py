@@ -152,3 +152,38 @@ def test_bioio_export_works(tmp_path):
     assert response["ok"] is True
     assert "output" in response["outputs"]
     assert Path(response["outputs"]["output"]["path"]).exists()
+
+
+def test_xarray_adapter_handles_reduced_y_dimension(tmp_path):
+    """Ensure dim_order padding works when Y is reduced."""
+    if "xarray" not in ADAPTER_REGISTRY:
+        pytest.skip("Xarray adapter not registered")
+
+    adapter = ADAPTER_REGISTRY["xarray"]
+
+    # Create 5D input image (TCZYX)
+    img_path = tmp_path / "test_5d.ome.tiff"
+    data = np.zeros((1, 2, 3, 4, 5), dtype=np.uint8)  # TCZYX
+    OmeTiffWriter.save(data, str(img_path), dim_order="TCZYX")
+
+    input_artifact = {
+        "type": "BioImageRef",
+        "format": "OME-TIFF",
+        "uri": img_path.as_uri(),
+        "metadata": {"axes": "TCZYX"},
+    }
+
+    # Use xarray.mean over Y dimension
+    # This should result in dims (T, C, Z, X)
+    outputs = adapter.execute(
+        fn_id="xarray.mean",
+        inputs=[("image", input_artifact)],
+        params={"dim": "Y"},
+        work_dir=tmp_path,
+    )
+
+    assert len(outputs) == 1
+    # The output should be padded to TCZYX
+    assert outputs[0]["metadata"]["axes"] == "TCZYX"
+    # Shape should be [1, 2, 3, 1, 5] (Y is now 1)
+    assert outputs[0]["metadata"]["shape"] == [1, 2, 3, 1, 5]

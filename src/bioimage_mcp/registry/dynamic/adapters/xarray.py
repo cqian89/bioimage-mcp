@@ -116,27 +116,20 @@ class XarrayAdapterForRegistry(BaseAdapter):
         work_dir.mkdir(parents=True, exist_ok=True)
         out_path = work_dir / f"output_{method_name}.ome.tiff"
 
-        # Ensure result is 5D for OmeTiffWriter
+        # Ensure result is 5D for OmeTiffWriter (Standard: TCZYX)
+        # We use xarray to handle expansion and transposition to ensure valid OME-TIFF
+        standard_order = "TCZYX"
+        for d in standard_order:
+            if d not in result_da.dims:
+                result_da = result_da.expand_dims(d)
+
+        # Transpose to standard order to ensure YX is at the end (OmeTiffWriter requirement)
+        result_da = result_da.transpose(*list(standard_order))
         data = result_da.values
+        dim_order = standard_order
+
         if data.dtype == np.uint64 or data.dtype == np.int64:
             data = data.astype(np.float32)
-
-        while data.ndim < 5:
-            data = data[np.newaxis, ...]
-
-        # Determine output dim order from result_da.dims
-        dim_order = "".join(result_da.dims)
-        # Pad dim_order to 5D if needed (standard is TCZYX)
-        if len(dim_order) < 5:
-            # Calculate how many dimensions are missing
-            missing_count = 5 - len(dim_order)
-            # Add missing dimensions from standard order (T, C, Z, Y, X)
-            # Only the first three (T, C, Z) can be missing since Y and X are always present
-            standard_prefix = "TCZ"
-            existing = set(dim_order)
-            missing = [d for d in standard_prefix if d not in existing][:missing_count]
-            # Prepend missing dimensions in standard order
-            dim_order = "".join(missing) + dim_order
 
         # Save using OmeTiffWriter (Constitution III requirement)
         try:
