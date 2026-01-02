@@ -21,6 +21,7 @@ class IOPattern(str, Enum):
     ARRAY_TO_ARRAY = "array_to_array"
     ARRAY_TO_SCALAR = "array_to_scalar"
     FILE_TO_SIGNAL = "file_to_signal"
+    TRAINING = "training"
     GENERIC = "generic"
 
 

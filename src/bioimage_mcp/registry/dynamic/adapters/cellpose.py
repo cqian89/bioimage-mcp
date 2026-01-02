@@ -21,13 +21,26 @@ try:
 except ImportError:
     CellposeModel = None
 
+try:
+    import cellpose.train
+except ImportError:
+    cellpose_train = None
+else:
+    cellpose_train = cellpose.train
+
 
 class CellposeAdapter:
     """Adapter for cellpose library functions."""
 
     # Functions to expose
     DISCOVERABLE_FUNCTIONS = {
-        "cellpose.models": ["segment"],
+        "cellpose.models.CellposeModel": ["eval"],
+        "cellpose.train": ["train_seg"],
+    }
+
+    # Backward compatibility mapping: fn_id -> (actual_module, actual_func_name)
+    BACKWARD_COMPATIBILITY = {
+        "cellpose.segment": ("cellpose.models.CellposeModel", "eval"),
     }
 
     # Model types for segment
@@ -42,46 +55,81 @@ class CellposeAdapter:
 
         Args:
             module_config: Configuration from manifest with:
-                - module_name: module name to scan (e.g., "cellpose.models")
+                - module_name: module name to scan (e.g., "cellpose.models.CellposeModel")
                 - modules: alternative list of module names
         """
         module_name = module_config.get("module_name", "")
         modules = module_config.get("modules", [])
 
-        # Check if we should scan cellpose.models
-        if module_name != "cellpose.models" and "cellpose.models" not in modules:
-            return []
+        target_modules = modules + ([module_name] if module_name else [])
 
-        if CellposeModel is None:
-            return []
+        # Mapping for backward compatibility in module names
+        module_mapping = {"cellpose.models": "cellpose.models.CellposeModel"}
+        target_modules = [module_mapping.get(t, t) for t in target_modules]
 
-        # We're specifically exposing 'segment' which maps to CellposeModel.eval
-        # We use introspector on CellposeModel.eval for parameter schema
-        func = CellposeModel.eval
+        all_metadata = []
 
-        # Resolve I/O pattern
-        io_pattern = self.resolve_io_pattern("segment", None)
+        for target in target_modules:
+            if target in self.DISCOVERABLE_FUNCTIONS:
+                funcs_to_discover = self.DISCOVERABLE_FUNCTIONS[target]
 
-        # Introspect function
+                # Special handling for CellposeModel (class methods)
+                if target == "cellpose.models.CellposeModel":
+                    if CellposeModel is None:
+                        continue
+
+                    for func_name in funcs_to_discover:
+                        if hasattr(CellposeModel, func_name):
+                            func = getattr(CellposeModel, func_name)
+                            # Primary discovery (cellpose.eval)
+                            meta = self._introspect_and_format(
+                                func, "cellpose.models", f"cellpose.{func_name}", func_name
+                            )
+                            all_metadata.append(meta)
+
+                            # Handle backward compatibility for segment
+                            if func_name == "eval":
+                                compat_meta = self._introspect_and_format(
+                                    func, "cellpose.models", "cellpose.segment", "segment"
+                                )
+                                all_metadata.append(compat_meta)
+
+                # Handling for modules
+                elif target == "cellpose.train":
+                    if cellpose_train is None:
+                        continue
+
+                    for func_name in funcs_to_discover:
+                        if hasattr(cellpose_train, func_name):
+                            func = getattr(cellpose_train, func_name)
+                            meta = self._introspect_and_format(
+                                func, "cellpose.train", f"cellpose.{func_name}", func_name
+                            )
+                            all_metadata.append(meta)
+
+        return all_metadata
+
+    def _introspect_and_format(
+        self, func: Any, module: str, fn_id: str, display_name: str
+    ) -> FunctionMetadata:
+        """Helper to introspect and format metadata."""
+        io_pattern = self.resolve_io_pattern(display_name, None)
         metadata = self.introspector.introspect(
             func=func,
             source_adapter="cellpose",
             io_pattern=io_pattern,
         )
-
-        # Override metadata fields to match expected fn_id format
-        metadata.name = "segment"
-        metadata.module = "cellpose.models"
-        metadata.qualified_name = "cellpose.models.segment"
-        metadata.fn_id = "cellpose.segment"
+        metadata.name = display_name
+        metadata.module = module
+        metadata.fn_id = fn_id
+        metadata.qualified_name = f"{module}.{display_name}"
 
         # Clean up parameters
-        # Remove 'self' if it's there
         if "self" in metadata.parameters:
             del metadata.parameters["self"]
 
-        # Add model_type as a parameter if not present
-        if "model_type" not in metadata.parameters:
+        # Add model_type as a parameter for segmentation functions if not present
+        if display_name in ["eval", "segment"] and "model_type" not in metadata.parameters:
             from bioimage_mcp.registry.dynamic.models import ParameterSchema
 
             metadata.parameters["model_type"] = ParameterSchema(
@@ -92,7 +140,7 @@ class CellposeAdapter:
                 required=False,
             )
 
-        return [metadata]
+        return metadata
 
     def resolve_io_pattern(self, func_name: str, signature: Any) -> IOPattern:
         """Resolve I/O pattern from function name.
@@ -104,8 +152,10 @@ class CellposeAdapter:
         Returns:
             Categorized I/O pattern
         """
-        if func_name == "segment":
+        if func_name in ["segment", "eval"]:
             return IOPattern.IMAGE_TO_LABELS
+        if func_name == "train_seg":
+            return IOPattern.TRAINING
         return IOPattern.GENERIC
 
     def execute(
@@ -126,6 +176,11 @@ class CellposeAdapter:
         Returns:
             List of output artifacts
         """
+        if fn_id not in ["cellpose.segment", "cellpose.eval"]:
+            raise NotImplementedError(
+                f"Execution for {fn_id} is not yet implemented in CellposeAdapter."
+            )
+
         # Ensure we can import run_segment from the cellpose tool pack
         try:
             from bioimage_mcp_cellpose.ops.segment import run_segment
@@ -203,7 +258,7 @@ class CellposeAdapter:
         """
         from bioimage_mcp.api.schemas import DimensionRequirement
 
-        if func_name == "segment":
+        if func_name in ["segment", "eval"]:
             return DimensionRequirement(
                 min_ndim=2,
                 max_ndim=3,
