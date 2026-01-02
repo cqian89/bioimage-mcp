@@ -33,7 +33,7 @@ class OverwritePolicy(str, Enum):
 class PermissionSettings(BaseModel):
     """Configuration for file access behavior."""
 
-    mode: PermissionMode = PermissionMode.INHERIT
+    mode: PermissionMode = PermissionMode.HYBRID
     on_overwrite: OverwritePolicy = OverwritePolicy.ASK
 
 
