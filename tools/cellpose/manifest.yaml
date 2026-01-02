@@ -1,4 +1,4 @@
-manifest_version: "0.1"
+manifest_version: "1.0"
 tool_id: tools.cellpose
 tool_version: "0.1.0"
 name: Cellpose Segmentation
@@ -12,8 +12,25 @@ platforms_supported:
   - osx-arm64
   - win-64
 
+# Dynamic discovery configuration
+dynamic_sources:
+  - adapter: cellpose
+    prefix: cellpose
+    modules:
+      - cellpose.models
+      - cellpose.train
+    include_patterns:
+      - "eval"
+      - "train_seg"
+      - "segment"
+    exclude_patterns:
+      - "_*"
+      - "test_*"
+
 functions:
+  # Primary segmentation function (static fallback)
   - fn_id: cellpose.segment
+    aliases: [cellpose.eval, cellpose.models.CellposeModel.eval]
     tool_id: tools.cellpose
     name: Cellpose Segment
     description: Segment cells or nuclei using Cellpose deep learning models.
@@ -38,6 +55,46 @@ functions:
     resource_hints:
       gpu_recommended: true
       memory_mb: 4096
+
+  # New evaluation function (primary for modern API)
+  - fn_id: cellpose.eval
+    tool_id: tools.cellpose
+    name: Cellpose Eval
+    description: Core evaluation function for Cellpose models.
+    tags: [segmentation, deep-learning]
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+    outputs:
+      - name: labels
+        artifact_type: LabelImageRef
+        format: OME-TIFF
+        required: true
+    params_schema:
+      type: object
+      properties: {}
+    resource_hints:
+      gpu_recommended: true
+      memory_mb: 4096
+
+  # Training function (dynamically discovered)
+  - fn_id: cellpose.train_seg
+    tool_id: tools.cellpose
+    name: Cellpose Training
+    description: Train or fine-tune Cellpose models.
+    tags: [training, deep-learning]
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+    outputs:
+      - name: model
+        artifact_type: NativeOutputRef
+        required: true
+    params_schema:
+      type: object
+      properties: {}
 
   - fn_id: meta.describe
     tool_id: tools.cellpose
