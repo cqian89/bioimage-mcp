@@ -6,12 +6,18 @@ import shutil
 import sqlite3
 import uuid
 from pathlib import Path
+from typing import Literal
 
 from bioimage_mcp.api.permissions import PermissionService
 from bioimage_mcp.artifacts.checksums import sha256_file, sha256_tree
 from bioimage_mcp.artifacts.memory import MemoryArtifactStore
 from bioimage_mcp.artifacts.metadata import extract_image_metadata
-from bioimage_mcp.artifacts.models import ArtifactChecksum, ArtifactRef
+from bioimage_mcp.artifacts.models import (
+    ArtifactChecksum,
+    ArtifactRef,
+    PlotMetadata,
+    PlotRef,
+)
 from bioimage_mcp.config.fs_policy import assert_path_allowed
 from bioimage_mcp.config.schema import Config, OverwritePolicy
 from bioimage_mcp.errors import ArtifactStoreError
@@ -42,6 +48,10 @@ def _guess_mime_type(artifact_type: str, fmt: str) -> str:
         return "application/zarr+ome"
     if fmt_lower in {"ome-tiff", "tiff", "tif"}:
         return "image/tiff"
+    if fmt_lower == "png":
+        return "image/png"
+    if fmt_lower == "svg":
+        return "image/svg+xml"
 
     # Handle NativeOutputRef format hints (extensible)
     if artifact_type == "NativeOutputRef":
@@ -468,3 +478,55 @@ class ArtifactStore:
         )
         self._persist(ref)
         return ref
+
+
+def write_plot(fig, path: Path, dpi: int = 100, plot_type: str | None = None) -> PlotRef:
+    """Save a matplotlib figure as a PlotRef artifact.
+
+    Args:
+        fig: Matplotlib figure object
+        path: Path where to save the figure
+        dpi: Dots per inch for the output image
+        plot_type: Optional string identifying the type of plot (e.g. "phasor")
+
+    Returns:
+        PlotRef artifact pointing to the saved figure
+    """
+    # Ensure parent directory exists
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Save figure to path
+    # We use bbox_inches="tight" to ensure the plot isn't cut off
+    fmt: Literal["PNG", "SVG"] = "PNG"
+    if path.suffix.lower() == ".svg":
+        fmt = "SVG"
+
+    fig.savefig(path, dpi=dpi, format=fmt.lower(), bbox_inches="tight")
+
+    size = path.stat().st_size
+    checksum = sha256_file(path)
+    checksums = [ArtifactChecksum(algorithm="sha256", value=checksum)]
+
+    # Get dimensions in pixels
+    width_px = int(fig.get_figwidth() * dpi)
+    height_px = int(fig.get_figheight() * dpi)
+
+    meta = PlotMetadata(
+        width_px=width_px,
+        height_px=height_px,
+        dpi=dpi,
+        plot_type=plot_type,
+        title=fig.get_label() or None,
+    )
+
+    return PlotRef(
+        ref_id=uuid.uuid4().hex,
+        type="PlotRef",
+        uri=path.absolute().as_uri(),
+        format=fmt,
+        mime_type="image/png" if fmt == "PNG" else "image/svg+xml",
+        size_bytes=size,
+        checksums=checksums,
+        created_at=ArtifactRef.now(),
+        metadata=meta,
+    )

@@ -13,6 +13,7 @@ ArtifactType = Literal[
     "TableRef",
     "LogRef",
     "NativeOutputRef",
+    "PlotRef",
 ]
 StorageType = Literal["file", "zarr-temp"]
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -17,6 +18,7 @@ ARTIFACT_TYPES = {
     "LabelImageRef": "Instance segmentation labels (integer-valued image)",
     "LogRef": "Execution log output",
     "NativeOutputRef": "Tool-native output bundle (format is tool-dependent)",
+    "PlotRef": "Visualization plots (PNG/SVG)",
 }
 
 
@@ -67,4 +69,32 @@ class ArtifactRef(BaseModel):
 
     @classmethod
     def now(cls) -> str:
-        return datetime.now(timezone.utc).isoformat()
+        return datetime.now(UTC).isoformat()
+
+
+class PlotMetadata(BaseModel):
+    """Metadata for plot artifacts."""
+
+    width_px: int
+    height_px: int
+    dpi: int = 100
+    plot_type: str | None = None
+    title: str | None = None
+
+
+class PlotRef(ArtifactRef):
+    """Reference to a matplotlib plot artifact."""
+
+    type: Literal["PlotRef"] = "PlotRef"
+    format: Literal["PNG", "SVG"] = "PNG"
+    metadata: PlotMetadata
+
+
+class PhasorMetadata(BaseModel):
+    """Extended metadata for phasor artifacts."""
+
+    component: Literal["mean", "real", "imag"]
+    harmonic: int = 1
+    frequency_hz: float | None = None
+    is_calibrated: bool = False
+    reference_lifetime_ns: float | None = None
