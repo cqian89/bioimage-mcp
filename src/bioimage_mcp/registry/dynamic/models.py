@@ -49,6 +49,7 @@ class FunctionMetadata(BaseModel):
     source_adapter: str
     description: str = ""
     parameters: dict[str, ParameterSchema] = Field(default_factory=dict)
+    returns: str | None = Field(default=None, description="Return type annotation")
     io_pattern: IOPattern = IOPattern.GENERIC
     tags: list[str] = Field(default_factory=list)
     hints: FunctionHints | None = None

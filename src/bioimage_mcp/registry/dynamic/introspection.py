@@ -48,6 +48,9 @@ class Introspector:
         # Extract parameters
         parameters = self._extract_parameters(func)
 
+        # Extract return type
+        returns = self._extract_return_type(func)
+
         # Use provided io_pattern or default to GENERIC
         pattern = io_pattern if io_pattern is not None else IOPattern.GENERIC
 
@@ -59,6 +62,7 @@ class Introspector:
             source_adapter=source_adapter,
             description=description,
             parameters=parameters,
+            returns=returns,
             io_pattern=pattern,
         )
 
@@ -70,6 +74,17 @@ class Introspector:
         # Get first line of docstring as description
         lines = func.__doc__.strip().split("\n")
         return lines[0].strip() if lines else ""
+
+    def _extract_return_type(self, func: Callable) -> str | None:
+        """Extract return type annotation from function."""
+        try:
+            sig = inspect.signature(func)
+            if sig.return_annotation is not inspect.Signature.empty:
+                # Convert annotation to string representation
+                return str(sig.return_annotation)
+        except (ValueError, TypeError):
+            pass
+        return None
 
     def _parse_docstring_params(self, func: Callable) -> dict[str, str]:
         """Extract parameter descriptions from NumPy-style docstring.
