@@ -4,18 +4,21 @@ PhasorPy adapter for dynamic function registry.
 Provides integration with phasorpy library for FLIM phasor analysis.
 """
 
+from __future__ import annotations
+
 import importlib
 import inspect
 import tempfile
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
 import numpy as np
 
+if TYPE_CHECKING:
+    from bioimage_mcp.api.schemas import DimensionRequirement
+
 from bioimage_mcp.artifacts.base import Artifact
-from bioimage_mcp.artifacts.models import ArtifactRef
 from bioimage_mcp.registry.dynamic.introspection import Introspector
 from bioimage_mcp.registry.dynamic.models import FunctionMetadata, IOPattern
 
@@ -117,10 +120,8 @@ class PhasorPyAdapter:
         """Load image data from artifact reference."""
         if isinstance(artifact, dict):
             uri = artifact.get("uri", "")
-            fmt = artifact.get("format")
         else:
             uri = getattr(artifact, "uri", "")
-            fmt = getattr(artifact, "format", None)
 
         if not uri:
             raise ValueError(f"Artifact missing URI: {artifact}")
@@ -212,7 +213,6 @@ class PhasorPyAdapter:
             raise RuntimeError(f"phasorpy is not installed, cannot execute {func_name}")
 
         # Resolve inputs
-        args = []
         kwargs = dict(params)
 
         # Map inputs to function parameters
@@ -262,3 +262,9 @@ class PhasorPyAdapter:
             outputs.append(self._save_image(imag, work_dir, "phasor-imag", "TCZYX"))
 
         return outputs
+
+    def generate_dimension_hints(
+        self, module_name: str, func_name: str
+    ) -> DimensionRequirement | None:
+        """Generate dimension hints for agent guidance."""
+        return None

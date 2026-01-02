@@ -2,8 +2,8 @@
 
 import sys
 from pathlib import Path
+
 import pytest
-import numpy as np
 
 # Add src to path for direct script execution/testing
 REPO_ROOT = Path(__file__).parent.parent.parent

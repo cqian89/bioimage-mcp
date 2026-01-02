@@ -114,11 +114,11 @@ def test_cross_env_materialization_integration(tmp_path: Path):
 
     Verified for T024.
     """
-    from bioimage_mcp.api.execution import ExecutionService
-    from bioimage_mcp.config.schema import Config
-    from bioimage_mcp.artifacts.store import ArtifactStore
-    from bioimage_mcp.artifacts.memory import build_mem_uri
     import uuid
+
+    from bioimage_mcp.api.execution import ExecutionService
+    from bioimage_mcp.artifacts.memory import build_mem_uri
+    from bioimage_mcp.config.schema import Config
 
     # Setup config and service
     config = Config(

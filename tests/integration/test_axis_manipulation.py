@@ -1,8 +1,9 @@
 """Integration tests for xarray axis manipulation operations (T033-T036)."""
 
-import pytest
 import numpy as np
+import pytest
 import xarray as xr
+
 from bioimage_mcp.registry.dynamic.xarray_adapter import XarrayAdapter
 
 

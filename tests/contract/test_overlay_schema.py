@@ -1,5 +1,5 @@
 import yaml
-import pytest
+
 from bioimage_mcp.registry.manifest_schema import ToolManifest
 
 

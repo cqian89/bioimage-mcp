@@ -1,5 +1,6 @@
 import sqlite3
 
+
 def setup_db():
     conn = sqlite3.connect(":memory:")
     conn.execute("""
@@ -46,7 +47,7 @@ def search(conn, keywords):
         score_params.extend([term, term, term])
         
         # Coverage Logic
-        c_part = f"(CASE WHEN (name LIKE ? OR description LIKE ? OR tags_json LIKE ?) THEN 1 ELSE 0 END)"
+        c_part = "(CASE WHEN (name LIKE ? OR description LIKE ? OR tags_json LIKE ?) THEN 1 ELSE 0 END)"
         coverage_parts.append(c_part)
         coverage_params.extend([term, term, term])
 

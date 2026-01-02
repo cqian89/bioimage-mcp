@@ -70,7 +70,7 @@ def analyze_imports(file_path: Path) -> ImportAnalysis:
         ImportAnalysis with categorized imports
     """
     try:
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             tree = ast.parse(f.read(), filename=str(file_path))
     except SyntaxError:
         # Skip files with syntax errors (may be templates or broken)

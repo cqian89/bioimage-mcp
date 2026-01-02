@@ -1,5 +1,3 @@
-import pytest
-from pathlib import Path
 from bioimage_mcp.registry.loader import load_manifest_file
 
 

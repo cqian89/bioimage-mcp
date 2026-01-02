@@ -3,10 +3,10 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import bioio_ome_tiff
 import numpy as np
 import tifffile
 from bioio import BioImage
-import bioio_ome_tiff
 
 # Inject BASE_TOOLS_ROOT sys.path injection consistent with other base tool tests
 BASE_TOOLS_ROOT = Path(__file__).resolve().parents[3] / "tools" / "base"

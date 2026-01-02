@@ -1,22 +1,11 @@
 from __future__ import annotations
 
-import os
-from pathlib import Path
 from typing import Any
 
 import numpy as np
 import pytest
-import xarray as xr
 from bioio import BioImage
 from bioio.writers import OmeTiffWriter
-from tifffile import imwrite
-
-from bioimage_mcp.api.execution import ExecutionService
-from bioimage_mcp.artifacts.memory import MemoryArtifactStore, build_mem_uri
-from bioimage_mcp.artifacts.models import ArtifactRef
-from bioimage_mcp.config.loader import find_repo_root
-from bioimage_mcp.config.schema import Config
-from bioimage_mcp.runtimes.persistent import PersistentWorkerManager
 
 
 class TestAxisIndependentProcessing:

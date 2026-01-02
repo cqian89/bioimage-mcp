@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from bioimage_mcp.config.schema import Config
 from bioimage_mcp.sessions.models import Session
@@ -29,7 +29,7 @@ class SessionManager:
             raise ValueError(f"Session {session.session_id} is expired")
 
         last_activity = datetime.fromisoformat(session.last_activity_at)
-        age = datetime.now(timezone.utc) - last_activity
+        age = datetime.now(UTC) - last_activity
 
         if age.total_seconds() > (self.config.session_ttl_hours * 3600):
             self.store.update_session_status(session.session_id, "expired")

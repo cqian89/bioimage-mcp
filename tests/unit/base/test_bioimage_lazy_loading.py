@@ -1,7 +1,9 @@
 from __future__ import annotations
-import pytest
+
 from pathlib import Path
+
 import dask.array as da
+import pytest
 
 FIXTURE_CZI = (
     Path(__file__).parent.parent.parent.parent
@@ -46,8 +48,8 @@ def test_bioimage_lazy_slicing():
 @pytest.mark.skipif(not FIXTURE_CZI.exists(), reason="CZI fixture not available")
 def test_bioimage_compute_materializes():
     """compute() should return a numpy array."""
-    from bioio import BioImage
     import numpy as np
+    from bioio import BioImage
 
     img = BioImage(FIXTURE_CZI)
 

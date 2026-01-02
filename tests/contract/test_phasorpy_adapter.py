@@ -8,6 +8,7 @@ for discovering and executing phasorpy functions.
 from unittest.mock import MagicMock, patch
 
 import numpy as np
+
 from bioimage_mcp.artifacts.models import ArtifactRef
 from bioimage_mcp.registry.dynamic.adapters import BaseAdapter
 from bioimage_mcp.registry.dynamic.adapters.phasorpy import PhasorPyAdapter

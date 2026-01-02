@@ -1,9 +1,11 @@
+from pathlib import Path
+
 import pytest
+
 from bioimage_mcp.api.discovery import DiscoveryService
 from bioimage_mcp.config.schema import Config
-from bioimage_mcp.storage.sqlite import connect
 from bioimage_mcp.registry.loader import load_manifests
-from pathlib import Path
+from bioimage_mcp.storage.sqlite import connect
 
 
 @pytest.mark.integration

@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
 import numpy as np
+
+if TYPE_CHECKING:
+    from bioimage_mcp.api.schemas import DimensionRequirement
 
 from bioimage_mcp.artifacts.base import Artifact
 from bioimage_mcp.registry.dynamic.adapters import BaseAdapter
@@ -159,3 +162,9 @@ class XarrayAdapterForRegistry(BaseAdapter):
                 },
             }
         ]
+
+    def generate_dimension_hints(
+        self, module_name: str, func_name: str
+    ) -> DimensionRequirement | None:
+        """Generate dimension hints for agent guidance."""
+        return None

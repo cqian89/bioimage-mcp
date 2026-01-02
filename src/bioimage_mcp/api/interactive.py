@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from bioimage_mcp.api.execution import ExecutionService
@@ -103,7 +103,7 @@ class InteractiveExecutionService:
             }
 
         # Record start time
-        started_at = datetime.now(timezone.utc).isoformat()
+        started_at = datetime.now(UTC).isoformat()
 
         # Run workflow
         # ExecutionService.run_workflow returns dict with run_id, status, etc.
@@ -112,7 +112,7 @@ class InteractiveExecutionService:
         hints = result.get("hints")
 
         # Record end time
-        ended_at = datetime.now(timezone.utc).isoformat()
+        ended_at = datetime.now(UTC).isoformat()
 
         # Retrieve full run details to get outputs and error
         run_status = self.execution.get_run_status(result["run_id"])
@@ -240,7 +240,7 @@ class InteractiveExecutionService:
         record = {
             "session_id": session_id,
             "workflow_spec": workflow_spec,
-            "exported_at": datetime.now(timezone.utc).isoformat(),
+            "exported_at": datetime.now(UTC).isoformat(),
         }
 
         # Write to artifact store

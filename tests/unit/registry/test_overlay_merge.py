@@ -1,6 +1,5 @@
-import pytest
-from bioimage_mcp.registry.manifest_schema import Function, FunctionOverlay
 from bioimage_mcp.registry.loader import merge_function_overlay
+from bioimage_mcp.registry.manifest_schema import Function, FunctionOverlay
 
 
 def test_function_overlay_instantiation():

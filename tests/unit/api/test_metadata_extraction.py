@@ -93,8 +93,8 @@ def test_extract_metadata_graceful_fallback_minimal(tmp_path, monkeypatch):
     dummy.write_bytes(b"FAKE TIFF DATA")
 
     # Mock ImportError for bioio
-    import sys
     import builtins
+    import sys
 
     # Create a fake module that raises ImportError when bioio is imported
     original_import = builtins.__import__

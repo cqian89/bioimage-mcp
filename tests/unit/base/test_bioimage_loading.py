@@ -1,7 +1,9 @@
 from __future__ import annotations
-import pytest
+
 from pathlib import Path
+
 import numpy as np
+import pytest
 
 # Path to the CZI fixture relative to this test file
 FIXTURE_CZI = (

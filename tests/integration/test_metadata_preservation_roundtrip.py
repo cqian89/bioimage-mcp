@@ -1,8 +1,10 @@
 from __future__ import annotations
-import pytest
-from pathlib import Path
+
 import tempfile
+from pathlib import Path
+
 import numpy as np
+import pytest
 
 FIXTURE_CZI = (
     Path(__file__).parent.parent.parent

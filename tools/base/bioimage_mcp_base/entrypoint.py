@@ -19,8 +19,9 @@ if str(REPO_ROOT / "src") not in sys.path:
 if str(TOOLS_ROOT) not in sys.path:
     sys.path.insert(0, str(TOOLS_ROOT))
 
+from datetime import UTC
+
 from bioimage_mcp_base import io as io_ops
-from bioimage_mcp_base import transforms as transform_ops
 
 TOOL_VERSION = "0.1.0"
 TOOL_ENV_NAME = "bioimage-mcp-base"
@@ -651,9 +652,9 @@ def _convert_outputs_to_memory(outputs: dict[str, Any], work_dir: Path) -> dict[
 
 def _now_iso() -> str:
     """Get current time in ISO format."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def main() -> int:
@@ -667,7 +668,6 @@ def main() -> int:
         0 on success, 1 on failure
     """
     import os
-
     import sys
 
     print(f"DEBUG: BASE ENTRYPOINT CALLED with PID {os.getpid()}", file=sys.stderr)

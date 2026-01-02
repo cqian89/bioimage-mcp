@@ -1,14 +1,11 @@
-"""
-Data models for dynamic function registry.
-
-Defines the core models for introspecting and representing dynamically
-discovered functions from Python libraries.
-"""
+from __future__ import annotations
 
 from enum import Enum
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
+
+from bioimage_mcp.api.schemas import FunctionHints
 
 
 class IOPattern(str, Enum):
@@ -50,6 +47,7 @@ class FunctionMetadata(BaseModel):
     parameters: dict[str, ParameterSchema] = Field(default_factory=dict)
     io_pattern: IOPattern = IOPattern.GENERIC
     tags: list[str] = Field(default_factory=list)
+    hints: FunctionHints | None = None
 
 
 class ApplyUfuncConfig(BaseModel):

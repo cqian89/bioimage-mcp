@@ -68,7 +68,7 @@ class TestNDJSONFraming:
         3. No embedded newlines in the JSON
         4. Valid JSON when newline is stripped
         """
-        from bioimage_mcp.runtimes.worker_ipc import encode_message, ExecuteRequest
+        from bioimage_mcp.runtimes.worker_ipc import ExecuteRequest, encode_message
 
         msg = ExecuteRequest(
             command="execute",
@@ -118,9 +118,9 @@ class TestNDJSONFraming:
     def test_round_trip_encoding_decoding(self):
         """Verify that encode -> decode preserves message structure."""
         from bioimage_mcp.runtimes.worker_ipc import (
+            MaterializeRequest,
             decode_message,
             encode_message,
-            MaterializeRequest,
         )
 
         original = MaterializeRequest(

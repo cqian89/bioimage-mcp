@@ -234,6 +234,7 @@ def load_manifest_file(path: Path) -> tuple[ToolManifest | None, ManifestDiagnos
                     inputs=inputs,
                     outputs=outputs,
                     params_schema=params_schema,
+                    hints=meta.hints,
                     introspection_source=meta.source_adapter,
                 )
                 manifest.functions.append(function)

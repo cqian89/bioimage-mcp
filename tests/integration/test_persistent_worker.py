@@ -522,10 +522,10 @@ class TestMemoryArtifacts:
         5. Verify artifact is accessible for subsequent operations in same worker
         """
         import numpy as np
+        from bioio.writers import OmeTiffWriter
 
         from bioimage_mcp.artifacts.memory import MemoryArtifactStore
         from bioimage_mcp.runtimes.persistent import PersistentWorkerManager
-        from bioio.writers import OmeTiffWriter
 
         # Create memory artifact store and worker manager
         memory_store = MemoryArtifactStore()
@@ -604,11 +604,11 @@ class TestMemoryArtifacts:
         5. Verify no OME-TIFF or OME-Zarr files written during handoff
         """
         import numpy as np
+        from bioio.writers import OmeTiffWriter
 
         from bioimage_mcp.artifacts.memory import MemoryArtifactStore
         from bioimage_mcp.config.loader import load_config
         from bioimage_mcp.runtimes.persistent import PersistentWorkerManager
-        from bioio.writers import OmeTiffWriter
 
         # Create memory artifact store and worker manager
         memory_store = MemoryArtifactStore()
@@ -699,10 +699,10 @@ class TestMemoryArtifacts:
         6. Verify subsequent access to ref_id fails with clear error
         """
         import numpy as np
+        from bioio.writers import OmeTiffWriter
 
         from bioimage_mcp.artifacts.memory import MemoryArtifactStore
         from bioimage_mcp.runtimes.persistent import PersistentWorkerManager
-        from bioio.writers import OmeTiffWriter
 
         # Create memory artifact store and worker manager
         memory_store = MemoryArtifactStore()
@@ -799,11 +799,11 @@ class TestCrossEnvironmentHandoff:
         6. Verify both operations complete successfully
         """
         import numpy as np
+        from bioio.writers import OmeTiffWriter
 
         from bioimage_mcp.api.execution import ExecutionService
         from bioimage_mcp.artifacts.memory import MemoryArtifactStore
         from bioimage_mcp.runtimes.persistent import PersistentWorkerManager
-        from bioio.writers import OmeTiffWriter
 
         # Use mcp_services fixture for proper setup
         config = mcp_services["config"]
@@ -915,10 +915,10 @@ class TestCrossEnvironmentHandoff:
         5. Verify data integrity (matches original mem:// data)
         """
         import numpy as np
+        from bioio.writers import OmeTiffWriter
 
         from bioimage_mcp.artifacts.memory import MemoryArtifactStore
         from bioimage_mcp.runtimes.persistent import PersistentWorkerManager
-        from bioio.writers import OmeTiffWriter
 
         memory_store = MemoryArtifactStore()
         manager = PersistentWorkerManager(memory_store=memory_store)
@@ -1005,10 +1005,10 @@ class TestCrossEnvironmentHandoff:
         """
 
         import numpy as np
+        from bioio.writers import OmeTiffWriter
 
         from bioimage_mcp.artifacts.memory import MemoryArtifactStore
         from bioimage_mcp.runtimes.persistent import PersistentWorkerManager
-        from bioio.writers import OmeTiffWriter
 
         memory_store = MemoryArtifactStore()
         manager = PersistentWorkerManager(memory_store=memory_store)

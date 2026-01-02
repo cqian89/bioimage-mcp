@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from typing import Any
 
 import numpy as np
 from bioimage_mcp_base.utils import (
@@ -12,7 +11,6 @@ from bioimage_mcp_base.utils import (
     save_zarr,
     uri_to_path,
 )
-from bioio import BioImage
 
 
 def _assert_read_allowed(path: Path) -> None:

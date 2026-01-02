@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -47,7 +47,7 @@ class SchemaCache:
         functions[fn_id] = {
             "params_schema": params_schema,
             "introspection_source": introspection_source,
-            "introspected_at": datetime.now(timezone.utc).isoformat(),
+            "introspected_at": datetime.now(UTC).isoformat(),
         }
         self._write(data)
 

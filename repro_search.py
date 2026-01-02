@@ -1,5 +1,5 @@
 import sqlite3
-import json
+
 
 def setup_db():
     conn = sqlite3.connect(":memory:")
@@ -43,7 +43,7 @@ def search(conn, keywords):
         score_parts.append(f"({s_name} + {s_desc} + {s_tags})")
         params.extend([term, term, term])
         
-        c_part = f"(CASE WHEN (name LIKE ? OR description LIKE ? OR tags_json LIKE ?) THEN 1 ELSE 0 END)"
+        c_part = "(CASE WHEN (name LIKE ? OR description LIKE ? OR tags_json LIKE ?) THEN 1 ELSE 0 END)"
         coverage_parts.append(c_part)
         params.extend([term, term, term])
 

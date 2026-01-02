@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, cast
 
 from bioimage_mcp.config.schema import Config
@@ -38,7 +38,7 @@ class SessionStore:
 
     def create_session(self, session_id: str, connection_hint: str | None = None) -> Session:
         # Explicitly provide fields to satisfy linter
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         session = Session(
             session_id=session_id,
             connection_hint=connection_hint,
@@ -81,7 +81,7 @@ class SessionStore:
         if last_activity_at:
             new_activity = last_activity_at.isoformat()
         else:
-            new_activity = datetime.now(timezone.utc).isoformat()
+            new_activity = datetime.now(UTC).isoformat()
 
         with self.conn:
             self.conn.execute(
@@ -115,7 +115,7 @@ class SessionStore:
         if isinstance(started_at, datetime):
             started_at_str = started_at.isoformat()
         elif started_at is None:
-            started_at_str = datetime.now(timezone.utc).isoformat()
+            started_at_str = datetime.now(UTC).isoformat()
         else:
             started_at_str = started_at
 

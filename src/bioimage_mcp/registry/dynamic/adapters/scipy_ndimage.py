@@ -8,7 +8,7 @@ import importlib
 import inspect
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
 import numpy as np
@@ -22,6 +22,10 @@ try:
     import tifffile
 except ImportError:
     tifffile = None
+
+
+if TYPE_CHECKING:
+    from bioimage_mcp.api.schemas import DimensionRequirement
 
 
 class ScipyNdimageAdapter(BaseAdapter):
@@ -196,3 +200,9 @@ class ScipyNdimageAdapter(BaseAdapter):
         output_ref = self._save_image(result, work_dir=work_dir)
 
         return [output_ref]
+
+    def generate_dimension_hints(
+        self, module_name: str, func_name: str
+    ) -> DimensionRequirement | None:
+        """Generate dimension hints for agent guidance."""
+        return None

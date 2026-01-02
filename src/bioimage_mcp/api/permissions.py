@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from urllib.parse import unquote, urlparse
@@ -139,7 +139,7 @@ class PermissionService:
                     mode=decision_mode,
                     decision="DENIED",
                     reason=reason,
-                    timestamp=datetime.now(tz=timezone.utc),
+                    timestamp=datetime.now(tz=UTC),
                 )
                 logger.info(
                     "Permission %s for %s: %s (Reason: %s)",
@@ -170,7 +170,7 @@ class PermissionService:
                 mode=decision_mode,
                 decision="DENIED",
                 reason=reason,
-                timestamp=datetime.now(tz=timezone.utc),
+                timestamp=datetime.now(tz=UTC),
             )
             logger.info(
                 "Permission %s for %s: %s (Reason: %s)",
@@ -195,7 +195,7 @@ class PermissionService:
                     mode=decision_mode,
                     decision="ALLOWED",
                     reason=reason,
-                    timestamp=datetime.now(tz=timezone.utc),
+                    timestamp=datetime.now(tz=UTC),
                 )
                 logger.info(
                     "Permission %s for %s: %s (Reason: %s)",
@@ -213,7 +213,7 @@ class PermissionService:
             mode=decision_mode,
             decision="DENIED",
             reason=reason,
-            timestamp=datetime.now(tz=timezone.utc),
+            timestamp=datetime.now(tz=UTC),
         )
         logger.info(
             "Permission %s for %s: %s (Reason: %s)",

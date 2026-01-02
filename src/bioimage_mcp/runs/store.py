@@ -3,14 +3,14 @@ from __future__ import annotations
 import json
 import sqlite3
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from bioimage_mcp.config.schema import Config
 from bioimage_mcp.storage.sqlite import connect
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 class RunStore:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from pydantic import BaseModel
 
@@ -47,7 +47,7 @@ def test_permission_decision_required_fields_and_types() -> None:
         operation="read",
         path="/tmp/example.txt",
         decision="ALLOWED",
-        timestamp=datetime.now(tz=timezone.utc),
+        timestamp=datetime.now(tz=UTC),
     )
 
     assert decision.operation == "read"

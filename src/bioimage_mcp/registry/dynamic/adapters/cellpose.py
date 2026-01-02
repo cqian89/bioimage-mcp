@@ -43,9 +43,13 @@ class CellposeAdapter:
         Args:
             module_config: Configuration from manifest with:
                 - module_name: module name to scan (e.g., "cellpose.models")
+                - modules: alternative list of module names
         """
         module_name = module_config.get("module_name", "")
-        if module_name != "cellpose.models":
+        modules = module_config.get("modules", [])
+
+        # Check if we should scan cellpose.models
+        if module_name != "cellpose.models" and "cellpose.models" not in modules:
             return []
 
         if CellposeModel is None:
@@ -69,7 +73,7 @@ class CellposeAdapter:
         metadata.name = "segment"
         metadata.module = "cellpose.models"
         metadata.qualified_name = "cellpose.models.segment"
-        metadata.fn_id = "cellpose.models.segment"
+        metadata.fn_id = "cellpose.segment"
 
         # Clean up parameters
         # Remove 'self' if it's there

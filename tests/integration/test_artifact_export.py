@@ -46,8 +46,8 @@ def test_base_bioio_export_materializes_mem_to_file(mcp_services):
     # 1. Create a memory artifact
     # First create a file to import
     import numpy as np
-    from bioio.writers import OmeTiffWriter
     from bioio import BioImage
+    from bioio.writers import OmeTiffWriter
 
     shape = (1, 1, 1, 64, 64)
     data = np.random.rand(*shape).astype(np.float32)

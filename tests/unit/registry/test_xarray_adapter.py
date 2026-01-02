@@ -1,9 +1,10 @@
-import pytest
 import json
 import sys
-from pathlib import Path
 from io import StringIO
+from pathlib import Path
+
 import numpy as np
+import pytest
 from bioio.writers import OmeTiffWriter
 
 from bioimage_mcp.registry.dynamic.adapters import ADAPTER_REGISTRY

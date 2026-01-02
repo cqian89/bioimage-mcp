@@ -11,10 +11,11 @@ Measures:
 - Memory usage patterns
 """
 
-import time
-import tempfile
 import statistics
+import tempfile
+import time
 from pathlib import Path
+
 import numpy as np
 
 # Configuration
@@ -45,9 +46,9 @@ def benchmark_file_backed_chain(image_path, num_operations=3):
     2. Process in memory
     3. Write to disk
     """
+    import xarray as xr
     from bioio import BioImage
     from bioio.writers import OmeTiffWriter
-    import xarray as xr
 
     start = time.perf_counter()
     current_path = image_path
@@ -86,9 +87,9 @@ def benchmark_memory_backed_chain(image_path, num_operations=3):
     2. Process in memory (no intermediate I/O)
     3. Write to disk at the end only
     """
+    import xarray as xr
     from bioio import BioImage
     from bioio.writers import OmeTiffWriter
-    import xarray as xr
 
     start = time.perf_counter()
 

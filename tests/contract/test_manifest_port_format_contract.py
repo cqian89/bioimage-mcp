@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-import pytest
 from pathlib import Path
+
+import pytest
+
 from bioimage_mcp.registry.loader import load_manifests
 from bioimage_mcp.registry.manifest_schema import InterchangeFormat
 
@@ -58,7 +60,7 @@ def test_manifest_port_formats_canonical() -> None:
                     )
 
     if errors:
-        pytest.fail(f"Non-canonical Port.format values found:\n" + "\n".join(errors))
+        pytest.fail("Non-canonical Port.format values found:\n" + "\n".join(errors))
 
 
 def test_interchange_format_enum_validation() -> None:

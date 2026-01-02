@@ -4,7 +4,6 @@ import sys
 from pathlib import Path
 
 import numpy as np
-import pytest
 
 BASE_TOOLS_ROOT = Path(__file__).resolve().parents[3] / "tools" / "base"
 if str(BASE_TOOLS_ROOT) not in sys.path:
