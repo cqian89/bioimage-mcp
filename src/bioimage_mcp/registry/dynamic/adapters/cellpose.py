@@ -38,11 +38,6 @@ class CellposeAdapter:
         "cellpose.train": ["train_seg"],
     }
 
-    # Backward compatibility mapping: fn_id -> (actual_module, actual_func_name)
-    BACKWARD_COMPATIBILITY = {
-        "cellpose.segment": ("cellpose.models.CellposeModel", "eval"),
-    }
-
     # Model types for segment
     MODEL_TYPES = ["cyto3", "cyto2", "cyto", "nuclei", "tissuenet", "livecell"]
 
@@ -86,13 +81,6 @@ class CellposeAdapter:
                                 func, "cellpose.models", f"cellpose.{func_name}", func_name
                             )
                             all_metadata.append(meta)
-
-                            # Handle backward compatibility for segment
-                            if func_name == "eval":
-                                compat_meta = self._introspect_and_format(
-                                    func, "cellpose.models", "cellpose.segment", "segment"
-                                )
-                                all_metadata.append(compat_meta)
 
                 # Handling for modules
                 elif target == "cellpose.train":

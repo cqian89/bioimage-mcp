@@ -29,7 +29,7 @@ class TestCellposeAdapterE2E:
         return tmp_path / "cellpose_test"
 
     def test_cellpose_adapter_discover_with_real_cellpose(self):
-        """CellposeAdapter discovers segment function with real cellpose."""
+        """CellposeAdapter discovers eval function with real cellpose."""
         from bioimage_mcp.registry.dynamic.adapters.cellpose import CellposeAdapter
 
         adapter = CellposeAdapter()
@@ -37,12 +37,12 @@ class TestCellposeAdapterE2E:
 
         assert len(metadata) > 0
 
-        segment_meta = next((m for m in metadata if "segment" in m.name.lower()), None)
-        assert segment_meta is not None
-        assert segment_meta.io_pattern.value == "image_to_labels"
+        eval_meta = next((m for m in metadata if "eval" in m.name.lower()), None)
+        assert eval_meta is not None
+        assert eval_meta.io_pattern.value == "image_to_labels"
 
-    def test_cellpose_adapter_execute_segment(self, sample_image_path, work_dir):
-        """CellposeAdapter can execute segment on real image."""
+    def test_cellpose_adapter_execute_eval(self, sample_image_path, work_dir):
+        """CellposeAdapter can execute eval on real image."""
         from bioimage_mcp.registry.dynamic.adapters.cellpose import CellposeAdapter
 
         adapter = CellposeAdapter()
@@ -55,10 +55,10 @@ class TestCellposeAdapterE2E:
             "format": "OME-TIFF",
         }
 
-        # Execute segment with minimal params
+        # Execute eval with minimal params
         # Note: CellposeAdapter.execute currently calls run_segment regardless of fn_id
         outputs = adapter.execute(
-            fn_id="cellpose.segment",
+            fn_id="cellpose.eval",
             inputs=[input_artifact],
             params={"model_type": "cyto3", "diameter": 30.0},
             work_dir=work_dir,
@@ -71,11 +71,11 @@ class TestCellposeAdapterE2E:
         assert Path(labels_output["path"]).exists()
 
     def test_cellpose_adapter_dimension_hints(self):
-        """CellposeAdapter returns dimension hints for segment."""
+        """CellposeAdapter returns dimension hints for eval."""
         from bioimage_mcp.registry.dynamic.adapters.cellpose import CellposeAdapter
 
         adapter = CellposeAdapter()
-        hints = adapter.generate_dimension_hints("cellpose.models", "segment")
+        hints = adapter.generate_dimension_hints("cellpose.models", "eval")
 
         assert hints is not None
         assert hints.max_ndim == 3

@@ -96,8 +96,17 @@ def test_meta_describe_eval():
         "ordinal": 1,
     }
     # Mock _introspect_cellpose_eval to avoid heavy imports
-    with patch("bioimage_mcp_cellpose.entrypoint._introspect_cellpose_eval") as mock_intro:
+    with (
+        patch("bioimage_mcp_cellpose.entrypoint._introspect_cellpose_eval") as mock_intro,
+        patch("bioimage_mcp_cellpose.entrypoint._convert_memory_inputs_to_files") as mock_convert,
+    ):
         mock_intro.return_value = {"type": "object", "properties": {}}
+        mock_convert.side_effect = lambda inputs, wd: inputs
+
         response = process_execute_request(request)
+
+        if not response.get("ok"):
+            print(f"Response error: {response}")
+
         assert response["ok"] is True
         assert "result" in response["outputs"]

@@ -28,34 +28,6 @@ dynamic_sources:
       - "test_*"
 
 functions:
-  # Primary segmentation function (static fallback)
-  - fn_id: cellpose.segment
-    aliases: [cellpose.eval, cellpose.models.CellposeModel.eval]
-    tool_id: tools.cellpose
-    name: Cellpose Segment
-    description: Segment cells or nuclei using Cellpose deep learning models.
-    tags: [segmentation, deep-learning, cells, nuclei]
-    inputs:
-      - name: image
-        artifact_type: BioImageRef
-        required: true
-    outputs:
-      - name: labels
-        artifact_type: LabelImageRef
-        format: OME-TIFF
-        required: true
-      - name: cellpose_bundle
-        artifact_type: NativeOutputRef
-        format: cellpose-seg-npy
-        required: false
-    # params_schema is minimal; full schema comes from meta.describe
-    params_schema:
-      type: object
-      properties: {}
-    resource_hints:
-      gpu_recommended: true
-      memory_mb: 4096
-
   # New evaluation function (primary for modern API)
   - fn_id: cellpose.eval
     tool_id: tools.cellpose

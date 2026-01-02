@@ -38,7 +38,7 @@ def test_cellpose_adapter_registered():
 
 
 def test_cellpose_adapter_discover():
-    """CellposeAdapter discovers segment function."""
+    """CellposeAdapter discovers eval function."""
     from bioimage_mcp.registry.dynamic.adapters.cellpose import CellposeAdapter
 
     adapter = CellposeAdapter()
@@ -54,29 +54,29 @@ def test_cellpose_adapter_discover():
 
         assert len(discovered) > 0
         fn_ids = [m.fn_id for m in discovered]
-        assert "cellpose.segment" in fn_ids
+        assert "cellpose.eval" in fn_ids
 
-        # Check that segment function has correct metadata
-        segment_meta = next(m for m in discovered if m.fn_id == "cellpose.segment")
-        assert segment_meta.io_pattern == IOPattern.IMAGE_TO_LABELS
-        assert "model_type" in segment_meta.parameters
+        # Check that eval function has correct metadata
+        eval_meta = next(m for m in discovered if m.fn_id == "cellpose.eval")
+        assert eval_meta.io_pattern == IOPattern.IMAGE_TO_LABELS
+        assert "model_type" in eval_meta.parameters
 
 
 def test_cellpose_adapter_io_pattern():
-    """segment maps to IMAGE_TO_LABELS pattern."""
+    """eval maps to IMAGE_TO_LABELS pattern."""
     from bioimage_mcp.registry.dynamic.adapters.cellpose import CellposeAdapter
 
     adapter = CellposeAdapter()
-    pattern = adapter.resolve_io_pattern("segment", None)
+    pattern = adapter.resolve_io_pattern("eval", None)
     assert pattern == IOPattern.IMAGE_TO_LABELS
 
 
 def test_cellpose_adapter_dimension_hints():
-    """segment returns appropriate dimension hints."""
+    """eval returns appropriate dimension hints."""
     from bioimage_mcp.registry.dynamic.adapters.cellpose import CellposeAdapter
 
     adapter = CellposeAdapter()
-    hints = adapter.generate_dimension_hints("cellpose.models", "segment")
+    hints = adapter.generate_dimension_hints("cellpose.models", "eval")
 
     assert hints is not None
     assert hints.min_ndim == 2
@@ -103,9 +103,9 @@ def test_cellpose_adapter_execute_logic():
     mock_input.model_dump.return_value = {"uri": "file:///tmp/input.tif"}
 
     # Mock the entire bioimage_mcp_cellpose module structure
-    mock_run_segment = MagicMock(return_value=mock_result)
+    mock_run_eval = MagicMock(return_value=mock_result)
     mock_ops = MagicMock()
-    mock_ops.run_segment = mock_run_segment
+    mock_ops.run_segment = mock_run_eval
 
     with patch.dict(
         sys.modules,
@@ -115,9 +115,9 @@ def test_cellpose_adapter_execute_logic():
             "bioimage_mcp_cellpose.ops.segment": mock_ops,
         },
     ):
-        outputs = adapter.execute("cellpose.segment", [mock_input], {"diameter": 30})
+        outputs = adapter.execute("cellpose.eval", [mock_input], {"diameter": 30})
 
         assert len(outputs) == 2
         assert outputs[0]["type"] == "LabelImageRef"
         assert outputs[1]["type"] == "NativeOutputRef"
-        mock_run_segment.assert_called_once()
+        mock_run_eval.assert_called_once()

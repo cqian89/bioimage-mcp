@@ -509,11 +509,6 @@ def main() -> int:
     """Main entrypoint supporting both single-request and persistent mode."""
     # 1. IMMEDIATE handshake for persistent mode
     is_persistent_mode = "BIOIMAGE_MCP_SESSION_ID" in os.environ
-    if is_persistent_mode:
-        print(
-            json.dumps({"command": "ready", "status": "initializing", "version": TOOL_VERSION}),
-            flush=True,
-        )
 
     # 2. Safe initialization / heavy imports
     try:

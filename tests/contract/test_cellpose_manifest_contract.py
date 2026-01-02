@@ -66,8 +66,8 @@ class TestCellposeManifestContract:
             "env_id must be 'bioimage-mcp-cellpose'"
         )
 
-    def test_manifest_has_segment_function(self) -> None:
-        """Test that manifest defines a cellpose.segment function."""
+    def test_manifest_has_eval_function(self) -> None:
+        """Test that manifest defines a cellpose.eval function."""
         if not CELLPOSE_MANIFEST_PATH.exists():
             pytest.skip("Cellpose manifest not yet created")
 
@@ -77,7 +77,7 @@ class TestCellposeManifestContract:
         functions = raw.get("functions", [])
         fn_ids = [f.get("fn_id") for f in functions]
 
-        assert "cellpose.segment" in fn_ids, "Manifest must define cellpose.segment function"
+        assert "cellpose.eval" in fn_ids, "Manifest must define cellpose.eval function"
 
     def test_manifest_has_meta_describe_function(self) -> None:
         """Test that manifest defines a meta.describe function."""
@@ -94,8 +94,8 @@ class TestCellposeManifestContract:
             "Manifest must define meta.describe function for dynamic schema"
         )
 
-    def test_segment_function_io_ports(self) -> None:
-        """Test that cellpose.segment has correct I/O ports."""
+    def test_eval_function_io_ports(self) -> None:
+        """Test that cellpose.eval has correct I/O ports."""
         if not CELLPOSE_MANIFEST_PATH.exists():
             pytest.skip("Cellpose manifest not yet created")
 
@@ -103,19 +103,19 @@ class TestCellposeManifestContract:
             raw = yaml.safe_load(f)
 
         functions = raw.get("functions", [])
-        segment_fn = next(
-            (f for f in functions if f.get("fn_id") == "cellpose.segment"),
+        eval_fn = next(
+            (f for f in functions if f.get("fn_id") == "cellpose.eval"),
             None,
         )
 
-        assert segment_fn is not None, "cellpose.segment function not found"
+        assert eval_fn is not None, "cellpose.eval function not found"
 
         # Check inputs
-        inputs = segment_fn.get("inputs", [])
+        inputs = eval_fn.get("inputs", [])
         input_names = [i.get("name") for i in inputs]
-        assert "image" in input_names, "cellpose.segment must have 'image' input"
+        assert "image" in input_names, "cellpose.eval must have 'image' input"
 
         # Check outputs
-        outputs = segment_fn.get("outputs", [])
+        outputs = eval_fn.get("outputs", [])
         output_names = [o.get("name") for o in outputs]
-        assert "labels" in output_names, "cellpose.segment must have 'labels' output"
+        assert "labels" in output_names, "cellpose.eval must have 'labels' output"

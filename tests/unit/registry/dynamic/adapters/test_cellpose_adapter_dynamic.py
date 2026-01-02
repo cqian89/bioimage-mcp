@@ -1,19 +1,21 @@
 import sys
+import importlib
 from unittest.mock import MagicMock, patch
 import pytest
+from bioimage_mcp.registry.dynamic.models import IOPattern
 
-# Mock cellpose before importing the adapter if not present
-try:
-    import cellpose  # noqa: F401
-except ImportError:
+
+@pytest.fixture(scope="function")
+def adapter():
+    """Setup adapter with mocked cellpose environment."""
+    # Create mocks
     mock_cellpose = MagicMock()
     mock_cellpose_models = MagicMock()
     mock_cellpose_train = MagicMock()
+
+    # Make sure submodules are accessible via attributes
     mock_cellpose.models = mock_cellpose_models
     mock_cellpose.train = mock_cellpose_train
-    sys.modules["cellpose"] = mock_cellpose
-    sys.modules["cellpose.models"] = mock_cellpose_models
-    sys.modules["cellpose.train"] = mock_cellpose_train
 
     # Mock CellposeModel.eval for introspection
     def mock_eval(self, x, diameter=30.0, channels=None):
@@ -29,14 +31,38 @@ except ImportError:
 
     mock_cellpose_train.train_seg = mock_train_seg
 
-from bioimage_mcp.registry.dynamic.adapters.cellpose import CellposeAdapter
-from bioimage_mcp.registry.dynamic.models import IOPattern
+    # Patch sys.modules
+    # We use patch.dict to safely inject mocks and clean them up afterwards
+    with patch.dict(
+        sys.modules,
+        {
+            "cellpose": mock_cellpose,
+            "cellpose.models": mock_cellpose_models,
+            "cellpose.train": mock_cellpose_train,
+        },
+    ):
+        # Import and reload the adapter to ensure it picks up the mocked modules
+        import bioimage_mcp.registry.dynamic.adapters.cellpose
+
+        importlib.reload(bioimage_mcp.registry.dynamic.adapters.cellpose)
+
+        from bioimage_mcp.registry.dynamic.adapters.cellpose import CellposeAdapter
+
+        yield CellposeAdapter()
+
+    # After test, we should reload again to clear any stale state if needed,
+    # but patch.dict handles sys.modules cleanup.
+    # However, the module object itself (bioimage_mcp.registry.dynamic.adapters.cellpose)
+    # might still hold references to the mocks if we don't reload it again.
+    # Ideally, we reload it here too, but it might fail if cellpose is missing.
+    # That's fine for subsequent tests that expect cellpose to be missing.
+    import bioimage_mcp.registry.dynamic.adapters.cellpose
+
+    importlib.reload(bioimage_mcp.registry.dynamic.adapters.cellpose)
 
 
-def test_cellpose_adapter_discovers_multiple_functions():
+def test_cellpose_adapter_discovers_multiple_functions(adapter):
     """CellposeAdapter discovers eval and train_seg functions."""
-    adapter = CellposeAdapter()
-
     # Test discovery for cellpose.models
     discovered = adapter.discover({"module_name": "cellpose.models.CellposeModel"})
 
@@ -51,10 +77,8 @@ def test_cellpose_adapter_discovers_multiple_functions():
     assert "model_type" in eval_meta.parameters
 
 
-def test_cellpose_adapter_discovers_train_seg():
+def test_cellpose_adapter_discovers_train_seg(adapter):
     """CellposeAdapter discovers train_seg function."""
-    adapter = CellposeAdapter()
-
     # Test discovery for cellpose.train
     discovered = adapter.discover({"module_name": "cellpose.train"})
 
@@ -71,15 +95,36 @@ def test_cellpose_adapter_discovers_train_seg():
     assert train_meta.parameters["train_data"].required is True
 
 
-def test_cellpose_adapter_backward_compatibility():
-    """Existing cellpose.segment fn_id still works (mapped to eval)."""
-    adapter = CellposeAdapter()
+def test_cellpose_adapter_execute(adapter):
+    """CellposeAdapter can execute eval."""
+    from bioimage_mcp.artifacts.base import Artifact
 
-    discovered = adapter.discover({"module_name": "cellpose.models.CellposeModel"})
-    fn_ids = [m.fn_id for m in discovered]
-    assert "cellpose.segment" in fn_ids
+    # Mock run_segment
+    mock_result = {
+        "labels": {"type": "LabelImageRef", "uri": "file:///tmp/labels.tif"},
+        "cellpose_bundle": {"type": "NativeOutputRef", "uri": "file:///tmp/bundle.npy"},
+    }
 
-    segment_meta = next(m for m in discovered if m.fn_id == "cellpose.segment")
-    assert segment_meta.io_pattern == IOPattern.IMAGE_TO_LABELS
-    assert "diameter" in segment_meta.parameters
-    assert "model_type" in segment_meta.parameters
+    # Create a mock artifact
+    mock_input = MagicMock(spec=Artifact)
+    mock_input.model_dump.return_value = {"uri": "file:///tmp/input.tif"}
+
+    # Mock the entire bioimage_mcp_cellpose module structure
+    mock_run_eval = MagicMock(return_value=mock_result)
+    mock_ops = MagicMock()
+    mock_ops.run_segment = mock_run_eval
+
+    with patch.dict(
+        sys.modules,
+        {
+            "bioimage_mcp_cellpose": MagicMock(),
+            "bioimage_mcp_cellpose.ops": MagicMock(),
+            "bioimage_mcp_cellpose.ops.segment": mock_ops,
+        },
+    ):
+        outputs = adapter.execute("cellpose.eval", [mock_input], {"diameter": 30})
+
+        assert len(outputs) == 2
+        assert outputs[0]["type"] == "LabelImageRef"
+        assert outputs[1]["type"] == "NativeOutputRef"
+        mock_run_eval.assert_called_once()
