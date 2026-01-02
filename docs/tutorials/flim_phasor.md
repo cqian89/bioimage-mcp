@@ -68,3 +68,49 @@ intensity_ref = phasor_res.outputs["output"]
 seg_res = await mcp.call_tool("cellpose.segment", inputs={"image": intensity_ref})
 mask_ref = seg_res.outputs["labels"]
 ```
+
+## Supported Vendor Formats
+
+The `bioimage-mcp` base environment includes `bioio` plugins to handle common vendor-specific FLIM formats directly, without needing external conversion tools.
+
+| Format | Extension | Required Plugin | Support |
+|--------|-----------|-----------------|---------|
+| Becker & Hickl | `.sdt` | `bioio-bioformats` | Full (TCZYX) |
+| Leica | `.lif` | `bioio-lif` | Full (TCZYX) |
+| PicoQuant | `.ptu` | `bioio-bioformats` | Experimental* |
+
+\* *PTU support depends on the underlying Bio-Formats version and may require additional configuration in some environments.*
+
+### Example: Loading a Leica LIF file
+
+LIF files often contain multiple images or "scenes". When loading a LIF file, `bioio` will typically present the first scene by default.
+
+```python
+# LIF files are loaded automatically via the bioio-lif plugin
+lif_ref = await mcp.call_tool(
+    "base.phasorpy.phasor.phasor_from_signal",
+    inputs={"signal": {"uri": "file:///path/to/data.lif", "type": "BioImageRef"}}
+)
+```
+
+### Example: Loading a Becker & Hickl SDT file
+
+SDT files are handled via the `bioio-bioformats` plugin.
+
+```python
+sdt_ref = await mcp.call_tool(
+    "base.phasorpy.phasor.phasor_from_signal",
+    inputs={"signal": {"uri": "file:///path/to/data.sdt", "type": "BioImageRef"}}
+)
+```
+
+## Metadata Preservation
+
+Phasor analysis results produced by the `phasorpy` adapter include metadata about the transform parameters:
+
+*   `frequency`: The modulation frequency (MHz) used for the transform.
+*   `harmonic`: The harmonic number.
+*   `phasorpy_version`: The version of the PhasorPy library used.
+
+This metadata is stored within the `BioImageRef` artifact metadata and can be inspected to ensure provenance.
+

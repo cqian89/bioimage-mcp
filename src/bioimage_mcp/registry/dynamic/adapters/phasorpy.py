@@ -193,6 +193,7 @@ class PhasorPyAdapter:
         work_dir: Path | None = None,
         name: str = "output",
         axes: str = "TCZYX",
+        extra_metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Save image array to file and return artifact reference dict."""
         ext = ".ome.tiff"
@@ -206,25 +207,31 @@ class PhasorPyAdapter:
             work_dir.mkdir(parents=True, exist_ok=True)
             path = work_dir / f"{name}{ext}"
 
-        # Ensure axes match dimensions
-        if len(axes) > array.ndim:
-            axes = axes[-array.ndim :]
-        elif len(axes) < array.ndim:
-            axes = "TCZYX"[-array.ndim :]
+        # Ensure array has same number of dimensions as axes
+        if array.ndim < len(axes):
+            for _ in range(len(axes) - array.ndim):
+                array = np.expand_dims(array, axis=0)
+        elif array.ndim > len(axes):
+            # This shouldn't happen with TCZYX usually, but if it does, we take the last ones
+            axes = "TCZYX"[-array.ndim :] if array.ndim <= 5 else "ABCDE"[: array.ndim]
 
         from bioio.writers import OmeTiffWriter
 
         OmeTiffWriter.save(array, str(path), dim_order=axes)
 
+        metadata = {
+            "axes": axes,
+            "shape": list(array.shape),
+            "dtype": str(array.dtype),
+        }
+        if extra_metadata:
+            metadata.update(extra_metadata)
+
         return {
             "type": "BioImageRef",
             "format": "OME-TIFF",
             "path": str(path.absolute()),
-            "metadata": {
-                "axes": axes,
-                "shape": list(array.shape),
-                "dtype": str(array.dtype),
-            },
+            "metadata": metadata,
         }
 
     def execute(
@@ -311,6 +318,24 @@ class PhasorPyAdapter:
 
         result = target_fn(*pos_args, **kw_args)
 
+        # Prepare metadata for output (T026, T039)
+        extra_metadata = {}
+        try:
+            import phasorpy
+
+            extra_metadata["phasorpy_version"] = getattr(phasorpy, "__version__", "unknown")
+        except ImportError:
+            pass
+
+        # Include parameters in metadata
+        if params:
+            extra_metadata["parameters"] = params
+            # Also flatten common ones for easier access
+            if "frequency" in params:
+                extra_metadata["frequency"] = params["frequency"]
+            if "harmonic" in params:
+                extra_metadata["harmonic"] = params["harmonic"]
+
         # Handle outputs
         outputs = []
         if isinstance(result, tuple) and not is_plot:
@@ -323,9 +348,20 @@ class PhasorPyAdapter:
                     elif "phasor" in func_name and len(result) == 2 and i < 2:
                         name_hint = ["real", "imag"][i]
 
-                    outputs.append(self._save_image(item, work_dir, f"{func_name}-{name_hint}"))
+                    outputs.append(
+                        self._save_image(
+                            item,
+                            work_dir,
+                            f"{func_name}-{name_hint}",
+                            extra_metadata=extra_metadata,
+                        )
+                    )
         elif isinstance(result, np.ndarray) and not is_plot:
-            outputs.append(self._save_image(result, work_dir, f"{func_name}-output"))
+            outputs.append(
+                self._save_image(
+                    result, work_dir, f"{func_name}-output", extra_metadata=extra_metadata
+                )
+            )
         elif is_plot:
             # Handle plot functions - they might return a figure or axis
             import matplotlib.pyplot as plt

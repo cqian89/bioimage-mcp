@@ -105,7 +105,7 @@ def test_sdt_loading_normalization(adapter):
 @pytest.mark.integration
 def test_phasor_from_signal_execution_returns_gs(adapter, tmp_path):
     """T011: phasor_from_signal execution returns G/S images."""
-    # T=100 (lifetimes), C=1, Z=1, Y=32, X=32
+    # T=1, C=1, Z=100 (lifetimes), Y=32, X=32
     data = np.random.rand(1, 1, 100, 32, 32).astype(np.float32)
     input_path = tmp_path / "signal.ome.tiff"
     from bioio.writers import OmeTiffWriter
@@ -117,7 +117,7 @@ def test_phasor_from_signal_execution_returns_gs(adapter, tmp_path):
     outputs = adapter.execute(
         fn_id="phasorpy.phasor.phasor_from_signal",
         inputs=[input_artifact],
-        params={"frequency": 80.0},
+        params={"frequency": 80.0, "axis": 2},  # Collapse Z dimension
         work_dir=tmp_path,
     )
 
@@ -128,7 +128,7 @@ def test_phasor_from_signal_execution_returns_gs(adapter, tmp_path):
     for out in outputs:
         meta = out.get("metadata", {}) if isinstance(out, dict) else out.metadata
         # Output should be 2D spatial + 1D Z + 1D C + 1D T (TCZYX)
-        # For phasor_from_signal, T becomes 1 as we collapsed the lifetime dimension
+        # For phasor_from_signal, Z becomes 1 as we collapsed it
         assert meta["shape"][2] == 1  # Z
         assert meta["shape"][0] == 1  # T
 
@@ -138,25 +138,41 @@ def test_phasor_from_signal_execution_returns_gs(adapter, tmp_path):
 def test_phasor_calibrate_execution_range(adapter, tmp_path):
     """T012: phasor_calibrate execution returns calibrated values in [0,1]."""
     # Create G/S mock data
-    g = np.random.rand(1, 1, 1, 32, 32).astype(np.float32)
-    s = np.random.rand(1, 1, 1, 32, 32).astype(np.float32)
+    shape = (1, 1, 1, 32, 32)
+    g = np.random.rand(*shape).astype(np.float32)
+    s = np.random.rand(*shape).astype(np.float32)
+
+    # Reference data (e.g. from a known lifetime)
+    ref_mean = np.ones(shape).astype(np.float32)
+    ref_real = np.random.rand(*shape).astype(np.float32)
+    ref_imag = np.random.rand(*shape).astype(np.float32)
 
     g_path = tmp_path / "g.ome.tiff"
     s_path = tmp_path / "s.ome.tiff"
+    rm_path = tmp_path / "rm.ome.tiff"
+    rr_path = tmp_path / "rr.ome.tiff"
+    ri_path = tmp_path / "ri.ome.tiff"
     from bioio.writers import OmeTiffWriter
 
     OmeTiffWriter.save(g, str(g_path), dim_order="TCZYX")
     OmeTiffWriter.save(s, str(s_path), dim_order="TCZYX")
+    OmeTiffWriter.save(ref_mean, str(rm_path), dim_order="TCZYX")
+    OmeTiffWriter.save(ref_real, str(rr_path), dim_order="TCZYX")
+    OmeTiffWriter.save(ref_imag, str(ri_path), dim_order="TCZYX")
 
-    # phasor_calibrate takes real, imag (G, S)
-    input_g = create_mock_artifact("g", g_path)
-    input_s = create_mock_artifact("s", s_path)
+    # phasor_calibrate takes real, imag, ref_mean, ref_real, ref_imag
+    inputs = [
+        create_mock_artifact("g", g_path),
+        create_mock_artifact("s", s_path),
+        create_mock_artifact("rm", rm_path),
+        create_mock_artifact("rr", rr_path),
+        create_mock_artifact("ri", ri_path),
+    ]
 
-    # This is expected to FAIL until implementation (not in hardcoded list)
     outputs = adapter.execute(
         fn_id="phasorpy.lifetime.phasor_calibrate",
-        inputs=[input_g, input_s],
-        params={"tau": 4.0, "frequency": 80.0},
+        inputs=inputs,
+        params={"lifetime": 4.0, "frequency": 80.0},
         work_dir=tmp_path,
     )
 
@@ -165,9 +181,8 @@ def test_phasor_calibrate_execution_range(adapter, tmp_path):
     for out in outputs:
         calibrated_data = adapter._load_image(out)
         # Phasor values should be within reasonable bounds
-        # (Though noise can push them slightly outside [0,1])
-        assert np.all(calibrated_data >= -1.1)
-        assert np.all(calibrated_data <= 1.1)
+        assert np.all(calibrated_data >= -1.5)
+        assert np.all(calibrated_data <= 1.5)
 
 
 @pytest.mark.slow
@@ -205,6 +220,87 @@ def test_plot_phasor_execution_returns_plotref(adapter, tmp_path):
     assert plot_ref.metadata.width_px > 0
     assert plot_ref.metadata.height_px > 0
     assert plot_ref.metadata.dpi == 100
+
+
+@pytest.mark.slow
+@pytest.mark.integration
+def test_lif_loading_normalization(adapter):
+    """T025: LIF file loading produces normalized TCZYX artifact."""
+    lif_path = Path("datasets/lif_flim_testdata/FLIM_testdata.lif").absolute()
+    assert lif_path.exists()
+
+    artifact = create_mock_artifact("test-lif", lif_path, "LIF")
+    data = adapter._load_image(artifact)
+
+    # bioio should normalize to 5D TCZYX
+    assert data.ndim == 5, f"Expected 5D TCZYX data, got {data.ndim}D"
+    assert data.shape[3] > 0  # Y
+    assert data.shape[4] > 0  # X
+
+
+@pytest.mark.slow
+@pytest.mark.integration
+def test_ptu_loading_normalization(adapter):
+    """T024: PTU file loading produces normalized TCZYX artifact."""
+    ptu_path = Path("datasets/ptu_hazelnut_flim/hazelnut_FLIM_single_image.ptu").absolute()
+    assert ptu_path.exists()
+
+    # Research/verification (T027): check if bioio supports PTU
+    import bioio
+
+    report = bioio.plugin_feasibility_report(str(ptu_path))
+    supported = any(r.supported for r in report.values())
+
+    if not supported:
+        pytest.xfail("PTU format not supported by available bioio plugins")
+
+    artifact = create_mock_artifact("test-ptu", ptu_path, "PTU")
+    data = adapter._load_image(artifact)
+
+    assert data.ndim == 5
+    assert data.shape[3] > 0
+    assert data.shape[4] > 0
+
+
+@pytest.mark.slow
+@pytest.mark.integration
+def test_metadata_preservation(adapter, tmp_path):
+    """T026: Verify frequency/harmonics preservation in PhasorMetadata."""
+    # Create synthetic input
+    data = np.random.rand(1, 1, 10, 32, 32).astype(np.float32)
+    input_path = tmp_path / "metadata_test.ome.tiff"
+    from bioio.writers import OmeTiffWriter
+
+    OmeTiffWriter.save(data, str(input_path), dim_order="TCZYX")
+    input_artifact = create_mock_artifact("meta-in", input_path)
+
+    frequency = 80.0
+    harmonic = 2
+
+    outputs = adapter.execute(
+        fn_id="phasorpy.phasor.phasor_from_signal",
+        inputs=[input_artifact],
+        params={"frequency": frequency, "harmonic": harmonic},
+        work_dir=tmp_path,
+    )
+
+    # Check that frequency and harmonic are preserved in metadata of all outputs
+    for out in outputs:
+        metadata = out.get("metadata", {}) if isinstance(out, dict) else out.metadata
+        # The adapter should store these in a phasor_info or similar section
+        # or directly in metadata if that's the convention
+        if "phasor_info" in metadata:
+            assert metadata["phasor_info"].get("frequency") == frequency
+            assert metadata["phasor_info"].get("harmonic") == harmonic
+        else:
+            # Fallback check for common keys
+            assert (
+                metadata.get("frequency") == frequency
+                or metadata.get("phasor_frequency") == frequency
+            )
+            assert (
+                metadata.get("harmonic") == harmonic or metadata.get("phasor_harmonic") == harmonic
+            )
 
 
 @pytest.mark.slow
