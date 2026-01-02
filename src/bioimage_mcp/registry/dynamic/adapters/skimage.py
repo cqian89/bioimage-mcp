@@ -9,10 +9,13 @@ import importlib
 import inspect
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
 import numpy as np
+
+if TYPE_CHECKING:
+    from bioimage_mcp.api.schemas import DimensionRequirement
 
 from bioimage_mcp.artifacts.base import Artifact
 from bioimage_mcp.registry.dynamic.adapters import BaseAdapter
@@ -88,6 +91,29 @@ class SkimageAdapter(BaseAdapter):
                 meta.module = mod_name
                 meta.qualified_name = f"{mod_name}.{name}"
                 meta.fn_id = f"{mod_name}.{name}"
+
+                # Add dimension hints (T203)
+                dim_hints = self.generate_dimension_hints(mod_name, name)
+                if dim_hints:
+                    from bioimage_mcp.api.schemas import FunctionHints, InputRequirement
+
+                    # Populate hints for the primary image input
+                    # Most skimage functions take the image as the first argument
+                    # We'll use the name discovered by introspector
+                    param_names = list(meta.parameters.keys())
+                    if param_names:
+                        first_param = param_names[0]
+                        meta.hints = FunctionHints(
+                            inputs={
+                                first_param: InputRequirement(
+                                    type="BioImageRef",
+                                    required=True,
+                                    description=f"Input image for {name}",
+                                    dimension_requirements=dim_hints,
+                                )
+                            }
+                        )
+
                 results.append(meta)
         return results
 
@@ -331,3 +357,66 @@ class SkimageAdapter(BaseAdapter):
             output_ref = self._save_image(result, work_dir=work_dir, axes=axes)
 
         return [output_ref]
+
+    def generate_dimension_hints(
+        self, module_name: str, func_name: str
+    ) -> DimensionRequirement | None:
+        """Generate dimension hints for agent guidance."""
+        from bioimage_mcp.api.schemas import DimensionRequirement
+
+        # Functions that require exactly 2D input
+        require_2d = {
+            "threshold_otsu",
+            "threshold_li",
+            "threshold_triangle",
+            "threshold_isodata",
+            "threshold_mean",
+            "threshold_minimum",
+            "threshold_yen",
+            "felzenszwalb",
+            "slic",
+            "quickshift",
+        }
+
+        # Functions that accept 2D or 3D
+        require_2d_or_3d = {
+            "gaussian",
+            "sobel",
+            "canny",
+            "erosion",
+            "dilation",
+            "opening",
+            "closing",
+            "median",
+            "maximum",
+            "minimum",
+        }
+
+        if func_name in require_2d:
+            return DimensionRequirement(
+                min_ndim=2,
+                max_ndim=2,
+                expected_axes=["Y", "X"],
+                squeeze_singleton=True,
+                preprocessing_instructions=[
+                    "Squeeze singleton T, C, Z dimensions first",
+                    "If multiple channels, select one channel or convert to grayscale",
+                    "If 3D stack, select a single Z slice",
+                    "Use base.xarray.squeeze or base.xarray.isel for preprocessing",
+                ],
+            )
+
+        if func_name in require_2d_or_3d:
+            return DimensionRequirement(
+                min_ndim=2,
+                max_ndim=3,
+                expected_axes=["Y", "X"],
+                squeeze_singleton=True,
+                preprocessing_instructions=[
+                    "Squeeze singleton T and C dimensions first",
+                    "Function supports 2D (YX) or 3D (ZYX) input",
+                    "Use base.xarray.squeeze for preprocessing",
+                ],
+            )
+
+        return None
