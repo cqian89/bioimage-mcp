@@ -54,10 +54,10 @@ def test_cellpose_adapter_discover():
 
         assert len(discovered) > 0
         fn_ids = [m.fn_id for m in discovered]
-        assert "cellpose.models.segment" in fn_ids
+        assert "cellpose.segment" in fn_ids
 
         # Check that segment function has correct metadata
-        segment_meta = next(m for m in discovered if m.fn_id == "cellpose.models.segment")
+        segment_meta = next(m for m in discovered if m.fn_id == "cellpose.segment")
         assert segment_meta.io_pattern == IOPattern.IMAGE_TO_LABELS
         assert "model_type" in segment_meta.parameters
 
@@ -115,7 +115,7 @@ def test_cellpose_adapter_execute_logic():
             "bioimage_mcp_cellpose.ops.segment": mock_ops,
         },
     ):
-        outputs = adapter.execute("cellpose.models.segment", [mock_input], {"diameter": 30})
+        outputs = adapter.execute("cellpose.segment", [mock_input], {"diameter": 30})
 
         assert len(outputs) == 2
         assert outputs[0]["type"] == "LabelImageRef"
