@@ -8,7 +8,7 @@ import threading
 import time
 from datetime import UTC, datetime
 from pathlib import Path
-from queue import Queue
+from queue import Empty, Queue
 from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
@@ -43,6 +43,8 @@ class WorkerProcess:
 
     Related: T021-T023 (US1 - subprocess spawning and pipe handling)
     """
+
+    HANDSHAKE_TIMEOUT = 30.0
 
     def __init__(
         self,
@@ -116,68 +118,81 @@ class WorkerProcess:
 
             reader = _threading.Thread(target=read_ready, daemon=True)
             reader.start()
-            reader.join(timeout=30.0)  # 30 second timeout for ready handshake (spec012)
+            reader.join(timeout=self.HANDSHAKE_TIMEOUT)  # timeout for ready handshake (spec012)
 
             # Check for timeout or errors - STRICT mode: kill and raise
             if reader.is_alive():
                 # Timeout waiting for ready handshake
+                stderr_content = "\n".join(self.get_stderr_lines()[-10:]) or "(no stderr)"
                 logger.error(
-                    "Timeout waiting for ready handshake after 30s (session=%s env=%s)",
+                    "Timeout waiting for ready handshake after %.1fs (session=%s env=%s). Stderr: %s",
+                    self.HANDSHAKE_TIMEOUT,
                     session_id,
                     env_id,
+                    stderr_content,
                 )
                 self._process.kill()
                 self._process.wait()
                 self.state = WorkerState.TERMINATED
                 raise RuntimeError(
-                    f"Worker failed to send ready handshake within 30 seconds "
-                    f"(session={session_id}, env={env_id})"
+                    f"Worker failed to send ready handshake within {self.HANDSHAKE_TIMEOUT} seconds "
+                    f"(session={session_id}, env={env_id}).\n"
+                    f"Stderr output:\n{stderr_content}"
                 )
 
             if read_error:
+                stderr_content = "\n".join(self.get_stderr_lines()[-10:]) or "(no stderr)"
                 logger.error(
-                    "Failed to read ready handshake: %s (session=%s env=%s)",
+                    "Failed to read ready handshake: %s (session=%s env=%s). Stderr: %s",
                     read_error,
                     session_id,
                     env_id,
+                    stderr_content,
                 )
                 self._process.kill()
                 self._process.wait()
                 self.state = WorkerState.TERMINATED
                 raise RuntimeError(
                     f"Worker ready handshake read failed: {read_error} "
-                    f"(session={session_id}, env={env_id})"
+                    f"(session={session_id}, env={env_id}).\n"
+                    f"Stderr output:\n{stderr_content}"
                 ) from read_error
 
             if not ready_line:
+                stderr_content = "\n".join(self.get_stderr_lines()[-10:]) or "(no stderr)"
                 logger.error(
-                    "Worker closed stdout before sending ready handshake (session=%s env=%s)",
+                    "Worker closed stdout before sending ready handshake (session=%s env=%s). Stderr: %s",
                     session_id,
                     env_id,
+                    stderr_content,
                 )
                 self._process.kill()
                 self._process.wait()
                 self.state = WorkerState.TERMINATED
                 raise RuntimeError(
                     f"Worker closed stdout without ready handshake "
-                    f"(session={session_id}, env={env_id})"
+                    f"(session={session_id}, env={env_id}).\n"
+                    f"Stderr output:\n{stderr_content}"
                 )
 
             # Successfully read a line - check if it's a valid ready handshake
             ready_msg = decode_message(ready_line)
             if ready_msg.get("command") != "ready":
+                stderr_content = "\n".join(self.get_stderr_lines()[-10:]) or "(no stderr)"
                 logger.error(
-                    "Expected ready handshake, got: %s (session=%s env=%s)",
+                    "Expected ready handshake, got: %s (session=%s env=%s). Stderr: %s",
                     ready_msg.get("command"),
                     session_id,
                     env_id,
+                    stderr_content,
                 )
                 self._process.kill()
                 self._process.wait()
                 self.state = WorkerState.TERMINATED
                 raise RuntimeError(
                     f"Worker sent invalid handshake: expected 'ready', got '{ready_msg.get('command')}' "
-                    f"(session={session_id}, env={env_id})"
+                    f"(session={session_id}, env={env_id}).\n"
+                    f"Stderr output:\n{stderr_content}"
                 )
 
             # Valid ready handshake received
@@ -194,18 +209,21 @@ class WorkerProcess:
             # Re-raise RuntimeError (our handshake failures)
             raise
         except Exception as e:
+            stderr_content = "\n".join(self.get_stderr_lines()[-10:]) or "(no stderr)"
             logger.error(
-                "Unexpected error during ready handshake: %s (session=%s env=%s)",
+                "Unexpected error during ready handshake: %s (session=%s env=%s). Stderr: %s",
                 e,
                 session_id,
                 env_id,
+                stderr_content,
             )
             self._process.kill()
             self._process.wait()
             self.state = WorkerState.TERMINATED
             raise RuntimeError(
                 f"Worker ready handshake failed unexpectedly: {e} "
-                f"(session={session_id}, env={env_id})"
+                f"(session={session_id}, env={env_id}).\n"
+                f"Stderr output:\n{stderr_content}"
             ) from e
 
         # Transition to READY state
