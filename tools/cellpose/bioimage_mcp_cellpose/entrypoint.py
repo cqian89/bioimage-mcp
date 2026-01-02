@@ -3,25 +3,43 @@
 
 Implements the JSON stdin/stdout protocol for tool execution
 and the meta.describe protocol for dynamic schema introspection.
+Supports persistent worker mode (NDJSON).
 """
 
 from __future__ import annotations
 
 import inspect
 import json
+import os
 import sys
+import uuid
 from pathlib import Path
 from typing import Any
+
+import numpy as np
 
 # Add parent directory to path so bioimage_mcp_cellpose can be imported
 BASE_DIR = Path(__file__).resolve().parent
 TOOLS_ROOT = BASE_DIR.parent
+REPO_ROOT = TOOLS_ROOT.parent.parent
+
+if str(REPO_ROOT / "src") not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT / "src"))
 if str(TOOLS_ROOT) not in sys.path:
     sys.path.insert(0, str(TOOLS_ROOT))
 
+from datetime import UTC, datetime
+
+# Global memory store in worker process
+_MEMORY_ARTIFACTS: dict[str, np.ndarray] = {}
+
+# Worker identity
+_SESSION_ID: str | None = None
+_ENV_ID: str | None = None
 
 # Tool pack version
 TOOL_VERSION = "0.1.0"
+TOOL_ENV_NAME = "bioimage-mcp-cellpose"
 
 
 def _get_cellpose_version() -> str:
@@ -34,6 +52,86 @@ def _get_cellpose_version() -> str:
         return "unknown"
 
 
+def _initialize_worker(session_id: str, env_id: str) -> None:
+    """Initialize worker identity for memory artifact URIs."""
+    global _SESSION_ID, _ENV_ID
+    _SESSION_ID = session_id
+    _ENV_ID = env_id
+
+
+def _store_in_memory(data: np.ndarray) -> tuple[str, str]:
+    """Store data in memory, return (artifact_id, mem:// URI)."""
+    if _SESSION_ID is None or _ENV_ID is None:
+        raise RuntimeError("Worker identity not initialized. Cannot create mem:// URI.")
+
+    artifact_id = uuid.uuid4().hex
+    _MEMORY_ARTIFACTS[artifact_id] = data
+
+    mem_uri = f"mem://{_SESSION_ID}/{_ENV_ID}/{artifact_id}"
+    return artifact_id, mem_uri
+
+
+def _load_from_memory(uri: str) -> np.ndarray:
+    """Load data from memory by mem:// URI."""
+    if not uri.startswith("mem://"):
+        raise ValueError(f"Invalid memory URI: {uri}")
+
+    parts = uri[6:].split("/")
+    if len(parts) != 3:
+        raise ValueError(f"Invalid memory URI format: {uri}")
+
+    session_id, env_id, artifact_id = parts
+
+    if session_id != _SESSION_ID or env_id != _ENV_ID:
+        raise ValueError(
+            f"Memory artifact {uri} belongs to different worker (current: {_SESSION_ID}/{_ENV_ID})"
+        )
+
+    if artifact_id not in _MEMORY_ARTIFACTS:
+        raise KeyError(f"Memory artifact not found: {artifact_id}")
+
+    return _MEMORY_ARTIFACTS[artifact_id]
+
+
+def _load_input_data(input_ref: str | dict) -> np.ndarray:
+    """Load input data from file or memory."""
+    from bioio import BioImage
+
+    if isinstance(input_ref, dict):
+        uri = input_ref.get("uri", "")
+        if uri.startswith("mem://"):
+            return _load_from_memory(uri)
+        else:
+            path_str = uri.replace("file://", "")
+            img = BioImage(path_str)
+            return img.data
+    else:
+        img = BioImage(str(input_ref))
+        return img.data
+
+
+def _convert_memory_inputs_to_files(inputs: dict[str, Any], work_dir: Path) -> dict[str, Any]:
+    """Convert mem:// artifact inputs to temporary file paths."""
+    from bioio.writers import OmeTiffWriter
+
+    converted_inputs = {}
+    for key, value in inputs.items():
+        if isinstance(value, dict) and value.get("uri", "").startswith("mem://"):
+            mem_uri = value["uri"]
+            data = _load_from_memory(mem_uri)
+            temp_id = uuid.uuid4().hex[:8]
+            temp_path = work_dir / f"_mem_{key}_{temp_id}.ome.tif"
+            OmeTiffWriter.save(data, temp_path, dim_order="TCZYX")
+            converted_inputs[key] = {
+                "uri": f"file://{temp_path}",
+                "type": value.get("type", "BioImageRef"),
+                "format": "OME-TIFF",
+            }
+        else:
+            converted_inputs[key] = value
+    return converted_inputs
+
+
 def _introspect_cellpose_eval() -> dict[str, Any]:
     """Introspect CellposeModel.eval() to get parameter schema."""
     from bioimage_mcp_cellpose.descriptions import SEGMENT_DESCRIPTIONS
@@ -43,7 +141,6 @@ def _introspect_cellpose_eval() -> dict[str, Any]:
 
         sig = inspect.signature(CellposeModel.eval)
     except ImportError:
-        # Return minimal schema if cellpose not installed
         return {
             "type": "object",
             "properties": {
@@ -67,7 +164,6 @@ def _introspect_cellpose_eval() -> dict[str, Any]:
         "required": [],
     }
 
-    # Parameters to exclude (internal or handled separately)
     exclude = {"self", "x", "batch_size", "channels", "channel_axis", "z_axis"}
 
     for name, param in sig.parameters.items():
@@ -80,16 +176,12 @@ def _introspect_cellpose_eval() -> dict[str, Any]:
             continue
 
         prop: dict[str, Any] = {}
-
-        # Use curated description or fallback
         prop["description"] = SEGMENT_DESCRIPTIONS.get(
             name, f"See Cellpose documentation for '{name}'."
         )
 
-        # Add default value
         if param.default is not inspect.Parameter.empty:
             default = param.default
-            # Handle numpy types
             if hasattr(default, "item"):
                 default = default.item()
             if default is not None:
@@ -136,33 +228,345 @@ def handle_segment(
     }
 
 
-def main() -> int:
-    """Entrypoint: read JSON from stdin, dispatch, write JSON to stdout."""
-    request = json.loads(sys.stdin.read() or "{}")
-
+def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
     fn_id = request.get("fn_id", "")
-    params = request.get("params", {})
-    inputs = request.get("inputs", {})
-    work_dir = Path(request.get("work_dir", ".")).absolute()
+    params = request.get("params") or {}
+    inputs = request.get("inputs") or {}
+    work_dir = Path(request.get("work_dir") or ".").absolute()
     work_dir.mkdir(parents=True, exist_ok=True)
+    ordinal = request.get("ordinal")
+
+    output_mode = params.pop("output_mode", "file")
 
     try:
+        inputs = _convert_memory_inputs_to_files(inputs, work_dir)
         if fn_id == "meta.describe":
-            response = handle_meta_describe(params)
+            result_response = handle_meta_describe(params)
+            if result_response.get("ok"):
+                response = {
+                    "command": "execute_result",
+                    "ok": True,
+                    "ordinal": ordinal,
+                    "outputs": {"result": result_response.get("result")},
+                    "log": "ok",
+                }
+            else:
+                response = {
+                    "command": "execute_result",
+                    "ok": False,
+                    "ordinal": ordinal,
+                    "error": {"message": result_response.get("error", "Unknown error")},
+                    "log": "failed",
+                }
         elif fn_id == "cellpose.segment":
-            response = handle_segment(inputs, params, work_dir)
+            result = handle_segment(inputs, params, work_dir)
+            outputs = result.get("outputs")
+            if outputs is None:
+                raise ValueError(f"{fn_id} did not return outputs")
+
+            if output_mode == "memory":
+                outputs = _convert_outputs_to_memory(outputs, work_dir)
+
+            response = {
+                "command": "execute_result",
+                "ok": True,
+                "ordinal": ordinal,
+                "outputs": outputs,
+                "log": result.get("log", "ok"),
+            }
         else:
-            response = {"ok": False, "error": f"Unknown fn_id: {fn_id}"}
+            response = {
+                "command": "execute_result",
+                "ok": False,
+                "ordinal": ordinal,
+                "error": {"message": f"Unknown fn_id: {fn_id}"},
+                "log": "failed",
+            }
     except Exception as exc:  # noqa: BLE001
         response = {
+            "command": "execute_result",
             "ok": False,
+            "ordinal": ordinal,
             "error": {"message": str(exc)},
             "outputs": {},
-            "log": f"Error: {exc}",
+            "log": "failed",
+        }
+    return response
+
+
+def _convert_outputs_to_memory(outputs: dict[str, Any], work_dir: Path) -> dict[str, Any]:
+    mem_outputs = {}
+    for key, value in outputs.items():
+        if isinstance(value, dict):
+            if "path" in value:
+                path = Path(value["path"])
+                data = _load_input_data(str(path))
+                artifact_id, mem_uri = _store_in_memory(data)
+                try:
+                    path.unlink()
+                except Exception:  # noqa: BLE001
+                    pass
+                mem_outputs[key] = {
+                    "ref_id": artifact_id,
+                    "type": value.get("type", "BioImageRef"),
+                    "uri": mem_uri,
+                    "format": "memory",
+                    "storage_type": "memory",
+                    "mime_type": "application/octet-stream",
+                    "size_bytes": data.nbytes,
+                    "created_at": datetime.now(UTC).isoformat(),
+                    "metadata": {
+                        "shape": list(data.shape),
+                        "dtype": str(data.dtype),
+                        "dims": "TCZYX",
+                    },
+                }
+            else:
+                mem_outputs[key] = value
+        elif isinstance(value, (str, Path)):
+            data = _load_input_data(str(value))
+            artifact_id, mem_uri = _store_in_memory(data)
+            try:
+                Path(value).unlink()
+            except Exception:  # noqa: BLE001
+                pass
+            mem_outputs[key] = {
+                "ref_id": artifact_id,
+                "type": "BioImageRef",
+                "uri": mem_uri,
+                "format": "memory",
+                "storage_type": "memory",
+                "mime_type": "application/octet-stream",
+                "size_bytes": data.nbytes,
+                "created_at": datetime.now(UTC).isoformat(),
+                "metadata": {
+                    "shape": list(data.shape),
+                    "dtype": str(data.dtype),
+                    "dims": "TCZYX",
+                },
+            }
+        else:
+            mem_outputs[key] = value
+    return mem_outputs
+
+
+def _extract_artifact_id(ref_id: str | None) -> str:
+    """Extract artifact_id from ref_id (supports both mem:// URI and plain ID)."""
+    if ref_id is None:
+        raise ValueError("ref_id cannot be None")
+    if not isinstance(ref_id, str):
+        raise ValueError(f"ref_id must be a string, got {type(ref_id).__name__}")
+    if not ref_id:
+        raise ValueError("ref_id cannot be empty")
+
+    if ref_id.startswith("mem://"):
+        parts = ref_id[6:].split("/")
+        if len(parts) != 3:
+            raise ValueError(f"Invalid memory URI format: {ref_id}")
+        _session_id, _env_id, artifact_id = parts
+        return artifact_id
+    else:
+        return ref_id
+
+
+def handle_materialize(request: dict[str, Any]) -> dict[str, Any]:
+    """Handle materialize command - export mem:// artifact to OME-Zarr or OME-TIFF."""
+    ref_id = request.get("ref_id")
+    target_format = request.get("target_format", "OME-TIFF")
+    dest_path = request.get("dest_path")
+    ordinal = request.get("ordinal")
+
+    try:
+        artifact_id = _extract_artifact_id(ref_id)
+    except ValueError as exc:
+        return {
+            "command": "materialize_result",
+            "ok": False,
+            "ordinal": ordinal,
+            "error": {"code": "INVALID_REF_ID", "message": str(exc)},
         }
 
-    print(json.dumps(response))
-    return 0 if response.get("ok") else 1
+    if artifact_id not in _MEMORY_ARTIFACTS:
+        return {
+            "command": "materialize_result",
+            "ok": False,
+            "ordinal": ordinal,
+            "error": {"code": "NOT_FOUND", "message": f"Memory artifact not found: {ref_id}"},
+        }
+
+    data = _MEMORY_ARTIFACTS[artifact_id]
+
+    if dest_path is None:
+        import tempfile
+
+        suffix = ".ome.tif" if target_format == "OME-TIFF" else ".ome.zarr"
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+        dest_path = temp_file.name
+        temp_file.close()
+
+    dest_path = Path(dest_path)
+
+    try:
+        if target_format == "OME-TIFF":
+            from bioio.writers import OmeTiffWriter
+
+            OmeTiffWriter.save(data, dest_path, dim_order="TCZYX")
+        elif target_format == "OME-Zarr":
+            from bioio_ome_zarr.writer import OmeZarrWriter
+
+            writer = OmeZarrWriter(str(dest_path))
+            writer.write_image(
+                image_data=data,
+                image_name="materialized",
+                physical_pixel_sizes=None,
+                channel_names=None,
+                channel_colors=None,
+                dimension_order="TCZYX",
+            )
+        else:
+            return {
+                "command": "materialize_result",
+                "ok": False,
+                "ordinal": ordinal,
+                "error": {
+                    "code": "INVALID_FORMAT",
+                    "message": f"Unsupported target format: {target_format}",
+                },
+            }
+
+        return {
+            "command": "materialize_result",
+            "ok": True,
+            "ordinal": ordinal,
+            "path": str(dest_path),
+        }
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "command": "materialize_result",
+            "ok": False,
+            "ordinal": ordinal,
+            "error": {"code": "MATERIALIZATION_FAILED", "message": f"Failed to materialize: {exc}"},
+        }
+
+
+def handle_evict(request: dict[str, Any]) -> dict[str, Any]:
+    """Handle evict command - remove artifact from memory."""
+    ref_id = request.get("ref_id")
+    ordinal = request.get("ordinal")
+
+    try:
+        artifact_id = _extract_artifact_id(ref_id)
+    except ValueError as exc:
+        return {
+            "command": "evict_result",
+            "ok": False,
+            "ordinal": ordinal,
+            "error": {"code": "INVALID_REF_ID", "message": str(exc)},
+        }
+
+    if artifact_id in _MEMORY_ARTIFACTS:
+        del _MEMORY_ARTIFACTS[artifact_id]
+        return {"command": "evict_result", "ok": True, "ordinal": ordinal}
+
+    return {
+        "command": "evict_result",
+        "ok": False,
+        "ordinal": ordinal,
+        "error": {"code": "NOT_FOUND", "message": f"Memory artifact not found: {ref_id}"},
+    }
+
+
+def main() -> int:
+    """Main entrypoint supporting both single-request and persistent mode."""
+    # Initialize worker identity from environment or use defaults
+    session_id = os.environ.get("BIOIMAGE_MCP_SESSION_ID", "default_session")
+    env_id = os.environ.get("BIOIMAGE_MCP_ENV_ID", "bioimage-mcp-cellpose")
+    _initialize_worker(session_id, env_id)
+
+    is_persistent_mode = "BIOIMAGE_MCP_SESSION_ID" in os.environ
+
+    if is_persistent_mode:
+        # NDJSON loop mode
+        ready_message = json.dumps({"command": "ready", "version": TOOL_VERSION})
+        print(ready_message, flush=True)
+
+        for line in sys.stdin:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                request = json.loads(line)
+            except json.JSONDecodeError:
+                print(
+                    json.dumps(
+                        {"command": "error", "ok": False, "error": {"message": "Invalid JSON"}}
+                    ),
+                    flush=True,
+                )
+                continue
+
+            if request.get("command") == "execute":
+                response = process_execute_request(request)
+                print(json.dumps(response), flush=True)
+            elif request.get("command") == "materialize":
+                response = handle_materialize(request)
+                print(json.dumps(response), flush=True)
+            elif request.get("command") == "evict":
+                response = handle_evict(request)
+                print(json.dumps(response), flush=True)
+            elif request.get("command") == "shutdown":
+                _MEMORY_ARTIFACTS.clear()
+                print(
+                    json.dumps(
+                        {"command": "shutdown_ack", "ok": True, "ordinal": request.get("ordinal")}
+                    ),
+                    flush=True,
+                )
+                break
+            else:
+                print(
+                    json.dumps(
+                        {
+                            "command": "error",
+                            "ok": False,
+                            "error": {"message": f"Unknown command: {request.get('command')}"},
+                        }
+                    ),
+                    flush=True,
+                )
+        return 0
+    else:
+        # Legacy mode
+        raw_input = sys.stdin.read()
+        if not raw_input:
+            return 0
+        try:
+            request = json.loads(raw_input)
+            if "command" in request:
+                # Handle single NDJSON-style request
+                if request.get("command") == "execute":
+                    response = process_execute_request(request)
+                    print(json.dumps(response))
+                return 0 if response.get("ok", True) else 1
+            else:
+                # Pure legacy format
+                work_dir = Path(request.get("work_dir", ".")).absolute()
+                work_dir.mkdir(parents=True, exist_ok=True)
+                fn_id = request.get("fn_id", "")
+                params = request.get("params", {})
+                inputs = request.get("inputs", {})
+
+                if fn_id == "meta.describe":
+                    response = handle_meta_describe(params)
+                elif fn_id == "cellpose.segment":
+                    response = handle_segment(inputs, params, work_dir)
+                else:
+                    response = {"ok": False, "error": f"Unknown fn_id: {fn_id}"}
+                print(json.dumps(response))
+                return 0 if response.get("ok") else 1
+        except json.JSONDecodeError:
+            print(json.dumps({"ok": False, "error": "Invalid JSON"}), flush=True)
+            return 1
 
 
 if __name__ == "__main__":

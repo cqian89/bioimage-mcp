@@ -5,13 +5,15 @@ import os
 import subprocess
 import sys
 import threading
+import time
 from datetime import UTC, datetime
 from pathlib import Path
-from queue import Empty, Queue
+from queue import Queue
 from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
+from bioimage_mcp.runtimes.executor import _build_command
 from bioimage_mcp.runtimes.worker_ipc import (
     EvictRequest,
     ExecuteRequest,
@@ -23,36 +25,10 @@ from bioimage_mcp.runtimes.worker_ipc import (
 )
 
 if TYPE_CHECKING:
-    from bioimage_mcp.artifacts.memory import MemoryArtifactStore
+    from bioimage_mcp.storage.memory import MemoryArtifactStore
+
 
 logger = logging.getLogger(__name__)
-
-
-def _build_worker_command(entrypoint: str, *, env_id: str | None) -> list[str]:
-    """Build command to spawn worker process with optional conda environment.
-
-    Args:
-        entrypoint: Python module or script path to execute
-        env_id: Optional conda environment name to activate
-
-    Returns:
-        Command list suitable for subprocess.Popen
-    """
-    from bioimage_mcp.bootstrap.env_manager import detect_env_manager
-
-    entry_path = Path(entrypoint)
-
-    manager = detect_env_manager() if env_id else None
-    if manager:
-        assert env_id is not None
-        _name, exe, _version = manager
-        if entry_path.exists() and entry_path.suffix == ".py":
-            return [exe, "run", "-n", env_id, "python", str(entry_path)]
-        return [exe, "run", "-n", env_id, "python", "-m", entrypoint]
-
-    if entry_path.exists() and entry_path.suffix == ".py":
-        return [sys.executable, str(entry_path)]
-    return [sys.executable, "-m", entrypoint]
 
 
 class WorkerProcess:
@@ -91,7 +67,7 @@ class WorkerProcess:
         self._last_activity_at = datetime.now(UTC)  # T069: Track idle time
 
         # Spawn the subprocess
-        cmd = _build_worker_command(entrypoint, env_id=env_id)
+        cmd = _build_command(entrypoint, env_id=env_id)
         logger.info("Spawning worker: session=%s env=%s cmd=%s", session_id, env_id, cmd)
 
         # Set environment variables for worker identity (T032)
@@ -738,6 +714,7 @@ class PersistentWorkerManager:
         worker_wait_timeout: float = 60.0,
         session_timeout_seconds: int = 1800,
         monitor_interval_seconds: float = 2.0,
+        manifest_roots: list[Path] | None = None,
     ) -> None:
         self._workers: dict[tuple[str, str], WorkerProcess] = {}
         self._lock = threading.Lock()
@@ -749,6 +726,7 @@ class PersistentWorkerManager:
         self.worker_wait_timeout = worker_wait_timeout
         self.session_timeout_seconds = session_timeout_seconds
         self.monitor_interval_seconds = monitor_interval_seconds
+        self.manifest_roots = manifest_roots or []
 
         # Background monitor thread (spec012)
         self._monitor_stop = threading.Event()
@@ -777,6 +755,51 @@ class PersistentWorkerManager:
             WorkerProcess instance
         """
         return WorkerProcess(session_id=session_id, env_id=env_id, entrypoint=entrypoint)
+
+    def _resolve_entrypoint(self, env_id: str) -> Path:
+        """Resolve entrypoint script path for a given environment ID.
+
+        Looks up the tool manifest for the env_id and extracts the entrypoint path.
+        Falls back to the base toolkit entrypoint if not found.
+        """
+        # Fallback to base entrypoint
+        repo_root = Path(__file__).resolve().parent.parent.parent.parent
+        base_entrypoint = repo_root / "tools" / "base" / "bioimage_mcp_base" / "entrypoint.py"
+
+        if not self.manifest_roots:
+            return base_entrypoint
+
+        try:
+            from bioimage_mcp.registry.loader import load_manifests
+
+            manifests, _ = load_manifests(self.manifest_roots)
+
+            for manifest in manifests:
+                if manifest.env_id == env_id:
+                    if manifest.entrypoint:
+                        # Entrypoint is relative to manifest directory
+                        manifest_dir = Path(manifest.manifest_path).parent
+                        entrypoint_path = (manifest_dir / manifest.entrypoint).resolve()
+                        if entrypoint_path.exists():
+                            logger.debug(
+                                "Resolved entrypoint for %s from manifest: %s",
+                                env_id,
+                                entrypoint_path,
+                            )
+                            return entrypoint_path
+                        else:
+                            logger.warning(
+                                "Entrypoint specified in manifest for %s does not exist: %s",
+                                env_id,
+                                entrypoint_path,
+                            )
+                    break
+        except Exception as e:  # noqa: BLE001
+            logger.error("Error resolving entrypoint from manifest: %s", e)
+
+        # Final fallback
+        logger.debug("Using fallback base entrypoint for %s", env_id)
+        return base_entrypoint
 
     def get_worker(self, session_id: str, env_id: str) -> WorkerProcess:
         """Get or spawn a worker for the session/env pair.
@@ -876,15 +899,11 @@ class PersistentWorkerManager:
                 self._worker_available.wait(timeout=min(remaining_timeout, 1.0))
 
             # Spawn new worker
-            # Locate the entrypoint script
-            # TODO: Make this configurable or detect from manifest
-            repo_root = (
-                Path(__file__).resolve().parent.parent.parent.parent
-            )  # /.../persistent.py -> runtimes -> bioimage_mcp -> src -> /
-            entrypoint_script = repo_root / "tools" / "base" / "bioimage_mcp_base" / "entrypoint.py"
+            # Resolve entrypoint from manifest (T098)
+            entrypoint_script = self._resolve_entrypoint(env_id)
 
             if not entrypoint_script.exists():
-                raise RuntimeError(f"Base tool entrypoint not found: {entrypoint_script}")
+                raise RuntimeError(f"Tool entrypoint not found: {entrypoint_script}")
 
             worker = WorkerProcess(
                 session_id=session_id,

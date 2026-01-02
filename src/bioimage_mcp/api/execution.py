@@ -312,6 +312,7 @@ class ExecutionService:
             memory_store=self._memory_store,
             max_workers=config.max_workers,
             session_timeout_seconds=config.session_timeout_seconds,
+            manifest_roots=config.tool_manifest_roots,
         )
         self._io_bridge = IOBridge(artifact_store_path=config.artifact_store_root)
 
