@@ -33,7 +33,11 @@ dynamic_sources:
     prefix: phasorpy
     modules:
       - phasorpy.phasor
-      - phasorpy.io
+      - phasorpy.lifetime
+      - phasorpy.plot
+      - phasorpy.filter
+      - phasorpy.cursor
+      - phasorpy.component
     include_patterns:
       - "*"
     exclude_patterns:
