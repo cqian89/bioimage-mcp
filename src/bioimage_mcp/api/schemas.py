@@ -17,6 +17,18 @@ ArtifactType = Literal[
 StorageType = Literal["file", "zarr-temp"]
 
 
+class DimensionRequirement(BaseModel):
+    """Requirements for image dimensions and axes."""
+
+    min_ndim: int | None = None
+    max_ndim: int | None = None
+    expected_axes: list[str] | None = None
+    spatial_axes: list[str] = ["Y", "X"]
+    squeeze_singleton: bool = True
+    slice_strategy: str | None = None
+    preprocessing_instructions: list[str] | None = None
+
+
 class InputRequirement(BaseModel):
     """Schema for a single input requirement."""
 
@@ -26,6 +38,7 @@ class InputRequirement(BaseModel):
     expected_axes: list[AxisName] | None = None
     preprocessing_hint: str | None = None
     supported_storage_types: list[StorageType] | None = None
+    dimension_requirements: DimensionRequirement | None = None
 
 
 class OutputDescription(BaseModel):
