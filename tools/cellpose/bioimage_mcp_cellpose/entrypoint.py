@@ -16,8 +16,6 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-import numpy as np
-
 # Add parent directory to path so bioimage_mcp_cellpose can be imported
 BASE_DIR = Path(__file__).resolve().parent
 TOOLS_ROOT = BASE_DIR.parent
@@ -28,10 +26,8 @@ if str(REPO_ROOT / "src") not in sys.path:
 if str(TOOLS_ROOT) not in sys.path:
     sys.path.insert(0, str(TOOLS_ROOT))
 
-from datetime import UTC, datetime
-
 # Global memory store in worker process
-_MEMORY_ARTIFACTS: dict[str, np.ndarray] = {}
+_MEMORY_ARTIFACTS: dict[str, Any] = {}
 
 # Worker identity
 _SESSION_ID: str | None = None
@@ -59,7 +55,7 @@ def _initialize_worker(session_id: str, env_id: str) -> None:
     _ENV_ID = env_id
 
 
-def _store_in_memory(data: np.ndarray) -> tuple[str, str]:
+def _store_in_memory(data: Any) -> tuple[str, str]:
     """Store data in memory, return (artifact_id, mem:// URI)."""
     if _SESSION_ID is None or _ENV_ID is None:
         raise RuntimeError("Worker identity not initialized. Cannot create mem:// URI.")
@@ -71,7 +67,7 @@ def _store_in_memory(data: np.ndarray) -> tuple[str, str]:
     return artifact_id, mem_uri
 
 
-def _load_from_memory(uri: str) -> np.ndarray:
+def _load_from_memory(uri: str) -> Any:
     """Load data from memory by mem:// URI."""
     if not uri.startswith("mem://"):
         raise ValueError(f"Invalid memory URI: {uri}")
@@ -93,7 +89,7 @@ def _load_from_memory(uri: str) -> np.ndarray:
     return _MEMORY_ARTIFACTS[artifact_id]
 
 
-def _load_input_data(input_ref: str | dict) -> np.ndarray:
+def _load_input_data(input_ref: str | dict) -> Any:
     """Load input data from file or memory."""
     from bioio import BioImage
 
@@ -295,6 +291,8 @@ def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
 
 
 def _convert_outputs_to_memory(outputs: dict[str, Any], work_dir: Path) -> dict[str, Any]:
+    from datetime import UTC, datetime
+
     mem_outputs = {}
     for key, value in outputs.items():
         if isinstance(value, dict):
@@ -363,7 +361,7 @@ def _extract_artifact_id(ref_id: str | None) -> str:
         parts = ref_id[6:].split("/")
         if len(parts) != 3:
             raise ValueError(f"Invalid memory URI format: {ref_id}")
-        _session_id, _env_id, artifact_id = parts
+        _session_id_uri, _env_id_uri, artifact_id = parts
         return artifact_id
     else:
         return ref_id
@@ -478,16 +476,56 @@ def handle_evict(request: dict[str, Any]) -> dict[str, Any]:
 
 def main() -> int:
     """Main entrypoint supporting both single-request and persistent mode."""
+    # 1. IMMEDIATE handshake for persistent mode
+    is_persistent_mode = "BIOIMAGE_MCP_SESSION_ID" in os.environ
+    if is_persistent_mode:
+        print(
+            json.dumps({"command": "ready", "status": "initializing", "version": TOOL_VERSION}),
+            flush=True,
+        )
+
+    # 2. Safe initialization / heavy imports
+    try:
+        # Simulation for testing
+        if os.environ.get("SIMULATE_IMPORT_FAILURE") == "numpy":
+            raise ImportError("Simulated numpy import failure")
+
+        # Heavy imports
+        import numpy as np  # noqa: F401
+        import bioio  # noqa: F401
+        import cellpose  # noqa: F401
+
+        # Verify torch if needed
+        try:
+            import torch  # noqa: F401
+        except ImportError:
+            pass
+
+    except Exception as exc:
+        error_msg = f"Required library import failed: {str(exc)}"
+        error_json = {
+            "command": "error",
+            "ok": False,
+            "error": {"code": "IMPORT_FAILED", "message": error_msg},
+        }
+        if is_persistent_mode:
+            print(json.dumps(error_json), flush=True)
+        else:
+            # Legacy mode response
+            print(json.dumps({"ok": False, "error": error_msg}), flush=True)
+        return 1
+
     # Initialize worker identity from environment or use defaults
     session_id = os.environ.get("BIOIMAGE_MCP_SESSION_ID", "default_session")
     env_id = os.environ.get("BIOIMAGE_MCP_ENV_ID", "bioimage-mcp-cellpose")
     _initialize_worker(session_id, env_id)
 
-    is_persistent_mode = "BIOIMAGE_MCP_SESSION_ID" in os.environ
-
     if is_persistent_mode:
         # NDJSON loop mode
-        ready_message = json.dumps({"command": "ready", "version": TOOL_VERSION})
+        # 3. Complete handshake
+        ready_message = json.dumps(
+            {"command": "ready", "status": "complete", "version": TOOL_VERSION}
+        )
         print(ready_message, flush=True)
 
         for line in sys.stdin:
