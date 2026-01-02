@@ -2,6 +2,8 @@
 
 ## Module: phasorpy.io
 
+> **⚠️ EXCLUDED FROM ADAPTER**: All file I/O is handled via bioio and its plugins (bioio-bioformats, bioio-lif). The phasorpy.io module is NOT exposed through the adapter.
+
 | Function | Category | Notes |
 |----------|----------|-------|
 | `signal_from_sdt` | `FILE_TO_SIGNAL` | Becker & Hickl SDT files |
