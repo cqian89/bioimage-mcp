@@ -89,5 +89,26 @@ def test_plot_phasor_serialization():
                 pytest.fail(f"Output is not JSON serializable: {e}")
 
 
+def test_load_image_fallback():
+    """Test that _load_image falls back to auto-detection when specified reader fails."""
+    adapter = PhasorPyAdapter()
+
+    # Path to the problematic file
+    test_file = Path("datasets/FLUTE_FLIM_data_tif/Fluorescein_Embryo.tif")
+    if not test_file.exists():
+        pytest.skip(f"Test file not found: {test_file}")
+
+    # Mock artifact with OME-TIFF format
+    artifact = {"uri": f"file://{test_file.absolute()}", "format": "OME-TIFF", "metadata": {}}
+
+    # This should succeed now with the fallback
+    try:
+        data = adapter._load_image(artifact)
+        assert data is not None
+        assert data.ndim == 5
+    except Exception as e:
+        pytest.fail(f"_load_image failed even with fallback: {e}")
+
+
 if __name__ == "__main__":
     pytest.main([__file__])

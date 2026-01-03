@@ -198,7 +198,21 @@ class PhasorPyAdapter:
             except ImportError:
                 pass
 
-        img = BioImage(str(path), reader=reader)
+        try:
+            img = BioImage(str(path), reader=reader)
+        except Exception as first_error:
+            if reader is not None:
+                # Fallback: let BioImage auto-detect the reader
+                logger.warning(
+                    "Format-specific reader failed for %s (%s), falling back to auto-detection: %s",
+                    path,
+                    fmt,
+                    first_error,
+                )
+                img = BioImage(str(path))
+            else:
+                raise
+
         data = img.data
         if hasattr(data, "compute"):
             data = data.compute()
