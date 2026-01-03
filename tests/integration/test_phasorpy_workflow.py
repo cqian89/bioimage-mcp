@@ -213,13 +213,22 @@ def test_plot_phasor_execution_returns_plotref(adapter, tmp_path):
     assert len(outputs) == 1
     plot_ref = outputs[0]
 
-    assert isinstance(plot_ref, PlotRef)
-    assert plot_ref.type == "PlotRef"
-    assert plot_ref.format == "PNG"
-    assert isinstance(plot_ref.metadata, PlotMetadata)
-    assert plot_ref.metadata.width_px > 0
-    assert plot_ref.metadata.height_px > 0
-    assert plot_ref.metadata.dpi == 100
+    # Adapter returns dict for JSON serialization in worker
+    if isinstance(plot_ref, dict):
+        assert plot_ref["type"] == "PlotRef"
+        assert plot_ref["format"] == "PNG"
+        assert "path" in plot_ref
+        assert plot_ref["metadata"]["width_px"] > 0
+        assert plot_ref["metadata"]["height_px"] > 0
+        assert plot_ref["metadata"]["dpi"] == 100
+    else:
+        assert isinstance(plot_ref, PlotRef)
+        assert plot_ref.type == "PlotRef"
+        assert plot_ref.format == "PNG"
+        assert isinstance(plot_ref.metadata, PlotMetadata)
+        assert plot_ref.metadata.width_px > 0
+        assert plot_ref.metadata.height_px > 0
+        assert plot_ref.metadata.dpi == 100
 
 
 @pytest.mark.slow
@@ -331,7 +340,8 @@ def test_plot_artifact_accessibility(adapter, tmp_path):
     plot_ref = outputs[0]
     from urllib.parse import urlparse
 
-    parsed = urlparse(plot_ref.uri)
+    uri = plot_ref["uri"] if isinstance(plot_ref, dict) else plot_ref.uri
+    parsed = urlparse(uri)
     path = Path(parsed.path)
     if str(path).startswith("/") and len(str(path)) > 2 and str(path)[2] == ":":
         path = Path(str(path)[1:])

@@ -401,7 +401,12 @@ class PhasorPyAdapter:
 
                     # T022: Connect PlotRef creation to write_plot()
                     plot_ref = write_plot(fig, path, dpi=100, plot_type=func_name)
-                    outputs.append(plot_ref)
+
+                    # Convert to dict for JSON serialization in worker entrypoint
+                    plot_dict = plot_ref.model_dump()
+                    # Ensure we have path (not just uri) for server import
+                    plot_dict["path"] = str(path.absolute())
+                    outputs.append(plot_dict)
 
                     # Clean up to avoid figure accumulation
                     plt.close(fig)
