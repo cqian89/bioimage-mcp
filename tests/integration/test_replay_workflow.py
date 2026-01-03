@@ -88,15 +88,10 @@ class TestReplayWorkflow:
             workflow_record_ref_id = original_result["workflow_record_ref_id"]
 
             # Replay: create new run from saved record
-            # Note: replay_workflow may not exist yet - this test documents expected API
-            if hasattr(svc, "replay_workflow"):
-                replay_result = svc.replay_workflow(workflow_record_ref_id)
+            replay_result = svc.replay_workflow(workflow_record_ref_id)
 
-                assert replay_result["status"] in {"succeeded", "running", "queued"}
-                assert replay_result["run_id"] != original_result["run_id"]
-            else:
-                # Mark as expected to fail until implementation
-                pytest.skip("replay_workflow not implemented yet")
+            assert replay_result["status"] in {"succeeded", "running", "queued"}
+            assert replay_result["run_id"] != original_result["run_id"]
 
     def test_replay_produces_same_artifact_types(self, tmp_path: Path, monkeypatch) -> None:
         """Test that replay produces outputs of same artifact types."""
@@ -133,16 +128,13 @@ class TestReplayWorkflow:
                 name: out.get("type") for name, out in original_status["outputs"].items()
             }
 
-            if hasattr(svc, "replay_workflow"):
-                replay_result = svc.replay_workflow(original_result["workflow_record_ref_id"])
-                replay_status = svc.get_run_status(replay_result["run_id"])
+            replay_result = svc.replay_workflow(original_result["workflow_record_ref_id"])
+            replay_status = svc.get_run_status(replay_result["run_id"])
 
-                # Verify same artifact types produced
-                for name, expected_type in original_output_types.items():
-                    if name in replay_status["outputs"]:
-                        assert replay_status["outputs"][name].get("type") == expected_type
-            else:
-                pytest.skip("replay_workflow not implemented yet")
+            # Verify same artifact types produced
+            for name, expected_type in original_output_types.items():
+                if name in replay_status["outputs"]:
+                    assert replay_status["outputs"][name].get("type") == expected_type
 
     def test_replay_links_to_original_run(self, tmp_path: Path, monkeypatch) -> None:
         """Test that replayed run links to original run_id in provenance."""
@@ -166,14 +158,11 @@ class TestReplayWorkflow:
                 skip_validation=True,
             )
 
-            if hasattr(svc, "replay_workflow"):
-                replay_result = svc.replay_workflow(original_result["workflow_record_ref_id"])
+            replay_result = svc.replay_workflow(original_result["workflow_record_ref_id"])
 
-                # Verify provenance links to original
-                # This would need to check run store for provenance field
-                assert replay_result["run_id"] != original_result["run_id"]
-            else:
-                pytest.skip("replay_workflow not implemented yet")
+            # Verify provenance links to original
+            # This would need to check run store for provenance field
+            assert replay_result["run_id"] != original_result["run_id"]
 
     def test_replay_with_missing_inputs_fails_clearly(self, tmp_path: Path, monkeypatch) -> None:
         """Test that replay with missing required inputs fails with clear error."""
@@ -217,12 +206,9 @@ class TestReplayWorkflow:
         )
 
         with ExecutionService(config, artifact_store=store) as svc:
-            if hasattr(svc, "replay_workflow"):
-                # Replay should fail or warn about missing input
-                with pytest.raises(Exception):
-                    svc.replay_workflow(record_ref.ref_id)
-            else:
-                pytest.skip("replay_workflow not implemented yet")
+            # Replay should fail or warn about missing input
+            with pytest.raises(Exception):
+                svc.replay_workflow(record_ref.ref_id)
 
     def test_workflow_record_can_be_parsed(self, tmp_path: Path, monkeypatch) -> None:
         """Test that workflow record artifact can be loaded and parsed."""

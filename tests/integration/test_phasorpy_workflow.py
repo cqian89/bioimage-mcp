@@ -91,7 +91,6 @@ def test_provenance_recording(adapter, tmp_path):
     )
 
     # Check provenance in output metadata
-    # This is expected to FAIL until implementation adds provenance
     for output in outputs:
         # Adapter currently returns dicts from execute
         metadata = output.get("metadata", {}) if isinstance(output, dict) else output.metadata

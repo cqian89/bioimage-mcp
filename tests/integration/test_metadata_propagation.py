@@ -63,8 +63,6 @@ def test_skimage_metadata_propagation(tmp_path: Path):
     )
 
     # Assert metadata propagation
-    # Currently, dynamic adapters (like SkimageAdapter) do NOT propagate metadata.
-    # So this test is expected to fail on the following assertions.
     assert "metadata" in output_ref, "Output artifact should have metadata"
     assert output_ref["metadata"].get("axes") == "TCZYX", (
         f"Axes should be 5D, got {output_ref['metadata'].get('axes')}"

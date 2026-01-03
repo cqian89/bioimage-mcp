@@ -44,7 +44,7 @@ def test_discovery_min_function_count():
     }
     discovered = adapter.discover(module_config)
 
-    # This is expected to FAIL until implementation (currently returns 2)
+    # >= 50 phasorpy functions are discovered.
     assert len(discovered) >= 50
 
 
