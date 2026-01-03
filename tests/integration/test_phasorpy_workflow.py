@@ -209,6 +209,65 @@ def test_phasor_calibrate_execution_range(adapter, tmp_path):
         assert np.all(calibrated_data <= 1.5)
 
 
+@pytest.mark.integration
+def test_allowlist_enforcement_negative(tmp_path: Path) -> None:
+    """T041: Verify that reads from paths outside allowlist are denied."""
+    # Skip if env not available
+    if not _env_available("bioimage-mcp-base"):
+        pytest.skip("bioimage-mcp-base environment not available")
+
+    dataset_file = (
+        Path(__file__).parent.parent.parent
+        / "datasets"
+        / "FLUTE_FLIM_data_tif"
+        / "Fluorescein_Embryo.tif"
+    ).absolute()
+    if not dataset_file.exists():
+        pytest.skip(f"Dataset missing at {dataset_file}")
+
+    # Setup config with restricted allowlist (NOT including the dataset)
+    artifacts_root = tmp_path / "artifacts"
+    tools_root = Path(__file__).parent.parent.parent / "tools"
+    config = Config(
+        artifact_store_root=artifacts_root,
+        tool_manifest_roots=[tools_root],
+        fs_allowlist_read=[tmp_path],  # Only allow tmp_path, not datasets/
+        fs_allowlist_write=[tmp_path],
+    )
+
+    conn = connect(config)
+    artifact_store = ArtifactStore(config, conn=conn)
+
+    with ExecutionService(config, artifact_store=artifact_store) as execution:
+        workflow = {
+            "steps": [
+                {
+                    "fn_id": "base.phasorpy.phasor.phasor_from_signal",
+                    "inputs": {
+                        "signal": {
+                            "type": "BioImageRef",
+                            "format": "OME-TIFF",
+                            "uri": _path_to_uri(dataset_file),
+                        }
+                    },
+                    "params": {"axis": -1, "harmonic": 1},
+                }
+            ]
+        }
+
+        # Run workflow - it should fail in the subprocess
+        run = execution.run_workflow(workflow)
+        status = execution.get_run_status(run["run_id"])
+
+        assert status["status"] == "failed"
+        # The error message should come from the subprocess
+        error_msg = str(status.get("error", ""))
+        assert (
+            "permission denied" in error_msg.lower()
+            or "not under any allowed read root" in error_msg.lower()
+        )
+
+
 @pytest.mark.slow
 @pytest.mark.integration
 def test_plot_phasor_execution_returns_plotref(adapter, tmp_path):

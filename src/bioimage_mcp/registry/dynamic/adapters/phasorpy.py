@@ -43,6 +43,31 @@ class PhasorPyAdapter:
         """Initialize PhasorPyAdapter."""
         self.introspector = Introspector()
 
+    def _assert_read_allowed(self, path: Path) -> None:
+        """Enforce filesystem allowlist for reads using environment variable."""
+        import json
+        import os
+
+        allowlist = os.environ.get("BIOIMAGE_MCP_FS_ALLOWLIST_READ")
+        if not allowlist:
+            return
+
+        try:
+            roots = json.loads(allowlist)
+        except json.JSONDecodeError:
+            return
+
+        target = path.expanduser().absolute()
+        for root in roots:
+            root_path = Path(root).expanduser().absolute()
+            try:
+                target.relative_to(root_path)
+                return
+            except ValueError:
+                continue
+
+        raise PermissionError(f"Path not under any allowed read root: {target}")
+
     def discover(self, module_config: dict[str, Any]) -> list[FunctionMetadata]:
         """Discover functions from phasorpy modules.
 
@@ -179,6 +204,9 @@ class PhasorPyAdapter:
             path = parsed.path
             if path.startswith("/") and len(path) > 2 and path[2] == ":":
                 path = path[1:]
+
+        # T041: Enforce filesystem allowlist for reads
+        self._assert_read_allowed(Path(path))
 
         from bioio import BioImage
 

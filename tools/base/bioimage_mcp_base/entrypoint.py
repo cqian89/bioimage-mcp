@@ -453,6 +453,15 @@ def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
     # Extract output_mode from params (T033)
     output_mode = params.pop("output_mode", "file")  # 'file' or 'memory'
 
+    # Set allowlist in environment for the duration of this request (T041)
+    allowlist = request.get("fs_allowlist_read")
+    sys.stderr.write(f"DEBUG: Setting allowlist from request: {allowlist}\n")
+    sys.stderr.flush()
+    if allowlist is not None:
+        import os
+
+        os.environ["BIOIMAGE_MCP_FS_ALLOWLIST_READ"] = json.dumps(allowlist)
+
     warnings = []
     if fn_id in LEGACY_REDIRECTS:
         new_fn_id = LEGACY_REDIRECTS[fn_id]
