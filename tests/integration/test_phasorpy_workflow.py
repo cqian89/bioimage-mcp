@@ -2,9 +2,33 @@
 
 import pytest
 import numpy as np
+import subprocess
 from pathlib import Path
+from urllib.parse import quote
 from bioimage_mcp.registry.dynamic.adapters.phasorpy import PhasorPyAdapter
 from bioimage_mcp.artifacts.models import ArtifactRef, PlotRef, PlotMetadata
+from bioimage_mcp.api.execution import ExecutionService
+from bioimage_mcp.artifacts.store import ArtifactStore
+from bioimage_mcp.config.schema import Config
+from bioimage_mcp.storage.sqlite import connect
+
+
+def _path_to_uri(path: Path) -> str:
+    return f"file://{quote(str(path.absolute()), safe='/:')}"
+
+
+def _env_available(env_name: str) -> bool:
+    try:
+        proc = subprocess.run(
+            ["conda", "run", "-n", env_name, "python", "-c", "print('ok')"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        return proc.returncode == 0
+    except Exception:
+        return False
 
 
 @pytest.fixture
@@ -453,3 +477,104 @@ def test_verification_sc003_subprocess_isolation():
     # This is typically verified at the runner level, not the adapter level.
     # The adapter itself cannot easily test its own process isolation.
     pass
+
+
+@pytest.mark.slow
+@pytest.mark.integration
+def test_plot_phasor_e2e_execution_service(tmp_path: Path) -> None:
+    """Test plot_phasor execution through ExecutionService with PlotRef output."""
+    # Skip if env not available
+    if not _env_available("bioimage-mcp-base"):
+        pytest.skip("bioimage-mcp-base environment not available")
+
+    dataset_file = (
+        Path(__file__).parent.parent.parent
+        / "datasets"
+        / "FLUTE_FLIM_data_tif"
+        / "Fluorescein_Embryo.tif"
+    ).absolute()
+    if not dataset_file.exists():
+        pytest.skip(f"Dataset missing at {dataset_file}")
+
+    # Setup config and ExecutionService
+    artifacts_root = tmp_path / "artifacts"
+    tools_root = Path(__file__).parent.parent.parent / "tools"
+    config = Config(
+        artifact_store_root=artifacts_root,
+        tool_manifest_roots=[tools_root],
+        fs_allowlist_read=[dataset_file.parent, tools_root, tmp_path],
+        fs_allowlist_write=[tmp_path],
+    )
+
+    conn = connect(config)
+    artifact_store = ArtifactStore(config, conn=conn)
+
+    with ExecutionService(config, artifact_store=artifact_store) as execution:
+        # Step 1: Get phasor data
+        workflow1 = {
+            "steps": [
+                {
+                    "fn_id": "base.phasorpy.phasor.phasor_from_signal",
+                    "inputs": {
+                        "signal": {
+                            "type": "BioImageRef",
+                            "format": "OME-TIFF",
+                            "uri": _path_to_uri(dataset_file),
+                        }
+                    },
+                    "params": {"axis": -1, "harmonic": 1},
+                }
+            ]
+        }
+        run1 = execution.run_workflow(workflow1)
+        status1 = execution.get_run_status(run1["run_id"])
+        assert status1["status"] == "succeeded"
+
+        # Step 2: Plot phasor
+        # phasor_from_signal returns (mean, real, imag) -> (output, output_1, output_2)
+        outputs1 = status1["outputs"]
+
+        workflow2 = {
+            "steps": [
+                {
+                    "fn_id": "base.phasorpy.plot.plot_phasor",
+                    "inputs": {
+                        "real": outputs1["output_1"],
+                        "imag": outputs1["output_2"],
+                    },
+                    "params": {},
+                }
+            ]
+        }
+        # skip_validation=True because we might not have all schemas loaded in this test setup
+        run2 = execution.run_workflow(workflow2, skip_validation=True)
+        status2 = execution.get_run_status(run2["run_id"])
+
+        # Verify success and PlotRef output
+        assert status2["status"] == "succeeded"
+        outputs2 = status2["outputs"]
+        plot_ref = outputs2["output"]
+
+        assert plot_ref["type"] == "PlotRef"
+        assert plot_ref["format"] == "PNG"
+
+        # Verify output can be accessed via artifact_store.get (matches get_artifact requirement)
+        ref_id = plot_ref["ref_id"]
+        retrieved_ref = execution.artifact_store.get(ref_id)
+        assert retrieved_ref.type == "PlotRef"
+        assert retrieved_ref.format == "PNG"
+
+        # Verify PNG file exists and has valid content
+        uri = plot_ref["uri"]
+        if uri.startswith("file://"):
+            path_str = uri[7:]
+            if len(path_str) > 2 and path_str[0] == "/" and path_str[2] == ":":
+                path_str = path_str[1:]
+            png_path = Path(path_str)
+        else:
+            png_path = Path(uri)
+
+        assert png_path.exists()
+        with open(png_path, "rb") as f:
+            header = f.read(8)
+            assert header == b"\x89PNG\r\n\x1a\n"
