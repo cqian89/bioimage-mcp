@@ -163,6 +163,12 @@ class XarrayAdapterForRegistry(BaseAdapter):
             }
         ]
 
+    def generate_dimension_hints(
+        self, module_name: str, func_name: str
+    ) -> DimensionRequirement | None:
+        """Generate dimension hints for agent guidance."""
+        return None
+
 
 def save_native_ome_zarr(data: np.ndarray, path: Path | str, dims: str) -> None:
     """Save array to OME-Zarr with native dimensions (T019)."""
@@ -181,9 +187,3 @@ def save_native_ome_zarr(data: np.ndarray, path: Path | str, dims: str) -> None:
         zarr_format=2,
     )
     writer.write_full_volume(data)
-
-    def generate_dimension_hints(
-        self, module_name: str, func_name: str
-    ) -> DimensionRequirement | None:
-        """Generate dimension hints for agent guidance."""
-        return None
