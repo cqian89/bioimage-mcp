@@ -1,6 +1,6 @@
 manifest_version: "1.0"
 tool_id: tools.base
-tool_version: "0.1.0"
+tool_version: "0.2.0"
 name: Base Image Processing Toolkit
 description: Common image I/O, transforms, and pre-processing functions (primarily scikit-image).
 
@@ -252,21 +252,140 @@ functions:
         dim:
           type: string
 
-  - fn_id: base.bioio.export
+  - fn_id: base.io.bioimage.load
+    tool_id: tools.base
+    name: Load bioimage
+    description: |
+      Load an image file from the local filesystem into the artifact system as a BioImageRef.
+      Validates path against filesystem.allowed_read configuration.
+    tags: [image, io, load]
+    input_mode: path
+    inputs: []
+    outputs:
+      - name: image
+        artifact_type: BioImageRef
+        description: Loaded image artifact with metadata
+    params_schema:
+      type: object
+      required: [path]
+      properties:
+        path:
+          type: string
+          description: Absolute path to the image file
+        format:
+          type: string
+          description: Optional format hint (e.g., "CZI", "LIF", "OME-TIFF")
+
+  - fn_id: base.io.bioimage.inspect
+    tool_id: tools.base
+    name: Inspect bioimage metadata
+    description: |
+      Extract metadata (dimensions, pixel sizes, channel names) from an image without loading pixel data.
+      Returns structured metadata for AI agent decision-making.
+    tags: [image, io, metadata, inspect]
+    input_mode: path
+    inputs: []
+    outputs: []
+    params_schema:
+      type: object
+      required: [path]
+      properties:
+        path:
+          type: string
+          description: Absolute path to the image file
+
+  - fn_id: base.io.bioimage.slice
+    tool_id: tools.base
+    name: Slice multi-dimensional image
+    description: |
+      Extract a subset of a multi-dimensional image by specifying dimension indices or ranges.
+      Preserves physical metadata (pixel sizes) in the output artifact.
+    tags: [image, io, slice, transform]
+    input_mode: xarray
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+        description: Input image artifact to slice
+    outputs:
+      - name: output
+        artifact_type: BioImageRef
+        description: Sliced image artifact
+    params_schema:
+      type: object
+      required: [slices]
+      properties:
+        slices:
+          type: object
+          description: |
+            Map of dimension labels (T, C, Z, Y, X) to indices or ranges.
+            Integer values select a single index. Objects with start/stop/step define ranges.
+          additionalProperties:
+            oneOf:
+              - type: integer
+              - type: object
+                properties:
+                  start:
+                    type: integer
+                  stop:
+                    type: integer
+                  step:
+                    type: integer
+      examples:
+        - {"C": 0}
+        - {"T": {"start": 0, "stop": 5}}
+        - {"Z": 25, "C": 0}
+
+  - fn_id: base.io.bioimage.validate
+    tool_id: tools.base
+    name: Validate bioimage file
+    description: |
+      Check if a file can be read as a bioimage and report any issues.
+      Returns validation status, detected format, and list of problems.
+    tags: [image, io, validate]
+    input_mode: path
+    inputs: []
+    outputs: []
+    params_schema:
+      type: object
+      required: [path]
+      properties:
+        path:
+          type: string
+          description: Absolute path to the image file to validate
+
+  - fn_id: base.io.bioimage.get_supported_formats
+    tool_id: tools.base
+    name: List supported image formats
+    description: |
+      Return a list of image file formats supported by the current environment.
+      Queries installed bioio reader plugins.
+    tags: [image, io, formats, discovery]
+    input_mode: path
+    inputs: []
+    outputs: []
+    params_schema:
+      type: object
+      properties: {}
+
+  - fn_id: base.io.bioimage.export
     tool_id: tools.base
     name: Export artifact to file
-    description: Export an artifact (memory or file-backed) to a specific format (OME-TIFF, OME-Zarr, PNG, CSV).
+    description: |
+      Export an image or table artifact to a specific file format.
+      Supports OME-TIFF, OME-Zarr, PNG for images and CSV for tables.
+      Replaces deprecated base.bioio.export function.
     tags: [image, io, export]
     input_mode: xarray
     inputs:
       - name: image
         artifact_type: BioImageRef
         required: false
-        description: Input image artifact to export
+        description: Image artifact to export
       - name: table
         artifact_type: TableRef
         required: false
-        description: Input table artifact to export
+        description: Table artifact to export
     outputs:
       - name: output
         artifact_type: BioImageRef
@@ -277,7 +396,10 @@ functions:
         format:
           type: string
           enum: [OME-TIFF, OME-Zarr, PNG, CSV, NPY]
-          description: Output format. If omitted, inferred from artifact.
+          description: Target export format. If omitted, inferred from artifact type.
+        path:
+          type: string
+          description: Optional output path. If omitted, generated in work_dir.
 
   # Required for on-demand schema enrichment
   - fn_id: meta.describe
