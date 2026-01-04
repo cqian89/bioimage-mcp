@@ -1,11 +1,11 @@
 <!--
 Sync Impact Report
-- Version change: 0.8.0 -> 0.8.1
-- Principles updated: Section III (Artifact References Only) clarified for negotiated cross-env materialization (source export, target import).
+- Version change: 0.8.1 -> 0.9.0 (MINOR bump - new principle guidance)
+- Principles updated: Section III (Artifact References & I/O) amended for native dimension preservation via `img.reader.data`.
 - Added sections: None
 - Removed sections: None
 - Templates requiring updates: None
-- Follow-up TODOs: Update tool manifests and environment definitions to include bioio and plugins.
+- Follow-up TODOs: Update tool implementations to use native loading pattern and respect `dimension_requirements`.
 -->
 
 # Bioimage-MCP Constitution
@@ -67,11 +67,20 @@ Non-negotiables:
 
 Rationale: Reference-based I/O enables scale (large volumes), allows replay/debugging,
 and prevents protocol-level context bloat. Using `bioio` as the standard layer ensures 
-consistent 5D TCZYX normalization, metadata preservation, and reduces custom converter code.
+metadata preservation, reduces custom converter code, and enables native dimension handling.
 
-- Tool implementations MUST use `bioio.BioImage` for reading and `bioio.writers.*` 
-  (e.g., `OmeTiffWriter`, `OMEZarrWriter`) for writing. Custom I/O wrapper functions 
-  SHOULD NOT be created as they bypass plugin auto-detection and cause compatibility issues.
+- Tool implementations MUST use `bioio.BioImage` as the entry point for file I/O.
+- For native dimension preservation, tools SHOULD access `img.reader.data` or 
+  `img.reader.xarray_data` rather than `img.data` (which normalizes to 5D TCZYX).
+- Convenience metadata (physical_pixel_sizes, channel_names) SHOULD be accessed from 
+  the BioImage wrapper for safe defaults.
+- Tools MUST NOT expand to 5D unless the receiving tool's manifest requires it via 
+  `dimension_requirements` or the output format requires it (e.g., OME-TIFF export).
+- Tool implementations MUST use `bioio.writers.*` (e.g., `OmeTiffWriter`, `OMEZarrWriter`) 
+  for writing. Custom I/O wrapper functions SHOULD NOT be created as they bypass 
+  plugin auto-detection and cause compatibility issues.
+- For OME-Zarr writing with native dimensions, use `bioio_ome_zarr.writers.OMEZarrWriter` 
+  with explicit `axes_names` and `axes_types` parameters.
 
 ### IV. Reproducibility & Provenance (Record + Replay)
 The system MUST make analysis runs reproducible and auditable.
@@ -151,7 +160,7 @@ stabilization.
 - **Platform support**: Cross-platform (Linux, macOS, Windows) from the start; document
   platform-specific behavior where it differs (e.g., Java/Fiji, ML wheel availability).
 - **Artifact types**: Canonical types are `BioImageRef`, `LabelImageRef`, `TableRef`,
-  `ModelRef`, and `LogRef` (defined in Architecture document).
+  `ScalarRef`, `ModelRef`, and `LogRef` (defined in Architecture document).
 - **Bootstrap CLI**: `bioimage-mcp install`, `doctor`, `configure`, and `serve` commands
   provide installation and runtime lifecycle (defined in PRD §6.6).
 - **Reference implementation**: `MicroscopyLM` (`../MicroscopyLM/`) provides reference
@@ -194,4 +203,4 @@ Compliance expectations:
 - Exceptions MUST be documented in the plan with rationale and mitigation, and MUST
   be approved in review.
 
-**Version**: 0.8.1 | **Ratified**: 2025-12-26 | **Last Amended**: 2025-12-31
+**Version**: 0.9.0 | **Ratified**: 2025-12-26 | **Last Amended**: 2026-01-04

@@ -1,0 +1,260 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "bioimage-mcp/artifact-metadata-schema.json",
+  "title": "Bioimage-MCP Artifact Metadata Schema",
+  "description": "Schema for artifact reference metadata with native dimension support",
+  "version": "0.2.0",
+  "definitions": {
+    "ArtifactChecksum": {
+      "type": "object",
+      "required": ["algorithm", "value"],
+      "properties": {
+        "algorithm": {
+          "type": "string",
+          "enum": ["sha256", "sha256-tree"],
+          "description": "Hash algorithm used"
+        },
+        "value": {
+          "type": "string",
+          "description": "Hex-encoded hash value"
+        }
+      }
+    },
+    "ColumnMetadata": {
+      "type": "object",
+      "required": ["name", "dtype"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Column name"
+        },
+        "dtype": {
+          "type": "string",
+          "enum": ["int64", "float64", "string", "bool"],
+          "description": "Column data type"
+        }
+      }
+    },
+    "ImageMetadata": {
+      "type": "object",
+      "required": ["shape", "ndim", "dtype"],
+      "properties": {
+        "shape": {
+          "type": "array",
+          "items": {"type": "integer", "minimum": 1},
+          "minItems": 2,
+          "maxItems": 5,
+          "description": "Array shape (e.g., [512, 512] for 2D)"
+        },
+        "ndim": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 5,
+          "description": "Number of dimensions"
+        },
+        "dims": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["T", "C", "Z", "Y", "X"]
+          },
+          "minItems": 2,
+          "maxItems": 5,
+          "description": "Dimension labels in order (e.g., ['Y', 'X'])"
+        },
+        "dtype": {
+          "type": "string",
+          "description": "NumPy dtype (e.g., 'float32', 'uint16')"
+        },
+        "axes": {
+          "type": "string",
+          "pattern": "^[TCZYX]+$",
+          "description": "Legacy axes string (e.g., 'YX', 'TCZYX')"
+        },
+        "physical_pixel_sizes": {
+          "type": "object",
+          "properties": {
+            "X": {"type": "number", "minimum": 0},
+            "Y": {"type": "number", "minimum": 0},
+            "Z": {"type": "number", "minimum": 0}
+          },
+          "description": "Physical pixel sizes in microns"
+        },
+        "channel_names": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Channel identifiers"
+        }
+      }
+    },
+    "TableMetadata": {
+      "type": "object",
+      "required": ["columns", "row_count"],
+      "properties": {
+        "columns": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/ColumnMetadata"},
+          "description": "Column definitions"
+        },
+        "row_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of rows in table"
+        },
+        "source_fn_id": {
+          "type": "string",
+          "description": "Function that produced this table"
+        }
+      }
+    },
+    "ScalarMetadata": {
+      "type": "object",
+      "required": ["value", "dtype"],
+      "properties": {
+        "value": {
+          "oneOf": [
+            {"type": "number"},
+            {"type": "boolean"}
+          ],
+          "description": "The scalar value"
+        },
+        "dtype": {
+          "type": "string",
+          "enum": ["float64", "int64", "bool"],
+          "description": "Value type"
+        },
+        "unit": {
+          "type": "string",
+          "nullable": true,
+          "description": "Physical unit (optional)"
+        },
+        "computed_from": {
+          "type": "string",
+          "description": "Function ID that computed this value"
+        },
+        "source_ref_id": {
+          "type": "string",
+          "description": "Input artifact reference ID"
+        }
+      }
+    },
+    "ArtifactRef": {
+      "type": "object",
+      "required": ["ref_id", "type", "uri", "format", "mime_type", "size_bytes", "created_at"],
+      "properties": {
+        "ref_id": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{32}$",
+          "description": "UUID hex identifier"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["BioImageRef", "LabelImageRef", "TableRef", "ScalarRef", "LogRef", "NativeOutputRef", "PlotRef"],
+          "description": "Artifact semantic type"
+        },
+        "uri": {
+          "type": "string",
+          "pattern": "^(file://|mem://)",
+          "description": "Resource location (file:// or mem://)"
+        },
+        "format": {
+          "type": "string",
+          "description": "Format identifier (e.g., 'OME-TIFF', 'OME-Zarr', 'CSV', 'json')"
+        },
+        "storage_type": {
+          "type": "string",
+          "enum": ["file", "zarr-temp", "memory"],
+          "default": "file",
+          "description": "Storage backing type"
+        },
+        "mime_type": {
+          "type": "string",
+          "description": "MIME type"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Size in bytes"
+        },
+        "checksums": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/ArtifactChecksum"},
+          "description": "Content checksums for integrity"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 creation timestamp"
+        },
+        "schema_version": {
+          "type": "string",
+          "nullable": true,
+          "description": "Artifact schema version"
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Type-specific metadata (see ImageMetadata, TableMetadata, ScalarMetadata)"
+        }
+      }
+    }
+  },
+  "allOf": [
+    {"$ref": "#/definitions/ArtifactRef"}
+  ],
+  "examples": [
+    {
+      "ref_id": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4",
+      "type": "BioImageRef",
+      "uri": "file:///path/to/artifact.ome.zarr",
+      "format": "OME-Zarr",
+      "storage_type": "zarr-temp",
+      "mime_type": "application/zarr+ome",
+      "size_bytes": 1048576,
+      "checksums": [{"algorithm": "sha256-tree", "value": "abc123..."}],
+      "created_at": "2026-01-04T12:00:00Z",
+      "metadata": {
+        "shape": [512, 512],
+        "ndim": 2,
+        "dims": ["Y", "X"],
+        "dtype": "float32",
+        "physical_pixel_sizes": {"X": 0.5, "Y": 0.5}
+      }
+    },
+    {
+      "ref_id": "b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5",
+      "type": "TableRef",
+      "uri": "file:///path/to/output.csv",
+      "format": "CSV",
+      "storage_type": "file",
+      "mime_type": "text/csv",
+      "size_bytes": 4096,
+      "checksums": [{"algorithm": "sha256", "value": "def456..."}],
+      "created_at": "2026-01-04T12:01:00Z",
+      "metadata": {
+        "columns": [
+          {"name": "label", "dtype": "int64"},
+          {"name": "area", "dtype": "float64"}
+        ],
+        "row_count": 42,
+        "source_fn_id": "skimage.measure.regionprops_table"
+      }
+    },
+    {
+      "ref_id": "c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6",
+      "type": "ScalarRef",
+      "uri": "file:///path/to/threshold.json",
+      "format": "json",
+      "storage_type": "file",
+      "mime_type": "application/json",
+      "size_bytes": 128,
+      "checksums": [{"algorithm": "sha256", "value": "ghi789..."}],
+      "created_at": "2026-01-04T12:02:00Z",
+      "metadata": {
+        "value": 127.5,
+        "dtype": "float64",
+        "computed_from": "skimage.filters.threshold_otsu",
+        "source_ref_id": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4"
+      }
+    }
+  ]
+}
