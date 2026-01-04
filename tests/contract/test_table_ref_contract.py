@@ -1,10 +1,17 @@
 from __future__ import annotations
 
 import pytest
-from bioimage_mcp.artifacts.models import ArtifactRef, TableRef
+
+try:
+    from bioimage_mcp.artifacts.models import TableRef
+except ImportError:
+    TableRef = None
 
 
 def test_table_ref_creation() -> None:
+    if TableRef is None:
+        pytest.fail("TableRef not implemented")
+
     # This should fail if TableRef is not defined
     ref = TableRef(
         ref_id="table-1",

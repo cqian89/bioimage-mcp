@@ -2,10 +2,17 @@ from __future__ import annotations
 
 import pytest
 from pydantic import ValidationError
-from bioimage_mcp.artifacts.models import ScalarRef
+
+try:
+    from bioimage_mcp.artifacts.models import ScalarRef
+except ImportError:
+    ScalarRef = None
 
 
 def test_scalar_ref_creation() -> None:
+    if ScalarRef is None:
+        pytest.fail("ScalarRef not implemented")
+
     # This should fail if ScalarRef is not defined
     ref = ScalarRef(
         ref_id="scalar-1",
@@ -31,6 +38,9 @@ def test_scalar_ref_creation() -> None:
 
 
 def test_scalar_ref_requires_metadata_fields() -> None:
+    if ScalarRef is None:
+        pytest.fail("ScalarRef not implemented")
+
     # ScalarMetadata should require value and dtype
     with pytest.raises(ValidationError):
         ScalarRef(
