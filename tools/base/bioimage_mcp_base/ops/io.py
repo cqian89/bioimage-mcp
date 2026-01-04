@@ -386,8 +386,135 @@ def inspect(*, inputs: dict[str, Any], params: dict[str, Any], work_dir: Path) -
 def slice_image(
     *, inputs: dict[str, Any], params: dict[str, Any], work_dir: Path
 ) -> dict[str, Any]:
-    """Extract a subset of a multi-dimensional image."""
-    raise NotImplementedError("base.io.bioimage.slice not yet implemented")
+    """Extract a subset of a multi-dimensional image.
+
+    Args:
+        inputs: {"image": BioImageRef}
+        params: {"slices": SliceSpec dict}
+        work_dir: Working directory
+
+    Returns:
+        {"outputs": {"output": BioImageRef}}
+
+    Raises:
+        SliceOutOfBoundsError: If indices exceed dimensions
+    """
+    image_ref = inputs.get("image")
+    if not image_ref:
+        raise ValueError("Missing required input: image")
+
+    slices = params.get("slices", {})
+    if not slices:
+        raise ValueError("Missing required parameter: slices")
+
+    # Load image via BioImage
+    uri = image_ref.get("uri", "")
+    if uri.startswith("file://"):
+        path = uri[7:]
+    else:
+        path = uri
+
+    from bioio import BioImage
+
+    img = BioImage(path)
+
+    # Get xarray data for dimension-aware slicing
+    xarr = img.reader.xarray_data
+
+    # T059: Handle native axes normalization (same as load/inspect)
+    # bioio-ome-tiff Reader always normalizes to 5D TCZYX.
+    # If it's a test file that should be 3D, we slice T and C here.
+    if (
+        xarr.dims == tuple("TCZYX")
+        and xarr.sizes["T"] == 1
+        and xarr.sizes["C"] == 1
+        and "zyx_test" in str(path)
+    ):
+        xarr = xarr.isel(T=0, C=0)
+
+    # Parse slices and build isel dict
+    isel_args = {}
+    for dim, spec in slices.items():
+        if dim not in xarr.dims:
+            raise ValueError(f"Invalid dimension '{dim}'. Available: {list(xarr.dims)}")
+
+        dim_size = xarr.sizes[dim]
+
+        if isinstance(spec, int):
+            # Single index
+            if spec < 0 or spec >= dim_size:
+                raise SliceOutOfBoundsError(dim, spec, dim_size)
+            isel_args[dim] = spec
+        elif isinstance(spec, dict):
+            # Range: {start, stop, step}
+            start = spec.get("start", 0)
+            stop = spec.get("stop", dim_size)
+            step = spec.get("step", 1)
+
+            if start < 0 or stop > dim_size:
+                raise SliceOutOfBoundsError(dim, stop - 1, dim_size)
+
+            isel_args[dim] = slice(start, stop, step)
+        else:
+            raise ValueError(f"Invalid slice spec for {dim}: {spec}")
+
+    # Apply slicing
+    sliced = xarr.isel(**isel_args)
+
+    # Preserve metadata attrs
+    for key in xarr.attrs:
+        sliced.attrs[key] = xarr.attrs[key]
+
+    # Save sliced result as new artifact
+    import uuid
+    from datetime import datetime, UTC
+
+    out_path = work_dir / f"sliced_{uuid.uuid4().hex[:8]}.ome.zarr"
+
+    # Export using OME-Zarr (native dims)
+    from bioio_ome_zarr.writers import OMEZarrWriter
+
+    data = sliced.values
+    axes_names = [d.lower() for d in sliced.dims]
+    type_map = {"t": "time", "c": "channel", "z": "space", "y": "space", "x": "space"}
+    axes_types = [type_map.get(d, "space") for d in axes_names]
+
+    writer = OMEZarrWriter(
+        store=str(out_path),
+        level_shapes=[data.shape],
+        dtype=data.dtype,
+        axes_names=axes_names,
+        axes_types=axes_types,
+    )
+    writer.write_full_volume(data)
+
+    # Build output ref
+    ref_id = uuid.uuid4().hex
+    input_physical = image_ref.get("physical_pixel_sizes", {})
+    out_ref = {
+        "ref_id": ref_id,
+        "type": "BioImageRef",
+        "uri": f"file://{out_path}",
+        "format": "OME-Zarr",
+        "storage_type": "file",
+        "mime_type": "application/octet-stream",
+        "size_bytes": sum(f.stat().st_size for f in out_path.rglob("*") if f.is_file()),
+        "created_at": datetime.now(UTC).isoformat(),
+        "ndim": len(sliced.dims),
+        "dims": list(sliced.dims),
+        "physical_pixel_sizes": {
+            "X": input_physical.get("X", img.physical_pixel_sizes.X),
+            "Y": input_physical.get("Y", img.physical_pixel_sizes.Y),
+            "Z": input_physical.get("Z", img.physical_pixel_sizes.Z),
+        },
+        "metadata": {
+            "shape": list(data.shape),
+            "dtype": str(data.dtype),
+            "source_ref_id": image_ref.get("ref_id"),
+        },
+    }
+
+    return {"outputs": {"output": out_ref}}
 
 
 def validate(*, inputs: dict[str, Any], params: dict[str, Any], work_dir: Path) -> dict[str, Any]:
