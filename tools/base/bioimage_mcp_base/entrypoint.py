@@ -21,8 +21,7 @@ if str(TOOLS_ROOT) not in sys.path:
 
 from datetime import UTC  # noqa: E402
 
-from bioimage_mcp_base import io as io_ops  # noqa: E402
-from bioimage_mcp_base.ops import export as export_ops  # noqa: E402
+from bioimage_mcp_base.ops import io as io_ops  # noqa: E402
 
 TOOL_VERSION = "0.1.0"
 TOOL_ENV_NAME = "bioimage-mcp-base"
@@ -42,7 +41,12 @@ _ENV_ID: str | None = None
 
 
 FN_MAP = {
-    "base.bioio.export": (export_ops.export, {}),
+    "base.io.bioimage.load": (io_ops.load, {}),
+    "base.io.bioimage.inspect": (io_ops.inspect, {}),
+    "base.io.bioimage.slice": (io_ops.slice_image, {}),
+    "base.io.bioimage.validate": (io_ops.validate, {}),
+    "base.io.bioimage.get_supported_formats": (io_ops.get_supported_formats, {}),
+    "base.io.bioimage.export": (io_ops.export, {}),
 }
 
 LEGACY_REDIRECTS = {}
