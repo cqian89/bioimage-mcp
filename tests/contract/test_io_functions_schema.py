@@ -53,6 +53,15 @@ def test_io_functions_schema_completeness(base_tool_manifest) -> None:
         assert fn.tags, f"Function {fn.fn_id} missing tags"
         assert len(fn.tags) > 0, f"Function {fn.fn_id} must have at least one tag"
 
+        # Check for examples in complex params (T054)
+        if fn.fn_id == "base.io.bioimage.slice":
+            assert "examples" in fn.params_schema, (
+                f"Function {fn.fn_id} must have examples in params_schema due to complex SliceSpec"
+            )
+            assert len(fn.params_schema["examples"]) >= 2, (
+                f"Function {fn.fn_id} should have at least 2 examples"
+            )
+
 
 def test_deprecated_io_export_absent(base_tool_manifest) -> None:
     """T052: Assert deprecated base.bioio.export is absent from manifest."""
