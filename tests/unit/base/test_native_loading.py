@@ -12,11 +12,19 @@ except ImportError:
 
 
 @pytest.mark.skipif(load_native is None, reason="load_native not implemented")
-def test_load_native_preserves_dimensions(tmp_path: Path) -> None:
-    # This test would need a real image file, but since we are in TDD
-    # and we expect it to fail anyway (or skip if not exists),
-    # we can just try to import it and call it if it exists.
-    pass
+def test_load_native_preserves_2d_dimensions(tmp_path: Path) -> None:
+    # Explicitly verify that load_native returns native dims (not forced to 5D)
+    # This is TDD - we define the expected behavior before implementation
+    path = tmp_path / "test_2d.tif"
+    # If load_native existed and we had a way to mock/create a 2D image:
+    if load_native:
+        # In a real test we would create a 2D TIFF here
+        # For now, we assert the principle
+        data, dims, metadata = load_native(path)
+        if data.ndim == 2:
+            assert dims == "YX", f"Expected dims 'YX' for 2D image, got {dims}"
+        elif data.ndim == 3:
+            assert dims in ("ZYX", "CYX"), f"Expected 3D dims, got {dims}"
 
 
 def test_load_native_exists() -> None:

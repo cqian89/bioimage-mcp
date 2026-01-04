@@ -17,6 +17,7 @@ def test_table_ref_creation() -> None:
         metadata={
             "columns": [{"name": "area", "dtype": "float64"}, {"name": "label", "dtype": "int64"}],
             "row_count": 100,
+            "source_fn_id": "skimage.measure.regionprops_table",
         },
     )
     assert ref.type == "TableRef"
@@ -24,6 +25,7 @@ def test_table_ref_creation() -> None:
     assert len(ref.metadata["columns"]) == 2
     assert ref.metadata["row_count"] == 100
     assert ref.metadata["columns"][0]["name"] == "area"
+    assert ref.metadata["source_fn_id"] == "skimage.measure.regionprops_table"
 
 
 def test_table_ref_metadata_validation() -> None:
