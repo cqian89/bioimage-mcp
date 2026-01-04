@@ -16,6 +16,8 @@ class ArtifactChecksum(BaseModel):
 ARTIFACT_TYPES = {
     "BioImageRef": "Multi-dimensional bioimaging data (input/intermediate)",
     "LabelImageRef": "Instance segmentation labels (integer-valued image)",
+    "TableRef": "Measurement/feature tables (CSV format)",
+    "ScalarRef": "Single numeric values (thresholds, statistics)",
     "LogRef": "Execution log output",
     "NativeOutputRef": "Tool-native output bundle (format is tool-dependent)",
     "PlotRef": "Visualization plots (PNG/SVG)",
@@ -45,6 +47,11 @@ class ArtifactRef(BaseModel):
     # Used to track changes in artifact format over time
     schema_version: str | None = None
 
+    # T008: Add ndim, dims, physical_pixel_sizes fields
+    ndim: int | None = None
+    dims: list[str] | None = None
+    physical_pixel_sizes: dict | None = None
+
     @model_validator(mode="after")
     def validate_memory_artifact(self) -> ArtifactRef:
         """Ensure URI and storage_type are consistent for memory artifacts."""
@@ -63,6 +70,22 @@ class ArtifactRef(BaseModel):
                 raise ValueError("Artifact with storage_type='memory' must have a mem:// URI")
         return self
 
+    # T011: Add model_validator for dimension metadata consistency
+    @model_validator(mode="after")
+    def validate_dimension_metadata(self) -> ArtifactRef:
+        if self.type in ("BioImageRef", "LabelImageRef"):
+            meta = self.metadata
+            shape = meta.get("shape")
+            ndim = meta.get("ndim")
+            dims = meta.get("dims")
+
+            if shape and ndim and len(shape) != ndim:
+                raise ValueError(f"shape length ({len(shape)}) != ndim ({ndim})")
+
+            if shape and dims and len(shape) != len(dims):
+                raise ValueError(f"shape length ({len(shape)}) != dims length ({len(dims)})")
+        return self
+
     def is_memory_artifact(self) -> bool:
         """Check if artifact is memory-backed."""
         return self.uri.startswith("mem://")
@@ -70,6 +93,18 @@ class ArtifactRef(BaseModel):
     @classmethod
     def now(cls) -> str:
         return datetime.now(UTC).isoformat()
+
+
+# T010: Add ColumnMetadata and TableMetadata classes
+class ColumnMetadata(BaseModel):
+    name: str
+    dtype: str  # "int64", "float64", "string", "bool"
+
+
+class TableMetadata(BaseModel):
+    columns: list[ColumnMetadata]
+    row_count: int
+    source_fn_id: str | None = None
 
 
 class PlotMetadata(BaseModel):
@@ -88,6 +123,28 @@ class PlotRef(ArtifactRef):
     type: Literal["PlotRef"] = "PlotRef"
     format: Literal["PNG", "SVG"] = "PNG"
     metadata: PlotMetadata
+
+
+class TableRef(ArtifactRef):
+    """Reference to a tabular data artifact."""
+
+    type: Literal["TableRef"] = "TableRef"
+
+
+# T009: Add ScalarRef class with JSON format and ScalarMetadata
+class ScalarMetadata(BaseModel):
+    value: float | int | bool
+    dtype: str  # "float64", "int64", "bool"
+    unit: str | None = None
+    computed_from: str | None = None  # fn_id that produced this value
+    source_ref_id: str | None = None  # Input artifact ref_id
+
+
+class ScalarRef(ArtifactRef):
+    type: Literal["ScalarRef"] = "ScalarRef"
+    format: Literal["json"] = "json"
+    mime_type: Literal["application/json"] = "application/json"
+    metadata: ScalarMetadata
 
 
 class PhasorMetadata(BaseModel):

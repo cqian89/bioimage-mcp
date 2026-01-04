@@ -32,9 +32,9 @@ def test_scalar_ref_creation() -> None:
     )
     assert ref.type == "ScalarRef"
     assert ref.format == "json"
-    assert ref.metadata["value"] == 42.0
-    assert ref.metadata["computed_from"] == "mean"
-    assert ref.metadata["source_ref_id"] == "image-1"
+    assert ref.metadata.value == 42.0
+    assert ref.metadata.computed_from == "mean"
+    assert ref.metadata.source_ref_id == "image-1"
 
 
 def test_scalar_ref_requires_metadata_fields() -> None:

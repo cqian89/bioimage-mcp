@@ -167,6 +167,8 @@ def extract_image_metadata(path: Path) -> dict | None:
     # Keep this intentionally minimal and JSON-serializable.
     meta: dict = {
         "axes": axes or "",
+        "ndim": image.ndim if hasattr(image, "ndim") else len(image.shape),
+        "dims": list(axes) if axes else [],
         "shape": list(getattr(image, "shape", ()) or ()),
         "dtype": str(getattr(image, "dtype", "")),
         "axes_inferred": axes_inferred,
