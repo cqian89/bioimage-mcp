@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import os
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -11,7 +13,7 @@ TOOLS_BASE = Path(__file__).resolve().parents[3] / "tools" / "base"
 if str(TOOLS_BASE) not in sys.path:
     sys.path.insert(0, str(TOOLS_BASE))
 
-from bioimage_mcp_base.ops.export import export  # noqa: E402
+from bioimage_mcp_base.ops.io import export  # noqa: E402
 
 
 def test_export_2d_to_ome_zarr_preserves_dims(tmp_path):
@@ -25,8 +27,9 @@ def test_export_2d_to_ome_zarr_preserves_dims(tmp_path):
 
     # Mock load_native_image to return 2D data
     with (
-        patch("bioimage_mcp_base.ops.export.load_native_image") as mock_load,
+        patch("bioimage_mcp_base.ops.io.load_native_image") as mock_load,
         patch.dict(sys.modules, {"bioio_ome_zarr.writers": mock_writer_module}),
+        patch.dict(os.environ, {"BIOIMAGE_MCP_FS_ALLOWLIST_WRITE": json.dumps([str(tmp_path)])}),
     ):
         mock_load.return_value = data_2d
         mock_writer = MagicMock()
@@ -39,7 +42,7 @@ def test_export_2d_to_ome_zarr_preserves_dims(tmp_path):
                 "metadata": {"dims": ["Y", "X"]},
             }
         }
-        params = {"format": "OME-ZARR"}
+        params = {"format": "OME-ZARR", "path": str(tmp_path / "out.ome.zarr")}
         work_dir = tmp_path
 
         export(inputs=inputs, params=params, work_dir=work_dir)
@@ -69,8 +72,9 @@ def test_export_3d_to_ome_zarr_preserves_dims(tmp_path):
 
     # Mock load_native_image to return 3D data
     with (
-        patch("bioimage_mcp_base.ops.export.load_native_image") as mock_load,
+        patch("bioimage_mcp_base.ops.io.load_native_image") as mock_load,
         patch.dict(sys.modules, {"bioio_ome_zarr.writers": mock_writer_module}),
+        patch.dict(os.environ, {"BIOIMAGE_MCP_FS_ALLOWLIST_WRITE": json.dumps([str(tmp_path)])}),
     ):
         mock_load.return_value = data_3d
         mock_writer = MagicMock()
@@ -83,7 +87,7 @@ def test_export_3d_to_ome_zarr_preserves_dims(tmp_path):
                 "metadata": {"dims": ["Z", "Y", "X"]},
             }
         }
-        params = {"format": "OME-ZARR"}
+        params = {"format": "OME-ZARR", "path": str(tmp_path / "out.ome.zarr")}
         work_dir = tmp_path
 
         export(inputs=inputs, params=params, work_dir=work_dir)
@@ -113,8 +117,9 @@ def test_export_2d_to_ome_zarr_no_metadata_dims(tmp_path):
 
     # Mock load_native_image to return 2D data
     with (
-        patch("bioimage_mcp_base.ops.export.load_native_image") as mock_load,
+        patch("bioimage_mcp_base.ops.io.load_native_image") as mock_load,
         patch.dict(sys.modules, {"bioio_ome_zarr.writers": mock_writer_module}),
+        patch.dict(os.environ, {"BIOIMAGE_MCP_FS_ALLOWLIST_WRITE": json.dumps([str(tmp_path)])}),
     ):
         mock_load.return_value = data_2d
         mock_writer = MagicMock()
@@ -127,7 +132,7 @@ def test_export_2d_to_ome_zarr_no_metadata_dims(tmp_path):
                 "metadata": {},  # No dims
             }
         }
-        params = {"format": "OME-ZARR"}
+        params = {"format": "OME-ZARR", "path": str(tmp_path / "out.ome.zarr")}
         work_dir = tmp_path
 
         export(inputs=inputs, params=params, work_dir=work_dir)
@@ -140,8 +145,8 @@ def test_export_2d_to_ome_zarr_no_metadata_dims(tmp_path):
 
 
 def test_export_ome_zarr_squeezes_singletons_to_match_dims(tmp_path):
-    """export_ome_zarr should squeeze singleton dims to match provided dims list."""
-    from bioimage_mcp_base.ops.export import export_ome_zarr
+    """_export_ome_zarr should squeeze singleton dims to match provided dims list."""
+    from bioimage_mcp_base.ops.io import _export_ome_zarr as export_ome_zarr
     import numpy as np
 
     # 5D data with singletons: (1, 1, 1, 64, 64) - effectively 2D

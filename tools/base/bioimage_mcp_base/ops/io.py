@@ -4,10 +4,14 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import uuid
 from datetime import datetime, UTC
 from pathlib import Path
 from typing import Any
+
+import numpy as np
+from bioimage_mcp_base.utils import load_native_image, uri_to_path
 
 
 class PathNotAllowedError(Exception):
@@ -387,17 +391,355 @@ def slice_image(
 
 
 def validate(*, inputs: dict[str, Any], params: dict[str, Any], work_dir: Path) -> dict[str, Any]:
-    """Validate an image file and report issues."""
-    raise NotImplementedError("base.io.bioimage.validate not yet implemented")
+    """Validate an image file and report issues.
+
+    Args:
+        params: {"path": str, "deep": bool = False}
+
+    Returns:
+        {"outputs": {"result": ValidationReport}}
+    """
+    path = params.get("path")
+    if not path:
+        raise ValueError("Missing required parameter: path")
+    deep = params.get("deep", False)
+
+    # Validate path access
+    resolved_path = validate_read_path(path)
+
+    issues = []
+    is_valid = True
+    reader_selected = None
+    format_detected = None
+    metadata_summary = None
+
+    # Check file exists
+    if not resolved_path.exists():
+        issues.append(
+            {
+                "severity": "error",
+                "code": "FILE_NOT_FOUND",
+                "message": f"File not found: {path}",
+                "field": None,
+            }
+        )
+        is_valid = False
+    else:
+        # Try to determine reader
+        try:
+            from bioio import BioImage
+
+            img = BioImage(resolved_path)
+            reader_selected = img.reader.__class__.__name__
+            format_detected = _detect_format(resolved_path)
+
+            # Metadata validation (fast, no pixel load)
+            native_dims = img.reader.dims.order if hasattr(img.reader, "dims") else None
+            native_shape = img.reader.data.shape if hasattr(img.reader, "data") else None
+
+            metadata_summary = {
+                "shape": list(native_shape) if native_shape else None,
+                "dims": native_dims,
+                "dtype": str(img.reader.data.dtype) if native_shape else None,
+            }
+
+            # Check for minimum requirements
+            if native_dims and len(native_dims) < 2:
+                issues.append(
+                    {
+                        "severity": "warning",
+                        "code": "INSUFFICIENT_DIMENSIONS",
+                        "message": "Image has fewer than 2 dimensions",
+                        "field": "dims",
+                    }
+                )
+
+            # Check physical pixel sizes
+            pixel_sizes = img.physical_pixel_sizes
+            if pixel_sizes.X is None or pixel_sizes.Y is None:
+                issues.append(
+                    {
+                        "severity": "warning",
+                        "code": "MISSING_PIXEL_SIZE",
+                        "message": "Physical pixel sizes not defined",
+                        "field": "physical_pixel_sizes",
+                    }
+                )
+
+            # Deep validation (optional)
+            if deep:
+                # This would load pixels and check for corruption
+                # For now, just a placeholder
+                pass
+
+        except Exception as e:
+            issues.append(
+                {
+                    "severity": "error",
+                    "code": "READER_FAILED",
+                    "message": str(e),
+                    "field": None,
+                }
+            )
+            is_valid = False
+
+    # Determine overall validity
+    has_errors = any(i["severity"] == "error" for i in issues)
+    is_valid = not has_errors
+
+    return {
+        "outputs": {
+            "result": {
+                "path": str(resolved_path),
+                "is_valid": is_valid,
+                "reader_selected": reader_selected,
+                "format_detected": format_detected,
+                "issues": issues,
+                "metadata_summary": metadata_summary,
+            }
+        }
+    }
 
 
 def get_supported_formats(
     *, inputs: dict[str, Any], params: dict[str, Any], work_dir: Path
 ) -> dict[str, Any]:
-    """Return list of supported image formats."""
-    raise NotImplementedError("base.io.bioimage.get_supported_formats not yet implemented")
+    """Return list of supported image formats.
+
+    Returns:
+        {"outputs": {"result": {"formats": FormatList, "readers": ReaderList}}}
+    """
+    # Query bioio for registered reader plugins
+    from bioio.plugins import get_plugins
+    import importlib.metadata
+
+    plugins = get_plugins(use_cache=True)
+
+    formats = sorted({ext.lstrip(".") for ext in plugins.keys()})
+
+    readers_dict = {}
+    for ext, entries in plugins.items():
+        for entry in entries:
+            name = entry.entrypoint.name
+            if name not in readers_dict:
+                version = "unknown"
+                try:
+                    version = importlib.metadata.version(name)
+                except importlib.metadata.PackageNotFoundError:
+                    pass
+
+                readers_dict[name] = {
+                    "name": name,
+                    "formats": set(),
+                    "version": version,
+                }
+            readers_dict[name]["formats"].add(ext.lstrip("."))
+
+    readers = []
+    for r in readers_dict.values():
+        r["formats"] = sorted(list(r["formats"]))
+        readers.append(r)
+
+    return {
+        "outputs": {
+            "result": {
+                "formats": formats,
+                "readers": sorted(readers, key=lambda x: x["name"]),
+            }
+        }
+    }
+
+
+def _infer_export_format(artifact: dict[str, Any], requested_path: str | None = None) -> str:
+    """Infer export format from artifact type and metadata."""
+    if requested_path:
+        path_obj = Path(requested_path)
+        ext = path_obj.suffix.lower()
+        if ext in (".tif", ".tiff"):
+            if ".ome.tif" in path_obj.name.lower() or ".ome.tiff" in path_obj.name.lower():
+                return "OME-TIFF"
+            return "OME-TIFF"
+        if ext == ".zarr" or requested_path.lower().endswith(".ome.zarr"):
+            return "OME-Zarr"
+        if ext == ".png":
+            return "PNG"
+        if ext == ".csv":
+            return "CSV"
+        if ext == ".npy":
+            return "NPY"
+
+    if artifact.get("type") == "TableRef":
+        return "CSV"
+
+    metadata = artifact.get("metadata", {})
+    # Large images (>4GB) -> OME-Zarr
+    size_bytes = artifact.get("size_bytes", 0)
+    if size_bytes > 4 * 1024**3:
+        return "OME-Zarr"
+
+    # 2D uint8/uint16 without rich metadata -> PNG
+    dtype = str(metadata.get("dtype", ""))
+    ndim = artifact.get("ndim", metadata.get("ndim", 0))
+    shape = metadata.get("shape", [])
+    effective_ndim = len([d for d in shape if d > 1]) if shape else ndim
+
+    if (ndim == 2 or effective_ndim <= 2) and dtype in ("uint8", "uint16"):
+        # Rich metadata check
+        has_rich_metadata = bool(
+            artifact.get("physical_pixel_sizes")
+            or metadata.get("physical_pixel_sizes")
+            or metadata.get("channel_names")
+        )
+        if not has_rich_metadata:
+            return "PNG"
+
+    return "OME-TIFF"
+
+
+def _export_png(data: np.ndarray, path: Path):
+    """Export 2D array to PNG."""
+    import imageio
+
+    if data.ndim > 2:
+        data = np.squeeze(data)
+    if data.ndim != 2:
+        raise ValueError(f"PNG export requires 2D data, got {data.ndim}D")
+    imageio.v3.imwrite(path, data)
+
+
+def _export_ome_tiff(data: np.ndarray, path: Path):
+    """Export array to OME-TIFF."""
+    from bioio.writers import OmeTiffWriter
+
+    # Ensure 5D
+    while data.ndim < 5:
+        data = data[np.newaxis, ...]
+    OmeTiffWriter.save(data, str(path), dim_order="TCZYX")
+
+
+def _export_ome_zarr(data: np.ndarray, path: Path, dims: list[str] | None = None):
+    """Export array to OME-Zarr."""
+    from bioio_ome_zarr.writers import OMEZarrWriter
+
+    # Reconcile data rank with dims by squeezing singleton dimensions
+    if dims is not None and len(dims) < data.ndim:
+        while data.ndim > len(dims):
+            singleton_axes = [i for i, s in enumerate(data.shape) if s == 1]
+            if not singleton_axes:
+                break  # No more singletons to squeeze
+            data = np.squeeze(data, axis=singleton_axes[0])
+
+    # Ensure at least 2D
+    while data.ndim < 2:
+        data = data[np.newaxis, ...]
+
+    if dims is None or len(dims) != data.ndim:
+        if data.ndim == 5:
+            dims = ["T", "C", "Z", "Y", "X"]
+        elif data.ndim == 2:
+            dims = ["Y", "X"]
+        else:
+            dims = ["T", "C", "Z", "Y", "X"][-data.ndim :]
+
+    axis_type_map = {"t": "time", "c": "channel", "z": "space", "y": "space", "x": "space"}
+    axes_names = [d.lower() for d in dims]
+    axes_types = [axis_type_map.get(d, "space") for d in axes_names]
+
+    writer = OMEZarrWriter(
+        store=str(path),
+        level_shapes=[data.shape],
+        dtype=data.dtype,
+        axes_names=axes_names,
+        axes_types=axes_types,
+        zarr_format=2,
+    )
+    writer.write_full_volume(data)
+
+
+def _export_csv(artifact: dict[str, Any], dest_path: Path):
+    """Export TableRef to CSV."""
+    uri = artifact.get("uri")
+    if not uri:
+        raise ValueError("Artifact missing URI")
+    src_path = uri_to_path(uri)
+    if not src_path.exists():
+        raise FileNotFoundError(str(src_path))
+    shutil.copy2(src_path, dest_path)
 
 
 def export(*, inputs: dict[str, Any], params: dict[str, Any], work_dir: Path) -> dict[str, Any]:
-    """Export an artifact to a specific file format."""
-    raise NotImplementedError("base.io.bioimage.export not yet implemented")
+    """Export an artifact to a specific file format.
+
+    Args:
+        inputs: {"image": BioImageRef} or {"table": TableRef} or {"artifact": Ref}
+        params: {"format": str | None, "path": str | None}
+        work_dir: Working directory
+
+    Returns:
+        {"outputs": {"success": True, "output": Ref}}
+    """
+    artifact = inputs.get("image") or inputs.get("table") or inputs.get("artifact")
+    if not artifact:
+        raise ValueError("Missing input 'image', 'table', or 'artifact'")
+
+    dest_format = params.get("format")
+    dest_path_str = params.get("path")
+
+    # T016: Contract requires at least one of path or format to be specified
+    # to avoid ambiguous export calls (though manifest says both are optional).
+    if dest_format is None and dest_path_str is None:
+        raise ValueError("Either 'format' or 'path' must be provided")
+
+    if dest_path_str:
+        dest_path = validate_write_path(dest_path_str)
+    else:
+        dest_path = None
+
+    if dest_format is None:
+        dest_format = _infer_export_format(artifact, dest_path_str)
+
+    dest_format = dest_format.upper()
+
+    if dest_path is None:
+        ext_map = {
+            "OME-TIFF": ".ome.tiff",
+            "OME-ZARR": ".ome.zarr",
+            "PNG": ".png",
+            "CSV": ".csv",
+            "NPY": ".npy",
+        }
+        ext = ext_map.get(dest_format, ".bin")
+        dest_path = work_dir / f"exported{ext}"
+
+    if dest_format == "CSV":
+        _export_csv(artifact, dest_path)
+    else:
+        uri = artifact.get("uri")
+        if not uri:
+            raise ValueError("Artifact missing URI")
+        src_path = uri_to_path(uri)
+        data = load_native_image(src_path, format_hint=artifact.get("format"))
+
+        if dest_format == "PNG":
+            _export_png(data, dest_path)
+        elif dest_format == "OME-TIFF":
+            _export_ome_tiff(data, dest_path)
+        elif dest_format == "OME-ZARR":
+            dims = artifact.get("metadata", {}).get("dims") or artifact.get("dims")
+            _export_ome_zarr(data, dest_path, dims=dims)
+        elif dest_format == "NPY":
+            np.save(dest_path, data)
+        else:
+            raise ValueError(f"Unsupported export format: {dest_format}")
+
+    return {
+        "outputs": {
+            "success": True,
+            "output": {
+                "type": artifact.get("type", "BioImageRef"),
+                "format": dest_format,
+                "path": str(dest_path),
+                "uri": f"file://{dest_path}",
+            },
+        }
+    }

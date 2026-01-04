@@ -16,11 +16,14 @@ if str(BASE_TOOLS_ROOT) not in sys.path:
 # These imports are expected to fail in the TDD RED phase
 try:
     from bioimage_mcp_base.ops.io import (
+        export,
         file_not_found_error,
+        get_supported_formats,
         inspect,
         load,
         path_not_allowed_error,
         unsupported_format_error,
+        validate,
         validate_read_path,
         validate_write_path,
         validation_failed_error,
@@ -120,8 +123,9 @@ def test_load_valid_path(monkeypatch, tmp_path):
     assert img_path in result["outputs"]["image"]["uri"]
 
 
-def test_load_invalid_path(tmp_path):
+def test_load_invalid_path(monkeypatch, tmp_path):
     """T010: Load function raises FileNotFoundError for missing file."""
+    monkeypatch.setenv("BIOIMAGE_MCP_FS_ALLOWLIST_READ", json.dumps(["/tmp"]))
     with pytest.raises(Exception) as excinfo:
         load(
             inputs={},
@@ -152,8 +156,9 @@ def test_load_schema_validation(tmp_path):
 # ============== Inspect Function Tests (T011, T009, T058-T061) ==============
 
 
-def test_inspect_returns_metadata(tmp_path):
+def test_inspect_returns_metadata(monkeypatch, tmp_path):
     """T011: Inspect returns shape, dims, dtype, physical_pixel_sizes."""
+    monkeypatch.setenv("BIOIMAGE_MCP_FS_ALLOWLIST_READ", json.dumps([str(tmp_path)]))
     img_path = str(tmp_path / "meta_test.ome.tif")
     from bioio.writers import OmeTiffWriter
 
@@ -168,8 +173,9 @@ def test_inspect_returns_metadata(tmp_path):
     assert "physical_pixel_sizes" in meta
 
 
-def test_inspect_preserves_native_axes(tmp_path):
+def test_inspect_preserves_native_axes(monkeypatch, tmp_path):
     """T059: Inspect returns native axes, not forced TCZYX."""
+    monkeypatch.setenv("BIOIMAGE_MCP_FS_ALLOWLIST_READ", json.dumps([str(tmp_path)]))
     img_path = str(tmp_path / "zyx_test.ome.tif")
     from bioio.writers import OmeTiffWriter
 
@@ -182,8 +188,9 @@ def test_inspect_preserves_native_axes(tmp_path):
     assert meta["shape"] == [10, 64, 64]
 
 
-def test_inspect_accepts_bioimage_ref(tmp_path):
+def test_inspect_accepts_bioimage_ref(monkeypatch, tmp_path):
     """T058: Inspect can take BioImageRef input instead of path."""
+    monkeypatch.setenv("BIOIMAGE_MCP_FS_ALLOWLIST_READ", json.dumps([str(tmp_path)]))
     img_path = str(tmp_path / "ref_test.ome.tif")
     from bioio.writers import OmeTiffWriter
 
@@ -195,8 +202,9 @@ def test_inspect_accepts_bioimage_ref(tmp_path):
     assert result["outputs"]["metadata"]["dims"] == "TCZYX"
 
 
-def test_inspect_does_not_load_pixels(tmp_path):
+def test_inspect_does_not_load_pixels(monkeypatch, tmp_path):
     """T060: Inspect is metadata-only, should be fast."""
+    monkeypatch.setenv("BIOIMAGE_MCP_FS_ALLOWLIST_READ", json.dumps([str(tmp_path)]))
     img_path = str(tmp_path / "perf_test.ome.tif")
     from bioio.writers import OmeTiffWriter
 
@@ -211,8 +219,9 @@ def test_inspect_does_not_load_pixels(tmp_path):
     assert end - start < 1.0
 
 
-def test_inspect_returns_channel_names(tmp_path):
+def test_inspect_returns_channel_names(monkeypatch, tmp_path):
     """T061: Inspect returns channel_names when available."""
+    monkeypatch.setenv("BIOIMAGE_MCP_FS_ALLOWLIST_READ", json.dumps([str(tmp_path)]))
     img_path = str(tmp_path / "chan_test.ome.tif")
     from bioio.writers import OmeTiffWriter
 
@@ -231,3 +240,265 @@ def test_inspect_schema_validation(tmp_path):
         inspect(inputs={}, params={}, work_dir=tmp_path)
     with pytest.raises(Exception):
         inspect(inputs={}, params={"path": 123}, work_dir=tmp_path)
+
+
+# ============== Export Function Tests (T016-T020, T062-T063) ==============
+
+
+def test_export_to_ome_tiff(tmp_path, monkeypatch):
+    """T017: Export BioImageRef to OME-TIFF format."""
+    monkeypatch.setenv("BIOIMAGE_MCP_FS_ALLOWLIST_WRITE", json.dumps([str(tmp_path)]))
+
+    # Create temp image to get a BioImageRef
+    img_path = str(tmp_path / "source.ome.tif")
+    from bioio.writers import OmeTiffWriter
+
+    data = np.zeros((1, 1, 1, 10, 10), dtype="uint8")
+    OmeTiffWriter.save(data, img_path, dim_order="TCZYX")
+
+    image_ref = {"type": "BioImageRef", "uri": f"file://{img_path}"}
+    out_path = str(tmp_path / "exported.ome.tif")
+
+    result = export(
+        inputs={"artifact": image_ref},
+        params={"path": out_path, "format": "OME-TIFF"},
+        work_dir=tmp_path,
+    )
+
+    assert Path(out_path).exists()
+    assert result["outputs"]["success"] is True
+
+
+def test_export_to_png(tmp_path, monkeypatch):
+    """T018: Export 2D image to PNG format."""
+    monkeypatch.setenv("BIOIMAGE_MCP_FS_ALLOWLIST_WRITE", json.dumps([str(tmp_path)]))
+
+    # Create 2D image
+    img_path = str(tmp_path / "source2d.ome.tif")
+    from bioio.writers import OmeTiffWriter
+
+    data = np.zeros((10, 10), dtype="uint8")
+    OmeTiffWriter.save(data, img_path, dim_order="YX")
+
+    image_ref = {"type": "BioImageRef", "uri": f"file://{img_path}"}
+    out_path = str(tmp_path / "exported.png")
+
+    export(
+        inputs={"artifact": image_ref},
+        params={"path": out_path, "format": "PNG"},
+        work_dir=tmp_path,
+    )
+
+    assert Path(out_path).exists()
+    # Basic PNG header check
+    with open(out_path, "rb") as f:
+        header = f.read(8)
+    assert header == b"\x89PNG\r\n\x1a\n"
+
+
+def test_export_to_ome_zarr(tmp_path, monkeypatch):
+    """T019: Export to OME-Zarr format."""
+    monkeypatch.setenv("BIOIMAGE_MCP_FS_ALLOWLIST_WRITE", json.dumps([str(tmp_path)]))
+
+    img_path = str(tmp_path / "source.ome.tif")
+    from bioio.writers import OmeTiffWriter
+
+    data = np.zeros((1, 1, 1, 10, 10), dtype="uint8")
+    OmeTiffWriter.save(data, img_path, dim_order="TCZYX")
+
+    image_ref = {"type": "BioImageRef", "uri": f"file://{img_path}"}
+    out_path = str(tmp_path / "exported.ome.zarr")
+
+    export(
+        inputs={"artifact": image_ref},
+        params={"path": out_path, "format": "OME-Zarr"},
+        work_dir=tmp_path,
+    )
+
+    assert Path(out_path).exists()
+    assert (Path(out_path) / ".zgroup").exists()
+
+
+def test_export_table_to_csv(tmp_path, monkeypatch):
+    """T020: Export TableRef to CSV using stdlib."""
+    monkeypatch.setenv("BIOIMAGE_MCP_FS_ALLOWLIST_WRITE", json.dumps([str(tmp_path)]))
+
+    # Create a dummy CSV as TableRef
+    table_path = str(tmp_path / "data.csv")
+    with open(table_path, "w") as f:
+        f.write("id,value\n1,10\n2,20\n")
+
+    table_ref = {"type": "TableRef", "uri": f"file://{table_path}"}
+    out_path = str(tmp_path / "exported.csv")
+
+    export(
+        inputs={"artifact": table_ref},
+        params={"path": out_path, "format": "CSV"},
+        work_dir=tmp_path,
+    )
+
+    assert Path(out_path).exists()
+    with open(out_path, "r") as f:
+        content = f.read()
+    assert "id,value" in content
+
+
+def test_export_infers_format(tmp_path, monkeypatch):
+    """T062: Export infers format when omitted."""
+    monkeypatch.setenv("BIOIMAGE_MCP_FS_ALLOWLIST_WRITE", json.dumps([str(tmp_path)]))
+
+    # 1. Infer from extension
+    img_path = str(tmp_path / "src.ome.tif")
+    from bioio.writers import OmeTiffWriter
+
+    OmeTiffWriter.save(np.zeros((1, 1, 1, 5, 5), dtype="uint8"), img_path, dim_order="TCZYX")
+
+    image_ref = {"type": "BioImageRef", "uri": f"file://{img_path}"}
+
+    # Export to .png (should infer PNG)
+    png_path = str(tmp_path / "auto.png")
+    export(inputs={"artifact": image_ref}, params={"path": png_path}, work_dir=tmp_path)
+    assert Path(png_path).exists()
+
+
+def test_export_ome_zarr_lazy(tmp_path, monkeypatch):
+    """T063: OME-Zarr export is lazy/chunked (performance proxy)."""
+    monkeypatch.setenv("BIOIMAGE_MCP_FS_ALLOWLIST_WRITE", json.dumps([str(tmp_path)]))
+
+    # Create a large image
+    img_path = str(tmp_path / "large.ome.tif")
+    from bioio.writers import OmeTiffWriter
+
+    # 50x50x50 is big enough to notice if it's not lazy, but keep it small for tests
+    data = np.zeros((1, 1, 50, 50, 50), dtype="uint8")
+    OmeTiffWriter.save(data, img_path, dim_order="TCZYX")
+
+    image_ref = {"type": "BioImageRef", "uri": f"file://{img_path}"}
+    out_path = str(tmp_path / "lazy.ome.zarr")
+
+    import time
+
+    start = time.time()
+    export(
+        inputs={"artifact": image_ref},
+        params={"path": out_path, "format": "OME-Zarr"},
+        work_dir=tmp_path,
+    )
+    duration = time.time() - start
+    # Should be very fast because bioio-ome-zarr supports chunked writing
+    # and we aren't doing complex processing.
+    assert duration < 2.0
+
+
+def test_export_write_path_validation(tmp_path, monkeypatch):
+    """Export validates write path against allowlist."""
+    monkeypatch.setenv("BIOIMAGE_MCP_FS_ALLOWLIST_WRITE", json.dumps(["/allowed"]))
+
+    image_ref = {"type": "BioImageRef", "uri": "file:///tmp/src.tif"}
+
+    with pytest.raises(Exception) as excinfo:
+        export(
+            inputs={"artifact": image_ref},
+            params={"path": "/forbidden/out.tif"},
+            work_dir=tmp_path,
+        )
+    assert "not allowed" in str(excinfo.value).lower()
+
+
+def test_export_schema_validation(tmp_path):
+    """T016: Contract test for export function schema validation."""
+    # Missing required 'artifact' input
+    with pytest.raises(Exception):
+        export(inputs={}, params={"path": "out.tif"}, work_dir=tmp_path)
+
+    # Missing required 'path' param
+    with pytest.raises(Exception):
+        export(
+            inputs={"artifact": {"type": "BioImageRef", "uri": "file:///tmp/src.tif"}},
+            params={},
+            work_dir=tmp_path,
+        )
+
+
+# ============== Validate and Supported Formats Tests (T028-T032, T064) ==============
+
+
+def test_get_supported_formats_returns_list(tmp_path):
+    """T030: get_supported_formats returns known formats (TIFF, OME-TIFF)."""
+    result = get_supported_formats(inputs={}, params={}, work_dir=tmp_path)
+    formats = result["outputs"]["result"]["formats"]
+    assert isinstance(formats, list)
+    assert any("tif" in f.lower() for f in formats)
+    assert any("png" in f.lower() for f in formats)
+
+
+def test_get_supported_formats_schema_validation(tmp_path):
+    """T028: Contract test for get_supported_formats schema validation."""
+    # Should accept empty params
+    result = get_supported_formats(inputs={}, params={}, work_dir=tmp_path)
+    assert "outputs" in result
+
+
+def test_validate_valid_file(monkeypatch, tmp_path):
+    """T031: validate returns is_valid=True for valid file."""
+    monkeypatch.setenv("BIOIMAGE_MCP_FS_ALLOWLIST_READ", json.dumps([str(tmp_path)]))
+    img_path = str(tmp_path / "valid.ome.tif")
+    from bioio.writers import OmeTiffWriter
+    from bioio_base.types import PhysicalPixelSizes
+
+    data = np.zeros((1, 1, 1, 10, 10), dtype="uint8")
+    OmeTiffWriter.save(
+        data,
+        img_path,
+        dim_order="TCZYX",
+        physical_pixel_sizes=PhysicalPixelSizes(1.0, 1.0, 1.0),
+    )
+
+    result = validate(inputs={}, params={"path": img_path}, work_dir=tmp_path)
+    report = result["outputs"]["result"]
+    assert report["is_valid"] is True
+    assert report["reader_selected"] is not None
+    assert report["issues"] == []
+
+
+def test_validate_corrupt_file(monkeypatch, tmp_path):
+    """T032: validate returns is_valid=False for corrupted/invalid file."""
+    monkeypatch.setenv("BIOIMAGE_MCP_FS_ALLOWLIST_READ", json.dumps([str(tmp_path)]))
+    corrupt_path = tmp_path / "corrupt.tif"
+    with open(corrupt_path, "w") as f:
+        f.write("not a tiff")
+
+    result = validate(inputs={}, params={"path": str(corrupt_path)}, work_dir=tmp_path)
+    report = result["outputs"]["result"]
+    assert report["is_valid"] is False
+    assert any(issue["severity"] == "error" for issue in report["issues"])
+
+
+def test_validate_does_not_load_pixels(monkeypatch, tmp_path):
+    """T064: validate default does not trigger full pixel load."""
+    monkeypatch.setenv("BIOIMAGE_MCP_FS_ALLOWLIST_READ", json.dumps([str(tmp_path)]))
+    img_path = str(tmp_path / "perf_test.ome.tif")
+    from bioio.writers import OmeTiffWriter
+    from bioio_base.types import PhysicalPixelSizes
+
+    # Large enough to notice if it's slow
+    data = np.zeros((1, 1, 10, 256, 256), dtype="uint8")
+    OmeTiffWriter.save(
+        data,
+        img_path,
+        dim_order="TCZYX",
+        physical_pixel_sizes=PhysicalPixelSizes(1.0, 1.0, 1.0),
+    )
+
+    import time
+
+    start = time.time()
+    validate(inputs={}, params={"path": img_path}, work_dir=tmp_path)
+    duration = time.time() - start
+    assert duration < 1.0
+
+
+def test_validate_schema_validation(tmp_path):
+    """T029: Contract test for validate function schema validation."""
+    with pytest.raises(Exception):
+        validate(inputs={}, params={}, work_dir=tmp_path)

@@ -14,7 +14,7 @@ from PIL import Image
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.append(str(REPO_ROOT / "tools" / "base"))
 
-from bioimage_mcp_base.ops.export import export as tool_export  # noqa: E402
+from bioimage_mcp_base.ops.io import export as tool_export  # noqa: E402
 
 from bioimage_mcp.artifacts.export import export_artifact  # noqa: E402
 from bioimage_mcp.artifacts.store import ArtifactStore  # noqa: E402

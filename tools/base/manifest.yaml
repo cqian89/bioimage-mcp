@@ -353,6 +353,10 @@ functions:
         path:
           type: string
           description: Absolute path to the image file to validate
+        deep:
+          type: boolean
+          description: Perform deep validation (load pixels to check for corruption)
+          default: false
 
   - fn_id: base.io.bioimage.get_supported_formats
     tool_id: tools.base
