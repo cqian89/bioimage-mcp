@@ -10,26 +10,56 @@ All tool functions that accept or return image data MUST use `BioImageRef` or `L
 
 ## Standard Loading Pattern
 
-The recommended way to load images in tool functions is to use the `BioImage` class from the `bioio` package. This ensures that regardless of the underlying file format (TIFF, CZI, LIF, etc.), the data is accessed consistently.
+The recommended way to load images in tool functions is to use the `BioImage` class from the `bioio` package.
+
+### 5D Normalization (Legacy/Compatibility)
+By default, `img.data` returns a 5D **TCZYX** array. This is useful for tools that expect a fixed input structure.
 
 ```python
 from bioio import BioImage
-
-def my_tool_function(image_ref: dict):
-    # Extract the local file path from the URI
-    path = image_ref["uri"].replace("file://", "")
-    
-    # Load the image using BioImage
-    img = BioImage(path)
-    
-    # Access the raw data
-    # data is always 5D TCZYX (Time, Channel, Z, Y, X)
-    data = img.data
-    
-    # Example: Processing the data
-    # If your algorithm expects 2D (Y, X), you may need to squeeze or slice
-    # processed = my_algorithm(data[0, 0, 0, :, :])
+img = BioImage(path)
+data = img.data  # Always 5D TCZYX
 ```
+
+### Native Dimension Preservation (Recommended)
+For modern tools that support varying dimensionality (2D, 3D, etc.), use `img.reader.data` to access the data in its native dimensions. This avoids unnecessary 5D expansion and allows tools to operate on the actual data shape.
+
+```python
+from bioio import BioImage
+img = BioImage(path)
+data = img.reader.data  # Native dimensions (e.g., YX or ZYX)
+dims = img.reader.dims.order  # e.g., "YX"
+```
+
+## Dimension Preservation Patterns
+
+### When to use Native Dimensions
+- **Dimension-reducing ops**: Squeeze, projection, or slicing should always return native-dimension artifacts.
+- **2D-only tools**: If a tool only supports 2D, it should accept native 2D artifacts directly.
+- **Z-stack/3D tools**: If a tool supports 3D, it should accept native 3D artifacts.
+
+### `expand_if_required` Helper
+When creating adapters or tools that might need to interface with legacy 5D tools, use the `expand_if_required` logic. This is typically handled by the adapter layer (e.g., `XarrayAdapter` or `SkimageAdapter`).
+
+```python
+def expand_if_required(
+    data: np.ndarray, dims: str, requirement: DimensionRequirement | None
+) -> tuple[np.ndarray, str]:
+    """Expand to 5D only if tool manifest requires it."""
+    if requirement and requirement.min_ndim == 5 and data.ndim < 5:
+        missing = "TCZYX"[: 5 - data.ndim]
+        for _ in missing:
+            data = np.expand_dims(data, axis=0)
+        dims = missing + dims
+    return data, dims
+```
+
+1.  **Check Manifest**: Does the function metadata specify `dimension_requirements`?
+2.  **Expand if needed**: If the tool requires 5D (e.g., `min_ndim: 5`) but the artifact is 2D, expand it.
+3.  **Preserve otherwise**: If no 5D requirement exists, pass the native array.
+
+### Squeezing Singleton Dimensions
+To convert a 5D image to 2D/3D for processing, use `base.xarray.squeeze`. The resulting artifact will preserve these reduced dimensions in its metadata.
 
 ## InterchangeFormat Values
 

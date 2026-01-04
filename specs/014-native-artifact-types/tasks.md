@@ -161,14 +161,14 @@
 
 **Purpose**: Documentation, validation, and cleanup
 
-- [ ] T049 [P] Update docs/reference/artifacts.md with native dimension documentation
-- [ ] T050 [P] Update docs/developer/image_handling.md with dimension preservation patterns
-- [ ] T051 [P] Validate quickstart.md examples against implementation in specs/014-native-artifact-types/quickstart.md
-- [ ] T052 [P] Add contract test validating artifact-metadata-schema.json compliance in tests/contract/test_artifact_metadata_contract.py
-- [ ] T053 Run full test suite and verify all tests pass
-- [ ] T054 Verify bioio-ome-zarr is sufficient (no ome-zarr-py needed)
-- [ ] T054a Update AGENTS.md Standard BioImage Loading Pattern section for native loading
-- [ ] T055 Review backward compatibility: legacy artifacts without ndim/dims handled correctly
+- [X] T049 [P] Update docs/reference/artifacts.md with native dimension documentation
+- [X] T050 [P] Update docs/developer/image_handling.md with dimension preservation patterns
+- [X] T051 [P] Validate quickstart.md examples against implementation in specs/014-native-artifact-types/quickstart.md
+- [X] T052 [P] Add contract test validating artifact-metadata-schema.json compliance in tests/contract/test_artifact_metadata_contract.py
+- [X] T053 Run full test suite and verify all tests pass
+- [X] T054 Verify bioio-ome-zarr is sufficient (no ome-zarr-py needed)
+- [X] T054a Update AGENTS.md Standard BioImage Loading Pattern section for native loading
+- [X] T055 Review backward compatibility: legacy artifacts without ndim/dims handled correctly
 
 ---
 
