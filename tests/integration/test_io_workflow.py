@@ -45,8 +45,8 @@ def test_io_function_discovery(mcp_test_client):
         assert desc, f"Could not describe function {fn_id}"
         assert "fn_id" in desc
         assert desc["fn_id"] == fn_id
-        assert "params_schema" in desc
-        assert isinstance(desc["params_schema"], dict)
+        assert "schema" in desc
+        assert isinstance(desc["schema"], dict)
 
 
 @pytest.mark.skip(reason="T046-T048 to be implemented later")
