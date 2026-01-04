@@ -194,3 +194,66 @@ def extract_image_metadata(path: Path) -> dict | None:
         }
 
     return meta
+
+
+def extract_table_metadata(path: Path) -> dict | None:
+    """Extract metadata from a CSV/TSV table file.
+
+    Returns:
+        {"columns": [{"name": "label", "dtype": "int64"}, ...], "row_count": 42}
+    """
+    import csv
+
+    if not path.exists():
+        return None
+
+    try:
+        with open(path, encoding="utf-8") as f:
+            # Detect delimiter (CSV or TSV)
+            sample = f.read(4096)
+            f.seek(0)
+            dialect = csv.Sniffer().sniff(sample) if sample else None
+            reader = csv.DictReader(f, dialect=dialect) if dialect else csv.DictReader(f)
+
+            columns = []
+            fieldnames = reader.fieldnames or []
+
+            # Try to get first row for type inference
+            first_row = next(reader, None)
+
+            for name in fieldnames:
+                dtype = "string"  # Default
+                if first_row and name in first_row:
+                    val = first_row[name]
+                    if val is not None and val != "":
+                        # Try int
+                        try:
+                            int(val)
+                            dtype = "int64"
+                        except ValueError:
+                            # Try float
+                            try:
+                                float(val)
+                                dtype = "float64"
+                            except ValueError:
+                                dtype = "string"
+
+                columns.append({"name": name, "dtype": dtype})
+
+            # Count remaining rows
+            row_count = (1 if first_row else 0) + sum(1 for _ in reader)
+
+        return {"columns": columns, "row_count": row_count}
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def get_ndim(metadata: dict) -> int:
+    """Get ndim with fallback for legacy artifacts."""
+    if "ndim" in metadata:
+        return int(metadata["ndim"])
+    if "shape" in metadata:
+        return len(metadata["shape"])
+    if "axes" in metadata:
+        return len(metadata["axes"])
+    return 5  # Legacy default

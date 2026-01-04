@@ -11,7 +11,11 @@ from typing import Literal
 from bioimage_mcp.api.permissions import PermissionService
 from bioimage_mcp.artifacts.checksums import sha256_file, sha256_tree
 from bioimage_mcp.artifacts.memory import MemoryArtifactStore
-from bioimage_mcp.artifacts.metadata import extract_image_metadata
+from bioimage_mcp.artifacts.metadata import (
+    extract_image_metadata,
+    extract_table_metadata,
+    get_ndim,
+)
 from bioimage_mcp.artifacts.models import (
     ArtifactChecksum,
     ArtifactRef,
@@ -154,8 +158,18 @@ class ArtifactStore:
         # Extract image metadata for image artifact types
         # Use src instead of dest because src has the correct file extension (T020 fix)
         meta = {}
+        ndim = None
+        dims = None
+        physical_pixel_sizes = None
+
         if artifact_type in {"BioImageRef", "LabelImageRef"}:
-            meta = extract_image_metadata(src)
+            meta = extract_image_metadata(src) or {}
+            if meta:
+                ndim = get_ndim(meta)
+                dims = meta.get("dims")
+                physical_pixel_sizes = meta.get("physical_pixel_sizes")
+        elif artifact_type == "TableRef":
+            meta = extract_table_metadata(src) or {}
 
         ref = ArtifactRef(
             ref_id=ref_id,
@@ -168,6 +182,9 @@ class ArtifactStore:
             checksums=checksums,
             created_at=ArtifactRef.now(),
             metadata=meta,
+            ndim=ndim,
+            dims=dims,
+            physical_pixel_sizes=physical_pixel_sizes,
         )
         self._persist(ref)
         return ref
@@ -208,6 +225,20 @@ class ArtifactStore:
 
         size = sum(p.stat().st_size for p in dest.rglob("*") if p.is_file())
         storage_type = _guess_storage_type_for_directory(src, format)
+
+        # Extract metadata for directory-based artifacts (e.g. OME-Zarr) (T028)
+        meta = {}
+        ndim = None
+        dims = None
+        physical_pixel_sizes = None
+
+        if artifact_type in {"BioImageRef", "LabelImageRef"} and storage_type == "zarr-temp":
+            meta = extract_image_metadata(src) or {}
+            if meta:
+                ndim = get_ndim(meta)
+                dims = meta.get("dims")
+                physical_pixel_sizes = meta.get("physical_pixel_sizes")
+
         ref = ArtifactRef(
             ref_id=ref_id,
             type=artifact_type,
@@ -218,7 +249,10 @@ class ArtifactStore:
             size_bytes=size,
             checksums=checksums,
             created_at=ArtifactRef.now(),
-            metadata={},
+            metadata=meta,
+            ndim=ndim,
+            dims=dims,
+            physical_pixel_sizes=physical_pixel_sizes,
         )
         self._persist(ref)
         return ref

@@ -14,6 +14,7 @@ from bioimage_mcp.artifacts.store import ArtifactStore
 from bioimage_mcp.config.schema import Config
 from bioimage_mcp.registry.dynamic.io_bridge import IOBridge
 from bioimage_mcp.registry.loader import load_manifests
+from bioimage_mcp.runs.recorder import record_artifact_dimensions
 from bioimage_mcp.runs.store import RunStore
 from bioimage_mcp.runtimes.executor import execute_tool
 from bioimage_mcp.runtimes.persistent import PersistentWorkerManager
@@ -450,6 +451,18 @@ class ExecutionService:
             log_ref_id=log_ref.ref_id,
         )
 
+        # Record input dimensions in provenance (T028a)
+        for name, inp in inputs.items():
+            if isinstance(inp, dict) and "ref_id" in inp:
+                try:
+                    # Resolve from memory store first
+                    ref = self._memory_store.get(inp["ref_id"]) or self._artifact_store.get(
+                        inp["ref_id"]
+                    )
+                    record_artifact_dimensions(run.provenance, f"input.{name}", ref.model_dump())
+                except KeyError:
+                    pass
+
         work_dir = self._config.artifact_store_root / "work" / "runs" / run.run_id
         work_dir.mkdir(parents=True, exist_ok=True)
 
@@ -726,6 +739,7 @@ class ExecutionService:
                 self._worker_manager.register_artifact(session_id, env_id, ref_id)
                 logger.info("Memory output generated: ref_id=%s storage_type=%s", ref_id, "memory")
                 outputs_payload[name] = ref.model_dump()
+                record_artifact_dimensions(run.provenance, f"output.{name}", outputs_payload[name])
             elif path:
                 p = Path(path)
                 p.parent.mkdir(parents=True, exist_ok=True)
@@ -744,6 +758,7 @@ class ExecutionService:
                 if tool_metadata:
                     ref_data["metadata"] = {**ref_data.get("metadata", {}), **tool_metadata}
                 outputs_payload[name] = ref_data
+                record_artifact_dimensions(run.provenance, f"output.{name}", ref_data)
 
         tool_provenance = response.get("provenance") or {}
         if tool_provenance:
