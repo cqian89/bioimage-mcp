@@ -87,17 +87,17 @@
 
 ### Tests for User Story 2 (Write FIRST - must FAIL)
 
-- [ ] T022 [P] [US2] Unit test: metadata extraction returns ndim, dims, shape, dtype, physical_pixel_sizes in tests/unit/artifacts/test_native_metadata.py
-- [ ] T023 [P] [US2] Unit test: table metadata extraction returns columns with types in tests/unit/artifacts/test_native_metadata.py
-- [ ] T024 [P] [US2] Contract test: get_artifact response includes dimension metadata fields in tests/contract/test_get_artifact_dims.py
+- [X] T022 [P] [US2] Unit test: metadata extraction returns ndim, dims, shape, dtype, physical_pixel_sizes in tests/unit/artifacts/test_native_metadata.py
+- [X] T023 [P] [US2] Unit test: table metadata extraction returns columns with types in tests/unit/artifacts/test_native_metadata.py
+- [X] T024 [P] [US2] Contract test: get_artifact response includes dimension metadata fields in tests/contract/test_get_artifact_dims.py
 - [ ] T024a [P] [US2] Performance test: metadata inspection completes in under 100ms without data loading in tests/contract/test_metadata_performance.py
 
 ### Implementation for User Story 2 (After Tests Fail)
 
-- [ ] T025 [US2] Update extract_image_metadata to return ndim, dims from BioImage in src/bioimage_mcp/artifacts/metadata.py
-- [ ] T026 [US2] Add extract_table_metadata function for column names/types in src/bioimage_mcp/artifacts/metadata.py
-- [ ] T027 [US2] Add get_ndim fallback helper for legacy artifacts (infer from shape/axes) in src/bioimage_mcp/artifacts/metadata.py
-- [ ] T028 [US2] Update artifact store import to populate full dimension metadata in src/bioimage_mcp/artifacts/store.py
+- [X] T025 [US2] Update extract_image_metadata to return ndim, dims from BioImage in src/bioimage_mcp/artifacts/metadata.py
+- [X] T026 [US2] Add extract_table_metadata function for column names/types in src/bioimage_mcp/artifacts/metadata.py
+- [X] T027 [US2] Add get_ndim fallback helper for legacy artifacts (infer from shape/axes) in src/bioimage_mcp/artifacts/metadata.py
+- [X] T028 [US2] Update artifact store import to populate full dimension metadata in src/bioimage_mcp/artifacts/store.py
 - [ ] T028a [US2] Add dimension metadata to workflow provenance recording in src/bioimage_mcp/runs/recorder.py
 
 **Checkpoint**: User Story 2 complete. Agents can inspect dimensions without data loading. Tests should now PASS.
@@ -112,21 +112,21 @@
 
 ### Tests for User Story 3 (Write FIRST - must FAIL)
 
-- [ ] T029 [P] [US3] Unit test: infer_export_format returns correct format for 2D uint8 (PNG) in tests/unit/ops/test_export_format_inference.py
-- [ ] T030 [P] [US3] Unit test: infer_export_format returns OME-TIFF for 3D+ with metadata in tests/unit/ops/test_export_format_inference.py
-- [ ] T031 [P] [US3] Unit test: infer_export_format returns OME-Zarr for large files in tests/unit/ops/test_export_format_inference.py
-- [ ] T032 [P] [US3] Unit test: export function respects explicit format parameter in tests/unit/ops/test_export.py
-- [ ] T033 [P] [US3] Integration test: export 2D to PNG, 5D to OME-TIFF, table to CSV in tests/integration/test_multi_format_export.py
+- [X] T029 [P] [US3] Unit test: infer_export_format returns correct format for 2D uint8 (PNG) in tests/unit/ops/test_export_format_inference.py
+- [X] T030 [P] [US3] Unit test: infer_export_format returns OME-TIFF for 3D+ with metadata in tests/unit/ops/test_export_format_inference.py
+- [X] T031 [P] [US3] Unit test: infer_export_format returns OME-Zarr for large files in tests/unit/ops/test_export_format_inference.py
+- [X] T032 [P] [US3] Unit test: export function respects explicit format parameter in tests/unit/ops/test_export.py
+- [X] T033 [P] [US3] Integration test: export 2D to PNG, 5D to OME-TIFF, table to CSV in tests/integration/test_multi_format_export.py
 
 ### Implementation for User Story 3 (After Tests Fail)
 
-- [ ] T034 [US3] Create infer_export_format function in tools/base/bioimage_mcp_base/ops/export.py
-- [ ] T035 [US3] Create export function with format parameter in tools/base/bioimage_mcp_base/ops/export.py
-- [ ] T036 [US3] Implement PNG export (2D uint8/uint16) in tools/base/bioimage_mcp_base/ops/export.py
-- [ ] T037 [US3] Implement OME-TIFF export (5D expand at export boundary) in tools/base/bioimage_mcp_base/ops/export.py
-- [ ] T038 [US3] Implement OME-Zarr export using bioio_ome_zarr.writers.OMEZarrWriter with axes_names/axes_types parameters in tools/base/bioimage_mcp_base/ops/export.py
-- [ ] T039 [US3] Implement CSV export for TableRef in tools/base/bioimage_mcp_base/ops/export.py
-- [ ] T040 [US3] Add export function to base manifest in tools/base/manifest.yaml
+- [X] T034 [US3] Create infer_export_format function in tools/base/bioimage_mcp_base/ops/export.py
+- [X] T035 [US3] Create export function with format parameter in tools/base/bioimage_mcp_base/ops/export.py
+- [X] T036 [US3] Implement PNG export (2D uint8/uint16) in tools/base/bioimage_mcp_base/ops/export.py
+- [X] T037 [US3] Implement OME-TIFF export (5D expand at export boundary) in tools/base/bioimage_mcp_base/ops/export.py
+- [X] T038 [US3] Implement OME-Zarr export using bioio_ome_zarr.writers.OMEZarrWriter with axes_names/axes_types parameters in tools/base/bioimage_mcp_base/ops/export.py
+- [X] T039 [US3] Implement CSV export for TableRef in tools/base/bioimage_mcp_base/ops/export.py
+- [X] T040 [US3] Add export function to base manifest in tools/base/manifest.yaml
 
 **Checkpoint**: User Story 3 complete. Multi-format export works. Tests should now PASS.
 
