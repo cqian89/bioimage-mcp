@@ -76,8 +76,16 @@ def export_ome_zarr(data: np.ndarray, path: Path, dims: list[str] | None = None)
         # Fallback if bioio-ome-zarr is not installed in this env
         raise RuntimeError("bioio-ome-zarr is required for OME-Zarr export") from e
 
-    # Use native dimensions
-    if dims is None:
+    # Reconcile data rank with dims by squeezing singleton dimensions
+    if dims is not None and len(dims) < data.ndim:
+        while data.ndim > len(dims):
+            singleton_axes = [i for i, s in enumerate(data.shape) if s == 1]
+            if not singleton_axes:
+                break  # No more singletons to squeeze
+            data = np.squeeze(data, axis=singleton_axes[0])
+
+    # Use native dimensions if dims not provided or still mismatched
+    if dims is None or len(dims) != data.ndim:
         if data.ndim == 5:
             dims = ["T", "C", "Z", "Y", "X"]
         else:

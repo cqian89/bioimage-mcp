@@ -137,3 +137,20 @@ def test_export_2d_to_ome_zarr_no_metadata_dims(tmp_path):
         kwargs = mock_writer_cls.call_args.kwargs
         assert kwargs["level_shapes"] == [(100, 120)]
         assert kwargs["axes_names"] == ["y", "x"]
+
+
+def test_export_ome_zarr_squeezes_singletons_to_match_dims(tmp_path):
+    """export_ome_zarr should squeeze singleton dims to match provided dims list."""
+    from bioimage_mcp_base.ops.export import export_ome_zarr
+    import numpy as np
+
+    # 5D data with singletons: (1, 1, 1, 64, 64) - effectively 2D
+    data = np.random.rand(1, 1, 1, 64, 64).astype(np.float32)
+    dims = ["Y", "X"]  # 2D dims
+
+    out_path = tmp_path / "test_squeeze.ome.zarr"
+
+    # Should not raise - function should squeeze to match dims
+    export_ome_zarr(data, out_path, dims=dims)
+
+    assert out_path.exists()

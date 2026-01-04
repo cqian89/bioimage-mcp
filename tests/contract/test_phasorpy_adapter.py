@@ -296,3 +296,24 @@ def test_execute_phasor_transform_returns_two_artifacts(
     else:
         ref_ids = [out.ref_id for out in outputs]
         assert len(set(ref_ids)) == 2, "Each output artifact should have unique ref_id"
+
+
+def test_save_image_metadata_includes_ndim(tmp_path):
+    """T011: _save_image must include ndim in metadata matching shape length."""
+    from bioimage_mcp.registry.dynamic.adapters.phasorpy import PhasorPyAdapter
+    import numpy as np
+
+    adapter = PhasorPyAdapter()
+
+    # Create a 2D array that will be expanded to 5D
+    arr = np.random.rand(64, 64).astype(np.float32)
+
+    result = adapter._save_image(arr, work_dir=tmp_path, name="test_ndim")
+
+    metadata = result["metadata"]
+    assert "ndim" in metadata, "metadata must include 'ndim'"
+    assert metadata["ndim"] == len(metadata["shape"]), (
+        f"ndim ({metadata['ndim']}) must match shape length ({len(metadata['shape'])})"
+    )
+    # After expansion, should be 5D
+    assert metadata["ndim"] == 5
