@@ -117,6 +117,7 @@ def test_extract_metadata_graceful_fallback_minimal(tmp_path, monkeypatch):
     assert "file_size_bytes" in meta
     assert meta["file_size_bytes"] == len(b"FAKE TIFF DATA")
 
-    # Should not have rich metadata fields
-    assert "axes" not in meta
-    assert "shape" not in meta
+    # TIFF files fall back to tifffile when bioio is unavailable,
+    # which returns minimal fields (even if empty)
+    assert meta.get("axes") == ""
+    assert meta.get("shape") == []
