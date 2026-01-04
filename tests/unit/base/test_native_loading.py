@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 from pathlib import Path
+import sys
 import numpy as np
 import pytest
 
-# We expect this to fail because load_native doesn't exist yet
+# Add tools/base to sys.path
+tools_base = Path(__file__).resolve().parents[3] / "tools" / "base"
+if str(tools_base) not in sys.path:
+    sys.path.insert(0, str(tools_base))
+
 try:
-    from bioimage_mcp_base.io import load_native
+    from bioimage_mcp_base.native_io import load_native
 except ImportError:
     load_native = None
 
@@ -27,7 +32,7 @@ def test_load_native_preserves_2d_dimensions(tmp_path: Path) -> None:
 
 
 def test_load_native_exists() -> None:
-    assert load_native is not None, "load_native should be defined in bioimage_mcp_base.io"
+    assert load_native is not None, "load_native should be defined in bioimage_mcp_base.native_io"
 
 
 def test_load_native_error_on_missing_file() -> None:

@@ -148,16 +148,15 @@ class XarrayAdapterForRegistry(BaseAdapter):
     def _save_output(
         self, result_da: Any, method_name: str, work_dir: Path | None = None
     ) -> list[dict]:
-        """Save output DataArray with native dimensions (T018)."""
+        """Save output DataArray with native dimensions (T018).
+
+        Uses OME-TIFF if dimensions are compatible (ends in YX),
+        otherwise falls back to OME-Zarr for native dimension support.
+        """
         if work_dir is None:
             work_dir = Path(tempfile.gettempdir())
 
         work_dir.mkdir(parents=True, exist_ok=True)
-
-        # Determine output format and path
-        # For now default to OME-TIFF but support OME-Zarr if needed
-        ext = ".ome.tiff"
-        out_path = work_dir / f"output_{method_name}{ext}"
 
         # Native dimensions (T018)
         data = result_da.values
@@ -165,6 +164,28 @@ class XarrayAdapterForRegistry(BaseAdapter):
 
         if data.dtype == np.uint64 or data.dtype == np.int64:
             data = data.astype(np.float32)
+
+        # Determine if OME-TIFF is compatible
+        # OmeTiffWriter requires 2-5D and must end in YX (or YXS)
+        is_ome_tiff_compatible = dim_order.endswith("YX") and 2 <= data.ndim <= 5
+
+        if is_ome_tiff_compatible:
+            ext = ".ome.tiff"
+            fmt = "OME-TIFF"
+            out_path = work_dir / f"output_{method_name}{ext}"
+            try:
+                from bioio.writers import OmeTiffWriter
+
+                OmeTiffWriter.save(data, str(out_path), dim_order=dim_order)
+            except Exception as e:
+                # Fallback to OME-Zarr if OME-TIFF save fails
+                is_ome_tiff_compatible = False
+
+        if not is_ome_tiff_compatible:
+            ext = ".ome.zarr"
+            fmt = "OME-Zarr"
+            out_path = work_dir / f"output_{method_name}{ext}"
+            save_native_ome_zarr(data, out_path, dim_order)
 
         # Populate native dimension metadata
         metadata = {
@@ -175,22 +196,11 @@ class XarrayAdapterForRegistry(BaseAdapter):
             "dtype": str(data.dtype),
         }
 
-        # Save using OmeTiffWriter (Constitution III requirement)
-        try:
-            from bioio.writers import OmeTiffWriter
-
-            OmeTiffWriter.save(data, str(out_path), dim_order=dim_order)
-        except Exception as e:
-            raise RuntimeError(
-                f"Failed to save OME-TIFF with bioio.writers.OmeTiffWriter: {e}. "
-                f"Data shape: {data.shape}, dims: {dim_order}"
-            ) from e
-
         # Return artifact reference
         return [
             {
                 "type": "BioImageRef",
-                "format": "OME-TIFF",
+                "format": fmt,
                 "path": str(out_path.absolute()),
                 "metadata": metadata,
             }

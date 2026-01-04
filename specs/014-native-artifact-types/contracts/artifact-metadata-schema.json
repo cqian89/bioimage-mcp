@@ -124,8 +124,7 @@
           "description": "Value type"
         },
         "unit": {
-          "type": "string",
-          "nullable": true,
+          "type": ["string", "null"],
           "description": "Physical unit (optional)"
         },
         "computed_from": {
@@ -187,8 +186,7 @@
           "description": "ISO 8601 creation timestamp"
         },
         "schema_version": {
-          "type": "string",
-          "nullable": true,
+          "type": ["string", "null"],
           "description": "Artifact schema version"
         },
         "metadata": {

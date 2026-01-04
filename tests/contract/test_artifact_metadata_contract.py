@@ -13,7 +13,7 @@ def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
-def _load_image_metadata(tmp_path: Path) -> dict:
+def _load_image_artifact(tmp_path: Path) -> ArtifactRef:
     repo_root = _repo_root()
     src = repo_root / "datasets" / "FLUTE_FLIM_data_tif" / "Embryo.tif"
     if not src.exists():
@@ -33,18 +33,18 @@ def _load_image_metadata(tmp_path: Path) -> dict:
         ref = store.import_file(src, artifact_type="BioImageRef", format="OME-TIFF")
     if not ref.metadata:
         pytest.skip("Test image metadata unavailable")
-    return ref.metadata
+    return ref
 
 
 def test_artifact_metadata_has_required_fields(tmp_path: Path) -> None:
-    metadata = _load_image_metadata(tmp_path)
+    metadata = _load_image_artifact(tmp_path).metadata
 
     for key in ("shape", "dtype", "axes", "ndim", "dims"):
         assert key in metadata, f"Expected '{key}' in artifact metadata"
 
 
 def test_artifact_metadata_has_ndim_dims(tmp_path: Path) -> None:
-    metadata = _load_image_metadata(tmp_path)
+    metadata = _load_image_artifact(tmp_path).metadata
 
     assert "ndim" in metadata
     assert isinstance(metadata["ndim"], int)
@@ -55,14 +55,14 @@ def test_artifact_metadata_has_ndim_dims(tmp_path: Path) -> None:
 
 
 def test_artifact_metadata_has_axes_inferred(tmp_path: Path) -> None:
-    metadata = _load_image_metadata(tmp_path)
+    metadata = _load_image_artifact(tmp_path).metadata
 
     assert "axes_inferred" in metadata
     assert isinstance(metadata["axes_inferred"], bool)
 
 
 def test_artifact_metadata_has_file_metadata(tmp_path: Path) -> None:
-    metadata = _load_image_metadata(tmp_path)
+    metadata = _load_image_artifact(tmp_path).metadata
 
     assert "file_metadata" in metadata
     file_metadata = metadata["file_metadata"]
@@ -72,10 +72,37 @@ def test_artifact_metadata_has_file_metadata(tmp_path: Path) -> None:
 
 
 def test_artifact_metadata_has_physical_pixel_sizes(tmp_path: Path) -> None:
-    metadata = _load_image_metadata(tmp_path)
+    metadata = _load_image_artifact(tmp_path).metadata
 
     assert "physical_pixel_sizes" in metadata
     assert isinstance(metadata["physical_pixel_sizes"], dict)
+
+
+import json
+import jsonschema
+from bioimage_mcp.artifacts.models import ArtifactRef
+from bioimage_mcp.artifacts.store import ArtifactStore
+from bioimage_mcp.config.schema import Config
+
+
+def test_artifact_metadata_schema_compliance(tmp_path: Path) -> None:
+    ref = _load_image_artifact(tmp_path)
+    schema_path = (
+        _repo_root()
+        / "specs"
+        / "014-native-artifact-types"
+        / "contracts"
+        / "artifact-metadata-schema.json"
+    )
+
+    if not schema_path.exists():
+        pytest.skip("Schema file not found")
+
+    with open(schema_path, "r") as f:
+        schema = json.load(f)
+
+    # Validate the full artifact reference against the schema
+    jsonschema.validate(instance=ref.model_dump(), schema=schema)
 
 
 def test_artifact_ref_has_storage_type_field() -> None:

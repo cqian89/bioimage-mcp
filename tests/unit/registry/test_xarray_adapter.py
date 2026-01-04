@@ -49,7 +49,7 @@ def test_xarray_adapter_execution(tmp_path):
 
 
 def test_axis_padding_standard_order_2d(tmp_path):
-    """Test that 2D results (YX) are padded to standard TCZYX order."""
+    """Test that 2D results (YX) preserve native dimensions."""
     if "xarray" not in ADAPTER_REGISTRY:
         pytest.skip("Xarray adapter not registered")
 
@@ -76,13 +76,13 @@ def test_axis_padding_standard_order_2d(tmp_path):
     )
 
     assert len(outputs) == 1
-    # The output should be padded to TCZYX (standard order), not ZCTYX
-    assert outputs[0]["metadata"]["axes"] == "TCZYX"
-    assert outputs[0]["metadata"]["shape"] == [1, 1, 1, 10, 10]
+    # The output should preserve native YX
+    assert outputs[0]["metadata"]["axes"] == "YX"
+    assert outputs[0]["metadata"]["shape"] == [10, 10]
 
 
 def test_axis_padding_standard_order_3d(tmp_path):
-    """Test that 3D results (ZYX) are padded to standard TCZYX order."""
+    """Test that 3D results (ZYX) preserve native dimensions."""
     if "xarray" not in ADAPTER_REGISTRY:
         pytest.skip("Xarray adapter not registered")
 
@@ -109,9 +109,9 @@ def test_axis_padding_standard_order_3d(tmp_path):
     )
 
     assert len(outputs) == 1
-    # The output should be padded to TCZYX (standard order), not CTZYX
-    assert outputs[0]["metadata"]["axes"] == "TCZYX"
-    assert outputs[0]["metadata"]["shape"] == [1, 1, 5, 10, 10]
+    # The output should preserve native ZYX
+    assert outputs[0]["metadata"]["axes"] == "ZYX"
+    assert outputs[0]["metadata"]["shape"] == [5, 10, 10]
 
 
 def test_bioio_export_works(tmp_path):
@@ -155,7 +155,7 @@ def test_bioio_export_works(tmp_path):
 
 
 def test_xarray_adapter_handles_reduced_y_dimension(tmp_path):
-    """Ensure dim_order padding works when Y is reduced."""
+    """Ensure native dimensions are preserved when Y is reduced."""
     if "xarray" not in ADAPTER_REGISTRY:
         pytest.skip("Xarray adapter not registered")
 
@@ -183,7 +183,7 @@ def test_xarray_adapter_handles_reduced_y_dimension(tmp_path):
     )
 
     assert len(outputs) == 1
-    # The output should be padded to TCZYX
-    assert outputs[0]["metadata"]["axes"] == "TCZYX"
-    # Shape should be [1, 2, 3, 1, 5] (Y is now 1)
-    assert outputs[0]["metadata"]["shape"] == [1, 2, 3, 1, 5]
+    # The output should preserve native TCZX
+    assert outputs[0]["metadata"]["axes"] == "TCZX"
+    # Shape should be [1, 2, 3, 5] (Y is removed)
+    assert outputs[0]["metadata"]["shape"] == [1, 2, 3, 5]

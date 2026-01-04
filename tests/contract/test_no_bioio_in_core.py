@@ -37,6 +37,7 @@ LAZY_IMPORT_ALLOWLIST = [
     "registry/dynamic/adapters/xarray.py",
     "registry/dynamic/adapters/phasorpy.py",
     "artifacts/metadata.py",  # Uses graceful fallback if bioio not available
+    "artifacts/store.py",  # Lazy imports for export conversions
 ]
 
 # Files/directories that must NEVER have bioio imports (top-level or lazy)
