@@ -158,19 +158,24 @@ def extract_image_metadata(path: Path) -> dict | None:
             return {"file_size_bytes": path.stat().st_size}
         return None
 
-    dims = getattr(image, "dims", None)
-    axes = getattr(image, "axes", None)
-    if not axes and dims and hasattr(dims, "order"):
-        axes = dims.order
-    axes_inferred = not bool(dims)
+    # Use reader for native dimensions (T021)
+    reader = getattr(image, "reader", image)
+    dims_obj = getattr(reader, "dims", None)
+    axes = getattr(reader, "axes", None)
+    if not axes and dims_obj and hasattr(dims_obj, "order"):
+        axes = dims_obj.order
+
+    shape = list(getattr(reader, "shape", ()))
+    ndim = getattr(reader, "ndim", len(shape))
+    axes_inferred = not bool(dims_obj)
 
     # Keep this intentionally minimal and JSON-serializable.
     meta: dict = {
         "axes": axes or "",
-        "ndim": image.ndim if hasattr(image, "ndim") else len(image.shape),
+        "ndim": ndim,
         "dims": list(axes) if axes else [],
-        "shape": list(getattr(image, "shape", ()) or ()),
-        "dtype": str(getattr(image, "dtype", "")),
+        "shape": shape,
+        "dtype": str(getattr(reader, "dtype", "")),
         "axes_inferred": axes_inferred,
         "file_metadata": {
             "ome_xml_summary": _extract_ome_xml_summary(image),

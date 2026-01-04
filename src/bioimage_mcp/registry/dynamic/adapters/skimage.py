@@ -183,8 +183,11 @@ class SkimageAdapter(BaseAdapter):
                 reader = OmeZarrReader
 
             img = BioImage(path, reader=reader)
-            # bioio always returns 5D TCZYX
-            data = img.data.compute() if hasattr(img.data, "compute") else img.data
+            # Use native dimensions (T020)
+            data = img.reader.data
+            if hasattr(data, "compute"):
+                data = data.compute()
+
             if data is not None and data.size > 0:
                 return data
         except Exception:
@@ -265,6 +268,7 @@ class SkimageAdapter(BaseAdapter):
             "metadata": {
                 "axes": inferred_axes,
                 "dims": list(inferred_axes) if inferred_axes else [],
+                "ndim": array.ndim,
                 "shape": list(array.shape),
                 "dtype": str(array.dtype),
             },

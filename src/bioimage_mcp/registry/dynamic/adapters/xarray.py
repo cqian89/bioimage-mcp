@@ -103,33 +103,44 @@ class XarrayAdapterForRegistry(BaseAdapter):
         _, primary_artifact = normalized_inputs[0]
         img = self._load_image(primary_artifact)
 
-        # Get xarray data
-        da = img.xarray_data
+        # Get xarray data (native dimensions - T017)
+        da = img.reader.xarray_data
 
         # Execute via core adapter
         result_da = self.core.execute(method_name, da, **params)
 
-        # Save result
+        # Save result (T018)
+        return self._save_output(result_da, method_name, work_dir)
+
+    def _save_output(
+        self, result_da: Any, method_name: str, work_dir: Path | None = None
+    ) -> list[dict]:
+        """Save output DataArray with native dimensions (T018)."""
         if work_dir is None:
             work_dir = Path(tempfile.gettempdir())
 
         work_dir.mkdir(parents=True, exist_ok=True)
-        out_path = work_dir / f"output_{method_name}.ome.tiff"
 
-        # Ensure result is 5D for OmeTiffWriter (Standard: TCZYX)
-        # We use xarray to handle expansion and transposition to ensure valid OME-TIFF
-        standard_order = "TCZYX"
-        for d in standard_order:
-            if d not in result_da.dims:
-                result_da = result_da.expand_dims(d)
+        # Determine output format and path
+        # For now default to OME-TIFF but support OME-Zarr if needed
+        ext = ".ome.tiff"
+        out_path = work_dir / f"output_{method_name}{ext}"
 
-        # Transpose to standard order to ensure YX is at the end (OmeTiffWriter requirement)
-        result_da = result_da.transpose(*list(standard_order))
+        # Native dimensions (T018)
         data = result_da.values
-        dim_order = standard_order
+        dim_order = "".join(result_da.dims)
 
         if data.dtype == np.uint64 or data.dtype == np.int64:
             data = data.astype(np.float32)
+
+        # Populate native dimension metadata
+        metadata = {
+            "axes": dim_order,
+            "shape": list(data.shape),
+            "ndim": data.ndim,
+            "dims": list(dim_order),
+            "dtype": str(data.dtype),
+        }
 
         # Save using OmeTiffWriter (Constitution III requirement)
         try:
@@ -139,7 +150,7 @@ class XarrayAdapterForRegistry(BaseAdapter):
         except Exception as e:
             raise RuntimeError(
                 f"Failed to save OME-TIFF with bioio.writers.OmeTiffWriter: {e}. "
-                "Ensure data is 5D (TCZYX) with valid dim_order."
+                f"Data shape: {data.shape}, dims: {dim_order}"
             ) from e
 
         # Return artifact reference
@@ -148,13 +159,28 @@ class XarrayAdapterForRegistry(BaseAdapter):
                 "type": "BioImageRef",
                 "format": "OME-TIFF",
                 "path": str(out_path.absolute()),
-                "metadata": {
-                    "axes": dim_order,
-                    "shape": list(data.shape),
-                    "dtype": str(data.dtype),
-                },
+                "metadata": metadata,
             }
         ]
+
+
+def save_native_ome_zarr(data: np.ndarray, path: Path | str, dims: str) -> None:
+    """Save array to OME-Zarr with native dimensions (T019)."""
+    from bioio_ome_zarr.writers import OMEZarrWriter
+
+    axis_type_map = {"t": "time", "c": "channel", "z": "space", "y": "space", "x": "space"}
+    axes_names = [d.lower() for d in dims]
+    axes_types = [axis_type_map.get(d.lower(), "space") for d in dims]
+
+    writer = OMEZarrWriter(
+        store=str(path),
+        level_shapes=[data.shape],
+        dtype=data.dtype,
+        axes_names=axes_names,
+        axes_types=axes_types,
+        zarr_format=2,
+    )
+    writer.write_full_volume(data)
 
     def generate_dimension_hints(
         self, module_name: str, func_name: str
