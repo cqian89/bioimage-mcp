@@ -76,14 +76,36 @@ class ArtifactRef(BaseModel):
         if self.type in ("BioImageRef", "LabelImageRef"):
             meta = self.metadata
             shape = meta.get("shape")
-            ndim = meta.get("ndim")
-            dims = meta.get("dims")
+            meta_ndim = meta.get("ndim")
+            meta_dims = meta.get("dims")
 
-            if shape and ndim and len(shape) != ndim:
-                raise ValueError(f"shape length ({len(shape)}) != ndim ({ndim})")
+            # 1. Validate metadata['shape'] vs internal metadata ndim/dims
+            if shape:
+                if meta_ndim is not None and len(shape) != meta_ndim:
+                    raise ValueError(f"shape length ({len(shape)}) != metadata ndim ({meta_ndim})")
+                if meta_dims is not None and len(shape) != len(meta_dims):
+                    raise ValueError(
+                        f"shape length ({len(shape)}) != metadata dims length ({len(meta_dims)})"
+                    )
 
-            if shape and dims and len(shape) != len(dims):
-                raise ValueError(f"shape length ({len(shape)}) != dims length ({len(dims)})")
+            # 2. Validate top-level fields vs metadata['shape']
+            if shape:
+                if self.ndim is not None and len(shape) != self.ndim:
+                    raise ValueError(f"shape length ({len(shape)}) != top-level ndim ({self.ndim})")
+                if self.dims is not None and len(shape) != len(self.dims):
+                    raise ValueError(
+                        f"shape length ({len(shape)}) != top-level dims length ({len(self.dims)})"
+                    )
+
+            # 3. Cross-check between top-level ndim and metadata["ndim"]
+            if self.ndim is not None and meta_ndim is not None and self.ndim != meta_ndim:
+                raise ValueError(f"top-level ndim ({self.ndim}) != metadata ndim ({meta_ndim})")
+
+            # 4. Cross-check top-level ndim vs top-level dims
+            if self.ndim is not None and self.dims is not None and self.ndim != len(self.dims):
+                raise ValueError(
+                    f"top-level ndim ({self.ndim}) != top-level dims length ({len(self.dims)})"
+                )
         return self
 
     def is_memory_artifact(self) -> bool:
@@ -129,6 +151,7 @@ class TableRef(ArtifactRef):
     """Reference to a tabular data artifact."""
 
     type: Literal["TableRef"] = "TableRef"
+    metadata: TableMetadata
 
 
 # T009: Add ScalarRef class with JSON format and ScalarMetadata
