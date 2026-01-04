@@ -144,19 +144,15 @@ def extract_image_metadata(path: Path) -> dict | None:
     try:
         from bioio import BioImage  # type: ignore
     except ImportError:
-        # bioio not available in core environment, return minimal metadata
-        if path.exists():
-            return {"file_size_bytes": path.stat().st_size}
-        return None
+        # bioio not available in core environment, try tifffile as fallback
+        return _extract_metadata_tifffile(path)
 
     # bioio is available, try to extract full metadata
     try:
         image = BioImage(str(path))
-    except Exception:  # noqa: BLE001
-        # If BioImage fails, return minimal metadata
-        if path.exists():
-            return {"file_size_bytes": path.stat().st_size}
-        return None
+    except Exception:
+        # If BioImage fails, try tifffile fallback
+        return _extract_metadata_tifffile(path)
 
     # Use reader for native dimensions (T021)
     reader = getattr(image, "reader", image)
@@ -194,6 +190,33 @@ def extract_image_metadata(path: Path) -> dict | None:
         }
 
     return meta
+
+
+def _extract_metadata_tifffile(path: Path) -> dict | None:
+    """Fallback metadata extraction using tifffile."""
+    try:
+        import tifffile
+
+        if not path.exists():
+            return None
+
+        with tifffile.TiffFile(path) as tif:
+            # Get shape of first series
+            series = tif.series[0]
+            shape = list(series.shape)
+            dtype = str(series.dtype)
+
+            return {
+                "ndim": len(shape),
+                "shape": shape,
+                "dtype": dtype,
+                "axes": getattr(series, "axes", ""),
+                "file_size_bytes": path.stat().st_size,
+            }
+    except Exception:  # noqa: BLE001
+        if path.exists():
+            return {"file_size_bytes": path.stat().st_size}
+        return None
 
 
 def extract_table_metadata(path: Path) -> dict | None:

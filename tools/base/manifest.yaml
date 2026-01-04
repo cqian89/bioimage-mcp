@@ -255,30 +255,29 @@ functions:
   - fn_id: base.bioio.export
     tool_id: tools.base
     name: Export artifact to file
-    description: Materialize a memory-backed artifact to a file-backed artifact (OME-TIFF).
+    description: Export an artifact (memory or file-backed) to a specific format (OME-TIFF, OME-Zarr, PNG, CSV).
     tags: [image, io, export]
     input_mode: xarray
     inputs:
       - name: image
         artifact_type: BioImageRef
-        required: true
-        description: Input artifact to export (can be mem:// or file://)
+        required: false
+        description: Input image artifact to export
+      - name: table
+        artifact_type: TableRef
+        required: false
+        description: Input table artifact to export
     outputs:
       - name: output
         artifact_type: BioImageRef
-        format: OME-TIFF
-        description: File-backed OME-TIFF artifact
+        description: Exported file artifact
     params_schema:
       type: object
       properties:
-        path:
-          type: string
-          description: Optional output path. If not provided, auto-generated in artifact store.
         format:
           type: string
-          enum: [OME-TIFF, OME-Zarr]
-          default: OME-TIFF
-          description: Output format
+          enum: [OME-TIFF, OME-Zarr, PNG, CSV, NPY]
+          description: Output format. If omitted, inferred from artifact.
 
   # Required for on-demand schema enrichment
   - fn_id: meta.describe

@@ -22,6 +22,7 @@ if str(TOOLS_ROOT) not in sys.path:
 from datetime import UTC  # noqa: E402
 
 from bioimage_mcp_base import io as io_ops  # noqa: E402
+from bioimage_mcp_base.ops import export as export_ops  # noqa: E402
 
 TOOL_VERSION = "0.1.0"
 TOOL_ENV_NAME = "bioimage-mcp-base"
@@ -41,7 +42,7 @@ _ENV_ID: str | None = None
 
 
 FN_MAP = {
-    "base.bioio.export": (io_ops.export, {}),
+    "base.bioio.export": (export_ops.export, {}),
 }
 
 LEGACY_REDIRECTS = {}
@@ -216,6 +217,7 @@ def _convert_memory_inputs_to_files(inputs: dict[str, Any], work_dir: Path) -> d
 
             # Replace with file URI
             converted_inputs[key] = {
+                "ref_id": value.get("ref_id"),
                 "uri": f"file://{temp_path}",
                 "type": value.get("type", "BioImageRef"),
                 "format": "OME-TIFF",

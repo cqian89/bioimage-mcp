@@ -19,10 +19,10 @@
 
 **Purpose**: Dependencies and environment verification
 
-- [ ] T001 Verify bioio-ome-zarr availability in base environment (already in envs/bioimage-mcp-base.yaml)
-- [ ] T001a [P] Review img.reader.data vs img.data patterns in current codebase
-- [ ] T002 [P] Review existing artifact model structure in src/bioimage_mcp/artifacts/models.py
-- [ ] T003 [P] Review existing metadata extraction in src/bioimage_mcp/artifacts/metadata.py
+- [X] T001 Verify bioio-ome-zarr availability in base environment (already in envs/bioimage-mcp-base.yaml)
+- [X] T001a [P] Review img.reader.data vs img.data patterns in current codebase
+- [X] T002 [P] Review existing artifact model structure in src/bioimage_mcp/artifacts/models.py
+- [X] T003 [P] Review existing metadata extraction in src/bioimage_mcp/artifacts/metadata.py
 
 ---
 
@@ -34,20 +34,20 @@
 
 ### Tests First (TDD)
 
-- [ ] T004 [P] Contract test for ArtifactRef with native dimension fields (shape, ndim, dims, dtype) in tests/contract/test_artifact_metadata_contract.py
-- [ ] T005 [P] Contract test for ScalarRef artifact type and JSON schema compliance in tests/contract/test_scalar_ref_contract.py
-- [ ] T006 [P] Contract test for TableRef with column metadata in tests/contract/test_table_ref_contract.py
-- [ ] T007 [P] Unit test for dimension metadata validation (shape/ndim/dims consistency) in tests/unit/artifacts/test_dimension_validation.py
-- [ ] T007a [P] Unit test for load_native() helper function in tests/unit/base/test_native_loading.py
+- [X] T004 [P] Contract test for ArtifactRef with native dimension fields (shape, ndim, dims, dtype) in tests/contract/test_artifact_metadata_contract.py
+- [X] T005 [P] Contract test for ScalarRef artifact type and JSON schema compliance in tests/contract/test_scalar_ref_contract.py
+- [X] T006 [P] Contract test for TableRef with column metadata in tests/contract/test_table_ref_contract.py
+- [X] T007 [P] Unit test for dimension metadata validation (shape/ndim/dims consistency) in tests/unit/artifacts/test_dimension_validation.py
+- [X] T007a [P] Unit test for load_native() helper function in tests/unit/base/test_native_loading.py
 
 ### Implementation (After Tests Fail)
 
-- [ ] T008 Add `ndim`, `dims`, `physical_pixel_sizes` fields to ArtifactRef model in src/bioimage_mcp/artifacts/models.py
-- [ ] T009 Add ScalarRef class with JSON format and ScalarMetadata in src/bioimage_mcp/artifacts/models.py
-- [ ] T010 Add ColumnMetadata and TableMetadata classes in src/bioimage_mcp/artifacts/models.py
-- [ ] T011 Add model_validator for dimension metadata consistency in src/bioimage_mcp/artifacts/models.py
-- [ ] T012 Update ARTIFACT_TYPES registry to include ScalarRef in src/bioimage_mcp/artifacts/models.py
-- [ ] T012a Create load_native() helper in tools/base/bioimage_mcp_base/native_io.py
+- [X] T008 Add `ndim`, `dims`, `physical_pixel_sizes` fields to ArtifactRef model in src/bioimage_mcp/artifacts/models.py
+- [X] T009 Add ScalarRef class with JSON format and ScalarMetadata in src/bioimage_mcp/artifacts/models.py
+- [X] T010 Add ColumnMetadata and TableMetadata classes in src/bioimage_mcp/artifacts/models.py
+- [X] T011 Add model_validator for dimension metadata consistency in src/bioimage_mcp/artifacts/models.py
+- [X] T012 Update ARTIFACT_TYPES registry to include ScalarRef in src/bioimage_mcp/artifacts/models.py
+- [X] T012a Create load_native() helper in tools/base/bioimage_mcp_base/native_io.py
 
 **Checkpoint**: Foundation ready - core artifact models support native dimensions. Tests should now PASS.
 
@@ -61,19 +61,19 @@
 
 ### Tests for User Story 1 (Write FIRST - must FAIL)
 
-- [ ] T013 [P] [US1] Unit test: XarrayAdapter preserves native dimensions (no 5D expansion) in tests/unit/adapters/test_xarray_native_dims.py
-- [ ] T014 [P] [US1] Unit test: squeeze operation produces correct ndim/dims metadata in tests/unit/adapters/test_xarray_native_dims.py
-- [ ] T015 [P] [US1] Unit test: SkimageAdapter handles native dimension output in tests/unit/adapters/test_skimage_native_dims.py
-- [ ] T016 [P] [US1] Integration test: squeeze → threshold → regionprops pipeline in tests/integration/test_squeeze_threshold_pipeline.py
-- [ ] T016a [P] [US1] Unit test: squeeze on non-singleton dimension produces clear error message in tests/unit/ops/test_dimension_errors.py
+- [X] T013 [P] [US1] Unit test: XarrayAdapter preserves native dimensions (no 5D expansion) in tests/unit/adapters/test_xarray_native_dims.py
+- [X] T014 [P] [US1] Unit test: squeeze operation produces correct ndim/dims metadata in tests/unit/adapters/test_xarray_native_dims.py
+- [X] T015 [P] [US1] Unit test: SkimageAdapter handles native dimension output in tests/unit/adapters/test_skimage_native_dims.py
+- [X] T016 [P] [US1] Integration test: squeeze → threshold → regionprops pipeline in tests/integration/test_squeeze_threshold_pipeline.py
+- [X] T016a [P] [US1] Unit test: squeeze on non-singleton dimension produces clear error message in tests/unit/ops/test_dimension_errors.py
 
 ### Implementation for User Story 1 (After Tests Fail)
 
-- [ ] T017 [US1] Switch XarrayAdapter from img.data to img.reader.data for native dimensions in src/bioimage_mcp/registry/dynamic/adapters/xarray.py
-- [ ] T018 [US1] Update XarrayAdapter._save_output to use native dimensions and populate ndim/dims metadata in src/bioimage_mcp/registry/dynamic/adapters/xarray.py
-- [ ] T019 [US1] Update save_native_ome_zarr to use OMEZarrWriter with axes_names/axes_types (NOT ome-zarr-py) in src/bioimage_mcp/registry/dynamic/adapters/xarray.py
-- [ ] T020 [US1] Switch SkimageAdapter from img.data to img.reader.data in src/bioimage_mcp/registry/dynamic/adapters/skimage.py
-- [ ] T021 [US1] Update metadata extraction to populate ndim/dims from array in src/bioimage_mcp/artifacts/metadata.py
+- [X] T017 [US1] Switch XarrayAdapter from img.data to img.reader.data for native dimensions in src/bioimage_mcp/registry/dynamic/adapters/xarray.py
+- [X] T018 [US1] Update XarrayAdapter._save_output to use native dimensions and populate ndim/dims metadata in src/bioimage_mcp/registry/dynamic/adapters/xarray.py
+- [X] T019 [US1] Update save_native_ome_zarr to use OMEZarrWriter with axes_names/axes_types (NOT ome-zarr-py) in src/bioimage_mcp/registry/dynamic/adapters/xarray.py
+- [X] T020 [US1] Switch SkimageAdapter from img.data to img.reader.data in src/bioimage_mcp/registry/dynamic/adapters/skimage.py
+- [X] T021 [US1] Update metadata extraction to populate ndim/dims from array in src/bioimage_mcp/artifacts/metadata.py
 
 **Checkpoint**: User Story 1 complete. Dimension-reducing pipelines work. Tests should now PASS.
 
