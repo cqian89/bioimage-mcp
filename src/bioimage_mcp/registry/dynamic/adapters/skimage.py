@@ -184,7 +184,12 @@ class SkimageAdapter(BaseAdapter):
 
             img = BioImage(path, reader=reader)
             # Use native dimensions (T020)
-            data = img.reader.data
+            # reader.xarray_data provides native dimensions, whereas reader.data is always 5D
+            try:
+                data = img.reader.xarray_data.values
+            except (AttributeError, Exception):
+                data = img.reader.data
+
             if hasattr(data, "compute"):
                 data = data.compute()
 
@@ -225,6 +230,7 @@ class SkimageAdapter(BaseAdapter):
         """Save image array to file and return artifact reference dict."""
         # Use .ome.tiff extension for better compatibility
         ext = ".ome.tiff"
+
         if work_dir is None:
             # Use system temp directory
             fd, path_str = tempfile.mkstemp(suffix=ext)
@@ -309,6 +315,7 @@ class SkimageAdapter(BaseAdapter):
         inputs: list[Artifact],
         params: dict[str, Any],
         work_dir: Path | None = None,
+        hints: dict[str, Any] | None = None,
     ) -> list[dict]:
         """Execute the function."""
         # fn_id = skimage.filters.gaussian
@@ -322,12 +329,30 @@ class SkimageAdapter(BaseAdapter):
         module = importlib.import_module(module_path)
         func = getattr(module, func_name)
 
+        from bioimage_mcp.api.schemas import DimensionRequirement
+
         # Load input images
+
         args = []
         kwargs: dict[str, Any] = {}
         param_names = set(inspect.signature(func).parameters.keys())
         for name, artifact in self._normalize_inputs(inputs):
+            # Resolve dimension requirements from hints (T048)
+            req = None
+            if hints:
+                input_hints = hints.get("inputs", {})
+                req_data = input_hints.get(name) or input_hints.get("image")
+                if req_data:
+                    dim_req_data = req_data.get("dimension_requirements")
+                    if dim_req_data:
+                        req = DimensionRequirement(**dim_req_data)
+
             image_data = self._load_image(artifact)
+
+            # Squeeze if requested (T048)
+            if req and req.squeeze_singleton:
+                image_data = np.squeeze(image_data)
+
             param_name = name
             if name == "labels" and "label_image" in param_names:
                 param_name = "label_image"
@@ -347,6 +372,7 @@ class SkimageAdapter(BaseAdapter):
         result = func(*args, **kwargs, **params)
 
         # Save result and create artifact reference dict
+
         io_pattern = self.determine_io_pattern(module_path, func_name)
         if io_pattern == IOPattern.LABELS_TO_TABLE:
             if not isinstance(result, dict):
@@ -354,10 +380,18 @@ class SkimageAdapter(BaseAdapter):
             output_ref = self._save_table(result, work_dir=work_dir)
         else:
             axes = ""
-            for _, artifact in self._normalize_inputs(inputs):
+            for name, artifact in self._normalize_inputs(inputs):
                 axes = self._extract_axes(artifact)
                 if axes:
                     break
+            # Use expand_if_required for OME-TIFF preservation (T045a)
+
+            from bioimage_mcp.registry.dynamic.adapters.xarray import expand_if_required
+
+            # For now, default to no specific output requirement unless hints provided
+            # but OmeTiffWriter will expand anyway.
+            # Here we just pass the result as is, _save_image handles expansion to TCZYX
+            # if using OmeTiffWriter.
             output_ref = self._save_image(result, work_dir=work_dir, axes=axes)
 
         return [output_ref]

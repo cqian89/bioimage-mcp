@@ -448,6 +448,8 @@ def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
     fn_id = request.get("fn_id")
     params = request.get("params") or {}
     inputs = request.get("inputs") or {}
+    hints = request.get("hints") or {}
+
     work_dir = Path(request.get("work_dir") or ".").absolute()
     work_dir.mkdir(parents=True, exist_ok=True)
     ordinal = request.get("ordinal")
@@ -594,6 +596,7 @@ def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
                 inputs=inputs,
                 params=params,
                 work_dir=work_dir,
+                hints=hints,
             )
 
             outputs = result.get("outputs", {})

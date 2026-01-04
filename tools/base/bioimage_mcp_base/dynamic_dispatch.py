@@ -100,6 +100,7 @@ def dispatch_dynamic(
     inputs: dict[str, Any],
     params: dict[str, Any],
     work_dir: Path | None = None,
+    hints: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Route dynamic function call to appropriate adapter for execution.
 
@@ -122,23 +123,21 @@ def dispatch_dynamic(
     input_artifacts = _convert_inputs_to_artifacts(inputs)
 
     # Execute via adapter
-    # Check if adapter.execute supports work_dir parameter
+    # Check if adapter.execute supports hints parameter
     import inspect
 
     sig = inspect.signature(adapter.execute)
+    exec_kwargs = {
+        "fn_id": fn_id,
+        "inputs": input_artifacts,
+        "params": params,
+    }
     if "work_dir" in sig.parameters:
-        output_artifacts = adapter.execute(
-            fn_id=fn_id,
-            inputs=input_artifacts,
-            params=params,
-            work_dir=work_dir,
-        )
-    else:
-        output_artifacts = adapter.execute(
-            fn_id=fn_id,
-            inputs=input_artifacts,
-            params=params,
-        )
+        exec_kwargs["work_dir"] = work_dir
+    if "hints" in sig.parameters:
+        exec_kwargs["hints"] = hints
+
+    output_artifacts = adapter.execute(**exec_kwargs)
 
     # Convert outputs from artifacts to dict refs
     result = _convert_outputs_to_refs(output_artifacts)

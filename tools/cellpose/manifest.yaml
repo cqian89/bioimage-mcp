@@ -46,6 +46,17 @@ functions:
     params_schema:
       type: object
       properties: {}
+    hints:
+      inputs:
+        image:
+          type: BioImageRef
+          required: true
+          description: "Input image for segmentation"
+          dimension_requirements:
+            min_ndim: 2
+            max_ndim: 3
+            expected_axes: ["Y", "X"]
+            squeeze_singleton: true
     resource_hints:
       gpu_recommended: true
       memory_mb: 4096

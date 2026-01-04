@@ -138,6 +138,28 @@ def _needs_materialization(artifact_ref: dict, supported_types: list[str]) -> bo
     return storage_type == "zarr-temp" and "zarr-temp" not in supported_types
 
 
+def _get_function_metadata(config: Config, fn_id: str) -> tuple[Any, Any] | tuple[None, None]:
+    """Find manifest and function definition (or overlay) for a given fn_id."""
+    manifests, _ = load_manifests(config.tool_manifest_roots)
+    for manifest in manifests:
+        # 1. Check explicit functions
+        for fn in manifest.functions:
+            if fn.fn_id == fn_id:
+                return manifest, fn
+
+        # 2. Check overlays (for dynamic functions) (T048)
+        if fn_id in manifest.function_overlays:
+            return manifest, manifest.function_overlays[fn_id]
+
+        # 3. Check dynamic source prefixes
+        if any(
+            fn_id.startswith(f"{manifest.tool_id.replace('tools.', '')}.{ds.prefix}.")
+            for ds in manifest.dynamic_sources
+        ) or (fn_id.startswith("base.") and manifest.tool_id == "tools.base"):
+            return manifest, None
+    return None, None
+
+
 def execute_step(
     *,
     config: Config,
@@ -149,84 +171,83 @@ def execute_step(
     worker_manager: PersistentWorkerManager | None = None,
     session_id: str = "default-session",
 ) -> tuple[dict, str, int]:
-    manifests, _diagnostics = load_manifests(config.tool_manifest_roots)
+    import sys
 
-    for manifest in manifests:
-        for fn in manifest.functions:
-            if fn.fn_id != fn_id:
-                continue
+    manifest, fn_def = _get_function_metadata(config, fn_id)
+    if not manifest:
+        raise KeyError(fn_id)
 
-            entrypoint = manifest.entrypoint
+    entrypoint = manifest.entrypoint
+    entry_path = Path(entrypoint)
+    if not entry_path.is_absolute():
+        candidate = manifest.manifest_path.parent / entry_path
+        if candidate.exists():
+            entrypoint = str(candidate)
 
-            entry_path = Path(entrypoint)
-            if not entry_path.is_absolute():
-                candidate = manifest.manifest_path.parent / entry_path
-                if candidate.exists():
-                    entrypoint = str(candidate)
+    work_dir.mkdir(parents=True, exist_ok=True)
 
-            print(
-                f"DEBUG: Selected tool {manifest.tool_id} (Env: {manifest.env_id}) for function {fn_id}",
-                file=sys.stderr,
-            )
-            print(f"DEBUG: Entrypoint: {entrypoint}", file=sys.stderr)
+    # Resolve hints from either function definition or overlay (T048)
+    hints = None
+    if fn_def and hasattr(fn_def, "hints") and fn_def.hints:
+        hints = fn_def.hints.model_dump(mode="json")
 
-            work_dir.mkdir(parents=True, exist_ok=True)
-            request = {
-                "fn_id": fn_id,
-                "params": params,
-                "inputs": inputs,
-                "work_dir": str(work_dir),
-                "fs_allowlist_read": [str(path) for path in config.fs_allowlist_read],
-            }
+    request = {
+        "fn_id": fn_id,
+        "params": params,
+        "inputs": inputs,
+        "work_dir": str(work_dir),
+        "hints": hints,
+        "fs_allowlist_read": [str(path) for path in config.fs_allowlist_read],
+    }
 
-            if worker_manager:
-                # Use persistent worker for execution (T016, spec 012)
-                worker = worker_manager.get_worker(session_id, manifest.env_id)
+    if worker_manager:
+        # Use persistent worker for execution (T016, spec 012)
+        worker = worker_manager.get_worker(session_id, manifest.env_id)
 
-                # Send request to persistent worker
-                try:
-                    response = worker.execute(
-                        request=request,
-                        memory_store=worker_manager._memory_store,
-                        timeout_seconds=timeout_seconds,
-                    )
-
-                    # Parse worker response to match expected format
-                    # WorkerProcess.execute() returns ExecuteResponse dict
-                    # Need to convert to tuple[dict, str, int] format
-
-                    # Extract log from response (if available)
-                    log_text = response.get("log", "")
-
-                    # Extract exit code (worker responses use ok/error, not exit codes)
-                    exit_code = 0 if response.get("ok") else 1
-
-                    return response, log_text, exit_code
-
-                except Exception as e:
-                    # On worker error, return error response in expected format
-                    logger.error(
-                        "Worker execution failed: session=%s env=%s error=%s",
-                        session_id,
-                        manifest.env_id,
-                        e,
-                    )
-                    error_response = {
-                        "ok": False,
-                        "error": {
-                            "code": "WORKER_ERROR",
-                            "message": f"Worker execution failed: {e}",
-                        },
-                    }
-                    return error_response, str(e), 1
-
-            # Fall back to one-shot execution when worker_manager is None
-            return execute_tool(
-                entrypoint=entrypoint,
+        # Send request to persistent worker
+        try:
+            response = worker.execute(
                 request=request,
-                env_id=manifest.env_id,
+                memory_store=worker_manager._memory_store,
                 timeout_seconds=timeout_seconds,
             )
+
+            # Parse worker response to match expected format
+            # WorkerProcess.execute() returns ExecuteResponse dict
+            # Need to convert to tuple[dict, str, int] format
+
+            # Extract log from response (if available)
+            log_text = response.get("log", "")
+
+            # Extract exit code (worker responses use ok/error, not exit codes)
+            exit_code = 0 if response.get("ok") else 1
+
+            return response, log_text, exit_code
+
+        except Exception as e:
+            # On worker error, return error response in expected format
+            logger.error(
+                "Worker execution failed: session=%s env=%s error=%s",
+                session_id,
+                manifest.env_id,
+                e,
+            )
+            error_response = {
+                "ok": False,
+                "error": {
+                    "code": "WORKER_ERROR",
+                    "message": f"Worker execution failed: {e}",
+                },
+            }
+            return error_response, str(e), 1
+
+    # Fall back to one-shot execution when worker_manager is None
+    return execute_tool(
+        entrypoint=entrypoint,
+        request=request,
+        env_id=manifest.env_id,
+        timeout_seconds=timeout_seconds,
+    )
 
     raise KeyError(fn_id)
 
@@ -734,6 +755,9 @@ class ExecutionService:
                     size_bytes=0,
                     created_at=ArtifactRef.now(),
                     metadata=meta,
+                    ndim=meta.get("ndim"),
+                    dims=meta.get("dims"),
+                    physical_pixel_sizes=meta.get("physical_pixel_sizes"),
                 )
                 self._memory_store.register(ref)
                 self._worker_manager.register_artifact(session_id, env_id, ref_id)
@@ -742,21 +766,24 @@ class ExecutionService:
                 record_artifact_dimensions(run.provenance, f"output.{name}", outputs_payload[name])
             elif path:
                 p = Path(path)
-                p.parent.mkdir(parents=True, exist_ok=True)
+                out_type = out.get("type", "BioImageRef")
+                fmt = out.get("format", "OME-TIFF")
+                tool_metadata = out.get("metadata") or {}
+
                 if content is not None:
                     p.write_text(str(content))
+
                 if p.is_dir():
                     ref = self._artifact_store.import_directory(
                         p, artifact_type=out_type, format=fmt
                     )
                 else:
-                    ref = self._artifact_store.import_file(p, artifact_type=out_type, format=fmt)
+                    # Pass tool metadata as override to preserve native dimensions (T048)
+                    ref = self._artifact_store.import_file(
+                        p, artifact_type=out_type, format=fmt, metadata_override=tool_metadata
+                    )
 
-                # Propagate metadata from tool response (FR-007)
                 ref_data = ref.model_dump()
-                tool_metadata = out.get("metadata")
-                if tool_metadata:
-                    ref_data["metadata"] = {**ref_data.get("metadata", {}), **tool_metadata}
                 outputs_payload[name] = ref_data
                 record_artifact_dimensions(run.provenance, f"output.{name}", ref_data)
 

@@ -93,6 +93,51 @@ class ArtifactStore:
         """Resolve a mem:// artifact from the memory store."""
         return self._memory_store.get(ref_id)
 
+    def create_memory_artifact_ref(
+        self,
+        session_id: str,
+        env_id: str,
+        artifact_id: str,
+        artifact_type: str,
+        format: str,
+        shape: tuple[int, ...] | list[int],
+        dims: list[str],
+        dtype: str,
+        metadata: dict | None = None,
+    ) -> ArtifactRef:
+        """Create a memory-backed artifact reference with dimension metadata.
+
+        Used by workers to record outputs that remain in memory.
+        """
+        uri = f"mem://{session_id}/{env_id}/{artifact_id}"
+
+        # Merge provided metadata with dimension info
+        full_metadata = (metadata or {}).copy()
+        full_metadata.update(
+            {
+                "shape": list(shape),
+                "ndim": len(shape),
+                "dims": dims,
+                "dtype": str(dtype),
+            }
+        )
+
+        ref = ArtifactRef(
+            ref_id=artifact_id,
+            type=artifact_type,
+            uri=uri,
+            format=format,
+            storage_type="memory",
+            mime_type=_guess_mime_type(artifact_type, format),
+            size_bytes=0,  # Memory artifacts don't have a file size yet
+            created_at=ArtifactRef.now(),
+            metadata=full_metadata,
+            ndim=len(shape),
+            dims=dims,
+        )
+        # Note: We don't persist memory artifacts in SQLite as they are transient
+        return ref
+
     def is_memory_artifact(self, uri: str) -> bool:
         """Check if a URI is a memory artifact."""
         return uri.startswith("mem://")
@@ -114,7 +159,14 @@ class ArtifactStore:
     def _artifact_path(self, ref_id: str) -> Path:
         return self._objects_dir() / ref_id
 
-    def import_file(self, src: Path, *, artifact_type: str, format: str) -> ArtifactRef:
+    def import_file(
+        self,
+        src: Path,
+        *,
+        artifact_type: str,
+        format: str,
+        metadata_override: dict | None = None,
+    ) -> ArtifactRef:
         src = src.expanduser().absolute()
 
         # Clear error for missing files (T023)
@@ -171,6 +223,16 @@ class ArtifactStore:
                 physical_pixel_sizes = meta.get("physical_pixel_sizes")
         elif artifact_type == "TableRef":
             meta = extract_table_metadata(src) or {}
+
+        # Apply metadata override (T048)
+        if metadata_override:
+            meta.update(metadata_override)
+            if "ndim" in metadata_override:
+                ndim = metadata_override["ndim"]
+            if "dims" in metadata_override:
+                dims = metadata_override["dims"]
+            if "physical_pixel_sizes" in metadata_override:
+                physical_pixel_sizes = metadata_override["physical_pixel_sizes"]
 
         ref = ArtifactRef(
             ref_id=ref_id,
@@ -305,6 +367,7 @@ class ArtifactStore:
         if row is None:
             raise KeyError(ref_id)
         checksums = [ArtifactChecksum(**c) for c in json.loads(row["checksums_json"])]
+        metadata = json.loads(row["metadata_json"])
         return ArtifactRef(
             ref_id=row["ref_id"],
             type=row["type"],
@@ -315,7 +378,10 @@ class ArtifactStore:
             size_bytes=int(row["size_bytes"]),
             checksums=checksums,
             created_at=row["created_at"],
-            metadata=json.loads(row["metadata_json"]),
+            metadata=metadata,
+            ndim=metadata.get("ndim"),
+            dims=metadata.get("dims"),
+            physical_pixel_sizes=metadata.get("physical_pixel_sizes"),
         )
 
     def get_payload(self, ref_id: str) -> dict:

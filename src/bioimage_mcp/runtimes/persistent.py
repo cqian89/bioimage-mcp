@@ -311,6 +311,7 @@ class WorkerProcess:
                 inputs=request.get("inputs", {}),
                 params=request.get("params", {}),
                 work_dir=request.get("work_dir", "."),
+                hints=request.get("hints"),
                 fs_allowlist_read=request.get("fs_allowlist_read"),
                 ordinal=ordinal,
             )

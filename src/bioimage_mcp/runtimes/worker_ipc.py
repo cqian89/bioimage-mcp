@@ -79,6 +79,9 @@ class ExecuteRequest(BaseModel):
     )
     params: dict[str, Any] = Field(..., description="Function parameters (JSON-serializable)")
     work_dir: str = Field(..., description="Working directory for file outputs")
+    hints: dict[str, Any] | None = Field(
+        None, description="Function hints (dimension requirements, etc.)"
+    )
     fs_allowlist_read: list[str] | None = Field(
         None, description="Allowed filesystem read roots for this request"
     )

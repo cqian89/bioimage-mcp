@@ -300,6 +300,16 @@ function_overlays:
     description: "Apply a Gaussian filter to an image to reduce noise and detail."
     tags: ["denoise", "smooth", "filter"]
     hints:
+      inputs:
+        image:
+          type: BioImageRef
+          required: true
+          description: "Input image to smooth"
+          dimension_requirements:
+            min_ndim: 2
+            max_ndim: 3
+            expected_axes: ["Y", "X"]
+            squeeze_singleton: true
       success_hints:
         next_steps:
           - fn_id: "base.skimage.morphology.remove_small_objects"

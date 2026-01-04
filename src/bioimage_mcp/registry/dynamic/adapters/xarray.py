@@ -15,6 +15,30 @@ from bioimage_mcp.registry.dynamic.adapters import BaseAdapter
 from bioimage_mcp.registry.dynamic.models import FunctionMetadata, IOPattern
 
 
+def should_expand_to_5d(output_format: str, output_hints: DimensionRequirement | None) -> bool:
+    """Decide if an output should be expanded to 5D TCZYX based on format and hints.
+
+    OME-TIFF always requires 5D in bioio.writers.
+    """
+    if output_format.upper() == "OME-TIFF":
+        return True
+    if output_hints and output_hints.min_ndim == 5:
+        return True
+    return False
+
+
+def expand_if_required(
+    data: np.ndarray, dims: str, requirement: DimensionRequirement | None
+) -> tuple[np.ndarray, str]:
+    """Expand to 5D only if tool manifest requires it."""
+    if requirement and requirement.min_ndim == 5 and data.ndim < 5:
+        missing = "TCZYX"[: 5 - data.ndim]
+        for _ in missing:
+            data = np.expand_dims(data, axis=0)
+        dims = missing + dims
+    return data, dims
+
+
 class XarrayAdapterForRegistry(BaseAdapter):
     """Adapter for xarray operations that satisfies the BaseAdapter protocol."""
 
@@ -44,6 +68,12 @@ class XarrayAdapterForRegistry(BaseAdapter):
 
     def _load_image(self, artifact: Artifact):
         """Load image data from artifact reference using BioImage."""
+        import sys
+
+        print(
+            f"DEBUG: _load_image called with artifact type {type(artifact)}: {artifact}",
+            file=sys.stderr,
+        )
         if isinstance(artifact, dict):
             uri = artifact.get("uri") or artifact.get("path")
             metadata = artifact.get("metadata") or {}
@@ -53,8 +83,9 @@ class XarrayAdapterForRegistry(BaseAdapter):
             metadata = getattr(artifact, "metadata", {}) or {}
             fmt = getattr(artifact, "format", None)
 
+        print(f"DEBUG: _load_image uri={uri}", file=sys.stderr)
         if not uri:
-            raise ValueError("Artifact missing URI or path")
+            raise ValueError(f"Artifact missing URI or path. Artifact data: {artifact}")
 
         # Handle mem:// URIs by checking metadata for _simulated_path
         if str(uri).startswith("mem://"):
@@ -91,6 +122,8 @@ class XarrayAdapterForRegistry(BaseAdapter):
         work_dir: Path | None = None,
     ) -> list[dict]:
         """Execute xarray function."""
+        import sys
+
         # fn_id is like "xarray.rename"
         parts = fn_id.split(".")
         method_name = parts[-1]
