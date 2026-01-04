@@ -10,7 +10,7 @@ Provide 6 curated bioimage I/O functions under the `base.io.bioimage.*` namespac
 ## Technical Context
 
 **Language/Version**: Python 3.13 (core server; tool envs may differ)  
-**Primary Dependencies**: MCP Python SDK (`mcp`), `pydantic>=2.0`, `bioio`, `bioio-ome-tiff`, `bioio-ome-zarr`  
+**Primary Dependencies**: MCP Python SDK (`mcp`), `pydantic>=2.0`, `bioio`, `bioio-ome-tiff`, `bioio-ome-zarr`, `bioio-imageio` (PNG/JPG via imageio plugin). CSV export should use the Python standard library (no `pandas`).  
 **Storage**: Local filesystem artifact store + SQLite index (MVP)  
 **Testing**: `pytest` with contract/unit/integration layers  
 **Target Platform**: Linux-first (macOS/Windows best-effort)  
@@ -24,6 +24,7 @@ Provide 6 curated bioimage I/O functions under the `base.io.bioimage.*` namespac
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
 - [x] Stable MCP surface: No new MCP endpoints. 6 new functions added via existing registry; `base.bioio.export` removed.
+- [x] Version bump justification: Bump `tools/base/manifest.yaml` `tool_version` (currently `0.1.0`) to the next MINOR version to reflect adding 6 functions and removing the deprecated export function.
 - [x] Summary-first responses: All functions return artifact refs (BioImageRef, TableRef) or concise JSON metadata - no large payloads.
 - [x] Tool execution isolated: All functions run in `bioimage-mcp-base` environment; no new env requirements.
 - [x] Artifact references only: Inputs/outputs use BioImageRef, TableRef. No binary data in MCP messages.
@@ -72,6 +73,8 @@ tests/
 ```
 
 **Structure Decision**: Single Python package structure. Implementation in `tools/base/bioimage_mcp_base/ops/io.py` with corresponding manifest entries. All functions are part of the existing base toolkit - no new tool packs required.
+
+**Native dimensions policy**: Preserve native axes by default (prefer `img.reader.data`/`img.reader.xarray_data` over `img.data`), and only normalize/expand to 5D when the output format requires it (e.g., some OME-TIFF exports) or an explicit dimension requirement exists.
 
 ## Complexity Tracking
 

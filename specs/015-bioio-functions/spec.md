@@ -83,6 +83,7 @@ After processing an image, an AI agent needs to export results in a format the u
 ### Constitution Constraints *(mandatory)*
 
 - **MCP API impact**: No changes to existing MCP endpoints. Adds 6 new functions to base toolkit. Removes deprecated `base.bioio.export` function entirely (breaking change acceptable at this project stage).
+  - **Versioning/justification**: Bump `tools/base/manifest.yaml` `tool_version` (currently `0.1.0`) to the next MINOR version to reflect the MCP surface change (adds 6 functions, removes 1 deprecated function) and record this as the justification for the bump.
 - **Artifact I/O**: 
   - Inputs: File paths (strings), `BioImageRef`, `TableRef`
   - Outputs: `BioImageRef`, `TableRef`, JSON metadata
@@ -98,19 +99,19 @@ After processing an image, an AI agent needs to export results in a format the u
 
 - **FR-001**: System MUST provide a `base.io.bioimage.load` function that loads an image file into the artifact system as a `BioImageRef`.
 - **FR-002**: System MUST validate file paths against the configured `filesystem.allowed_read` allowlist before loading.
-- **FR-003**: System MUST provide a `base.io.bioimage.inspect` function that returns image metadata without loading full pixel data.
-- **FR-004**: The inspect function MUST return at minimum: dimensions (shape), data type, dimension labels (e.g., TCZYX), and physical pixel sizes when available.
+- **FR-003**: System MUST provide a `base.io.bioimage.inspect` function that accepts either a file path or a `BioImageRef` and returns image metadata without loading full pixel data.
+- **FR-004**: The inspect function MUST return at minimum: dimensions (shape), data type, dimension labels (axes names), and physical pixel sizes when available. It SHOULD also return channel names when available.
 - **FR-005**: System MUST provide a `base.io.bioimage.slice` function that extracts a subset of a multi-dimensional image.
 - **FR-006**: The slice function MUST accept dimension labels (T, C, Z, Y, X) mapped to either single indices or range objects (start, stop, step).
 - **FR-007**: The slice function MUST preserve physical metadata (pixel sizes) in the output artifact.
 - **FR-008**: System MUST provide a `base.io.bioimage.get_supported_formats` function that lists available image format readers.
 - **FR-009**: System MUST provide a `base.io.bioimage.validate` function that checks file readability and reports issues.
-- **FR-010**: The validate function MUST report: whether the file is readable, which reader was selected, and any metadata issues (e.g., missing dimensions).
+- **FR-010**: The validate function MUST report: whether the file is readable, which reader was selected, and any metadata issues (e.g., missing dimensions). Validation MUST be metadata-only by default (no full pixel decode); deeper integrity checks MAY be supported behind an explicit parameter (e.g., `deep: true`).
 - **FR-011**: System MUST provide a `base.io.bioimage.export` function that writes artifacts to standard formats.
 - **FR-012**: The export function MUST support at minimum: OME-TIFF, OME-Zarr, PNG for images and CSV for tables.
 - **FR-013**: System MUST remove the deprecated `base.bioio.export` function from the manifest.
 - **FR-014**: All 6 functions MUST be discoverable via `list_tools` and `describe_function` MCP endpoints.
-- **FR-015**: All functions MUST use `bioio.BioImage` internally to ensure consistent dimension handling.
+- **FR-015**: All functions MUST use `bioio.BioImage` internally to ensure consistent dimension handling, preserving native axes by default. Implementations MUST NOT expand/normalize to 5D unless required by the output format (e.g., some OME-TIFF exports) or an explicit dimension requirement; prefer `img.reader.data`/`img.reader.xarray_data` over `img.data` for native dimension preservation.
 
 ### Key Entities
 
@@ -125,7 +126,7 @@ After processing an image, an AI agent needs to export results in a format the u
 - **SC-001**: All 6 functions (load, inspect, slice, get_supported_formats, validate, export) are discoverable via `list_tools` and `describe_function` MCP calls.
 - **SC-002**: An agent can successfully complete the workflow: load a CZI file → inspect dimensions → slice one Z-plane → export as PNG — with all steps returning valid artifacts.
 - **SC-003**: The deprecated `base.bioio.export` function is completely removed from the codebase and manifest.
-- **SC-004**: The `inspect` function returns metadata in under 2 seconds for files up to 10GB without loading pixel data into memory.
+- **SC-004**: The `inspect` function returns metadata in under 2 seconds for files up to 10GB without loading pixel data into memory. Automated tests MUST at minimum assert that `inspect` does not trigger a full pixel load/decode (proxy for large-file behavior); a performance benchmark MAY be used to validate the 2-second target on representative hardware.
 - **SC-005**: All function schemas include complete parameter documentation sufficient for an AI agent to use without additional context.
 - **SC-006**: All contract tests pass validating the function schemas match declared signatures.
 - **SC-007**: Integration tests cover the primary load→slice→export workflow with at least 3 different input formats (OME-TIFF, CZI, LIF).
