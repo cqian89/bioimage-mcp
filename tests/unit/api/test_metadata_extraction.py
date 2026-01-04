@@ -62,8 +62,8 @@ def test_extract_image_metadata_helper():
     assert "dtype" in meta
 
     # Verify values for the CZI fixture
-    assert meta["axes"] == "TCZYX"
-    assert len(meta["shape"]) == 5
+    assert meta["axes"] == "CZYX"
+    assert len(meta["shape"]) == 4
     assert len(meta["channel_names"]) == 3
 
     pps = meta["physical_pixel_sizes"]

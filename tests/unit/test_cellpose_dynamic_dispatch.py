@@ -110,3 +110,7 @@ def test_meta_describe_eval():
 
         assert response["ok"] is True
         assert "result" in response["outputs"]
+        assert response["outputs"]["result"]["params_schema"] == {
+            "type": "object",
+            "properties": {},
+        }

@@ -90,7 +90,14 @@ def test_base_manifest_contains_phasorpy_config():
     assert phasorpy_config["prefix"] == "phasorpy"
 
     # Verify modules list
-    expected_modules = ["phasorpy.phasor", "phasorpy.io"]
+    expected_modules = [
+        "phasorpy.phasor",
+        "phasorpy.lifetime",
+        "phasorpy.plot",
+        "phasorpy.filter",
+        "phasorpy.cursor",
+        "phasorpy.component",
+    ]
     assert phasorpy_config["modules"] == expected_modules, (
         f"Expected modules {expected_modules}, got {phasorpy_config['modules']}"
     )
