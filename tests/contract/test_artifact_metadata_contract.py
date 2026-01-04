@@ -39,8 +39,19 @@ def _load_image_metadata(tmp_path: Path) -> dict:
 def test_artifact_metadata_has_required_fields(tmp_path: Path) -> None:
     metadata = _load_image_metadata(tmp_path)
 
-    for key in ("shape", "dtype", "axes"):
+    for key in ("shape", "dtype", "axes", "ndim", "dims"):
         assert key in metadata, f"Expected '{key}' in artifact metadata"
+
+
+def test_artifact_metadata_has_ndim_dims(tmp_path: Path) -> None:
+    metadata = _load_image_metadata(tmp_path)
+
+    assert "ndim" in metadata
+    assert isinstance(metadata["ndim"], int)
+    assert "dims" in metadata
+    assert isinstance(metadata["dims"], list)
+    assert len(metadata["dims"]) == metadata["ndim"]
+    assert len(metadata["shape"]) == metadata["ndim"]
 
 
 def test_artifact_metadata_has_axes_inferred(tmp_path: Path) -> None:

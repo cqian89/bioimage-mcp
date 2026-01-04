@@ -215,7 +215,7 @@ Thumbs.db
 datasets/*/outputs/
 
 # Runtime artifacts
-artifacts/
+/artifacts/
 
 # Local scratch artifacts
 test.tif
