@@ -46,3 +46,25 @@ def test_save_zarr_raises_if_exists(tmp_path: Path) -> None:
     out_dir.mkdir()
     with pytest.raises(FileExistsError):
         utils.save_zarr(np.zeros((1, 1), dtype="uint8"), tmp_path, "out.ome.zarr")
+
+
+def test_load_native_image_preserves_dims(tmp_path: Path) -> None:
+    import tifffile
+
+    path = tmp_path / "test_2d.tif"
+    data_in = np.zeros((100, 120), dtype=np.uint8)
+    tifffile.imwrite(path, data_in)
+
+    data = utils.load_native_image(path)
+    assert data.shape == (100, 120)
+
+
+def test_load_image_forces_5d(tmp_path: Path) -> None:
+    import tifffile
+
+    path = tmp_path / "test_2d.tif"
+    data_in = np.zeros((100, 120), dtype=np.uint8)
+    tifffile.imwrite(path, data_in)
+
+    data = utils.load_image(path)
+    assert data.shape == (1, 1, 1, 100, 120)

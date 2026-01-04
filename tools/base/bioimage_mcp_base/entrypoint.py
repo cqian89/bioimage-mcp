@@ -339,27 +339,31 @@ def handle_materialize(request: dict[str, Any]) -> dict[str, Any]:
         temp_file.close()
 
     dest_path = Path(dest_path)
-    data_5d = _expand_to_5d(data)
 
     try:
         # Write to disk using bioio writers
         if target_format == "OME-TIFF":
             from bioio.writers import OmeTiffWriter
 
+            data_5d = _expand_to_5d(data)
             OmeTiffWriter.save(data_5d, dest_path, dim_order="TCZYX")
         elif target_format == "OME-Zarr":
-            from bioio_ome_zarr.writer import OmeZarrWriter
+            from bioio_ome_zarr.writers import OMEZarrWriter
+
+            dims_str = _infer_dims_from_shape(data.shape)
+            axes_names = [d.lower() for d in dims_str]
+            type_map = {"t": "time", "c": "channel", "z": "space", "y": "space", "x": "space"}
+            axes_types = [type_map[d] for d in axes_names]
 
             # OME-Zarr requires specific writer setup
-            writer = OmeZarrWriter(str(dest_path))
-            writer.write_image(
-                image_data=data_5d,
-                image_name="materialized",
-                physical_pixel_sizes=None,
-                channel_names=None,
-                channel_colors=None,
-                dimension_order="TCZYX",
+            writer = OMEZarrWriter(
+                store=str(dest_path),
+                level_shapes=[data.shape],
+                dtype=data.dtype,
+                axes_names=axes_names,
+                axes_types=axes_types,
             )
+            writer.write_full_volume(data)
         else:
             return {
                 "command": "materialize_result",

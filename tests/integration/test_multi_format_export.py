@@ -1,15 +1,25 @@
 from __future__ import annotations
 
-import pytest
+import sys
 from pathlib import Path
+
 import numpy as np
-import tifffile
 import pandas as pd
-from PIL import Image
+import pytest
+import tifffile
 from bioio import BioImage
-from bioimage_mcp.artifacts.store import ArtifactStore
-from bioimage_mcp.artifacts.export import export_artifact
-from bioimage_mcp.config.schema import Config
+from PIL import Image
+
+# Add base tool to path for direct testing of export op
+REPO_ROOT = Path(__file__).resolve().parents[2]
+sys.path.append(str(REPO_ROOT / "tools" / "base"))
+
+from bioimage_mcp_base.ops.export import export as tool_export  # noqa: E402
+
+from bioimage_mcp.artifacts.export import export_artifact  # noqa: E402
+from bioimage_mcp.artifacts.store import ArtifactStore  # noqa: E402
+from bioimage_mcp.config.schema import Config  # noqa: E402
+from bioimage_mcp.errors import ArtifactStoreError  # noqa: E402
 
 
 @pytest.mark.integration
@@ -26,6 +36,8 @@ def test_multi_format_export(tmp_path):
         fs_allowlist_write=[tmp_path],
     )
     store = ArtifactStore(config)
+    work_dir = tmp_path / "work"
+    work_dir.mkdir()
 
     # 1. Export 2D -> PNG
     data_2d = np.zeros((64, 64), dtype=np.uint8)
@@ -34,8 +46,22 @@ def test_multi_format_export(tmp_path):
     ref_2d = store.import_file(img_2d_path, artifact_type="BioImageRef", format="TIFF")
 
     dest_png = tmp_path / "exported.png"
-    # This should infer PNG for 2D uint8
-    export_artifact(store, ref_id=ref_2d.ref_id, dest_path=dest_png)
+
+    # Confirm core REJECTS direct conversion now
+    with pytest.raises(ArtifactStoreError, match="Format conversion not supported in core"):
+        export_artifact(store, ref_id=ref_2d.ref_id, dest_path=dest_png, format="PNG")
+
+    # Use base tool to perform conversion
+    res = tool_export(
+        inputs={"image": ref_2d.model_dump()},
+        params={"format": "PNG"},
+        work_dir=work_dir,
+    )
+    converted_path = Path(res["outputs"]["output"]["path"])
+    ref_png = store.import_file(converted_path, artifact_type="BioImageRef", format="PNG")
+
+    # Now core export works (simple copy)
+    export_artifact(store, ref_id=ref_png.ref_id, dest_path=dest_png)
 
     assert dest_png.exists()
     assert dest_png.suffix == ".png"
@@ -52,7 +78,7 @@ def test_multi_format_export(tmp_path):
     ref_5d = store.import_file(img_5d_path, artifact_type="BioImageRef", format="OME-TIFF")
 
     dest_ome = tmp_path / "exported.ome.tiff"
-    # This should infer OME-TIFF for 5D
+    # This works without conversion because formats match (OME-TIFF -> OME-TIFF)
     export_artifact(store, ref_id=ref_5d.ref_id, dest_path=dest_ome)
 
     assert dest_ome.exists()
@@ -67,7 +93,7 @@ def test_multi_format_export(tmp_path):
     ref_table = store.import_file(csv_path, artifact_type="TableRef", format="CSV")
 
     dest_csv = tmp_path / "exported.csv"
-    # This should infer CSV for TableRef
+    # This works without conversion because formats match (CSV -> CSV)
     export_artifact(store, ref_id=ref_table.ref_id, dest_path=dest_csv)
 
     assert dest_csv.exists()

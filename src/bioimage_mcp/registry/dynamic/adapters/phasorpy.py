@@ -11,13 +11,10 @@ import inspect
 import logging
 import tempfile
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 from urllib.parse import urlparse
 
 import numpy as np
-
-if TYPE_CHECKING:
-    from bioimage_mcp.api.schemas import DimensionRequirement
 
 from bioimage_mcp.artifacts.base import Artifact
 from bioimage_mcp.registry.dynamic.introspection import Introspector
@@ -180,30 +177,35 @@ class PhasorPyAdapter:
     def _load_image(self, artifact: Artifact) -> np.ndarray:
         """Load image data from artifact reference."""
         if isinstance(artifact, dict):
-            uri = artifact.get("uri") or artifact.get("path") or ""
+            uri = artifact.get("uri")
+            path = artifact.get("path")
             metadata = artifact.get("metadata") or {}
             fmt = artifact.get("format")
         else:
-            uri = getattr(artifact, "uri", None) or getattr(artifact, "path", None) or ""
+            uri = getattr(artifact, "uri", None)
+            path = getattr(artifact, "path", None)
             metadata = getattr(artifact, "metadata", {}) or {}
             fmt = getattr(artifact, "format", None)
 
-        if not uri:
-            raise ValueError(f"Artifact missing URI: {artifact}")
+        if not uri and not path:
+            raise ValueError(f"Artifact missing both URI and path: {artifact}")
 
-        # Handle mem:// URIs by checking metadata for _simulated_path
-        if str(uri).startswith("mem://"):
+        if uri and str(uri).startswith("mem://"):
+            # Handle mem:// URIs by checking metadata for _simulated_path
             path = metadata.get("_simulated_path")
             if not path:
                 raise ValueError(
                     f"Cannot load mem:// URI without _simulated_path in metadata: {uri}"
                 )
-        else:
+        elif uri:
             # Parse URI and get file path
             parsed = urlparse(str(uri))
             path = parsed.path
             if path.startswith("/") and len(path) > 2 and path[2] == ":":
                 path = path[1:]
+        else:
+            # Only path is present
+            path = str(Path(path).absolute())
 
         # T041: Enforce filesystem allowlist for reads
         self._assert_read_allowed(Path(path))
@@ -289,6 +291,7 @@ class PhasorPyAdapter:
         return {
             "type": "BioImageRef",
             "format": "OME-TIFF",
+            "uri": path.absolute().as_uri(),
             "path": str(path.absolute()),
             "metadata": metadata,
         }
@@ -326,7 +329,7 @@ class PhasorPyAdapter:
                 module = importlib.import_module(module_name)
                 target_fn = getattr(module, func_name)
             except (ImportError, AttributeError) as e:
-                raise RuntimeError(f"Could not load function {fn_id}: {e}")
+                raise RuntimeError(f"Could not load function {fn_id}: {e}") from e
 
             # Match inputs to function parameters
             sig = inspect.signature(target_fn)
@@ -446,8 +449,9 @@ class PhasorPyAdapter:
 
                     # Convert to dict for JSON serialization in worker entrypoint
                     plot_dict = plot_ref.model_dump()
-                    # Ensure we have path (not just uri) for server import
+                    # Ensure we have path and uri for server import
                     plot_dict["path"] = str(path.absolute())
+                    plot_dict["uri"] = path.absolute().as_uri()
                     outputs.append(plot_dict)
 
                     # Clean up to avoid figure accumulation
@@ -459,24 +463,24 @@ class PhasorPyAdapter:
         except (ValueError, IndexError) as e:
             logger.error("Invalid parameter in %s: %s", fn_id, e)
             new_e = ValueError(f"Invalid parameter: {e}")
-            setattr(new_e, "code", "INVALID_PARAMETER")
+            new_e.code = "INVALID_PARAMETER"
             raise new_e from e
         except FileNotFoundError as e:
             logger.error("Artifact not found during %s: %s", fn_id, e)
             new_e = FileNotFoundError(f"Artifact not found: {e}")
-            setattr(new_e, "code", "ARTIFACT_NOT_FOUND")
+            new_e.code = "ARTIFACT_NOT_FOUND"
             raise new_e from e
         except TypeError as e:
             logger.error("Invalid input type in %s: %s", fn_id, e)
             new_e = TypeError(f"Invalid input type: {e}")
-            setattr(new_e, "code", "INVALID_INPUT_TYPE")
+            new_e.code = "INVALID_INPUT_TYPE"
             raise new_e from e
         except Exception as e:
             logger.error("Execution failed for %s: %s", fn_id, e)
             if hasattr(e, "code"):
                 raise e
             new_e = RuntimeError(f"Execution failed: {e}")
-            setattr(new_e, "code", "EXECUTION_FAILED")
+            new_e.code = "EXECUTION_FAILED"
             raise new_e from e
 
     def generate_dimension_hints(self, module_name: str, func_name: str) -> Any | None:

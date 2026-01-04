@@ -100,10 +100,10 @@ def test_handle_materialize_with_2d():
 def test_handle_materialize_ome_zarr_with_2d():
     mock_writer_cls = MagicMock()
     mock_writer_module = MagicMock()
-    mock_writer_module.OmeZarrWriter = mock_writer_cls
+    mock_writer_module.OMEZarrWriter = mock_writer_cls
 
     with (
-        patch.dict(sys.modules, {"bioio_ome_zarr.writer": mock_writer_module}),
+        patch.dict(sys.modules, {"bioio_ome_zarr.writers": mock_writer_module}),
         patch("bioimage_mcp_base.entrypoint._MEMORY_ARTIFACTS", {}),
     ):
         data_2d = np.zeros((100, 100))
@@ -121,9 +121,16 @@ def test_handle_materialize_ome_zarr_with_2d():
 
         entrypoint.handle_materialize(request)
 
-        # Verify OmeZarrWriter.write_image was called with 5D data
-        assert mock_writer.write_image.called
-        kwargs = mock_writer.write_image.call_args.kwargs
-        saved_data = kwargs["image_data"]
-        assert saved_data.ndim == 5
-        assert saved_data.shape == (1, 1, 1, 100, 100)
+        # Verify OMEZarrWriter was initialized with 2D shape and correct axes
+        assert mock_writer_cls.called
+        kwargs = mock_writer_cls.call_args.kwargs
+        assert kwargs["level_shapes"] == [(100, 100)]
+        assert kwargs["axes_names"] == ["y", "x"]
+        assert kwargs["axes_types"] == ["space", "space"]
+
+        # Verify write_full_volume was called with 2D data
+        assert mock_writer.write_full_volume.called
+        args, _ = mock_writer.write_full_volume.call_args
+        saved_data = args[0]
+        assert saved_data.ndim == 2
+        assert saved_data.shape == (100, 100)

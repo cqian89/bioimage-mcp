@@ -4,7 +4,6 @@ import time
 from pathlib import Path
 
 import numpy as np
-import pytest
 import tifffile
 
 from bioimage_mcp.artifacts.metadata import extract_image_metadata
@@ -36,4 +35,4 @@ def test_metadata_extraction_under_100ms(tmp_path: Path) -> None:
 
     # Metadata extraction should be fast because it only reads headers
     # If it loads the whole image, it will be much slower
-    assert duration_ms < 500, f"Metadata extraction took {duration_ms:.2f}ms, expected < 500ms"
+    assert duration_ms < 100, f"Metadata extraction took {duration_ms:.2f}ms, expected < 100ms"

@@ -90,7 +90,7 @@
 - [X] T022 [P] [US2] Unit test: metadata extraction returns ndim, dims, shape, dtype, physical_pixel_sizes in tests/unit/artifacts/test_native_metadata.py
 - [X] T023 [P] [US2] Unit test: table metadata extraction returns columns with types in tests/unit/artifacts/test_native_metadata.py
 - [X] T024 [P] [US2] Contract test: get_artifact response includes dimension metadata fields in tests/contract/test_get_artifact_dims.py
-- [ ] T024a [P] [US2] Performance test: metadata inspection completes in under 100ms without data loading in tests/contract/test_metadata_performance.py
+- [X] T024a [P] [US2] Performance test: metadata inspection completes in under 100ms without data loading in tests/contract/test_metadata_performance.py
 
 ### Implementation for User Story 2 (After Tests Fail)
 
@@ -98,7 +98,7 @@
 - [X] T026 [US2] Add extract_table_metadata function for column names/types in src/bioimage_mcp/artifacts/metadata.py
 - [X] T027 [US2] Add get_ndim fallback helper for legacy artifacts (infer from shape/axes) in src/bioimage_mcp/artifacts/metadata.py
 - [X] T028 [US2] Update artifact store import to populate full dimension metadata in src/bioimage_mcp/artifacts/store.py
-- [ ] T028a [US2] Add dimension metadata to workflow provenance recording in src/bioimage_mcp/runs/recorder.py
+- [X] T028a [US2] Add dimension metadata to workflow provenance recording in src/bioimage_mcp/runs/recorder.py
 
 **Checkpoint**: User Story 2 complete. Agents can inspect dimensions without data loading. Tests should now PASS.
 
@@ -147,7 +147,7 @@
 ### Implementation for User Story 4 (After Tests Fail)
 
 - [ ] T044 [US4] Add create_memory_artifact_ref helper with dimension metadata in src/bioimage_mcp/artifacts/store.py
-- [ ] T045 [US4] Implement should_expand_to_5d helper for adapter expansion decisions in src/bioimage_mcp/registry/dynamic/adapters/xarray.py
+- [X] T045 [US4] Implement should_expand_to_5d helper for adapter expansion decisions in src/bioimage_mcp/registry/dynamic/adapters/xarray.py
 - [ ] T045a [US4] Apply expand_if_required helper to SkimageAdapter in src/bioimage_mcp/registry/dynamic/adapters/skimage.py
 - [ ] T046 [US4] Add dimension_requirements to cellpose functions in tools/cellpose/manifest.yaml
 - [ ] T047 [US4] Add dimension_requirements to base functions in tools/base/manifest.yaml

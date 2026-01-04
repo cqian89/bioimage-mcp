@@ -211,11 +211,19 @@ Cellpose environment:
 4. Write unit test (TDD: write failing test first)
 
 ### Standard BioImage Loading Pattern
-When implementing image processing functions, use `bioio.BioImage` for consistent 5D TCZYX data access:
+When implementing image processing functions, use `bioio.BioImage` for consistent data access:
 
+**Native loading (preserves 2D, 3D, etc.)** - RECOMMENDED:
 ```python
 from bioio import BioImage
+img = BioImage(path)
+data = img.reader.data  # Native dimensions
+dims = img.reader.dims.order  # e.g., "ZYX"
+```
 
+**Legacy 5D loading** (when tools require TCZYX):
+```python
+from bioio import BioImage
 img = BioImage(path)
 data = img.data  # Always 5D TCZYX
 pixel_sizes = img.physical_pixel_sizes  # (Z, Y, X) in microns
@@ -224,7 +232,7 @@ channels = img.channel_names  # List of channel names
 
 This ensures:
 - Consistent handling of all supported formats (OME-TIFF, CZI, LIF, etc.)
-- Normalized 5D axis ordering (Time, Channel, Z, Y, X)
+- Normalized 5D axis ordering (if using `.data`) or preserved native axes (if using `.reader.data`)
 - Access to physical metadata for downstream processing
 
 ### Standard BioImage Writing Pattern

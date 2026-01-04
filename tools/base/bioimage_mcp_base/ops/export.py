@@ -5,8 +5,7 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-from bioimage_mcp_base.utils import uri_to_path
-from bioio import BioImage
+from bioimage_mcp_base.utils import load_native_image, uri_to_path
 from bioio.writers import OmeTiffWriter
 from PIL import Image
 
@@ -73,9 +72,9 @@ def export_ome_tiff(data: np.ndarray, path: Path):
 def export_ome_zarr(data: np.ndarray, path: Path, dims: list[str] | None = None):
     try:
         from bioio_ome_zarr.writers import OMEZarrWriter
-    except ImportError:
+    except ImportError as e:
         # Fallback if bioio-ome-zarr is not installed in this env
-        raise RuntimeError("bioio-ome-zarr is required for OME-Zarr export")
+        raise RuntimeError("bioio-ome-zarr is required for OME-Zarr export") from e
 
     # Use native dimensions
     if dims is None:
@@ -147,9 +146,7 @@ def export(*, inputs: dict[str, Any], params: dict[str, Any], work_dir: Path) ->
             raise ValueError("Artifact missing URI")
 
         in_path = uri_to_path(uri)
-        img = BioImage(in_path)
-        data = img.data
-        data = data.compute() if hasattr(data, "compute") else data
+        data = load_native_image(in_path, format_hint=artifact.get("format"))
 
         if dest_format == "PNG":
             export_png(data, out_path)

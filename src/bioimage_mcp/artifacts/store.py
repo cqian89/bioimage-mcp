@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import errno
 import json
-import os
 import shutil
 import sqlite3
 import uuid
@@ -484,8 +483,8 @@ class ArtifactStore:
                 src_path = Path(sim_path)
             else:
                 raise ArtifactStoreError(
-                    f"Cannot export memory artifact {ref_id}: data is not on the server. "
-                    "Memory artifacts must be materialized to a file first."
+                    f"Cannot export memory artifact {ref_id}: data is not on the "
+                    "server. Memory artifacts must be materialized to a file first."
                 )
         else:
             src_path = Path(ref.uri.replace("file://", ""))
@@ -505,129 +504,27 @@ class ArtifactStore:
                 if decision != "ALLOWED":
                     raise PermissionError(f"Overwrite denied for {dest_path}")
 
-        # If format matches current format, perform simple copy
-        if format.upper() == ref.format.upper():
-            if src_path.is_dir():
-                if dest_path.exists():
-                    raise FileExistsError(dest_path)
-                shutil.copytree(src_path, dest_path)
-                exported_checksum = sha256_tree(dest_path)
-            else:
-                dest_path.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(src_path, dest_path)
-                exported_checksum = sha256_file(dest_path)
-
-            recorded = ref.checksums[0].value if ref.checksums else None
-            if recorded and exported_checksum != recorded:
-                raise ValueError("Exported artifact checksum mismatch")
-
-            return dest_path
-
-        # Perform format conversion
-        return self._export_with_conversion(ref, src_path, dest_path, format)
-
-    def _export_with_conversion(
-        self, ref: ArtifactRef, src_path: Path, dest_path: Path, format: str
-    ) -> Path:
-        """Perform format-aware export with conversion."""
-        from bioio import BioImage
-
-        format = format.upper()
-
-        # Table export (CSV)
-        if format == "CSV" and ref.type == "TableRef":
-            # If current format is CSV, it would have been caught by equality check
-            # But just in case, or if we support other table formats later.
-            shutil.copy2(src_path, dest_path)
-            return dest_path
-
-        # Image exports
-        def load_image_safe(path, fmt):
-            try:
-                img = BioImage(path)
-                data = img.data
-                return data.compute() if hasattr(data, "compute") else data
-            except Exception:
-                # Try with extension hint if direct load fails (objects/ID has no extension)
-                fmt_lower = (fmt or "").lower()
-                suffix = ".tif"
-                if "zarr" in fmt_lower:
-                    suffix = ".ome.zarr"
-                elif "tiff" in fmt_lower or "tif" in fmt_lower:
-                    suffix = ".ome.tiff"
-                elif "png" in fmt_lower:
-                    suffix = ".png"
-
-                import tempfile
-
-                # Create a temporary symlink with extension
-                tmp_dir = Path(tempfile.mkdtemp())
-                try:
-                    tmp_file = tmp_dir / f"image{suffix}"
-                    if path.is_dir():
-                        os.symlink(path, tmp_file, target_is_directory=True)
-                    else:
-                        os.symlink(path, tmp_file)
-
-                    img = BioImage(tmp_file)
-                    data = img.data
-                    return data.compute() if hasattr(data, "compute") else data
-                finally:
-                    try:
-                        shutil.rmtree(tmp_dir)
-                    except Exception:
-                        pass
-
-        data = load_image_safe(src_path, ref.format)
-
-        if format == "PNG":
-            import numpy as np
-            from PIL import Image
-
-            if data.ndim > 2:
-                data = np.squeeze(data)
-                if data.ndim != 2:
-                    raise ValueError(f"PNG export requires 2D data, got {data.ndim}D")
-            Image.fromarray(data).save(dest_path)
-
-        elif format == "OME-TIFF":
-            import numpy as np
-            from bioio.writers import OmeTiffWriter
-
-            while data.ndim < 5:
-                data = np.expand_dims(data, axis=0)
-            OmeTiffWriter.save(data, str(dest_path), dim_order="TCZYX")
-
-        elif format == "OME-ZARR":
-            from bioio_ome_zarr.writers import OMEZarrWriter
-
-            dims = ref.metadata.get("dims") or ["T", "C", "Z", "Y", "X"][-data.ndim :]
-            axis_type_map = {
-                "t": "time",
-                "c": "channel",
-                "z": "space",
-                "y": "space",
-                "x": "space",
-            }
-            axes_names = [d.lower() for d in dims]
-            axes_types = [axis_type_map.get(d, "space") for d in axes_names]
-
-            writer = OMEZarrWriter(
-                store=str(dest_path),
-                level_shapes=[data.shape],
-                dtype=data.dtype,
-                axes_names=axes_names,
-                axes_types=axes_types,
+        # Core export is now copy-only. Format conversion must be done via tools (e.g. base.export).
+        if format.upper() != ref.format.upper():
+            raise ArtifactStoreError(
+                f"Format conversion not supported in core: requested {format}, "
+                f"artifact is {ref.format}. Use 'base.export' tool to convert "
+                "formats before exporting."
             )
-            writer.write_full_volume(data)
 
-        elif format == "NPY":
-            import numpy as np
-
-            np.save(dest_path, data)
-
+        if src_path.is_dir():
+            if dest_path.exists():
+                raise FileExistsError(dest_path)
+            shutil.copytree(src_path, dest_path)
+            exported_checksum = sha256_tree(dest_path)
         else:
-            raise ValueError(f"Unsupported export format: {format}")
+            dest_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src_path, dest_path)
+            exported_checksum = sha256_file(dest_path)
+
+        recorded = ref.checksums[0].value if ref.checksums else None
+        if recorded and exported_checksum != recorded:
+            raise ValueError("Exported artifact checksum mismatch")
 
         return dest_path
 

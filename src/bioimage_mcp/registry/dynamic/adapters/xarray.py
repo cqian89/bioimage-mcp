@@ -68,37 +68,35 @@ class XarrayAdapterForRegistry(BaseAdapter):
 
     def _load_image(self, artifact: Artifact):
         """Load image data from artifact reference using BioImage."""
-        import sys
-
-        print(
-            f"DEBUG: _load_image called with artifact type {type(artifact)}: {artifact}",
-            file=sys.stderr,
-        )
         if isinstance(artifact, dict):
-            uri = artifact.get("uri") or artifact.get("path")
+            uri = artifact.get("uri")
+            path = artifact.get("path")
             metadata = artifact.get("metadata") or {}
             fmt = artifact.get("format")
         else:
-            uri = getattr(artifact, "uri", None) or getattr(artifact, "path", None)
+            uri = getattr(artifact, "uri", None)
+            path = getattr(artifact, "path", None)
             metadata = getattr(artifact, "metadata", {}) or {}
             fmt = getattr(artifact, "format", None)
 
-        print(f"DEBUG: _load_image uri={uri}", file=sys.stderr)
-        if not uri:
+        if not uri and not path:
             raise ValueError(f"Artifact missing URI or path. Artifact data: {artifact}")
 
-        # Handle mem:// URIs by checking metadata for _simulated_path
-        if str(uri).startswith("mem://"):
+        if uri and str(uri).startswith("mem://"):
+            # Handle mem:// URIs by checking metadata for _simulated_path
             path = metadata.get("_simulated_path")
             if not path:
                 raise ValueError(
                     f"Cannot load mem:// URI without _simulated_path in metadata: {uri}"
                 )
-        else:
+        elif uri:
             parsed = urlparse(str(uri))
             path = parsed.path
             if path.startswith("/") and len(path) > 2 and path[2] == ":":
                 path = path[1:]
+        else:
+            # Only path is present
+            path = str(Path(path).absolute())
 
         from bioio import BioImage
 
@@ -122,8 +120,6 @@ class XarrayAdapterForRegistry(BaseAdapter):
         work_dir: Path | None = None,
     ) -> list[dict]:
         """Execute xarray function."""
-        import sys
-
         # fn_id is like "xarray.rename"
         parts = fn_id.split(".")
         method_name = parts[-1]
@@ -177,7 +173,7 @@ class XarrayAdapterForRegistry(BaseAdapter):
                 from bioio.writers import OmeTiffWriter
 
                 OmeTiffWriter.save(data, str(out_path), dim_order=dim_order)
-            except Exception as e:
+            except Exception:
                 # Fallback to OME-Zarr if OME-TIFF save fails
                 is_ome_tiff_compatible = False
 
@@ -201,6 +197,7 @@ class XarrayAdapterForRegistry(BaseAdapter):
             {
                 "type": "BioImageRef",
                 "format": fmt,
+                "uri": out_path.absolute().as_uri(),
                 "path": str(out_path.absolute()),
                 "metadata": metadata,
             }

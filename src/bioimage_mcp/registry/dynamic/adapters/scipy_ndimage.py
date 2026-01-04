@@ -122,19 +122,28 @@ class ScipyNdimageAdapter(BaseAdapter):
 
         # Handle both dict and Pydantic model
         if isinstance(artifact, dict):
-            uri = artifact["uri"]
+            uri = artifact.get("uri")
+            path = artifact.get("path")
         else:
-            uri = artifact.uri
+            uri = getattr(artifact, "uri", None)
+            path = getattr(artifact, "path", None)
 
-        # Parse URI and get file path
-        parsed = urlparse(uri)
-        if parsed.scheme != "file":
-            raise ValueError(f"Unsupported URI scheme: {parsed.scheme}")
+        if not uri and not path:
+            raise ValueError(f"Artifact missing both URI and path: {artifact}")
 
-        # Remove leading slash on Windows if path starts with drive letter
-        path = parsed.path
-        if path.startswith("/") and len(path) > 2 and path[2] == ":":
-            path = path[1:]
+        if uri:
+            # Parse URI and get file path
+            parsed = urlparse(uri)
+            if parsed.scheme != "file":
+                raise ValueError(f"Unsupported URI scheme: {parsed.scheme}")
+
+            # Remove leading slash on Windows if path starts with drive letter
+            path = parsed.path
+            if path.startswith("/") and len(path) > 2 and path[2] == ":":
+                path = path[1:]
+        else:
+            # Only path is present
+            path = str(Path(path).absolute())
 
         return tifffile.imread(path)
 
@@ -163,6 +172,7 @@ class ScipyNdimageAdapter(BaseAdapter):
         return {
             "type": "BioImageRef",
             "format": "OME-TIFF",
+            "uri": path.absolute().as_uri(),
             "path": str(path.absolute()),
         }
 

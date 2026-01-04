@@ -120,6 +120,8 @@ class SkimageAdapter(BaseAdapter):
     def determine_io_pattern(self, module_name: str, func_name: str) -> IOPattern:
         """Determine I/O pattern based on module and function name."""
         # Function-level overrides
+        if func_name == "label":
+            return IOPattern.IMAGE_TO_LABELS
         if func_name.startswith("threshold_"):
             return IOPattern.ARRAY_TO_SCALAR
         if func_name.startswith("is_"):
@@ -129,7 +131,12 @@ class SkimageAdapter(BaseAdapter):
         if "segmentation" in module_name:
             return IOPattern.IMAGE_TO_LABELS
         if "measure" in module_name:
-            return IOPattern.LABELS_TO_TABLE
+            if "table" in func_name:
+                return IOPattern.LABELS_TO_TABLE
+            # label, regionprops, etc.
+            if func_name == "label":
+                return IOPattern.IMAGE_TO_LABELS
+            return IOPattern.LABELS_TO_TABLE  # Default for measure for now
         if "filters" in module_name:
             return IOPattern.IMAGE_TO_IMAGE
 
@@ -156,17 +163,28 @@ class SkimageAdapter(BaseAdapter):
         """Load image data from artifact reference."""
         # Handle both dict and Pydantic model
         if isinstance(artifact, dict):
-            uri = artifact["uri"]
+            uri = artifact.get("uri")
+            path = artifact.get("path")
             fmt = artifact.get("format")
+            metadata = artifact.get("metadata") or {}
         else:
-            uri = artifact.uri
+            uri = getattr(artifact, "uri", None)
+            path = getattr(artifact, "path", None)
             fmt = getattr(artifact, "format", None)
+            metadata = getattr(artifact, "metadata", {}) or {}
 
-        # Parse URI and get file path
-        parsed = urlparse(uri)
-        path = parsed.path
-        if path.startswith("/") and len(path) > 2 and path[2] == ":":
-            path = path[1:]
+        if not uri and not path:
+            raise ValueError(f"Artifact missing both URI and path: {artifact}")
+
+        if uri:
+            # Parse URI and get file path
+            parsed = urlparse(uri)
+            path = parsed.path
+            if path.startswith("/") and len(path) > 2 and path[2] == ":":
+                path = path[1:]
+        else:
+            # Only path is present, convert to absolute path string
+            path = str(Path(path).absolute())
 
         # Use bioio if available for consistent 5D loading (P0 requirement)
         try:
@@ -194,6 +212,13 @@ class SkimageAdapter(BaseAdapter):
                 data = data.compute()
 
             if data is not None and data.size > 0:
+                # If metadata suggests fewer axes than data.ndim, and we have
+                # singleton dimensions, squeeze
+                expected_axes = metadata.get("axes")
+                if expected_axes and len(expected_axes) < data.ndim:
+                    squeezed = np.squeeze(data)
+                    if squeezed.ndim == len(expected_axes):
+                        data = squeezed
                 return data
         except Exception:
             pass
@@ -230,6 +255,10 @@ class SkimageAdapter(BaseAdapter):
         """Save image array to file and return artifact reference dict."""
         # Use .ome.tiff extension for better compatibility
         ext = ".ome.tiff"
+
+        if array.dtype == np.int64 or array.dtype == np.uint64:
+            # OME-TIFF/tifffile doesn't support 64-bit ints in OME-XML
+            array = array.astype(np.uint32)
 
         if work_dir is None:
             # Use system temp directory
@@ -270,6 +299,7 @@ class SkimageAdapter(BaseAdapter):
         ref = {
             "type": "BioImageRef",
             "format": "OME-TIFF",
+            "uri": path.absolute().as_uri(),
             "path": str(path.absolute()),
             "metadata": {
                 "axes": inferred_axes,
@@ -306,6 +336,7 @@ class SkimageAdapter(BaseAdapter):
         return {
             "type": "TableRef",
             "format": "csv",
+            "uri": path.absolute().as_uri(),
             "path": str(path.absolute()),
         }
 
@@ -380,18 +411,16 @@ class SkimageAdapter(BaseAdapter):
             output_ref = self._save_table(result, work_dir=work_dir)
         else:
             axes = ""
-            for name, artifact in self._normalize_inputs(inputs):
+            for _, artifact in self._normalize_inputs(inputs):
                 axes = self._extract_axes(artifact)
                 if axes:
                     break
             # Use expand_if_required for OME-TIFF preservation (T045a)
 
-            from bioimage_mcp.registry.dynamic.adapters.xarray import expand_if_required
-
-            # For now, default to no specific output requirement unless hints provided
-            # but OmeTiffWriter will expand anyway.
-            # Here we just pass the result as is, _save_image handles expansion to TCZYX
-            # if using OmeTiffWriter.
+            # For now, default to no specific output requirement unless hints
+            # provided but OmeTiffWriter will expand anyway.
+            # Here we just pass the result as is, _save_image handles expansion
+            # to TCZYX if using OmeTiffWriter.
             output_ref = self._save_image(result, work_dir=work_dir, axes=axes)
 
         return [output_ref]

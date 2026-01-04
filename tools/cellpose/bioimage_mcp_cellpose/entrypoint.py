@@ -106,6 +106,33 @@ def _load_input_data(input_ref: str | dict) -> Any:
         return img.data
 
 
+def _infer_dims_from_shape(shape: tuple[int, ...]) -> str:
+    """Infer dimension labels from array shape."""
+    ndim = len(shape)
+    dims_map = {
+        2: "YX",
+        3: "ZYX",
+        4: "CZYX",
+        5: "TCZYX",
+    }
+    if ndim in dims_map:
+        return dims_map[ndim]
+
+    full_dims = "TCZYX"
+    if ndim <= 0:
+        return ""
+    return full_dims[-ndim:] if ndim <= len(full_dims) else full_dims
+
+
+def _expand_to_5d(data: np.ndarray) -> np.ndarray:
+    """Expand array to 5D by prepending singleton dimensions."""
+    import numpy as np
+
+    while data.ndim < 5:
+        data = np.expand_dims(data, axis=0)
+    return data
+
+
 def _convert_memory_inputs_to_files(inputs: dict[str, Any], work_dir: Path) -> dict[str, Any]:
     """Convert mem:// artifact inputs to temporary file paths."""
     from bioio.writers import OmeTiffWriter
@@ -117,7 +144,8 @@ def _convert_memory_inputs_to_files(inputs: dict[str, Any], work_dir: Path) -> d
             data = _load_from_memory(mem_uri)
             temp_id = uuid.uuid4().hex[:8]
             temp_path = work_dir / f"_mem_{key}_{temp_id}.ome.tif"
-            OmeTiffWriter.save(data, temp_path, dim_order="TCZYX")
+            data_5d = _expand_to_5d(data)
+            OmeTiffWriter.save(data_5d, temp_path, dim_order="TCZYX")
             converted_inputs[key] = {
                 "uri": f"file://{temp_path}",
                 "type": value.get("type", "BioImageRef"),
@@ -347,7 +375,7 @@ def _convert_outputs_to_memory(outputs: dict[str, Any], work_dir: Path) -> dict[
                     "metadata": {
                         "shape": list(data.shape),
                         "dtype": str(data.dtype),
-                        "dims": "TCZYX",
+                        "dims": _infer_dims_from_shape(data.shape),
                     },
                 }
             else:
@@ -371,7 +399,7 @@ def _convert_outputs_to_memory(outputs: dict[str, Any], work_dir: Path) -> dict[
                 "metadata": {
                     "shape": list(data.shape),
                     "dtype": str(data.dtype),
-                    "dims": "TCZYX",
+                    "dims": _infer_dims_from_shape(data.shape),
                 },
             }
         else:
@@ -439,19 +467,24 @@ def handle_materialize(request: dict[str, Any]) -> dict[str, Any]:
         if target_format == "OME-TIFF":
             from bioio.writers import OmeTiffWriter
 
-            OmeTiffWriter.save(data, dest_path, dim_order="TCZYX")
+            data_5d = _expand_to_5d(data)
+            OmeTiffWriter.save(data_5d, dest_path, dim_order="TCZYX")
         elif target_format == "OME-Zarr":
-            from bioio_ome_zarr.writer import OmeZarrWriter
+            from bioio_ome_zarr.writers import OMEZarrWriter
 
-            writer = OmeZarrWriter(str(dest_path))
-            writer.write_image(
-                image_data=data,
-                image_name="materialized",
-                physical_pixel_sizes=None,
-                channel_names=None,
-                channel_colors=None,
-                dimension_order="TCZYX",
+            dims_str = _infer_dims_from_shape(data.shape)
+            axes_names = [d.lower() for d in dims_str]
+            type_map = {"t": "time", "c": "channel", "z": "space", "y": "space", "x": "space"}
+            axes_types = [type_map[d] for d in axes_names]
+
+            writer = OMEZarrWriter(
+                store=str(dest_path),
+                level_shapes=[data.shape],
+                dtype=data.dtype,
+                axes_names=axes_names,
+                axes_types=axes_types,
             )
+            writer.write_full_volume(data)
         else:
             return {
                 "command": "materialize_result",
