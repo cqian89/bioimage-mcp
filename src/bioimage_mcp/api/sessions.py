@@ -3,14 +3,14 @@ MCP session management handlers for BioImage-MCP.
 Includes support for session export and replay for reproducibility.
 """
 
-from datetime import UTC, datetime
 import json
 import uuid
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Literal, cast
+from typing import Any, cast
 
-from bioimage_mcp.api.execution import ExecutionService
 from bioimage_mcp.api.discovery import DiscoveryService
+from bioimage_mcp.api.execution import ExecutionService
 from bioimage_mcp.api.schemas import (
     ArtifactRef,
     ErrorDetail,
@@ -323,9 +323,17 @@ class SessionService:
 
             # 5. Record outputs for dependent steps
             if api_status in ("success", "succeeded") and "outputs" in result:
-                for port, out_ref in result["outputs"].items():
-                    ref_id = out_ref.get("ref_id") if isinstance(out_ref, dict) else out_ref.ref_id
-                    step_outputs[(idx, port)] = ref_id
+                if result.get("outputs"):
+                    # Normal execution - use actual outputs
+                    for port, out_ref in result["outputs"].items():
+                        ref_id = (
+                            out_ref.get("ref_id") if isinstance(out_ref, dict) else out_ref.ref_id
+                        )
+                        step_outputs[(idx, port)] = ref_id
+                elif request.dry_run and step.outputs:
+                    # Dry-run mode - use virtual references from workflow record
+                    for port in step.outputs.keys():
+                        step_outputs[(idx, port)] = f"dry-run-{idx}-{port}"
 
             # 6. Stop on failure
             if api_status in ("failed", "validation_failed"):

@@ -168,12 +168,25 @@ class ScipyNdimageAdapter(BaseAdapter):
         # Save image
         tifffile.imwrite(path, array)
 
+        # Infer dimension labels based on array dimensionality
+        inferred_dims = (
+            list("TCZYX"[-array.ndim :])
+            if array.ndim <= 5
+            else [f"d{i}" for i in range(array.ndim)]
+        )
+
         # Return artifact reference as dict (compatible with entrypoint protocol)
         return {
             "type": "BioImageRef",
             "format": "OME-TIFF",
             "uri": path.absolute().as_uri(),
             "path": str(path.absolute()),
+            "metadata": {
+                "shape": list(array.shape),
+                "dims": inferred_dims,
+                "ndim": array.ndim,
+                "dtype": str(array.dtype),
+            },
         }
 
     def execute(

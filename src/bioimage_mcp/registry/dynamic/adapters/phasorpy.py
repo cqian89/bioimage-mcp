@@ -282,6 +282,7 @@ class PhasorPyAdapter:
 
         metadata = {
             "axes": axes,
+            "dims": list(axes),
             "shape": list(array.shape),
             "ndim": array.ndim,
             "dtype": str(array.dtype),
