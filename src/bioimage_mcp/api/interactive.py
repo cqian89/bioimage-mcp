@@ -4,6 +4,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
+from bioimage_mcp.api.errors import execution_error
 from bioimage_mcp.api.execution import ExecutionService
 from bioimage_mcp.api.interactive_summaries import summarize_artifact
 from bioimage_mcp.api.schemas import SessionExportRequest, SessionReplayRequest
@@ -195,7 +196,10 @@ class InteractiveExecutionService:
             response["isError"] = True
             # Ensure error is present if failed
             if not error:
-                response["error"] = {"message": "Tool execution failed", "code": "EXECUTION_FAILED"}
+                response["error"] = execution_error(
+                    message="Tool execution failed",
+                    hint="Check logs for crash details or environment issues",
+                ).model_dump()
 
         if error:
             response["error"] = error

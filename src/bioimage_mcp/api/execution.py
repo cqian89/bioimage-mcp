@@ -7,6 +7,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from bioimage_mcp.api.errors import execution_error, not_found_error, validation_error
 from bioimage_mcp.api.schemas import ErrorDetail, StructuredError
 from bioimage_mcp.artifacts.memory import MemoryArtifactStore, build_mem_uri
 from bioimage_mcp.artifacts.metadata import extract_image_metadata
@@ -235,10 +236,11 @@ def execute_step(
             )
             error_response = {
                 "ok": False,
-                "error": {
-                    "code": "WORKER_ERROR",
-                    "message": f"Worker execution failed: {e}",
-                },
+                "error": execution_error(
+                    message=f"Worker execution failed: {e}",
+                    path="",
+                    hint="Check tool environment and logs for crash details",
+                ).model_dump(),
             }
             return error_response, str(e), 1
 
@@ -437,10 +439,11 @@ class ExecutionService:
                 "run_id": "none",
                 "status": "validation_failed",
                 "id": "none",
-                "error": {
-                    "code": "VALIDATION_FAILED",
-                    "message": "Workflow must have at least one step",
-                },
+                "error": validation_error(
+                    message="Workflow must have at least one step",
+                    path="/steps",
+                    expected="list with at least one step",
+                ).model_dump(),
             }
 
         if len(steps) != 1:
@@ -451,10 +454,12 @@ class ExecutionService:
                 "run_id": "none",
                 "status": "validation_failed",
                 "id": steps[0].get("fn_id", "unknown"),
-                "error": {
-                    "code": "VALIDATION_FAILED",
-                    "message": "v0.0 supports exactly 1 step",
-                },
+                "error": validation_error(
+                    message="v0.0 supports exactly 1 step",
+                    path="/steps",
+                    expected="exactly 1 step",
+                    actual=str(len(steps)),
+                ).model_dump(),
             }
 
         step = steps[0]
@@ -708,7 +713,12 @@ class ExecutionService:
                 session_id=session_id,
             )
         except KeyError as exc:
-            error_payload = {"message": f"Function not found: {exc}", "code": "NOT_FOUND"}
+            error_payload = not_found_error(
+                message=f"Function not found: {exc}",
+                path="/steps/0/fn_id",
+                expected="valid function ID",
+                hint="Use 'search' or 'list' to find valid function IDs",
+            ).model_dump()
             self._run_store.set_status(run.run_id, "failed", error=error_payload)
             return {
                 "session_id": session_id,
@@ -743,6 +753,14 @@ class ExecutionService:
             # Map error to StructuredError if possible
             if "code" not in error_payload:
                 error_payload["code"] = "EXECUTION_FAILED"
+
+            if "details" not in error_payload or not error_payload["details"]:
+                error_payload["details"] = [
+                    {
+                        "path": "",
+                        "hint": "Check tool logs for more information",
+                    }
+                ]
 
             self._run_store.set_status(run.run_id, "failed", error=error_payload)
             hints = self._get_function_hints(fn_id)
@@ -919,10 +937,12 @@ class ExecutionService:
             run = self._run_store.get(run_id)
         except KeyError:
             return {
-                "error": {
-                    "code": "NOT_FOUND",
-                    "message": f"Run not found: {run_id}",
-                }
+                "error": not_found_error(
+                    message=f"Run not found: {run_id}",
+                    path="/run_id",
+                    expected="valid run ID",
+                    hint="Ensure the run_id is correct and from a recent execution",
+                ).model_dump()
             }
 
         log_ref = self._artifact_store.get(run.log_ref_id) if run.log_ref_id else None

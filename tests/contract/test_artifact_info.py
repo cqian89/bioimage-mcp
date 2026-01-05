@@ -75,9 +75,13 @@ def test_artifact_info_not_found(artifacts_svc: ArtifactsService):
     # When: artifact_info is called with invalid ref_id
     response = artifacts_svc.artifact_info("invalid_ref")
 
-    # Then: Error with code NOT_FOUND
+    # Then: Error with code NOT_FOUND and details
     assert "error" in response
     assert response["error"]["code"] == "NOT_FOUND"
+    assert "details" in response["error"]
+    assert len(response["error"]["details"]) == 1
+    assert response["error"]["details"][0]["path"] == "/ref_id"
+    assert response["error"]["details"][0]["hint"] != ""
 
 
 # T077: Image metadata

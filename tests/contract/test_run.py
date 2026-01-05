@@ -292,3 +292,22 @@ def test_dry_run_validation_parity(tmp_path: Path, monkeypatch):
     assert dry_response["status"] == "validation_failed"
     assert real_response["status"] == "validation_failed"
     assert dry_response["error"] == real_response["error"]
+
+
+# T038b: NOT_FOUND error for invalid function ID in run
+def test_run_returns_not_found_for_invalid_id(tmp_path: Path):
+    """Run should return NOT_FOUND error for non-existent function IDs."""
+    config = Config(
+        artifact_store_root=tmp_path / "artifacts",
+        tool_manifest_roots=[tmp_path / "tools"],
+    )
+    svc = ExecutionService(config)
+
+    spec = {"steps": [{"fn_id": "invalid.function.id", "inputs": {}, "params": {}}]}
+    response = svc.run_workflow(spec, skip_validation=True)
+
+    assert response["status"] == "failed"
+    assert "error" in response
+    assert response["error"]["code"] == "NOT_FOUND"
+    assert "details" in response["error"]
+    assert response["error"]["details"][0]["path"] == "/steps/0/fn_id"

@@ -166,5 +166,8 @@ def test_list_returns_not_found_for_invalid_path():
     result = service.list_tools(path="invalid.nonexistent.path")
     assert "error" in result
     assert result["error"]["code"] == "NOT_FOUND"
+    assert "details" in result["error"]
+    assert len(result["error"]["details"]) == 1
+    assert result["error"]["details"][0]["path"] == "/path"
 
     conn.close()

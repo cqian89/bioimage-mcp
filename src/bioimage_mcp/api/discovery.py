@@ -96,10 +96,12 @@ class DiscoveryService:
                     # Return a structured error response that our server.py or caller can handle
                     return {
                         "items": [],
-                        "error": {
-                            "code": "NOT_FOUND",
-                            "message": f"Path not found: {p}",
-                        },
+                        "error": not_found_error(
+                            message=f"Path not found: {p}",
+                            path="/path",
+                            expected="valid catalog node path",
+                            hint="Use 'list' without a path to see available roots",
+                        ).model_dump(),
                     }
 
         expanded_from = None
@@ -356,10 +358,12 @@ class DiscoveryService:
         if node is None:
             # Contract T038: Return NOT_FOUND error for invalid IDs
             return {
-                "error": {
-                    "code": "NOT_FOUND",
-                    "message": f"ID not found: {fn_id}",
-                }
+                "error": not_found_error(
+                    message=f"ID not found: {fn_id}",
+                    path="/id",
+                    expected="valid function or node ID",
+                    hint="Use 'search' or 'list' to find valid IDs",
+                ).model_dump()
             }
 
         if node.type != "function":
@@ -370,10 +374,12 @@ class DiscoveryService:
         if payload is None:
             # Should not happen if node was found, but for safety:
             return {
-                "error": {
-                    "code": "NOT_FOUND",
-                    "message": f"Function metadata not found: {fn_id}",
-                }
+                "error": not_found_error(
+                    message=f"Function metadata not found: {fn_id}",
+                    path="/id",
+                    expected="function with valid metadata in registry",
+                    hint="Ensure the tool pack is correctly installed and indexed",
+                ).model_dump()
             }
 
         config = load_config()

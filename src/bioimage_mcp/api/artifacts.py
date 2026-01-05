@@ -17,6 +17,14 @@ class ArtifactsService:
                 "error": {
                     "code": "NOT_FOUND",
                     "message": f"Artifact {ref_id} not found",
+                    "details": [
+                        {
+                            "path": "/ref_id",
+                            "expected": "valid artifact reference ID",
+                            "actual": ref_id,
+                            "hint": "Use artifact references from prior tool outputs or imports",
+                        }
+                    ],
                 }
             }
 

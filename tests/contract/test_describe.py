@@ -105,5 +105,8 @@ def test_describe_returns_not_found_for_invalid_id():
     described = service.describe_function(fn_id="invalid.function.id")
     assert "error" in described
     assert described["error"]["code"] == "NOT_FOUND"
+    assert "details" in described["error"]
+    assert len(described["error"]["details"]) == 1
+    assert described["error"]["details"][0]["path"] == "/id"
 
     conn.close()
