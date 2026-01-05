@@ -189,6 +189,11 @@ def create_server(
         return artifacts.get_artifact(ref_id)
 
     @mcp.tool()
+    def artifact_info(ref_id: str, text_preview_bytes: int | None = None) -> dict[str, Any]:
+        """Get full metadata and optional text preview for an artifact."""
+        return artifacts.artifact_info(ref_id, text_preview_bytes=text_preview_bytes)
+
+    @mcp.tool()
     def export_session(
         session_id: str | None = None,
         dest_path: str | None = None,
