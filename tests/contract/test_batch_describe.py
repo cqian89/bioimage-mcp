@@ -54,8 +54,8 @@ def test_batch_describe_returns_schemas_and_errors() -> None:
     assert set(result["errors"].keys()) == {missing_id}
 
     for fn_id, schema in result["schemas"].items():
-        assert schema["fn_id"] == fn_id
-        assert "schema" in schema
+        assert schema["id"] == fn_id
+        assert "params_schema" in schema
     assert isinstance(result["errors"][missing_id], str)
     assert result["errors"][missing_id]
 

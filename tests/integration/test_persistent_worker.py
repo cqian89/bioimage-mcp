@@ -320,7 +320,7 @@ class TestPersistentWorkerLifecycle:
             f"Third worker should have waited (spawn_time={session3_spawn:.3f}s)"
         )
 
-        # Verify all requests succeeded
+        # Verify all requests success
         for session_id, response_or_error, _timestamp in results:
             if isinstance(response_or_error, Exception):
                 pytest.fail(f"Request failed for {session_id}: {response_or_error}")
@@ -373,7 +373,7 @@ class TestPersistentWorkerLifecycle:
             worker.execute(request, memory_store=memory_store, timeout_seconds=1)
             elapsed = time.time() - start_time
 
-            # If it succeeded within timeout, that's actually fine
+            # If it success within timeout, that's actually fine
             # The test is about enforcing timeouts, not about having
             # operations that actually take long
             if elapsed < 1:
@@ -557,7 +557,7 @@ class TestMemoryArtifacts:
 
         response = worker.execute(request, memory_store=memory_store)
 
-        # Assert execution succeeded
+        # Assert execution success
         assert response.get("ok") is True, f"Execution failed: {response.get('error')}"
 
         # Get output artifact reference
@@ -847,7 +847,7 @@ class TestCrossEnvironmentHandoff:
         }
 
         result1 = exec_service.run_workflow(workflow1)
-        assert result1.get("status") == "succeeded", f"Workflow 1 failed: {result1}"
+        assert result1.get("status") == "success", f"Workflow 1 failed: {result1}"
 
         # Get run status to access outputs
         run1_status = exec_service.get_run_status(result1["run_id"])
@@ -875,7 +875,7 @@ class TestCrossEnvironmentHandoff:
         }
 
         result2 = exec_service.run_workflow(workflow2)
-        assert result2.get("status") == "succeeded", f"Workflow 2 (same-env) failed: {result2}"
+        assert result2.get("status") == "success", f"Workflow 2 (same-env) failed: {result2}"
 
         # Step 2: Use the mem:// artifact in a workflow that would normally execute in same env
         # For true cross-env, we'd need cellpose, but we can simulate by checking the handoff logic
@@ -892,7 +892,7 @@ class TestCrossEnvironmentHandoff:
         }
 
         result2 = exec_service.run_workflow(workflow2)
-        assert result2.get("status") == "succeeded", f"Workflow 2 (same-env) failed: {result2}"
+        assert result2.get("status") == "success", f"Workflow 2 (same-env) failed: {result2}"
 
         # For a real cross-env test, we would need:
         # workflow3 with fn_id pointing to cellpose environment
@@ -965,7 +965,7 @@ class TestCrossEnvironmentHandoff:
         except AttributeError:
             pytest.fail("Worker.materialize() method not implemented yet")
 
-        # Step 3: Verify materialization succeeded
+        # Step 3: Verify materialization success
         assert materialize_response.get("ok") is True, (
             f"Materialization failed: {materialize_response.get('error')}"
         )

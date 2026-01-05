@@ -66,8 +66,8 @@ def test_discovery_queries_are_reasonably_fast(monkeypatch, tmp_path) -> None:
     functions_page = service.search_functions(query="perf", limit=50, cursor=None)
     search_elapsed = time.perf_counter() - start
 
-    assert tools_page["tools"]
-    assert functions_page["functions"]
+    assert tools_page["items"]
+    assert functions_page["results"]
 
     assert tools_elapsed < 2.0
     assert search_elapsed < 2.0

@@ -71,14 +71,14 @@ def test_overlay_applied_to_gaussian(discovery_service: DiscoveryService):
     assert "success_hints" in resp["hints"]
     assert "next_steps" in resp["hints"]["success_hints"]
     assert (
-        resp["hints"]["success_hints"]["next_steps"][0]["fn_id"]
+        resp["hints"]["success_hints"]["next_steps"][0]["id"]
         == "base.skimage.morphology.remove_small_objects"
     )
 
     # 2) Overlay-applied tags show up in search_functions response.
     search_resp = discovery_service.search_functions(keywords="gaussian", limit=None, cursor=None)
     gaussian_fn = next(
-        (f for f in search_resp["functions"] if f["fn_id"] == "base.skimage.filters.gaussian"), None
+        (f for f in search_resp["results"] if f["id"] == "base.skimage.filters.gaussian"), None
     )
     assert gaussian_fn is not None
     assert "denoise" in gaussian_fn["tags"]

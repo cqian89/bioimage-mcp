@@ -112,7 +112,7 @@ functions:
         session_id=session_id, fn_id="fn.flaky", params={}, inputs={}, ordinal=0
     )
 
-    assert result2["status"] == "succeeded"
+    assert result2["status"] == "success"
 
     # Check attempts
     steps = session_store.list_step_attempts(session_id)

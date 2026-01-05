@@ -89,10 +89,10 @@ def test_live_workflow_project_sum_cellpose(tmp_path: Path) -> None:
         ]
     }
     run1 = execution.run_workflow(workflow1)
-    assert run1["status"] in {"succeeded", "running", "queued"}
+    assert run1["status"] in {"success", "running", "queued"}
 
     status1 = execution.get_run_status(run1["run_id"])
-    assert status1["status"] == "succeeded"
+    assert status1["status"] == "success"
     output_ref = status1["outputs"]["output"]
 
     # Convert OME-Zarr to OME-TIFF for cellpose compatibility
@@ -106,9 +106,9 @@ def test_live_workflow_project_sum_cellpose(tmp_path: Path) -> None:
         ]
     }
     run1b = execution.run_workflow(workflow1b)
-    assert run1b["status"] in {"succeeded", "running", "queued"}
+    assert run1b["status"] in {"success", "running", "queued"}
     status1b = execution.get_run_status(run1b["run_id"])
-    assert status1b["status"] == "succeeded"
+    assert status1b["status"] == "success"
     tiff_output_ref = status1b["outputs"]["output"]
 
     workflow2 = {
@@ -121,9 +121,9 @@ def test_live_workflow_project_sum_cellpose(tmp_path: Path) -> None:
         ]
     }
     run2 = execution.run_workflow(workflow2)
-    assert run2["status"] in {"succeeded", "running", "queued"}
+    assert run2["status"] in {"success", "running", "queued"}
     status2 = execution.get_run_status(run2["run_id"])
-    assert status2["status"] == "succeeded"
+    assert status2["status"] == "success"
     assert status2["outputs"]["labels"]["type"] == "LabelImageRef"
 
     # Provenance includes tool manifests for the current workflow run

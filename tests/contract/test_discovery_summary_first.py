@@ -60,7 +60,7 @@ class TestListToolsSummaryOnly:
         """Test that list_tools does not include params_schema."""
         result = discovery_service.list_tools(limit=10, cursor=None)
 
-        for tool in result["tools"]:
+        for tool in result["items"]:
             # Should only have summary fields
             assert "name" in tool
             assert "full_path" in tool
@@ -68,19 +68,17 @@ class TestListToolsSummaryOnly:
             assert "has_children" in tool
             # Should NOT have detailed schema fields
             assert "params_schema" not in tool
-            assert "functions" not in tool
 
     def test_list_tools_returns_minimal_fields(self, discovery_service: DiscoveryService) -> None:
         """Test that list_tools returns only the expected summary fields."""
         result = discovery_service.list_tools(limit=10, cursor=None)
 
         expected_fields = {"name", "full_path", "type", "has_children", "id", "summary", "children"}
-        for tool in result["tools"]:
+        for tool in result["items"]:
             actual_fields = set(tool.keys())
             # We allow io field for function nodes
             if tool.get("type") == "function":
                 expected_fields.add("io")
-                expected_fields.add("fn_id")  # backward compat
 
             # Check subset because some fields like io might be conditional or missing if empty
             assert actual_fields.issubset(expected_fields), (
@@ -100,11 +98,11 @@ class TestSearchFunctionsSummaryOnly:
             cursor=None,
         )
 
-        for fn in result["functions"]:
+        for fn in result["results"]:
             # Should only have summary fields
-            assert "fn_id" in fn
+            assert "id" in fn
             assert "name" in fn
-            assert "description" in fn
+            assert "summary" in fn
             assert "tags" in fn
             assert "score" in fn
             assert "match_count" in fn
@@ -124,9 +122,7 @@ class TestSearchFunctionsSummaryOnly:
         )
 
         expected_fields = {
-            "fn_id",
             "name",
-            "description",
             "tags",
             "score",
             "match_count",
@@ -135,7 +131,7 @@ class TestSearchFunctionsSummaryOnly:
             "type",
             "io",
         }
-        for fn in result["functions"]:
+        for fn in result["results"]:
             actual_fields = set(fn.keys())
             assert actual_fields.issubset(expected_fields), (
                 f"Unexpected fields in search_functions response: {actual_fields - expected_fields}"
@@ -151,6 +147,6 @@ class TestDescribeFunctionHasSchema:
         result = discovery_service.describe_function("sample.function")
 
         # describe_function should include the schema
-        assert "fn_id" in result
-        assert "schema" in result
-        assert "properties" in result["schema"]
+        assert "id" in result
+        assert "params_schema" in result
+        assert "properties" in result["params_schema"]

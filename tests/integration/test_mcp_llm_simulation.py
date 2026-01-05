@@ -201,13 +201,13 @@ class TestMCPLLMSimulation:
             cursor=None,
         )
 
-        functions = result["functions"]
+        functions = result["results"]
         assert len(functions) > 0, "No cellpose functions found"
 
         # Find the cellpose.eval function
         eval_fn = None
         for fn in functions:
-            if fn["fn_id"] == "cellpose.eval":
+            if fn["id"] == "cellpose.eval":
                 eval_fn = fn
                 break
 
@@ -233,19 +233,19 @@ class TestMCPLLMSimulation:
             limit=1,
             cursor=None,
         )
-        assert len(search_result["functions"]) > 0
-        fn_summary = search_result["functions"][0]
+        assert len(search_result["results"]) > 0
+        fn_summary = search_result["results"][0]
 
         # Summary contains key info per NFR-001
-        assert fn_summary["fn_id"] == "cellpose.eval"
+        assert fn_summary["id"] == "cellpose.eval"
         assert "segmentation" in fn_summary["tags"]
 
         # Get parameter schema via describe_function
         fn_details = discovery.describe_function("cellpose.eval")
 
         assert fn_details is not None
-        assert fn_details["fn_id"] == "cellpose.eval"
-        assert "schema" in fn_details  # params_schema
+        assert fn_details["id"] == "cellpose.eval"
+        assert "params_schema" in fn_details  # params_schema
 
     def test_step4_run_cellpose_segmentation(self, mcp_environment):
         """
@@ -293,7 +293,7 @@ class TestMCPLLMSimulation:
         # Run the workflow (skip validation since we're using mock)
         result = execution.run_workflow(workflow, skip_validation=True)
 
-        assert result["status"] in ("succeeded", "running", "queued")
+        assert result["status"] in ("success", "running", "queued")
         assert "run_id" in result
 
         # Get run status
@@ -395,20 +395,20 @@ class TestMCPLLMSimulation:
             cursor=None,
         )
 
-        assert len(search_result["functions"]) > 0
-        print(f"[LLM] Found {len(search_result['functions'])} segmentation functions")
+        assert len(search_result["results"]) > 0
+        print(f"[LLM] Found {len(search_result['results'])} segmentation functions")
 
         # === LLM Step 2: Get details on cellpose.eval ===
         print("\n[LLM] Getting details for cellpose.eval...")
 
         # Get input/output info from search results (per NFR-001 payload discipline)
-        fn_summary = [f for f in search_result["functions"] if f["fn_id"] == "cellpose.eval"][0]
-        print(f"[LLM] Function requires inputs: {fn_summary.get('inputs', [])}")
-        print(f"[LLM] Function produces outputs: {fn_summary.get('outputs', [])}")
+        fn_summary = [f for f in search_result["results"] if f["id"] == "cellpose.eval"][0]
+        print(f"[LLM] Function requires inputs: {fn_summary.get('io', {}).get('inputs', [])}")
+        print(f"[LLM] Function produces outputs: {fn_summary.get('io', {}).get('outputs', [])}")
 
         # Get parameter schema via describe_function
         fn_details = discovery.describe_function("cellpose.eval")
-        print(f"[LLM] Parameter schema: {fn_details.get('schema', {})}")
+        print(f"[LLM] Parameter schema: {fn_details.get('params_schema', {})}")
 
         # === LLM Step 3: Prepare input image ===
         print("\n[LLM] Preparing input image from dataset...")
@@ -520,7 +520,7 @@ class TestMCPToolsAvailability:
         """Verify cellpose tool pack is registered."""
         result = discovery_service.list_tools(limit=20, cursor=None)
 
-        tool_paths = [t["full_path"] for t in result["tools"]]
+        tool_paths = [t["full_path"] for t in result["items"]]
         assert "cellpose" in tool_paths, "Cellpose environment not found"
 
     def test_search_functions_finds_cellpose_eval(self, discovery_service):
@@ -531,7 +531,7 @@ class TestMCPToolsAvailability:
             cursor=None,
         )
 
-        fn_ids = [f["fn_id"] for f in result["functions"]]
+        fn_ids = [f["id"] for f in result["results"]]
         assert "cellpose.eval" in fn_ids, "cellpose.eval function not found"
 
     def test_describe_function_returns_cellpose_schema(self, discovery_service):
@@ -543,8 +543,8 @@ class TestMCPToolsAvailability:
         # Get parameter schema via describe_function
         fn = discovery_service.describe_function("cellpose.eval")
 
-        assert fn["fn_id"] == "cellpose.eval"
-        assert "schema" in fn  # params_schema (per NFR-001)
+        assert fn["id"] == "cellpose.eval"
+        assert "params_schema" in fn  # params_schema (per NFR-001)
 
         # Verify summary fields are available from search_functions
         result = discovery_service.search_functions(
@@ -552,7 +552,7 @@ class TestMCPToolsAvailability:
             limit=1,
             cursor=None,
         )
-        fn_summary = result["functions"][0]
+        fn_summary = result["results"][0]
         assert "tags" in fn_summary
         assert "segmentation" in fn_summary["tags"]
-        assert "description" in fn_summary
+        assert "summary" in fn_summary

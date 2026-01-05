@@ -65,7 +65,7 @@ class TestAxisIndependentProcessing:
         # but T016 is needed to actually respect "output_mode: memory".
         result = execution_service.run_workflow(workflow)
 
-        assert result["status"] == "succeeded", f"Workflow failed: {result.get('error')}"
+        assert result["status"] == "success", f"Workflow failed: {result.get('error')}"
 
         run_id = result["run_id"]
         status = execution_service.get_run_status(run_id)
@@ -161,7 +161,7 @@ class TestAxisIndependentProcessing:
         }
 
         result = execution_service.run_workflow(workflow)
-        assert result["status"] == "succeeded"
+        assert result["status"] == "success"
 
         run_id = result["run_id"]
         status = execution_service.get_run_status(run_id)

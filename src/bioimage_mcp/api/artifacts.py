@@ -8,9 +8,6 @@ class ArtifactsService:
     def __init__(self, store: ArtifactStore):
         self._store = store
 
-    def get_artifact(self, ref_id: str) -> dict:
-        return self._store.get_payload(ref_id)
-
     def artifact_info(self, ref_id: str, text_preview_bytes: int | None = None) -> dict:
         """Get full metadata and optional text preview for an artifact."""
         try:

@@ -98,7 +98,7 @@ def test_run_workflow_resolves_ref_id_to_full_artifact(tmp_path: Path, monkeypat
             skip_validation=True,
         )
 
-        assert result["status"] == "succeeded"
+        assert result["status"] == "success"
         assert captured["inputs"]["image"]["ref_id"] == ref.ref_id
         assert captured["inputs"]["image"]["uri"] == ref.uri
 
@@ -142,7 +142,7 @@ def test_run_workflow_materializes_zarr_temp_input(tmp_path: Path, monkeypatch) 
             skip_validation=True,
         )
 
-        assert result["status"] == "succeeded"
+        assert result["status"] == "success"
         assert captured["inputs"]["image"]["ref_id"] == "mat1"
 
         run = svc._run_store.get(result["run_id"])
@@ -181,5 +181,5 @@ def test_run_workflow_skips_materialization_when_supported(tmp_path: Path, monke
             skip_validation=True,
         )
 
-        assert result["status"] == "succeeded"
+        assert result["status"] == "success"
         assert called["materialize"] is False

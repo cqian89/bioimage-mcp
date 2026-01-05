@@ -9,6 +9,7 @@ from bioimage_mcp.api.interactive_summaries import summarize_artifact
 from bioimage_mcp.api.schemas import SessionExportRequest, SessionReplayRequest
 from bioimage_mcp.api.sessions import SessionService
 from bioimage_mcp.artifacts.models import ArtifactRef
+
 from bioimage_mcp.sessions.manager import SessionManager
 
 
@@ -131,7 +132,7 @@ class InteractiveExecutionService:
         # Determine canonical status
         # Only successful runs become canonical.
         # This allows retries without overwriting a successful history with a failure.
-        canonical = status == "succeeded"
+        canonical = status == "success"
 
         # Store step attempt
         self.session_manager.store.add_step_attempt(
@@ -215,15 +216,22 @@ class InteractiveExecutionService:
 
     def replay_session(
         self,
-        workflow_ref: dict[str, Any],
+        workflow_ref: dict[str, Any] | Any,
         inputs: dict[str, str],
         params_overrides: dict[str, dict[str, Any]] | None = None,
         step_overrides: dict[str, dict[str, Any]] | None = None,
         dry_run: bool = False,
     ) -> dict[str, Any]:
         """Replay a workflow from an exported record."""
+        if hasattr(workflow_ref, "model_dump"):
+            ref_data = workflow_ref.model_dump(mode="json")
+        elif isinstance(workflow_ref, dict):
+            ref_data = workflow_ref
+        else:
+            raise ValueError(f"Invalid workflow_ref type: {type(workflow_ref)}")
+
         request = SessionReplayRequest(
-            workflow_ref=ArtifactRef(**workflow_ref),
+            workflow_ref=ref_data,
             inputs=inputs,
             params_overrides=params_overrides,
             step_overrides=step_overrides,

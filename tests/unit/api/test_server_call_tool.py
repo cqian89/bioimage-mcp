@@ -58,11 +58,11 @@ class _CapturingInteractive:
                 "dry_run": dry_run,
             }
         )
-        return {"ok": True}
+        return {"status": "success", "session_id": session_id}
 
 
-def test_run_function_params_optional(monkeypatch, tmp_path) -> None:
-    """Verify run_function works without explicit params field."""
+def test_run_params_optional(monkeypatch, tmp_path) -> None:
+    """Verify run works without explicit params field."""
     monkeypatch.setattr(server_module, "FastMCP", _FakeMCP)
     server_module.FastMCP.__module__ = "fake_mcp"
 
@@ -89,13 +89,13 @@ def test_run_function_params_optional(monkeypatch, tmp_path) -> None:
 
     ctx = SimpleNamespace(session=SimpleNamespace(id="session-1"))
 
-    result = mcp.tools["run_function"](
+    result = mcp.tools["run"](
         fn_id="fn.test",
         inputs={},
         session_id="session-1",
         ctx=ctx,
     )
 
-    assert result["result"]["ok"] is True
+    assert result["status"] == "success"
     assert interactive.calls
     assert interactive.calls[0]["params"] == {}

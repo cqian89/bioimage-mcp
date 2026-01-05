@@ -77,17 +77,27 @@ The `builtin` tool pack has been removed. Use the hierarchical naming scheme in 
 
 ### API Changes
 
-- **Execution**: Use **`run_function`** instead of the removed `call_tool`.
+### API Surface (v0.16+)
+
+The MCP server exposes exactly 8 tools for robust, summary-first interaction:
+
 - **Discovery**:
-  - `list_tools`: Supports hierarchical navigation via `path` (e.g., `path="base.skimage"`) and `flatten=True`.
-  - `search_functions`: Supports multi-keyword search with `keywords`.
-  - `describe_function`: Supports batch retrieval with `fn_ids=[...]`.
-- **Activation Workflow**: Use `activate_functions(fn_ids=[...])` to filter the tool list for a session and reduce noise.
+  - `list`: Hierarchical navigation of environments, packages, modules, and functions.
+  - `search`: Rank-ordered keyword search with I/O type filtering.
+  - `describe`: Detailed function schema and parameter definitions (on-demand).
+- **Execution**:
+  - `run`: Call a function within a session context.
+  - `status`: Poll for background task completion and results.
+- **Artifacts**:
+  - `artifact_info`: Get metadata (dimensions, shape, checksums) and optional text previews.
+- **Reproducibility**:
+  - `session_export`: Save the current session's analysis history to a workflow record.
+  - `session_replay`: Reproduce a workflow on new input data.
 
 ## Project Docs
 - `docs/index.md`: Full documentation
 - `docs/reference/tools.md`: Tool & Function reference
-- `specs/`: Detailed feature specifications
+- `specs/`: Detailed feature specifications (Spec 016: MCP Interface Redesign)
 
 ## Install (v0.0 bootstrap)
 

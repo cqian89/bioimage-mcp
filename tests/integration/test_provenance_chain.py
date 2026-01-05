@@ -86,7 +86,7 @@ class TestProvenanceChain:
             provenance = run2.provenance
 
             assert "fn_id" in provenance
-            assert provenance["fn_id"] == "base.skimage.filters.gaussian"
+            assert provenance["id"] == "base.skimage.filters.gaussian"
 
             # Check for handoffs because we passed a memory artifact
             assert "handoffs" in provenance

@@ -82,7 +82,7 @@ def test_session_export_tracks_external_inputs(session_service):
                 "uri": "file:///tmp/out1.tif",
             }
         },
-        status="succeeded",
+        status="success",
         params={},
         log_ref_id=None,
         canonical=True,
@@ -101,7 +101,7 @@ def test_session_export_tracks_external_inputs(session_service):
                 "uri": "file:///tmp/out2.tif",
             }
         },
-        status="succeeded",
+        status="success",
         params={},
         log_ref_id=None,
         canonical=True,
@@ -141,7 +141,7 @@ def test_session_export_provenance(session_service):
         fn_id="f1",
         inputs={},
         outputs={},
-        status="succeeded",
+        status="success",
         params={},
         log_ref_id=None,
         started_at="2024-01-01T00:00:00Z",

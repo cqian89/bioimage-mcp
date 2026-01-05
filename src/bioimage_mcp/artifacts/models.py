@@ -40,7 +40,7 @@ class ArtifactRef(BaseModel):
     mime_type: str
     size_bytes: int
     checksums: list[ArtifactChecksum] = Field(default_factory=list)
-    created_at: str
+    created_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
     metadata: dict = Field(default_factory=dict)
 
     # Schema version for artifact format versioning

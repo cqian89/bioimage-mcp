@@ -30,7 +30,7 @@ def test_run_workflow_uses_run_scoped_work_dir(tmp_path: Path, monkeypatch) -> N
             skip_validation=True,
         )
 
-        assert result["status"] == "succeeded"
+        assert result["status"] == "success"
         assert "work_dir" in captured
         expected_root = config.artifact_store_root / "work" / "runs" / result["run_id"]
         assert captured["work_dir"] == expected_root

@@ -168,7 +168,7 @@ def test_cross_env_materialization_integration(tmp_path: Path):
 
         # Execute
         result = service.run_workflow(spec)
-        assert result["status"] == "succeeded"
+        assert result["status"] == "success"
 
         # 3. Verify handoff record in provenance
         run = service._run_store.get(result["run_id"])

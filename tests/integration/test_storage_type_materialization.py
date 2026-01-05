@@ -113,6 +113,6 @@ def test_materializes_zarr_temp_input_to_file(tmp_path: Path, monkeypatch) -> No
             skip_validation=True,
         )
 
-    assert result["status"] == "succeeded"
+    assert result["status"] == "success"
     assert captured["materialize"]["storage_type"] == "zarr-temp"
     assert captured["inputs"]["image"]["storage_type"] == "file"

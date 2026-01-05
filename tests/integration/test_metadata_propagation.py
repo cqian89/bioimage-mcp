@@ -52,7 +52,7 @@ def test_skimage_metadata_propagation(tmp_path: Path):
     }
 
     result = execution.run_workflow(workflow)
-    assert result["status"] == "succeeded"
+    assert result["status"] == "success"
 
     status = execution.get_run_status(result["run_id"])
     # The output name in dynamic adapter is usually 'output' or 'result'

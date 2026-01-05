@@ -225,7 +225,7 @@ class TestUnsupportedFormats:
                 skip_validation=True,
             )
 
-        assert result["status"] == "succeeded"
+        assert result["status"] == "success"
 
     def test_plain_tiff_still_works(self, tmp_path: Path, monkeypatch) -> None:
         """Test that plain TIFF format is supported."""
@@ -263,4 +263,4 @@ class TestUnsupportedFormats:
                 skip_validation=True,
             )
 
-        assert result["status"] == "succeeded"
+        assert result["status"] == "success"

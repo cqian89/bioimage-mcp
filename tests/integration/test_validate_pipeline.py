@@ -86,7 +86,7 @@ class TestValidatePipeline:
                 skip_validation=True,
             )
 
-        assert result["status"] == "succeeded"
+        assert result["status"] == "success"
 
         # Verify labels output was produced
         with ExecutionService(config) as svc:
@@ -118,7 +118,7 @@ class TestValidatePipeline:
             )
 
         # Workflow should succeed for validation
-        assert result["status"] == "succeeded"
+        assert result["status"] == "success"
         assert "run_id" in result
 
     @pytest.mark.skipif(
@@ -179,4 +179,4 @@ class TestValidatePipeline:
 
         # All validations should succeed
         for result in results:
-            assert result["status"] == "succeeded"
+            assert result["status"] == "success"

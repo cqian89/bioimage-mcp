@@ -62,7 +62,7 @@ class SessionService:
 
         # Get canonical steps (T092)
         steps = self.session_manager.store.list_step_attempts(session_id)
-        canonical_steps = [s for s in steps if s.canonical and s.status == "succeeded"]
+        canonical_steps = [s for s in steps if s.canonical and s.status == "success"]
 
         # Identify external inputs and mark step input sources (T094, T095)
         external_inputs: dict[str, ExternalInput] = {}
@@ -193,11 +193,20 @@ class SessionService:
                 raise ValueError(f"Missing external input: {key}")
             mapped_inputs[key] = request.inputs[key]
 
-        # Reconstruct steps with resolved inputs
-        resolved_steps = []
+        # Execute the replayed workflow step by step
+        replay_session_id = str(uuid.uuid4())
+        # Ensure the replay session exists in the store (T101)
+        self.session_manager.ensure_session(replay_session_id)
+
         step_outputs: dict[tuple[int, str], str] = {}  # (step_index, port_name) -> ref_id
+        last_result: dict[str, Any] = {
+            "status": "success",
+            "run_id": "none",
+            "session_id": replay_session_id,
+        }
 
         for idx, step in enumerate(record.steps):
+            # 1. Resolve inputs for this step
             inputs = {}
             for port, source in step.inputs.items():
                 if source.source == "external":
@@ -210,76 +219,59 @@ class SessionService:
                         )
                     inputs[port] = {"ref_id": ref_id}
 
+            # 2. Resolve parameters
             params = step.params.copy()
-            # Apply params_overrides (T098, T089)
             if request.params_overrides and step.id in request.params_overrides:
                 params.update(request.params_overrides[step.id])
-
-            # Apply step_overrides (T099, T090)
             if request.step_overrides and f"step:{idx}" in request.step_overrides:
                 overrides = request.step_overrides[f"step:{idx}"]
                 if "params" in overrides:
                     params.update(overrides["params"])
 
-            resolved_steps.append({"fn_id": step.id, "inputs": inputs, "params": params})
+            step_spec = {"steps": [{"fn_id": step.id, "inputs": inputs, "params": params}]}
 
-        # Execute the replayed workflow step by step
-        last_result: dict[str, Any] = {"status": "succeeded", "run_id": "none"}
-        replay_session_id = str(uuid.uuid4())
-        # Ensure the replay session exists in the store (T101)
-        self.session_manager.ensure_session(replay_session_id)
-
-        for idx, step_data in enumerate(resolved_steps):
-            step_spec = {"steps": [step_data]}
-
-            # Record start time
+            # 3. Execute step
             started_at = datetime.now(UTC).isoformat()
-
-            # Execute step
             result = self.execution_service.run_workflow(
                 step_spec, session_id=replay_session_id, dry_run=request.dry_run
             )
-
             last_result = result
 
-            # Integrate with session tracking (T101)
+            # 4. Integrate with session tracking (T101)
             run_id = result.get("run_id", "none")
-            status = result.get("status", "failed")
-            if status == "success":
-                status = "succeeded"
+            api_status = result.get("status", "failed")
+            db_status = "succeeded" if api_status == "success" else api_status
 
             outputs = result.get("outputs")
             error = result.get("error")
             log_ref_id = (result.get("log_ref") or {}).get("ref_id")
 
-            # Store step attempt in session store
             if not request.dry_run:
                 self.session_manager.store.add_step_attempt(
                     session_id=replay_session_id,
                     step_id=f"replay-{uuid.uuid4().hex[:8]}",
                     ordinal=idx,
-                    fn_id=step_data["fn_id"],
-                    inputs=step_data["inputs"],
-                    params=step_data["params"],
-                    status=cast(Any, status),
+                    fn_id=step.id,
+                    inputs=inputs,
+                    params=params,
+                    status=cast(Any, db_status),
                     started_at=started_at,
                     ended_at=datetime.now(UTC).isoformat(),
                     run_id=run_id,
                     outputs=outputs,
                     error=error,
                     log_ref_id=log_ref_id,
-                    canonical=(status in ("success", "succeeded")),
+                    canonical=(api_status == "success"),
                 )
 
-            # If successful, record output for dependent steps
-            if result.get("status") == "success" and "outputs" in result:
+            # 5. Record outputs for dependent steps
+            if api_status in ("success", "succeeded") and "outputs" in result:
                 for port, out_ref in result["outputs"].items():
-                    # out_ref might be a dict or ArtifactRef
                     ref_id = out_ref.get("ref_id") if isinstance(out_ref, dict) else out_ref.ref_id
                     step_outputs[(idx, port)] = ref_id
 
-            # Stop on failure
-            if result.get("status") in ("failed", "validation_failed"):
+            # 6. Stop on failure
+            if api_status in ("failed", "validation_failed"):
                 break
 
         # Map status to allowed values for SessionReplayResponse

@@ -32,7 +32,7 @@ def test_io_function_discovery(mcp_test_client):
     """
     # 1. Check list_tools/search_functions for presence of expected functions
     search_result = mcp_test_client.search_functions("base.io.bioimage")
-    found_fns = {fn["fn_id"] for fn in search_result.get("functions", [])}
+    found_fns = {fn["id"] for fn in search_result.get("results", [])}
 
     missing = EXPECTED_IO_FUNCTIONS - found_fns
     assert not missing, f"Missing expected I/O functions: {missing}"
@@ -43,7 +43,7 @@ def test_io_function_discovery(mcp_test_client):
 
     # 3. Double check base.bioio.export specifically isn't there in a broader search
     all_tools = mcp_test_client.list_tools(flatten=True)
-    all_fn_ids = {fn["fn_id"] for fn in all_tools.get("functions", [])}
+    all_fn_ids = {fn["id"] for fn in all_tools.get("items", [])}
     assert "base.bioio.export" not in all_fn_ids, (
         "base.bioio.export should be removed/deprecated from discovery"
     )
@@ -52,10 +52,10 @@ def test_io_function_discovery(mcp_test_client):
     for fn_id in EXPECTED_IO_FUNCTIONS:
         desc = mcp_test_client.describe_function(fn_id)
         assert desc, f"Could not describe function {fn_id}"
-        assert "fn_id" in desc
-        assert desc["fn_id"] == fn_id
-        assert "schema" in desc
-        assert isinstance(desc["schema"], dict)
+        assert "id" in desc
+        assert desc["id"] == fn_id
+        assert "params_schema" in desc
+        assert isinstance(desc["params_schema"], dict)
 
 
 def create_test_ome_tiff(tmp_path, shape=(1, 2, 10, 64, 64)):

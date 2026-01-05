@@ -35,13 +35,13 @@ def test_discovery_list_tools_contract_shape() -> None:
 
     page = service.list_tools(limit=20, cursor=None)
 
-    assert {"tools", "next_cursor", "expanded_from"}.issubset(page.keys())
-    assert isinstance(page["tools"], list)
+    assert {"items", "next_cursor", "expanded_from"}.issubset(page.keys())
+    assert isinstance(page["items"], list)
 
-    assert page["tools"][0]["name"] == "base"
-    assert page["tools"][0]["full_path"] == "base"
-    assert page["tools"][0]["type"] == "environment"
-    assert page["tools"][0]["has_children"] is True
+    assert page["items"][0]["name"] == "base"
+    assert page["items"][0]["full_path"] == "base"
+    assert page["items"][0]["type"] == "environment"
+    assert page["items"][0]["has_children"] is True
     conn.close()
 
 
@@ -73,12 +73,12 @@ def test_discovery_search_functions_contract_shape() -> None:
 
     page = service.search_functions(keywords="blur", limit=20, cursor=None)
 
-    assert set(page.keys()) == {"results", "functions", "next_cursor"}
-    assert isinstance(page["functions"], list)
-    assert page["functions"][0]["fn_id"] == "base.bioimage_mcp_base.preprocess.gaussian"
-    assert "tags" in page["functions"][0]
-    assert "score" in page["functions"][0]
-    assert "match_count" in page["functions"][0]
+    assert set(page.keys()) == {"results", "next_cursor"}
+    assert isinstance(page["results"], list)
+    assert page["results"][0]["id"] == "base.bioimage_mcp_base.preprocess.gaussian"
+    assert "tags" in page["results"][0]
+    assert "score" in page["results"][0]
+    assert "match_count" in page["results"][0]
     conn.close()
 
 
@@ -110,21 +110,19 @@ def test_discovery_describe_function_returns_schema() -> None:
 
     described = service.describe_function("base.bioimage_mcp_base.preprocess.gaussian")
     allowed_keys = {
-        "fn_id",
         "id",
         "type",
         "summary",
-        "schema",
         "params_schema",
         "inputs",
         "outputs",
         "hints",
         "introspection_source",
     }
-    assert {"fn_id", "schema"}.issubset(described.keys())
+    assert {"id", "params_schema"}.issubset(described.keys())
     assert set(described.keys()).issubset(allowed_keys)
-    assert described["fn_id"] == "base.bioimage_mcp_base.preprocess.gaussian"
-    assert described["schema"]["type"] == "object"
+    assert described["id"] == "base.bioimage_mcp_base.preprocess.gaussian"
+    assert described["params_schema"]["type"] == "object"
     conn.close()
 
 
@@ -169,11 +167,11 @@ def test_list_tools_returns_without_session_error() -> None:
     result = service.list_tools(limit=20, cursor=None)
 
     # Verify contract shape
-    assert "tools" in result, "Response must contain 'tools' key"
-    assert isinstance(result["tools"], list)
-    assert len(result["tools"]) > 0
-    assert result["tools"][0]["name"] == "base"
-    assert result["tools"][0]["full_path"] == "base"
+    assert "items" in result, "Response must contain 'items' key"
+    assert isinstance(result["items"], list)
+    assert len(result["items"]) > 0
+    assert result["items"][0]["name"] == "base"
+    assert result["items"][0]["full_path"] == "base"
     conn.close()
 
 
@@ -227,14 +225,14 @@ def test_search_functions_returns_matching_results() -> None:
     result = service.search_functions(keywords="phasor", limit=20, cursor=None)
 
     # Verify contract shape
-    assert "functions" in result
-    assert isinstance(result["functions"], list)
+    assert "results" in result
+    assert isinstance(result["results"], list)
 
     # Verify query filtering: only phasor-related functions returned
-    assert len(result["functions"]) > 0, "Should find at least one phasor function"
-    for fn in result["functions"]:
-        assert "phasor" in fn["fn_id"].lower() or "phasor" in fn["description"].lower(), (
-            f"Function {fn['fn_id']} should match 'phasor' query"
+    assert len(result["results"]) > 0, "Should find at least one phasor function"
+    for fn in result["results"]:
+        assert "phasor" in fn["id"].lower() or "phasor" in fn["summary"].lower(), (
+            f"Function {fn['id']} should match 'phasor' query"
         )
     conn.close()
 
@@ -281,16 +279,16 @@ def test_list_tools_returns_paginated_response() -> None:
     result = service.list_tools(limit=2, cursor=None)
 
     # Verify contract shape
-    assert "tools" in result
+    assert "items" in result
     assert "next_cursor" in result
-    assert isinstance(result["tools"], list)
+    assert isinstance(result["items"], list)
 
     # Verify pagination behavior
-    assert len(result["tools"]) == 2, "Should return exactly 'limit' tools"
+    assert len(result["items"]) == 2, "Should return exactly 'limit' tools"
     assert result["next_cursor"] is not None, "Should provide next_cursor when more results exist"
 
     # Verify we can fetch next page
     next_page = service.list_tools(limit=2, cursor=result["next_cursor"])
-    assert "tools" in next_page
-    assert len(next_page["tools"]) > 0, "Next page should have more results"
+    assert "items" in next_page
+    assert len(next_page["items"]) > 0, "Next page should have more results"
     conn.close()

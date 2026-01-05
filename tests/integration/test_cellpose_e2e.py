@@ -110,7 +110,7 @@ class TestCellposeE2E:
                 skip_validation=True,  # Skip validation as we're using mock
             )
 
-        assert result["status"] == "succeeded"
+        assert result["status"] == "success"
         assert "run_id" in result
         assert "workflow_record_ref_id" in result
 
@@ -150,7 +150,7 @@ class TestCellposeE2E:
             # Verify run status includes outputs
             status = svc.get_run_status(result["run_id"])
 
-        assert status["status"] == "succeeded"
+        assert status["status"] == "success"
         outputs = status["outputs"]
 
         # Verify LabelImageRef is present

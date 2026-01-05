@@ -88,15 +88,15 @@ def test_describe_function_uses_json_cache(tmp_path: Path, monkeypatch) -> None:
     first = service.describe_function(fn_id)
     assert "schema" in first
     assert "params_schema" not in first
-    assert first["fn_id"] == fn_id
-    assert first["schema"]["properties"]["sigma"]["type"] == "number"
+    assert first["id"] == fn_id
+    assert first["params_schema"]["properties"]["sigma"]["type"] == "number"
     assert len(calls) == 1
 
     second = service.describe_function(fn_id)
     assert "schema" in second
     assert "params_schema" not in second
-    assert second["fn_id"] == fn_id
-    assert second["schema"]["properties"]["sigma"]["type"] == "number"
+    assert second["id"] == fn_id
+    assert second["params_schema"]["properties"]["sigma"]["type"] == "number"
     assert len(calls) == 1
 
     cache_path = tmp_path / "artifacts" / "state" / "schema_cache.json"
@@ -104,4 +104,4 @@ def test_describe_function_uses_json_cache(tmp_path: Path, monkeypatch) -> None:
     cache_data = json.loads(cache_path.read_text())
     tool_key = "tools.base@0.1.0"
     assert tool_key in cache_data.get("tools", {})
-    assert fn_id in cache_data["tools"][tool_key]["functions"]
+    assert fn_id in cache_data["items"][tool_key]["results"]

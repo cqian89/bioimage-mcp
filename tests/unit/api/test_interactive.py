@@ -9,9 +9,10 @@ from bioimage_mcp.sessions.store import SessionStore
 
 
 class FakeExecutionService:
-    def __init__(self, run_result: dict, run_status: dict) -> None:
+    def __init__(self, run_result: dict, run_status: dict, config: Config | None = None) -> None:
         self._run_result = run_result
         self._run_status = run_status
+        self._config = config
         self.artifact_store = None
 
     def run_workflow(
@@ -45,6 +46,7 @@ def _make_service(
     )
     store = SessionStore(config)
     manager = SessionManager(store, config)
+    execution._config = config
     service = InteractiveExecutionService(manager, execution)
     return service, store
 
@@ -52,14 +54,14 @@ def _make_service(
 def test_call_tool_returns_hints_on_success(tmp_path: Path) -> None:
     hints = {"next_steps": ["do_next"], "related_metadata": {"fn_id": "fn.test"}}
     execution = FakeExecutionService(
-        run_result={"run_id": "run-1", "status": "succeeded", "hints": hints},
-        run_status={"status": "succeeded", "outputs": {}},
+        run_result={"run_id": "run-1", "status": "success", "hints": hints},
+        run_status={"status": "success", "outputs": {}},
     )
     service, store = _make_service(tmp_path, execution)
 
     result = service.call_tool(session_id="sess-1", fn_id="fn.test", inputs={}, params={})
 
-    assert result["status"] == "succeeded"
+    assert result["status"] == "success"
     assert result["hints"] == hints
     store.close()
 

@@ -160,7 +160,6 @@ class DiscoveryService:
 
         return {
             "items": items,
-            "tools": items,  # Standard MCP key
             "next_cursor": next_cursor,
             "expanded_from": expanded_from,
         }
@@ -317,9 +316,6 @@ class DiscoveryService:
                 },
                 "score": float(entry["score"]),
                 "match_count": int(entry["match_count"]),
-                # Backward compatibility
-                "fn_id": entry["fn_id"],
-                "description": entry.get("description", ""),
             }
             for entry in page
         ]
@@ -327,8 +323,6 @@ class DiscoveryService:
         return {
             "results": results,
             "next_cursor": next_cursor,
-            # Backward compatibility
-            "functions": results,
         }
 
     def describe_function(
@@ -522,13 +516,11 @@ class DiscoveryService:
 
         return {
             "id": fn_id,
-            "fn_id": fn_id,  # Backward compatibility
             "type": "function",
             "summary": node.summary or "",
             "inputs": inputs,
             "outputs": outputs,
             "params_schema": params_schema,
-            "schema": params_schema,  # Backward compatibility
             "introspection_source": introspection_source,
             "hints": hints,
         }

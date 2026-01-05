@@ -61,24 +61,24 @@ class TestToolPaginationStability:
         """Test that first page returns a next_cursor when more results exist."""
         result = discovery_service_with_data.list_tools(limit=3, cursor=None)
 
-        assert len(result["tools"]) == 3
+        assert len(result["items"]) == 3
         assert result["next_cursor"] is not None
 
     def test_cursor_returns_next_page(self, discovery_service_with_data: DiscoveryService) -> None:
         """Test that using cursor returns the next page of results."""
         first_page = discovery_service_with_data.list_tools(limit=3, cursor=None)
-        first_tool_ids = {t["full_path"] for t in first_page["tools"]}
+        first_tool_ids = {t["full_path"] for t in first_page["items"]}
 
         second_page = discovery_service_with_data.list_tools(
             limit=3,
             cursor=first_page["next_cursor"],
         )
-        second_tool_ids = {t["full_path"] for t in second_page["tools"]}
+        second_tool_ids = {t["full_path"] for t in second_page["items"]}
 
         # Pages should not overlap
         assert len(first_tool_ids & second_tool_ids) == 0
         # Should have results in second page
-        assert len(second_page["tools"]) == 3
+        assert len(second_page["items"]) == 3
 
     def test_full_pagination_covers_all_tools(
         self, discovery_service_with_data: DiscoveryService
@@ -89,9 +89,9 @@ class TestToolPaginationStability:
 
         while True:
             result = discovery_service_with_data.list_tools(limit=3, cursor=cursor)
-            all_tools.extend(result["tools"])
+            all_tools.extend(result["items"])
             cursor = result["next_cursor"]
-            if cursor is None or len(result["tools"]) < 3:
+            if cursor is None or len(result["items"]) < 3:
                 break
 
         # Should have all 10 tools
@@ -112,8 +112,8 @@ class TestToolPaginationStability:
         second_page_2 = discovery_service_with_data.list_tools(limit=3, cursor=cursor)
 
         # Should return identical results
-        ids_1 = [t["full_path"] for t in second_page_1["tools"]]
-        ids_2 = [t["full_path"] for t in second_page_2["tools"]]
+        ids_1 = [t["full_path"] for t in second_page_1["items"]]
+        ids_2 = [t["full_path"] for t in second_page_2["items"]]
         assert ids_1 == ids_2
 
     def test_empty_result_no_cursor(self, discovery_service_with_data: DiscoveryService) -> None:
@@ -123,7 +123,7 @@ class TestToolPaginationStability:
         last_cursor = None
         while True:
             result = discovery_service_with_data.list_tools(limit=3, cursor=cursor)
-            if not result["tools"]:
+            if not result["items"]:
                 break
             last_cursor = result["next_cursor"]
             cursor = result["next_cursor"]
@@ -151,9 +151,9 @@ class TestFunctionSearchPaginationStability:
                 limit=5,
                 cursor=cursor,
             )
-            all_functions.extend(result["functions"])
+            all_functions.extend(result["results"])
             cursor = result["next_cursor"]
-            if cursor is None or len(result["functions"]) < 5:
+            if cursor is None or len(result["results"]) < 5:
                 break
 
         # Should have all 30 functions (3 per tool * 10 tools)
@@ -180,8 +180,8 @@ class TestFunctionSearchPaginationStability:
             cursor=cursor,
         )
 
-        ids_a = [f["fn_id"] for f in second_a["functions"]]
-        ids_b = [f["fn_id"] for f in second_b["functions"]]
+        ids_a = [f["id"] for f in second_a["results"]]
+        ids_b = [f["id"] for f in second_b["results"]]
         assert ids_a == ids_b
 
 
@@ -193,14 +193,14 @@ class TestPaginationEdgeCases:
         result = discovery_service_with_data.list_tools(limit=100, cursor=None)
 
         # Should return all 10 tools
-        assert len(result["tools"]) == 10
+        assert len(result["items"]) == 10
 
     def test_limit_zero_handled(self, discovery_service_with_data: DiscoveryService) -> None:
         """Test that limit=0 or None uses default limit."""
         result = discovery_service_with_data.list_tools(limit=None, cursor=None)
 
         # Should use default limit and return results
-        assert len(result["tools"]) > 0
+        assert len(result["items"]) > 0
 
     def test_invalid_cursor_format(self, discovery_service_with_data: DiscoveryService) -> None:
         """Test handling of malformed cursors."""
@@ -212,7 +212,7 @@ class TestPaginationEdgeCases:
                 cursor="invalid-cursor-format",
             )
             # If no error, should return results (starting from beginning or empty)
-            assert isinstance(result["tools"], list)
+            assert isinstance(result["items"], list)
         except (ValueError, KeyError):
             # Raising an error is also acceptable
             pass

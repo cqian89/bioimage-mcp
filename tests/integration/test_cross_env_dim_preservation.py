@@ -47,13 +47,13 @@ def test_cross_env_dim_preservation(tmp_path):
     res1 = client.call_tool(
         "base.xarray.squeeze", inputs={"image": {"ref_id": input_ref.ref_id}}, params={}
     )
-    if res1["status"] != "succeeded":
+    if res1["status"] != "success":
         log_id = res1.get("log_ref_id")
         if log_id:
             log_content = store.get_raw_content(log_id).decode()
             print(f"DEBUG: res1 log: {log_content}")
         print(f"DEBUG: res1 failed: {res1}")
-    assert res1["status"] == "succeeded"
+    assert res1["status"] == "success"
     squeezed_ref_id = res1["outputs"]["output"]["ref_id"]
     squeezed_ref = store.get(squeezed_ref_id)
 
@@ -69,7 +69,7 @@ def test_cross_env_dim_preservation(tmp_path):
         params={"sigma": 1.0},
     )
 
-    assert res2["status"] == "succeeded"
+    assert res2["status"] == "success"
 
     output_ref_id = res2["outputs"]["output"]["ref_id"]
     output_ref = store.get(output_ref_id)

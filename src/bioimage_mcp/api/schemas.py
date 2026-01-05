@@ -294,6 +294,7 @@ class ArtifactRef(BaseModel):
     dtype: str | None = None
     shape: list[int] | None = None
     checksums: list[ArtifactChecksum] = []
+    created_at: str | None = None
 
 
 class ErrorDetail(BaseModel):

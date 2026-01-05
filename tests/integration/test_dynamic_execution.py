@@ -64,7 +64,7 @@ def test_skimage_dynamic_execution_gaussian(tmp_path: Path):
     result = execution.run_workflow(workflow)
 
     # Verify
-    if result["status"] != "succeeded":
+    if result["status"] != "success":
         # Print debug info for failed workflow
         status = execution.get_run_status(result["run_id"])
         print(f"\nWorkflow failed with status: {status}")
@@ -73,7 +73,7 @@ def test_skimage_dynamic_execution_gaussian(tmp_path: Path):
         if "log" in status:
             print(f"Log: {status['log']}")
 
-    assert result["status"] == "succeeded"
+    assert result["status"] == "success"
     assert "run_id" in result
 
     # Check outputs
@@ -82,7 +82,7 @@ def test_skimage_dynamic_execution_gaussian(tmp_path: Path):
     # Wait, run_workflow returns dict with run_id.
     # Let's get status to see outputs.
     status = execution.get_run_status(result["run_id"])
-    assert status["status"] == "succeeded"
+    assert status["status"] == "success"
 
     # Check output artifact existence
     # We assume it writes to a file in work_dir or artifact store.
@@ -148,5 +148,5 @@ def test_removed_wrappers_fail(tmp_path: Path):
     # T013 TDD: This assertion SHOULD FAIL because the wrapper is still there!
     # Once we remove the wrapper in T014-T016, this test will PASS.
     assert result["status"] == "failed", (
-        "Removed thin wrapper should fail, but it succeeded! (T013 TDD)"
+        "Removed thin wrapper should fail, but it success! (T013 TDD)"
     )

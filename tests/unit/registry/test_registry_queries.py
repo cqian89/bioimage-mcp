@@ -35,11 +35,11 @@ def test_list_tools_paginates_by_cursor() -> None:
         )
 
     page1 = service.list_tools(limit=2, cursor=None)
-    assert [t["full_path"] for t in page1["tools"]] == ["a", "b"]
+    assert [t["full_path"] for t in page1["items"]] == ["a", "b"]
     assert page1["next_cursor"]
 
     page2 = service.list_tools(limit=2, cursor=page1["next_cursor"])
-    assert [t["full_path"] for t in page2["tools"]] == ["c"]
+    assert [t["full_path"] for t in page2["items"]] == ["c"]
     conn.close()
 
 
@@ -81,7 +81,7 @@ def test_search_functions_filters_by_tag() -> None:
     )
 
     page = service.search_functions(keywords="fn", tags=["b"], limit=10, cursor=None)
-    assert [f["fn_id"] for f in page["functions"]] == ["fn.two"]
+    assert [f["id"] for f in page["results"]] == ["fn.two"]
     conn.close()
 
 
@@ -123,10 +123,10 @@ def test_search_functions_filters_by_io_types() -> None:
     )
 
     page = service.search_functions(keywords="fn", io_in="BioImageRef", limit=10, cursor=None)
-    assert [f["fn_id"] for f in page["functions"]] == ["fn.in"]
+    assert [f["id"] for f in page["results"]] == ["fn.in"]
 
     page2 = service.search_functions(keywords="fn", io_out="LogRef", limit=10, cursor=None)
-    assert [f["fn_id"] for f in page2["functions"]] == ["fn.out"]
+    assert [f["id"] for f in page2["results"]] == ["fn.out"]
     conn.close()
 
 
@@ -162,7 +162,7 @@ def test_prune_stale_functions_removes_unlisted() -> None:
 
     # Verify all 3 are present
     initial = service.list_tools(flatten=True)
-    assert len(initial["tools"]) == 3
+    assert len(initial["items"]) == 3
 
     # Prune, keeping only 2
     deleted = service.prune_stale_functions({"base.keep1", "base.keep2"})
@@ -170,7 +170,7 @@ def test_prune_stale_functions_removes_unlisted() -> None:
 
     # Verify only 2 remain
     after = service.list_tools(flatten=True)
-    fn_ids = [t["fn_id"] for t in after["tools"]]
+    fn_ids = [t["id"] for t in after["items"]]
     assert "base.keep1" in fn_ids
     assert "base.keep2" in fn_ids
     assert "base.stale" not in fn_ids
@@ -249,5 +249,5 @@ def test_prune_with_empty_set_removes_all() -> None:
     assert deleted_tool == 1
 
     result = service.list_tools(flatten=True)
-    assert len(result["tools"]) == 0
+    assert len(result["items"]) == 0
     conn.close()

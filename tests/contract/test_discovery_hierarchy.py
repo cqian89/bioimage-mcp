@@ -77,10 +77,10 @@ def test_list_tools_returns_environment_nodes() -> None:
 
     page = service.list_tools(limit=20, cursor=None)
 
-    assert set(page.keys()) == {"tools", "next_cursor", "expanded_from"}
-    names = {node["name"] for node in page["tools"]}
+    assert set(page.keys()) == {"items", "next_cursor", "expanded_from"}
+    names = {node["name"] for node in page["items"]}
     assert {"base", "cellpose"}.issubset(names)
-    assert all(node["type"] == "environment" for node in page["tools"])
+    assert all(node["type"] == "environment" for node in page["items"])
     conn.close()
 
 
@@ -93,9 +93,9 @@ def test_list_tools_path_returns_packages() -> None:
 
     page = service.list_tools(path="base", limit=20, cursor=None)
 
-    names = {node["name"] for node in page["tools"]}
+    names = {node["name"] for node in page["items"]}
     assert {"skimage", "phasorpy"}.issubset(names)
-    assert all(node["type"] == "package" for node in page["tools"])
+    assert all(node["type"] == "package" for node in page["items"])
     conn.close()
 
 
@@ -108,10 +108,10 @@ def test_list_tools_module_path_returns_functions() -> None:
 
     page = service.list_tools(path="base.skimage.filters", limit=20, cursor=None)
 
-    fn_ids = {node["fn_id"] for node in page["tools"]}
+    fn_ids = {node["id"] for node in page["items"]}
     assert "base.skimage.filters.gaussian" in fn_ids
     assert "base.skimage.filters.sobel" in fn_ids
-    assert all(node["type"] == "function" for node in page["tools"])
+    assert all(node["type"] == "function" for node in page["items"])
     assert page["expanded_from"] is None
     conn.close()
 
@@ -126,9 +126,9 @@ def test_list_tools_auto_expands_single_child_paths() -> None:
     page = service.list_tools(path="cellpose", limit=20, cursor=None)
 
     assert page["expanded_from"] == "cellpose"
-    assert len(page["tools"]) == 1
-    assert page["tools"][0]["fn_id"] == "cellpose.core.segment"
-    assert page["tools"][0]["type"] == "function"
+    assert len(page["items"]) == 1
+    assert page["items"][0]["id"] == "cellpose.core.segment"
+    assert page["items"][0]["type"] == "function"
     conn.close()
 
 
@@ -141,11 +141,11 @@ def test_list_tools_flatten_returns_functions() -> None:
 
     page = service.list_tools(path="base", flatten=True, limit=20, cursor=None)
 
-    fn_ids = {node["fn_id"] for node in page["tools"]}
+    fn_ids = {node["id"] for node in page["items"]}
     assert "base.skimage.filters.gaussian" in fn_ids
     assert "base.skimage.filters.sobel" in fn_ids
     assert "base.phasorpy.phasor.phasor_calibrate" in fn_ids
-    assert all(node["type"] == "function" for node in page["tools"])
+    assert all(node["type"] == "function" for node in page["items"])
     assert page["expanded_from"] is None
     conn.close()
 
@@ -158,12 +158,12 @@ def test_list_tools_flatten_paginates() -> None:
     _seed_hierarchy(service)
 
     first = service.list_tools(path="base", flatten=True, limit=1, cursor=None)
-    assert len(first["tools"]) == 1
+    assert len(first["items"]) == 1
     assert first["next_cursor"] is not None
 
-    first_path = first["tools"][0]["full_path"]
+    first_path = first["items"][0]["full_path"]
     second = service.list_tools(path="base", flatten=True, limit=1, cursor=first["next_cursor"])
 
-    assert len(second["tools"]) == 1
-    assert second["tools"][0]["full_path"] > first_path
+    assert len(second["items"]) == 1
+    assert second["items"][0]["full_path"] > first_path
     conn.close()

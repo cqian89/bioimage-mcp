@@ -79,7 +79,7 @@ def create_server(
     mcp = FastMCP("bioimage-mcp")
 
     @mcp.tool()
-    def list_tools(
+    def list(
         path: str | None = None,
         paths: list[str] | None = None,
         flatten: bool | None = None,
@@ -100,7 +100,7 @@ def create_server(
         )
 
     @mcp.tool()
-    def describe_function(
+    def describe(
         id: str | None = None, fn_id: str | None = None, fn_ids: list[str] | None = None
     ) -> dict[str, Any]:
         """Get full details for a function or catalog node."""
@@ -108,7 +108,7 @@ def create_server(
         return discovery.describe_function(fn_id=target_id, fn_ids=fn_ids)
 
     @mcp.tool()
-    def search_functions(
+    def search(
         query: str | None = None,
         keywords: list[str] | None = None,
         tags: list[str] | None = None,
@@ -129,12 +129,12 @@ def create_server(
         )
 
     @mcp.tool()
-    def get_run_status(run_id: str) -> dict[str, Any]:
+    def status(run_id: str) -> dict[str, Any]:
         """Poll the status of a background run."""
         return execution.get_run_status(run_id)
 
     @mcp.tool()
-    def run_function(
+    def run(
         fn_id: str,
         inputs: dict[str, Any],
         params: dict[str, Any] | None = None,
@@ -185,16 +185,12 @@ def create_server(
         return response
 
     @mcp.tool()
-    def get_artifact(ref_id: str) -> dict[str, Any]:
-        return artifacts.get_artifact(ref_id)
-
-    @mcp.tool()
     def artifact_info(ref_id: str, text_preview_bytes: int | None = None) -> dict[str, Any]:
         """Get full metadata and optional text preview for an artifact."""
         return artifacts.artifact_info(ref_id, text_preview_bytes=text_preview_bytes)
 
     @mcp.tool()
-    def export_session(
+    def session_export(
         session_id: str | None = None,
         dest_path: str | None = None,
         ctx: Context | None = None,
@@ -212,7 +208,7 @@ def create_server(
         return interactive.export_session(session_id, dest_path=dest_path)
 
     @mcp.tool()
-    def replay_session(
+    def session_replay(
         workflow_ref: dict[str, Any],
         inputs: dict[str, str],
         params_overrides: dict[str, dict[str, Any]] | None = None,

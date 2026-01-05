@@ -134,10 +134,10 @@ def test_mcp_test_client_list_and_search(mcp_services) -> None:
     )
 
     tools_result = client.list_tools()
-    assert tools_result["tools"]
+    assert tools_result["items"]
 
     search_result = client.search_functions("rename")
-    fn_ids = [fn["fn_id"] for fn in search_result["functions"]]
+    fn_ids = [fn["id"] for fn in search_result["results"]]
     assert "base.xarray.rename" in fn_ids
 
 
@@ -175,7 +175,7 @@ def test_mcp_test_client_call_tool_uses_mock_and_tracks_context(mcp_services) ->
         params={"mapping": {"Z": "T"}},
     )
 
-    assert result["status"] == "succeeded"
+    assert result["status"] == "success"
     assert "outputs" in result
     assert "output" in result["outputs"]
     assert "base.xarray.rename.output" in client.context

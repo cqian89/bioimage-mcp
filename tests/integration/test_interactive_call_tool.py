@@ -111,7 +111,7 @@ functions:
     step0 = steps[0]
     assert step0.ordinal == 0
     assert step0.fn_id == "fn.test"
-    assert step0.status == "succeeded"
+    assert step0.status == "success"
 
     # --- Test Action 2: Second Call ---
     result2 = service.call_tool(session_id=session_id, fn_id="fn.test", params={"p": 2}, inputs={})

@@ -22,12 +22,7 @@ class _FakeMCP:
 
 
 class _DummyDiscovery:
-    def list_tools(self, *, path=None, paths=None, flatten=None, limit=None, cursor=None):
-        _ = path
-        _ = paths
-        _ = flatten
-        _ = limit
-        _ = cursor
+    def list_tools(self, **kwargs):
         return {
             "tools": [
                 {
@@ -46,7 +41,7 @@ class _DummyService:
     pass
 
 
-def test_list_tools_ensures_session(monkeypatch, tmp_path) -> None:
+def test_list_ensures_session(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr(server_module, "FastMCP", _FakeMCP)
     server_module.FastMCP.__module__ = "fake_mcp"
 
@@ -67,6 +62,6 @@ def test_list_tools_ensures_session(monkeypatch, tmp_path) -> None:
         session_manager=session_manager,
     )
 
-    result = mcp.tools["list_tools"]()
+    result = mcp.tools["list"]()
 
     assert result["tools"][0]["full_path"] == "base"

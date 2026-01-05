@@ -71,7 +71,7 @@ def test_base_io_bioimage_export_materializes_mem_to_file(mcp_services):
     }
 
     result = execution_service.run_workflow(workflow)
-    assert result["status"] == "succeeded", f"Workflow failed: {result.get('error')}"
+    assert result["status"] == "success", f"Workflow failed: {result.get('error')}"
 
     run_id = result["run_id"]
     status = execution_service.get_run_status(run_id)
@@ -93,7 +93,7 @@ def test_base_io_bioimage_export_materializes_mem_to_file(mcp_services):
     }
 
     export_result = execution_service.run_workflow(export_workflow)
-    assert export_result["status"] == "succeeded", f"Export failed: {export_result.get('error')}"
+    assert export_result["status"] == "success", f"Export failed: {export_result.get('error')}"
 
     export_run_id = export_result["run_id"]
     export_status = execution_service.get_run_status(export_run_id)

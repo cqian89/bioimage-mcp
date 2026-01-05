@@ -130,7 +130,7 @@ class TestExportSession:
             params={"attempt": 2},
             ordinal=0,  # Retry same ordinal
         )
-        assert result2["status"] == "succeeded"
+        assert result2["status"] == "success"
 
         # 4. Step 2: Success
         result3 = interactive.call_tool(
@@ -139,7 +139,7 @@ class TestExportSession:
             inputs={"prev": {"ref_id": "some-ref", "type": "BioImageRef"}},  # Dummy input
             params={"step": 2},
         )
-        assert result3["status"] == "succeeded"
+        assert result3["status"] == "success"
 
         # 5. Export Session
         if not hasattr(interactive, "export_session"):

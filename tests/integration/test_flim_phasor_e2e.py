@@ -93,7 +93,7 @@ def test_flim_phasor_e2e(tmp_path: Path) -> None:
     status1 = execution.get_run_status(run1["run_id"])
     if status1["status"] == "failed":
         print(f"Run failed with error: {status1.get('error')}")
-    assert status1["status"] == "succeeded"
+    assert status1["status"] == "success"
 
     outputs1 = status1["outputs"]
     # phasorpy.phasor.phasor_from_signal returns (mean, real, imag)
@@ -146,7 +146,7 @@ def test_flim_phasor_e2e(tmp_path: Path) -> None:
     # status2 = execution.get_run_status(run2["run_id"])
     # if status2["status"] == "failed":
     #     print(f"Cellpose failed with error: {status2.get('error')}")
-    # assert status2["status"] == "succeeded"
+    # assert status2["status"] == "success"
     # assert status2["outputs"]["labels"]["type"] == "LabelImageRef"
     #
     # mask_path = _uri_to_path(status2["outputs"]["labels"]["uri"])

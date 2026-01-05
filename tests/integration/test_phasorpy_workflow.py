@@ -586,7 +586,7 @@ def test_plot_phasor_e2e_execution_service(tmp_path: Path) -> None:
         }
         run1 = execution.run_workflow(workflow1)
         status1 = execution.get_run_status(run1["run_id"])
-        assert status1["status"] == "succeeded"
+        assert status1["status"] == "success"
 
         # Step 2: Plot phasor
         # phasor_from_signal returns (mean, real, imag) -> (output, output_1, output_2)
@@ -609,7 +609,7 @@ def test_plot_phasor_e2e_execution_service(tmp_path: Path) -> None:
         status2 = execution.get_run_status(run2["run_id"])
 
         # Verify success and PlotRef output
-        assert status2["status"] == "succeeded"
+        assert status2["status"] == "success"
         outputs2 = status2["outputs"]
         plot_ref = outputs2["output"]
 

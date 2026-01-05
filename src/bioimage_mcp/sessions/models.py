@@ -29,7 +29,7 @@ class SessionStep(BaseModel):
     fn_id: str
     inputs: dict[str, Any] = Field(default_factory=dict)
     params: dict[str, Any] = Field(default_factory=dict)
-    status: Literal["succeeded", "failed", "running", "cancelled"] = "running"
+    status: Literal["succeeded", "success", "failed", "running", "cancelled"] = "running"
     started_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
     ended_at: str | None = None
     run_id: str | None = None

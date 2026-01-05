@@ -114,7 +114,7 @@ class MCPTestClient:
         else:
             result = self._execution.run_workflow(workflow, skip_validation=False)
 
-        if result.get("status") not in {"succeeded", "running", "queued"}:
+        if result.get("status") not in {"success", "running", "queued"}:
             return result
 
         status = self._execution.get_run_status(result["run_id"])

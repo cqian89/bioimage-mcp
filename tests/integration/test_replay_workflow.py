@@ -81,7 +81,7 @@ class TestReplayWorkflow:
                 skip_validation=True,
             )
 
-            assert original_result["status"] == "succeeded"
+            assert original_result["status"] == "success"
             assert "workflow_record_ref_id" in original_result
 
             # Get the workflow record
@@ -90,7 +90,7 @@ class TestReplayWorkflow:
             # Replay: create new run from saved record
             replay_result = svc.replay_workflow(workflow_record_ref_id)
 
-            assert replay_result["status"] in {"succeeded", "running", "queued"}
+            assert replay_result["status"] in {"success", "running", "queued"}
             assert replay_result["run_id"] != original_result["run_id"]
 
     def test_replay_produces_same_artifact_types(self, tmp_path: Path, monkeypatch) -> None:

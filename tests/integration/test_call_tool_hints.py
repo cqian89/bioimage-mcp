@@ -110,7 +110,7 @@ def test_run_workflow_success_includes_hints(tmp_path: Path, monkeypatch) -> Non
             {"steps": [{"fn_id": "fn.success", "params": {}, "inputs": {}}]}
         )
 
-    assert response["status"] == "succeeded"
+    assert response["status"] == "success"
     assert response["hints"]["next_steps"]
     assert response["hints"]["common_issues"]
 
@@ -151,5 +151,5 @@ def test_run_workflow_error_includes_hints(tmp_path: Path, monkeypatch) -> None:
 
     assert response["status"] == "failed"
     assert response["hints"]["diagnosis"] == "Input axes do not match expected order."
-    assert response["hints"]["suggested_fix"]["fn_id"] == "base.relabel_axes"
+    assert response["hints"]["suggested_fix"]["id"] == "base.relabel_axes"
     assert response["hints"]["related_metadata"]["image"] == ref.metadata

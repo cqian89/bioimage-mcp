@@ -119,8 +119,8 @@ def test_flim_calibration_workflow(tmp_path: Path) -> None:
     run_ref = execution.run_workflow(workflow_reference)
     status_ref = execution.get_run_status(run_ref["run_id"])
 
-    # Assert reference phasor computation succeeded
-    assert status_ref["status"] == "succeeded", (
+    # Assert reference phasor computation success
+    assert status_ref["status"] == "success", (
         f"Reference phasor failed: {status_ref.get('error', 'unknown')}"
     )
 
@@ -162,7 +162,7 @@ def test_flim_calibration_workflow(tmp_path: Path) -> None:
     run_sample = execution.run_workflow(workflow_sample)
     status_sample = execution.get_run_status(run_sample["run_id"])
 
-    assert status_sample["status"] == "succeeded", (
+    assert status_sample["status"] == "success", (
         f"Sample phasor failed: {status_sample.get('error', 'unknown')}"
     )
 
@@ -209,7 +209,7 @@ def test_flim_calibration_workflow(tmp_path: Path) -> None:
     run_calibration = execution.run_workflow(workflow_calibration)
     status_calibration = execution.get_run_status(run_calibration["run_id"])
 
-    assert status_calibration["status"] == "succeeded", (
+    assert status_calibration["status"] == "success", (
         f"Calibration failed: {status_calibration.get('error', 'unknown')}"
     )
 

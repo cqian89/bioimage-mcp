@@ -102,7 +102,7 @@ def _assert_output_type(output: Any, expected_type: str) -> None:
 @pytest.mark.timeout(10)
 def test_full_discovery_to_execution_flow(mcp_test_client, sample_flim_image) -> None:
     search_results = mcp_test_client.search_functions("phasor FLIM")
-    fn_ids = {fn["fn_id"] for fn in search_results["functions"]}
+    fn_ids = {fn["id"] for fn in search_results["results"]}
     assert "base.phasorpy.phasor.phasor_from_signal" in fn_ids
 
     mcp_test_client.activate_functions(
@@ -113,8 +113,8 @@ def test_full_discovery_to_execution_flow(mcp_test_client, sample_flim_image) ->
     )
 
     schema = mcp_test_client.describe_function("base.xarray.rename")
-    assert schema["fn_id"] == "base.xarray.rename"
-    assert schema["schema"]["type"] == "object"
+    assert schema["id"] == "base.xarray.rename"
+    assert schema["params_schema"]["type"] == "object"
 
     relabeled = mcp_test_client.call_tool(
         fn_id="base.xarray.rename",

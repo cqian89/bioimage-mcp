@@ -95,7 +95,7 @@ class TestReplayExportedSession:
             inputs={},
             params={"p1": "v1"},
         )
-        assert res1["status"] == "succeeded"
+        assert res1["status"] == "success"
         out1_ref = res1["outputs"]["result"]
 
         # Step 2 (depends on Step 1)
@@ -105,7 +105,7 @@ class TestReplayExportedSession:
             inputs={"input1": out1_ref},
             params={"p2": "v2"},
         )
-        assert res2["status"] == "succeeded"
+        assert res2["status"] == "success"
 
         # 2. Export Session
         if not hasattr(interactive, "export_session"):
@@ -117,7 +117,7 @@ class TestReplayExportedSession:
         # Use replay_workflow from ExecutionService (which we know exists)
         replay_result = execution.replay_workflow(export_ref["ref_id"])
 
-        assert replay_result["status"] == "succeeded"
+        assert replay_result["status"] == "success"
         assert replay_result["run_id"] != res1["run_id"]  # Should be a new run
 
         # Verify provenance

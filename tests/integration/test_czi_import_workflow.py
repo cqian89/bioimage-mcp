@@ -95,9 +95,9 @@ def test_czi_import_workflow(tmp_path: Path, monkeypatch) -> None:
             error_msg = error.get("message", str(error)) if isinstance(error, dict) else str(error)
             if "Missing dependencies" in error_msg or "not available" in error_msg:
                 pytest.skip(f"Workflow failed due to missing dependencies: {error_msg}")
-            assert result["status"] == "succeeded", f"Workflow failed: {error_msg}"
+            assert result["status"] == "success", f"Workflow failed: {error_msg}"
 
-        assert result["status"] == "succeeded"
+        assert result["status"] == "success"
 
         # Verify output
         status = svc.get_run_status(result["run_id"])
