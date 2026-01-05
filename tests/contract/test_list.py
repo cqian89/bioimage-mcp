@@ -44,20 +44,20 @@ def test_list_returns_deterministic_order_with_pagination():
 
     # First page
     page1 = service.list_tools(limit=2)
-    assert len(page1["items"]) == 2
+    assert len(page1["tools"]) == 2
     assert page1["next_cursor"] is not None
 
     # Second page
     page2 = service.list_tools(limit=2, cursor=page1["next_cursor"])
-    assert len(page2["items"]) == 2
+    assert len(page2["tools"]) == 2
     assert page2["next_cursor"] is not None
 
     # Ensure deterministic (calling again with same cursor)
     page2_repeat = service.list_tools(limit=2, cursor=page1["next_cursor"])
-    assert page2["items"] == page2_repeat["items"]
+    assert page2["tools"] == page2_repeat["tools"]
 
     # Ensure ordered by id (full_path)
-    ids = [item["id"] for item in page1["items"]] + [item["id"] for item in page2["items"]]
+    ids = [item["id"] for item in page1["tools"]] + [item["id"] for item in page2["tools"]]
     assert ids == sorted(ids)
 
     conn.close()
@@ -103,8 +103,8 @@ def test_list_includes_child_counts_for_non_leaf_nodes():
 
     result = service.list_tools(path="base")
     # Immediate children are "base.ops" and "base.utils"
-    assert len(result["items"]) == 2
-    node = result["items"][0]
+    assert len(result["tools"]) == 2
+    node = result["tools"][0]
     assert node["id"] in ["base.ops", "base.utils"]
     assert "children" in node
     assert node["children"]["total"] == 1  # Each has one function
@@ -142,8 +142,8 @@ def test_list_includes_io_summaries_for_function_nodes():
     )
 
     result = service.list_tools(path="base.ops")
-    assert len(result["items"]) == 1
-    node = result["items"][0]
+    assert len(result["tools"]) == 1
+    node = result["tools"][0]
     assert node["type"] == "function"
     assert "io" in node
     assert len(node["io"]["inputs"]) == 1

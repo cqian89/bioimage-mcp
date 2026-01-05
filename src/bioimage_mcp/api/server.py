@@ -108,6 +108,27 @@ def create_server(
         return discovery.describe_function(fn_id=target_id, fn_ids=fn_ids)
 
     @mcp.tool()
+    def search_functions(
+        query: str | None = None,
+        keywords: list[str] | None = None,
+        tags: list[str] | None = None,
+        io_in: str | None = None,
+        io_out: str | None = None,
+        limit: int | None = None,
+        cursor: str | None = None,
+    ) -> dict[str, Any]:
+        """Search for functions by natural language query, keywords, or I/O types."""
+        return discovery.search_functions(
+            query=query,
+            keywords=keywords,
+            tags=tags,
+            io_in=io_in,
+            io_out=io_out,
+            limit=limit,
+            cursor=cursor,
+        )
+
+    @mcp.tool()
     def get_run_status(run_id: str) -> dict[str, Any]:
         """Poll the status of a background run."""
         return execution.get_run_status(run_id)

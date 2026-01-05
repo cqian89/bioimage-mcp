@@ -4,6 +4,7 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
+from bioimage_mcp.api.errors import not_found_error, validation_error
 from bioimage_mcp.api.pagination import decode_cursor, encode_cursor, resolve_limit
 from bioimage_mcp.config.loader import load_config
 from bioimage_mcp.registry.index import RegistryIndex, ToolIndex
@@ -159,7 +160,7 @@ class DiscoveryService:
 
         return {
             "items": items,
-            "tools": items,  # Backward compatibility
+            "tools": items,  # Standard MCP key
             "next_cursor": next_cursor,
             "expanded_from": expanded_from,
         }
@@ -179,15 +180,24 @@ class DiscoveryService:
         tags: list[str] | None = None,
         io_in: str | None = None,
         io_out: str | None = None,
-        limit: int | None,
-        cursor: str | None,
+        limit: int | None = None,
+        cursor: str | None = None,
     ) -> dict[str, Any]:
+        # T061: Exactly one of query or keywords must be provided
+        if (query is None and keywords is None) or (query is not None and keywords is not None):
+            return {
+                "results": [],
+                "error": validation_error(
+                    message="Exactly one of query or keywords must be provided",
+                    path="query",
+                    hint="Provide either 'query' (string) or 'keywords' (list), but not both.",
+                ).model_dump(),
+            }
+
         config = load_config()
         resolved_limit = resolve_limit(limit, config)
 
         raw_keywords = keywords if keywords is not None else query
-        if raw_keywords is None:
-            raise ValueError("keywords must not be empty")
 
         if isinstance(raw_keywords, str):
             keyword_list = [kw for kw in raw_keywords.split() if kw]
@@ -204,7 +214,13 @@ class DiscoveryService:
             normalized_keywords.append(cleaned)
 
         if not normalized_keywords:
-            raise ValueError("keywords must not be empty")
+            return {
+                "results": [],
+                "error": validation_error(
+                    message="Keywords must not be empty",
+                    path="query" if query is not None else "keywords",
+                ).model_dump(),
+            }
 
         offset = 0
         if cursor:
@@ -215,7 +231,14 @@ class DiscoveryService:
                 or payload.get("io_in") != io_in
                 or payload.get("io_out") != io_out
             ):
-                raise ValueError("Cursor does not match request")
+                return {
+                    "results": [],
+                    "error": validation_error(
+                        message="Cursor does not match request",
+                        path="cursor",
+                        hint="The cursor was generated for a different search request. Do not modify search parameters when paginating.",
+                    ).model_dump(),
+                }
             offset = int(payload.get("offset") or 0)
 
         collected: list[dict] = []
@@ -229,8 +252,10 @@ class DiscoveryService:
                 break
 
             for row in batch:
+                # T063: Add tags filtering
                 if not any_tag_matches(row["tags"], tags):
                     continue
+                # T062: Add io_in/io_out filtering
                 if not io_type_matches(row["inputs"], io_in):
                     continue
                 if not io_type_matches(row["outputs"], io_out):
@@ -248,6 +273,7 @@ class DiscoveryService:
 
             scan_after = batch[-1]["fn_id"]
 
+        # T065: Add scoring and ranking
         index = SearchIndex()
         ranked = index.rank(keywords=normalized_keywords, candidates=collected)
 
@@ -267,14 +293,11 @@ class DiscoveryService:
         results = [
             {
                 "id": entry["fn_id"],
-                "fn_id": entry["fn_id"],  # Backward compatibility
+                "type": "function",
                 "name": entry.get("name", ""),
                 "summary": entry.get("description", ""),
-                "description": entry.get("description", ""),  # Backward compatibility
                 "tags": entry.get("tags", []),
-                "score": float(entry["score"]),
-                "match_count": int(entry["match_count"]),
-                "type": "function",
+                # T064: Add I/O summaries to results
                 "io": {
                     "inputs": [
                         {
@@ -292,14 +315,20 @@ class DiscoveryService:
                         for o in entry.get("outputs", [])
                     ],
                 },
+                "score": float(entry["score"]),
+                "match_count": int(entry["match_count"]),
+                # Backward compatibility
+                "fn_id": entry["fn_id"],
+                "description": entry.get("description", ""),
             }
             for entry in page
         ]
 
         return {
             "results": results,
-            "functions": results,  # Backward compatibility
             "next_cursor": next_cursor,
+            # Backward compatibility
+            "functions": results,
         }
 
     def describe_function(
@@ -312,7 +341,11 @@ class DiscoveryService:
             errors: dict[str, str] = {}
             for target_id in fn_ids:
                 try:
-                    schemas[target_id] = self.describe_function(fn_id=target_id)
+                    result = self.describe_function(fn_id=target_id)
+                    if "error" in result:
+                        errors[target_id] = result["error"]["message"]
+                    else:
+                        schemas[target_id] = result
                 except KeyError:
                     errors[target_id] = f"Function not found: {target_id}"
             return {"schemas": schemas, "errors": errors}

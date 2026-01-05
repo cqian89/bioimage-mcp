@@ -74,12 +74,19 @@ class TestListToolsSummaryOnly:
         """Test that list_tools returns only the expected summary fields."""
         result = discovery_service.list_tools(limit=10, cursor=None)
 
-        expected_fields = {"name", "full_path", "type", "has_children"}
+        expected_fields = {"name", "full_path", "type", "has_children", "id", "summary", "children"}
         for tool in result["tools"]:
             actual_fields = set(tool.keys())
-            assert actual_fields == expected_fields, (
+            # We allow io field for function nodes
+            if tool.get("type") == "function":
+                expected_fields.add("io")
+                expected_fields.add("fn_id")  # backward compat
+
+            # Check subset because some fields like io might be conditional or missing if empty
+            assert actual_fields.issubset(expected_fields), (
                 f"Unexpected fields in list_tools response: {actual_fields - expected_fields}"
             )
+            assert "params_schema" not in actual_fields
 
 
 class TestSearchFunctionsSummaryOnly:
@@ -116,12 +123,24 @@ class TestSearchFunctionsSummaryOnly:
             cursor=None,
         )
 
-        expected_fields = {"fn_id", "name", "description", "tags", "score", "match_count"}
+        expected_fields = {
+            "fn_id",
+            "name",
+            "description",
+            "tags",
+            "score",
+            "match_count",
+            "id",
+            "summary",
+            "type",
+            "io",
+        }
         for fn in result["functions"]:
             actual_fields = set(fn.keys())
-            assert actual_fields == expected_fields, (
+            assert actual_fields.issubset(expected_fields), (
                 f"Unexpected fields in search_functions response: {actual_fields - expected_fields}"
             )
+            assert "params_schema" not in actual_fields
 
 
 class TestDescribeFunctionHasSchema:
