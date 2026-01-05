@@ -179,3 +179,18 @@ def test_session_export_dest_path_allowlist(session_service, tmp_path):
 
     with pytest.raises(ValueError, match="Permission denied"):
         service.export_session(req)
+
+
+def test_session_export_dest_path_bypass(session_service, tmp_path):
+    """Test that path prefix bypass is correctly handled (Security Fix)."""
+    service, _, _ = session_service
+
+    # Create a path that starts with the same prefix as tmp_path but is not under it
+    # tmp_path is something like /tmp/pytest-of-user/pytest-N/test_name0
+    # We want /tmp/pytest-of-user/pytest-N/test_name0_bypass/file.json
+    bypass_path = tmp_path.parent / (tmp_path.name + "_bypass") / "file.json"
+
+    req = SessionExportRequest(session_id="sess-123", dest_path=str(bypass_path))
+
+    with pytest.raises(ValueError, match="Permission denied"):
+        service.export_session(req)

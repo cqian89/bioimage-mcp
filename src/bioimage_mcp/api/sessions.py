@@ -68,12 +68,16 @@ class SessionService:
 
         # Enforce allowed-roots for dest_path (T118, T117)
         if request.dest_path:
-            dest_path = Path(request.dest_path)
+            dest_path = Path(request.dest_path).resolve()
             allowed = False
             for root in self.config.fs_allowlist_write:
-                if str(dest_path.absolute()).startswith(str(Path(root).absolute())):
-                    allowed = True
-                    break
+                root_path = Path(root).resolve()
+                try:
+                    if dest_path.is_relative_to(root_path):
+                        allowed = True
+                        break
+                except ValueError:
+                    continue
             if not allowed:
                 raise ValueError(
                     f"Permission denied: {request.dest_path} is not in allowed write roots"
