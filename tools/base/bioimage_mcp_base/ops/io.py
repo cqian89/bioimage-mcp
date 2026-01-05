@@ -278,6 +278,7 @@ def load(*, inputs: dict[str, Any], params: dict[str, Any], work_dir: Path) -> d
         "ref_id": ref_id,
         "type": "BioImageRef",
         "uri": f"file://{resolved_path}",
+        "path": str(resolved_path),
         "format": _detect_format(resolved_path),
         "storage_type": "file",
         "mime_type": _get_mime_type(resolved_path),
