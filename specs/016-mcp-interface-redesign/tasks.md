@@ -206,8 +206,7 @@
 - [x] T086 [P] [US4] RED: Contract test for session_replay basic replay in tests/contract/test_session_replay.py
 - [x] T087 [P] [US4] RED: Contract test for session_replay with new input bindings in tests/contract/test_session_replay.py
 - [x] T088 [P] [US4] RED: Contract test for session_replay missing external input error in tests/contract/test_session_replay.py
-- [ ] T114 [P] [US4] RED: Contract test for session_replay VALIDATION_FAILED when a referenced function no longer exists in tests/contract/test_session_replay.py
-- [x] T089 [P] [US4] RED: Contract test for session_replay params_overrides in tests/contract/test_session_replay.py
+- [x] T114 [P] [US4] RED: Contract test for session_replay VALIDATION_FAILED when a referenced function no longer exists in tests/contract/test_session_replay.py
 - [x] T090 [P] [US4] RED: Contract test for session_replay step_overrides in tests/contract/test_session_replay.py
 
 ### Implementation for US4 (GREEN: Make tests pass)
@@ -243,21 +242,21 @@
 
 ### Documentation & Validation
 
-- [ ] T105 [P] Update existing MCP documentation to reflect 8-tool surface
-- [ ] T106 [P] Validate quickstart.md examples work with implemented tools
-- [ ] T107 Verify tool count is exactly 8 in server.py (SC-008)
-- [ ] T115 [P] Add migration section mapping 13-tool surface -> 8-tool surface in docs/reference/tools.md (tool name + request/response changes)
-- [ ] T116 [P] Apply semver bump rationale in pyproject.toml and add breaking-change note in docs/reference/tools.md
+- [x] T105 [P] Update existing MCP documentation to reflect 8-tool surface
+- [x] T106 [P] Validate quickstart.md examples work with implemented tools
+- [x] T107 Verify tool count is exactly 8 in server.py (SC-008)
+- [x] T115 [P] Add migration section mapping 13-tool surface -> 8-tool surface in docs/reference/tools.md (tool name + request/response changes)
+- [x] T116 [P] Apply semver bump rationale in pyproject.toml and add breaking-change note in docs/reference/tools.md
 
 ### Schema Validation
 
-- [ ] T108 [P] Validate all function descriptions have correct JSON Schema types (SC-003)
-- [ ] T109 [P] Validate artifact ports never appear inside params_schema (SC-004)
+- [x] T108 [P] Validate all function descriptions have correct JSON Schema types (SC-003)
+- [x] T109 [P] Validate artifact ports never appear inside params_schema (SC-004)
 
 ### Final Cleanup
 
-- [ ] T110 Remove any remaining deprecated tool references from codebase
-- [ ] T111 Run full test suite and verify all tests pass
+- [x] T110 Remove any remaining deprecated tool references from codebase
+- [x] T111 Run full test suite and verify all tests pass
 
 ---
 

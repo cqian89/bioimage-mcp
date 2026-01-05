@@ -102,7 +102,7 @@ Each tool provides a manifest (YAML) containing:
   - resource hints (GPU/CPU/memory)
   - **upstream/downstream** associations for planning and UI suggestions
 
-The core server indexes these manifests for fast `search_functions(...)`.
+The core server indexes these manifests for fast `search(...)`.
 - **Reference**: `MicroscopyLM/src/miclm/tools/registry.py` implements the layered registry (builtin/user/project).
 
 ### 5.1 Dynamic Function Registry (Auto-Discovery)

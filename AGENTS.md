@@ -81,7 +81,7 @@ These are non-negotiable project rules from `.specify/memory/constitution.md`:
 
 ### 1. Stable MCP Surface (Anti-Context-Bloat)
 - Discovery responses MUST be paginated and default to summaries
-- Full schemas fetched only via `describe_function(fn_id)`
+- Full schemas fetched only via `describe(id)`
 - Tool calls return IDs and artifact references, NOT large payloads
 
 ### 2. Isolated Tool Execution
@@ -97,7 +97,7 @@ These are non-negotiable project rules from `.specify/memory/constitution.md`:
 ### 4. Reproducibility & Provenance
 - Environments pinned via `conda-lock` lockfiles
 - Workflow runs record: steps, params, tool versions, lockfile hashes, timestamps
-- Support `replay_workflow` for recorded workflows
+- Support `session_replay` for recorded workflows
 
 ### 5. Safety & Observability
 - Subprocess boundaries for fault isolation (not security sandboxing)

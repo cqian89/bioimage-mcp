@@ -36,6 +36,7 @@ from bioimage_mcp.config.schema import Config
 INPUT_REF_ID = "artifact-123..." # Replace with your ID from Step 1
 
 with ExecutionService(Config.from_file()) as svc:
+    # 2. Run the tool (calls the internal workflow engine)
     result = svc.run_workflow({
         "steps": [{
             "fn_id": "cellpose.segment",
@@ -49,7 +50,7 @@ with ExecutionService(Config.from_file()) as svc:
         }]
     })
 
-    labels_ref = result.outputs['labels']
+    labels_ref = result['outputs']['labels']
     print(f"Segmentation complete. Labels Artifact ID: {labels_ref['ref_id']}")
 ```
 

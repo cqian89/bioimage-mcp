@@ -221,7 +221,11 @@ def load_manifest_file(path: Path) -> tuple[ToolManifest | None, ManifestDiagnos
 
                 # Filter out port names from parameters (T109)
                 port_names = {p.name for p in inputs} | {p.name for p in outputs}
-                filtered_params = {k: v for k, v in meta.parameters.items() if k not in port_names}
+                artifact_types = {"BioImageRef", "LabelImageRef", "TableRef", "ScalarRef", "LogRef", "NativeOutputRef", "PlotRef"}
+                filtered_params = {
+                    k: v for k, v in meta.parameters.items()
+                    if k not in port_names and v.type not in artifact_types
+                }
                 params_schema = _parameters_to_json_schema(filtered_params)
 
                 env_prefix = _env_prefix_from_tool_id(manifest.tool_id)

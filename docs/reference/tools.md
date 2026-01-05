@@ -165,3 +165,66 @@ Deep learning-based segmentation using the Cellpose framework.
     *   **Inputs**: `BioImageRef`
     *   **Outputs**: `LabelImageRef` (mask), `cellpose_bundle` (npy)
     *   **Params**: `model_type` (e.g., 'cyto3', 'nuclei'), `diameter`, `channels`, `flow_threshold`, `cellprob_threshold`.
+
+---
+
+## MCP Tool Interface (v0.2.0)
+
+BioImage-MCP exposes 8 MCP tools for LLM interaction:
+
+| Tool | Purpose |
+|------|---------|
+| `list` | Browse catalog with child counts |
+| `describe` | Get full function/node details |
+| `search` | Find functions by query/criteria |
+| `run` | Execute a function |
+| `status` | Poll run status |
+| `artifact_info` | Get artifact metadata + preview |
+| `session_export` | Export workflow for replay |
+| `session_replay` | Replay workflow on new data |
+
+---
+
+## Migration Guide (v0.1.x → v0.2.0)
+
+### Breaking Changes
+
+This release redesigns the MCP tool surface from 13 tools to 8 tools. This breaking change is justified by the **Early Development Policy (Pre-1.0)**, which permits breaking API changes to ensure the final surface is clean and consistent.
+
+### Tool Mapping
+
+| Old Tool | New Tool | Change |
+|----------|----------|--------|
+| `list_tools` | `list` | Renamed + added child counts |
+| `describe_function` | `describe` | Renamed + extended to all node types |
+| `describe_tool` | _(removed)_ | Removed (broken/redundant) |
+| `search_functions` | `search` | Renamed + added I/O summaries |
+| `run_function` | `run` | Renamed + consolidated |
+| `run_workflow` | _(removed)_ | Removed (use `run` + sessions) |
+| `get_run_status` | `status` | Renamed |
+| `get_artifact` | `artifact_info` | Renamed + added text preview |
+| `export_artifact` | _(removed)_ | Removed (use URI from artifact_info) |
+| `export_session` | `session_export` | Renamed + added external_inputs tracking |
+| _(new)_ | `session_replay` | Added workflow replay on new data |
+| `activate_functions` | _(removed)_ | Removed |
+| `deactivate_functions` | _(removed)_ | Removed |
+| `resume_session` | _(merged)_ | Merged into session handling |
+
+### Key Changes
+
+1. **Unified naming**: All tools use short, verb-based names
+2. **Child counts**: `list` now returns child counts for navigation decisions
+3. **Separated ports/params**: `describe` returns `inputs`, `outputs`, `params_schema` as separate fields
+4. **Single execution**: `run` replaces both `run_function` and `run_workflow`
+5. **Workflow replay**: New `session_replay` enables re-running workflows on different data
+6. **Structured errors**: All tools return JSON Pointer paths with actionable hints
+
+### Removed Tools
+
+The following tools have been removed and should be migrated:
+
+- `describe_tool` → Use `describe` with tool ID
+- `run_workflow` → Use `run` in a session, then `session_export` + `session_replay`
+- `export_artifact` → Use `artifact_info` to get URI, access file directly
+- `activate_functions` / `deactivate_functions` → Removed (unnecessary complexity)
+- `resume_session` → Use `session_replay` with workflow reference

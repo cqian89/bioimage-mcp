@@ -28,9 +28,12 @@ Assuming you have an MCP client connected (or using Python API):
 
 # 2. Run Phasor Transform
 result = await mcp.call_tool(
-    "base.phasorpy.phasor.phasor_from_signal",
-    inputs={"signal": flim_ref},
-    params={"harmonic": 1}
+    "run",
+    arguments={
+        "fn_id": "base.phasorpy.phasor.phasor_from_signal",
+        "inputs": {"signal": flim_ref},
+        "params": {"harmonic": 1}
+    }
 )
 
 int_ref = result.outputs["output"]     # Mean intensity
@@ -44,10 +47,13 @@ Phasor maps can be noisy. You can apply a filter to clean them up.
 
 ```python
 denoised_g = await mcp.call_tool(
-    "base.skimage.filters.gaussian",
-    inputs={"image": g_ref},
-    params={
-        "sigma": 1.0
+    "run",
+    arguments={
+        "fn_id": "base.skimage.filters.gaussian",
+        "inputs": {"image": g_ref},
+        "params": {
+            "sigma": 1.0
+        }
     }
 )
 ```
@@ -59,13 +65,22 @@ A common workflow is to use the intensity image derived from the FLIM data to pe
 ```python
 # 1. Get intensity image from Phasor tool
 phasor_res = await mcp.call_tool(
-    "base.phasorpy.phasor.phasor_from_signal", 
-    inputs={"signal": flim_ref}
+    "run",
+    arguments={
+        "fn_id": "base.phasorpy.phasor.phasor_from_signal", 
+        "inputs": {"signal": flim_ref}
+    }
 )
 intensity_ref = phasor_res.outputs["output"]
 
 # 2. Segment using Cellpose (requires cellpose env installed)
-seg_res = await mcp.call_tool("cellpose.segment", inputs={"image": intensity_ref})
+seg_res = await mcp.call_tool(
+    "run",
+    arguments={
+        "fn_id": "cellpose.segment",
+        "inputs": {"image": intensity_ref}
+    }
+)
 mask_ref = seg_res.outputs["labels"]
 ```
 
@@ -88,8 +103,11 @@ LIF files often contain multiple images or "scenes". When loading a LIF file, `b
 ```python
 # LIF files are loaded automatically via the bioio-lif plugin
 lif_ref = await mcp.call_tool(
-    "base.phasorpy.phasor.phasor_from_signal",
-    inputs={"signal": {"uri": "file:///path/to/data.lif", "type": "BioImageRef"}}
+    "run",
+    arguments={
+        "fn_id": "base.phasorpy.phasor.phasor_from_signal",
+        "inputs": {"signal": {"uri": "file:///path/to/data.lif", "type": "BioImageRef"}}
+    }
 )
 ```
 
@@ -99,8 +117,11 @@ SDT files are handled via the `bioio-bioformats` plugin.
 
 ```python
 sdt_ref = await mcp.call_tool(
-    "base.phasorpy.phasor.phasor_from_signal",
-    inputs={"signal": {"uri": "file:///path/to/data.sdt", "type": "BioImageRef"}}
+    "run",
+    arguments={
+        "fn_id": "base.phasorpy.phasor.phasor_from_signal",
+        "inputs": {"signal": {"uri": "file:///path/to/data.sdt", "type": "BioImageRef"}}
+    }
 )
 ```
 

@@ -45,6 +45,7 @@ config = Config.from_file()
 
 with ExecutionService(config) as svc:
     # 1. Define the workflow step
+    # This corresponds to calling the 'run' tool in the MCP interface
     step = {
         "fn_id": "base.gaussian",
         "inputs": {
@@ -58,6 +59,19 @@ with ExecutionService(config) as svc:
     # 2. Run the workflow
     result = svc.run_workflow({"steps": [step]})
     
-    print(f"Run ID: {result.run_id}")
-    print(f"Outputs: {result.outputs}")
+    print(f"Run ID: {result['run_id']}")
+    print(f"Outputs: {result['outputs']}")
 ```
+
+## MCP Tools
+
+The following tools are available via the MCP interface:
+
+*   **`list`**: Browse the tool catalog.
+*   **`describe`**: Get full details for a specific function.
+*   **`search`**: Search for functions by query or I/O types.
+*   **`run`**: Execute a function.
+*   **`status`**: Poll for the status of a run.
+*   **`artifact_info`**: Get metadata and previews for artifacts.
+*   **`session_export`**: Export a session as a reproducible workflow.
+*   **`session_replay`**: Replay an exported workflow on new data.

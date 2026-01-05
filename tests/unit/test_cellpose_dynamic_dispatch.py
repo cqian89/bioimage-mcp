@@ -95,12 +95,14 @@ def test_meta_describe_eval():
         "work_dir": "/tmp/work_meta",
         "ordinal": 1,
     }
-    # Mock _introspect_cellpose_eval to avoid heavy imports
+    # Mock _introspect_cellpose_eval and _get_cellpose_version to avoid heavy imports
     with (
         patch("bioimage_mcp_cellpose.entrypoint._introspect_cellpose_eval") as mock_intro,
+        patch("bioimage_mcp_cellpose.entrypoint._get_cellpose_version") as mock_version,
         patch("bioimage_mcp_cellpose.entrypoint._convert_memory_inputs_to_files") as mock_convert,
     ):
         mock_intro.return_value = {"type": "object", "properties": {}}
+        mock_version.return_value = "test-version"
         mock_convert.side_effect = lambda inputs, wd: inputs
 
         response = process_execute_request(request)
@@ -114,3 +116,4 @@ def test_meta_describe_eval():
             "type": "object",
             "properties": {},
         }
+        assert response["outputs"]["result"]["tool_version"] == "test-version"

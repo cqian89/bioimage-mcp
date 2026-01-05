@@ -513,11 +513,24 @@ class DiscoveryService:
         # Contract T036: params_schema contains NO artifact port keys
         if params_schema and "properties" in params_schema:
             properties = params_schema["properties"]
-            filtered_properties = {k: v for k, v in properties.items() if k not in input_names}
+            port_names = input_names | set(outputs.keys())
+            # Artifact types to exclude from params_schema
+            artifact_types = {"BioImageRef", "LabelImageRef", "TableRef", "ScalarRef", "LogRef", "NativeOutputRef", "PlotRef"}
+            
+            filtered_properties = {}
+            for k, v in properties.items():
+                # Filter by name
+                if k in port_names:
+                    continue
+                # Filter by type (T109)
+                if isinstance(v, dict) and v.get("type") in artifact_types:
+                    continue
+                filtered_properties[k] = v
+                
             params_schema["properties"] = filtered_properties
             if "required" in params_schema:
                 params_schema["required"] = [
-                    r for r in params_schema["required"] if r not in input_names
+                    r for r in params_schema["required"] if r not in port_names and (not isinstance(properties.get(r), dict) or properties.get(r).get("type") not in artifact_types)
                 ]
 
         return {
