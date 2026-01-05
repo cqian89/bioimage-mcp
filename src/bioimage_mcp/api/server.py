@@ -85,43 +85,31 @@ def create_server(
         flatten: bool | None = None,
         cursor: str | None = None,
         limit: int | None = None,
+        types: list[str] | None = None,
+        include_counts: bool = True,
     ) -> dict[str, Any]:
+        """List catalog nodes (environments, packages, modules, functions)."""
         return discovery.list_tools(
             path=path,
             paths=paths,
             flatten=flatten,
             limit=limit,
             cursor=cursor,
-        )
-
-    @mcp.tool()
-    def search_functions(
-        keywords: list[str] | str | None = None,
-        query: str | None = None,
-        tags: list[str] | None = None,
-        io_in: str | None = None,
-        io_out: str | None = None,
-        cursor: str | None = None,
-        limit: int | None = None,
-    ) -> dict[str, Any]:
-        return discovery.search_functions(
-            keywords=keywords,
-            query=query,
-            tags=tags,
-            io_in=io_in,
-            io_out=io_out,
-            cursor=cursor,
-            limit=limit,
+            types=types,
+            include_counts=include_counts,
         )
 
     @mcp.tool()
     def describe_function(
-        fn_id: str | None = None, fn_ids: list[str] | None = None
+        id: str | None = None, fn_id: str | None = None, fn_ids: list[str] | None = None
     ) -> dict[str, Any]:
-        return discovery.describe_function(fn_id=fn_id, fn_ids=fn_ids)
+        """Get full details for a function or catalog node."""
+        target_id = id or fn_id
+        return discovery.describe_function(fn_id=target_id, fn_ids=fn_ids)
 
     @mcp.tool()
     def get_run_status(run_id: str) -> dict[str, Any]:
+        """Poll the status of a background run."""
         return execution.get_run_status(run_id)
 
     @mcp.tool()
@@ -129,7 +117,6 @@ def create_server(
         fn_id: str,
         inputs: dict[str, Any],
         params: dict[str, Any] | None = None,
-        metadata: dict[str, Any] | None = None,
         session_id: str | None = None,
         ordinal: int | None = None,
         dry_run: bool = False,
@@ -159,7 +146,20 @@ def create_server(
             dry_run=dry_run,
         )
 
-        return {"result": result}
+        # Map InteractiveExecutionService results to RunResponse schema
+        response = {
+            "session_id": result.get("session_id"),
+            "run_id": result.get("run_id", "none"),
+            "status": result.get("status"),
+            "id": fn_id,
+            "outputs": result.get("outputs", {}),
+            "warnings": result.get("warnings", []),
+            "log_ref": result.get("log_ref"),
+        }
+        if result.get("error"):
+            response["error"] = result["error"]
+
+        return response
 
     @mcp.tool()
     def get_artifact(ref_id: str) -> dict[str, Any]:

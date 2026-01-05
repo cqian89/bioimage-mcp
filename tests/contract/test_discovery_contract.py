@@ -35,7 +35,7 @@ def test_discovery_list_tools_contract_shape() -> None:
 
     page = service.list_tools(limit=20, cursor=None)
 
-    assert set(page.keys()) == {"tools", "next_cursor", "expanded_from"}
+    assert set(page.keys()) == {"items", "tools", "next_cursor", "expanded_from"}
     assert isinstance(page["tools"], list)
     assert page["tools"][0]["name"] == "base"
     assert page["tools"][0]["full_path"] == "base"
@@ -72,7 +72,7 @@ def test_discovery_search_functions_contract_shape() -> None:
 
     page = service.search_functions(keywords="blur", limit=20, cursor=None)
 
-    assert set(page.keys()) == {"functions", "next_cursor"}
+    assert set(page.keys()) == {"results", "functions", "next_cursor"}
     assert isinstance(page["functions"], list)
     assert page["functions"][0]["fn_id"] == "base.bioimage_mcp_base.preprocess.gaussian"
     assert "tags" in page["functions"][0]
@@ -108,7 +108,18 @@ def test_discovery_describe_function_returns_schema() -> None:
     )
 
     described = service.describe_function("base.bioimage_mcp_base.preprocess.gaussian")
-    allowed_keys = {"fn_id", "schema", "inputs", "outputs", "hints", "introspection_source"}
+    allowed_keys = {
+        "fn_id",
+        "id",
+        "type",
+        "summary",
+        "schema",
+        "params_schema",
+        "inputs",
+        "outputs",
+        "hints",
+        "introspection_source",
+    }
     assert {"fn_id", "schema"}.issubset(described.keys())
     assert set(described.keys()).issubset(allowed_keys)
     assert described["fn_id"] == "base.bioimage_mcp_base.preprocess.gaussian"

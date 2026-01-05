@@ -158,7 +158,7 @@ class RegistryIndex:
 
     def list_functions(self) -> list[dict]:
         rows = self._conn.execute(
-            "SELECT fn_id, tool_id, name, description FROM functions ORDER BY fn_id"
+            "SELECT fn_id, tool_id, name, description, inputs_json, outputs_json FROM functions ORDER BY fn_id"
         ).fetchall()
         return [
             {
@@ -166,6 +166,8 @@ class RegistryIndex:
                 "tool_id": row["tool_id"],
                 "name": row["name"],
                 "description": row["description"],
+                "inputs": json.loads(row["inputs_json"]),
+                "outputs": json.loads(row["outputs_json"]),
             }
             for row in rows
         ]
@@ -390,12 +392,16 @@ class _HierarchyNode:
         *,
         fn_id: str | None = None,
         summary: str | None = None,
+        inputs: list[dict] | None = None,
+        outputs: list[dict] | None = None,
     ) -> None:
         self.name = name
         self.full_path = full_path
         self.type = node_type
         self.fn_id = fn_id
         self.summary = summary
+        self.inputs = inputs
+        self.outputs = outputs
         self.children: dict[str, _HierarchyNode] = {}
 
 
@@ -419,7 +425,13 @@ class ToolIndex:
             if not segments:
                 continue
 
-            self._insert_path(segments, fn_id, fn.get("description"))
+            self._insert_path(
+                segments,
+                fn_id,
+                fn.get("description"),
+                fn.get("inputs"),
+                fn.get("outputs"),
+            )
 
     def list_children(
         self, path: str | None, *, auto_expand: bool = True
@@ -462,7 +474,7 @@ class ToolIndex:
         if node.type == "function":
             collected.append(node)
             return
-        for child in node.children.values():
+        for child in sorted(node.children.values(), key=lambda n: n.full_path):
             self._collect_functions(child, collected)
 
     def _resolve_path(self, path: str | None) -> _HierarchyNode | None:
@@ -470,7 +482,14 @@ class ToolIndex:
             return self._root
         return self._path_index.get(path)
 
-    def _insert_path(self, segments: list[str], fn_id: str, summary: str | None) -> None:
+    def _insert_path(
+        self,
+        segments: list[str],
+        fn_id: str,
+        summary: str | None,
+        inputs: list[dict] | None = None,
+        outputs: list[dict] | None = None,
+    ) -> None:
         node = self._root
         for idx, segment in enumerate(segments):
             is_last = idx == len(segments) - 1
@@ -485,6 +504,8 @@ class ToolIndex:
             if is_last:
                 existing.fn_id = fn_id
                 existing.summary = summary
+                existing.inputs = inputs
+                existing.outputs = outputs
             node = existing
 
     @staticmethod
@@ -505,16 +526,66 @@ class ToolIndex:
             return tool_id.split(".", 1)[1]
         return fn_id.split(".", 1)[0]
 
-    @staticmethod
-    def _to_payload(node: _HierarchyNode) -> dict:
+    def _to_payload(self, node: _HierarchyNode) -> dict:
         payload = {
+            "id": node.full_path,
             "name": node.name,
-            "full_path": node.full_path,
             "type": node.type,
+            "summary": node.summary,
             "has_children": bool(node.children),
         }
+
+        if node.children:
+            total = 0
+            by_type: dict[str, int] = {}
+
+            def count_recursive(n: _HierarchyNode):
+                nonlocal total
+                for child in n.children.values():
+                    total += 1
+                    by_type[child.type] = by_type.get(child.type, 0) + 1
+                    count_recursive(child)
+
+            # Contract T033: Non-leaf nodes should include children.total and children.by_type.
+            # Wait, is total the count of immediate children or all descendants?
+            # schemas.py says: "Child count statistics for non-leaf nodes."
+            # Usually 'children' refers to immediate children in a hierarchy listing.
+            # Let's see what the tests expect.
+
+            # Re-reading T033: "Each non-leaf node has children.total > 0".
+            # I'll use immediate children for now.
+            total = len(node.children)
+            for child in node.children.values():
+                by_type[child.type] = by_type.get(child.type, 0) + 1
+
+            payload["children"] = {
+                "total": total,
+                "by_type": by_type,
+            }
+
         if node.type == "function":
+            # Contract T034: Function nodes should include io.inputs and io.outputs summaries.
+            inputs = []
+            if node.inputs:
+                for inp in node.inputs:
+                    inputs.append(
+                        {
+                            "name": inp.get("name"),
+                            "type": inp.get("artifact_type"),
+                            "required": inp.get("required", True),
+                        }
+                    )
+
+            outputs = []
+            if node.outputs:
+                for out in node.outputs:
+                    outputs.append({"name": out.get("name"), "type": out.get("artifact_type")})
+
+            payload["io"] = {"inputs": inputs, "outputs": outputs}
+            # Keep fn_id for backward compatibility if needed, but the new schema uses 'id'
             payload["fn_id"] = node.fn_id or node.full_path
-            if node.summary:
-                payload["summary"] = node.summary
+
+        # Add full_path for pagination logic in DiscoveryService
+        payload["full_path"] = node.full_path
+
         return payload

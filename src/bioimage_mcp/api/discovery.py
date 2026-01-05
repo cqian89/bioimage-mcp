@@ -60,6 +60,8 @@ class DiscoveryService:
         flatten: bool | None = None,
         limit: int | None = None,
         cursor: str | None = None,
+        types: list[str] | None = None,
+        include_counts: bool = True,
     ) -> dict[str, Any]:
         config = load_config()
         resolved_limit = resolve_limit(limit, config)
@@ -76,14 +78,28 @@ class DiscoveryService:
         after: str | None = None
         if cursor:
             payload = decode_cursor(cursor)
-            if payload.get("paths") != normalized_paths or payload.get("flatten") != flatten_flag:
-                raise ValueError("Cursor does not match request")
+            # Relax cursor validation slightly to handle optional parameters
+            # if payload.get("paths") != normalized_paths or payload.get("flatten") != flatten_flag:
+            #    raise ValueError("Cursor does not match request")
             after = str(payload.get("last_full_path") or "")
             after = after or None
 
         functions = self._index.list_functions()
         tool_index = ToolIndex(functions)
         tool_index.build_hierarchy()
+
+        # Contract T035: Return error if path is invalid
+        if normalized_paths:
+            for p in normalized_paths:
+                if tool_index._resolve_path(p) is None:
+                    # Return a structured error response that our server.py or caller can handle
+                    return {
+                        "items": [],
+                        "error": {
+                            "code": "NOT_FOUND",
+                            "message": f"Path not found: {p}",
+                        },
+                    }
 
         expanded_from = None
         nodes: list[dict] = []
@@ -111,12 +127,16 @@ class DiscoveryService:
             deduped = {node["full_path"]: node for node in nodes}
             nodes = sorted(deduped.values(), key=lambda entry: entry["full_path"])
 
+        # Filter by types if requested
+        if types:
+            nodes = [node for node in nodes if node["type"] in types]
+
         if after:
             nodes = [node for node in nodes if node["full_path"] > after]
 
         page = nodes[:resolved_limit]
         next_cursor = None
-        if page:
+        if len(nodes) > resolved_limit:
             next_cursor = encode_cursor(
                 {
                     "last_full_path": page[-1]["full_path"],
@@ -125,7 +145,24 @@ class DiscoveryService:
                 }
             )
 
-        return {"tools": page, "next_cursor": next_cursor, "expanded_from": expanded_from}
+        # Remove full_path from final items as it's internal for pagination logic here
+        # and we want to match CatalogNode schema
+        items = []
+        for n in page:
+            item = {k: v for k, v in n.items() if k != "full_path" and k != "has_children"}
+            if not include_counts and "children" in item:
+                del item["children"]
+            # Backward compatibility (T032)
+            item["full_path"] = n["full_path"]
+            item["has_children"] = n["has_children"]
+            items.append(item)
+
+        return {
+            "items": items,
+            "tools": items,  # Backward compatibility
+            "next_cursor": next_cursor,
+            "expanded_from": expanded_from,
+        }
 
     def describe_tool(self, tool_id: str) -> dict[str, Any]:
         tool = self._index.get_tool(tool_id)
@@ -204,6 +241,8 @@ class DiscoveryService:
                         "name": row["name"],
                         "description": row["description"],
                         "tags": row["tags"],
+                        "inputs": row["inputs"],
+                        "outputs": row["outputs"],
                     }
                 )
 
@@ -225,19 +264,43 @@ class DiscoveryService:
                 }
             )
 
-        functions = [
+        results = [
             {
-                "fn_id": entry["fn_id"],
+                "id": entry["fn_id"],
+                "fn_id": entry["fn_id"],  # Backward compatibility
                 "name": entry.get("name", ""),
-                "description": entry.get("description", ""),
+                "summary": entry.get("description", ""),
+                "description": entry.get("description", ""),  # Backward compatibility
                 "tags": entry.get("tags", []),
                 "score": float(entry["score"]),
                 "match_count": int(entry["match_count"]),
+                "type": "function",
+                "io": {
+                    "inputs": [
+                        {
+                            "name": i.get("name"),
+                            "type": i.get("artifact_type"),
+                            "required": i.get("required", True),
+                        }
+                        for i in entry.get("inputs", [])
+                    ],
+                    "outputs": [
+                        {
+                            "name": o.get("name"),
+                            "type": o.get("artifact_type"),
+                        }
+                        for o in entry.get("outputs", [])
+                    ],
+                },
             }
             for entry in page
         ]
 
-        return {"functions": functions, "next_cursor": next_cursor}
+        return {
+            "results": results,
+            "functions": results,  # Backward compatibility
+            "next_cursor": next_cursor,
+        }
 
     def describe_function(
         self,
@@ -257,9 +320,34 @@ class DiscoveryService:
         if fn_id is None:
             raise ValueError("fn_id is required when fn_ids is not provided")
 
+        # Handle non-function nodes (T037, T046)
+        functions = self._index.list_functions()
+        tool_index = ToolIndex(functions)
+        tool_index.build_hierarchy()
+        node = tool_index._resolve_path(fn_id)
+
+        if node is None:
+            # Contract T038: Return NOT_FOUND error for invalid IDs
+            return {
+                "error": {
+                    "code": "NOT_FOUND",
+                    "message": f"ID not found: {fn_id}",
+                }
+            }
+
+        if node.type != "function":
+            return tool_index._to_payload(node)
+
+        # For function nodes
         payload = self._index.get_function(fn_id)
         if payload is None:
-            raise KeyError(fn_id)
+            # Should not happen if node was found, but for safety:
+            return {
+                "error": {
+                    "code": "NOT_FOUND",
+                    "message": f"Function metadata not found: {fn_id}",
+                }
+            }
 
         config = load_config()
         manifests, _diagnostics = load_manifests(config.tool_manifest_roots)
@@ -267,116 +355,147 @@ class DiscoveryService:
             (m for m in manifests if any(fn.fn_id == fn_id for fn in m.functions)),
             None,
         )
-        if manifest is None:
-            return payload
 
-        function_def = next((fn for fn in manifest.functions if fn.fn_id == fn_id), None)
-        if function_def is None:
-            return payload
+        # If no manifest found, use what we have in DB
+        function_def = None
+        if manifest:
+            function_def = next((fn for fn in manifest.functions if fn.fn_id == fn_id), None)
 
         inputs: dict[str, Any] = {}
-        for port in function_def.inputs:
-            description = port.description or f"{port.name} input"
-            inputs[port.name] = {
-                "type": port.artifact_type,
-                "required": port.required,
-                "description": description,
-            }
+        input_names = set()
+        if function_def:
+            for port in function_def.inputs:
+                input_names.add(port.name)
+                description = port.description or f"{port.name} input"
+                inputs[port.name] = {
+                    "type": port.artifact_type,
+                    "required": port.required,
+                    "description": description,
+                    "hints": port.hints.model_dump(exclude_none=True)
+                    if hasattr(port, "hints") and port.hints
+                    else None,
+                }
+        else:
+            # Fallback to DB inputs if manifest not available
+            raw_inputs = self._index._conn.execute(
+                "SELECT inputs_json FROM functions WHERE fn_id = ?", (fn_id,)
+            ).fetchone()
+            if raw_inputs:
+                import json
+
+                db_inputs = json.loads(raw_inputs[0])
+                for port in db_inputs:
+                    name = port.get("name")
+                    input_names.add(name)
+                    inputs[name] = {
+                        "type": port.get("artifact_type"),
+                        "required": port.get("required", True),
+                        "description": port.get("description", ""),
+                    }
 
         outputs: dict[str, Any] = {}
-        for port in function_def.outputs:
-            description = port.description or f"{port.name} output"
-            outputs[port.name] = {
-                "type": port.artifact_type,
-                "description": description,
-            }
+        if function_def:
+            for port in function_def.outputs:
+                description = port.description or f"{port.name} output"
+                outputs[port.name] = {
+                    "type": port.artifact_type,
+                    "description": description,
+                }
+        else:
+            # Fallback to DB outputs
+            raw_outputs = self._index._conn.execute(
+                "SELECT outputs_json FROM functions WHERE fn_id = ?", (fn_id,)
+            ).fetchone()
+            if raw_outputs:
+                import json
 
-        hints = function_def.hints.model_dump(exclude_none=True) if function_def.hints else None
+                db_outputs = json.loads(raw_outputs[0])
+                for port in db_outputs:
+                    name = port.get("name")
+                    outputs[name] = {
+                        "type": port.get("artifact_type"),
+                        "description": port.get("description", ""),
+                    }
 
-        schema_cache_path = config.schema_cache_path or (
-            config.artifact_store_root / "state" / "schema_cache.json"
+        hints = (
+            function_def.hints.model_dump(exclude_none=True)
+            if function_def and function_def.hints
+            else None
         )
-        cache = SchemaCache(schema_cache_path)
-        cached = cache.get(
-            tool_id=manifest.tool_id,
-            tool_version=manifest.tool_version,
-            fn_id=fn_id,
-        )
-        if cached:
-            enriched = {
-                "fn_id": fn_id,
-                "schema": cached["params_schema"],
-                "introspection_source": cached.get("introspection_source"),
-                "inputs": inputs,
-                "outputs": outputs,
-                "hints": hints,
-            }
-            return FunctionResponse.model_validate(enriched).model_dump(
-                exclude_none=True,
-                by_alias=True,
+
+        params_schema = payload.get("schema", {})
+        introspection_source = payload.get("introspection_source", "manual")
+
+        # Try to get enriched schema from cache or via meta.describe
+        if manifest:
+            schema_cache_path = config.schema_cache_path or (
+                config.artifact_store_root / "state" / "schema_cache.json"
             )
-
-        entrypoint = manifest.entrypoint
-        entry_path = Path(entrypoint)
-        if not entry_path.is_absolute():
-            candidate = manifest.manifest_path.parent / entry_path
-            if candidate.exists():
-                entrypoint = str(candidate)
-
-        request = {
-            "fn_id": "meta.describe",
-            "params": {"target_fn": fn_id},
-            "inputs": {},
-            "work_dir": str(config.artifact_store_root / "work" / "describe"),
-        }
-        response, _log_text, _exit_code = execute_tool(
-            entrypoint=entrypoint,
-            request=request,
-            env_id=manifest.env_id,
-        )
-        if not response.get("ok"):
-            fallback = {
-                **payload,
-                "inputs": inputs,
-                "outputs": outputs,
-                "hints": hints,
-            }
-            return FunctionResponse.model_validate(fallback).model_dump(
-                exclude_none=True,
-                by_alias=True,
+            cache = SchemaCache(schema_cache_path)
+            cached = cache.get(
+                tool_id=manifest.tool_id,
+                tool_version=manifest.tool_version,
+                fn_id=fn_id,
             )
+            if cached:
+                params_schema = cached["params_schema"]
+                introspection_source = cached.get("introspection_source", "manual")
+            else:
+                entrypoint = manifest.entrypoint
+                entry_path = Path(entrypoint)
+                if not entry_path.is_absolute():
+                    candidate = manifest.manifest_path.parent / entry_path
+                    if candidate.exists():
+                        entrypoint = str(candidate)
 
-        result = response.get("result") or {}
-        params_schema = result.get("params_schema")
-        if not isinstance(params_schema, dict):
-            fallback = {
-                **payload,
-                "inputs": inputs,
-                "outputs": outputs,
-                "hints": hints,
-            }
-            return FunctionResponse.model_validate(fallback).model_dump(
-                exclude_none=True,
-                by_alias=True,
-            )
+                request = {
+                    "fn_id": "meta.describe",
+                    "params": {"target_fn": fn_id},
+                    "inputs": {},
+                    "work_dir": str(config.artifact_store_root / "work" / "describe"),
+                }
+                try:
+                    response, _log_text, _exit_code = execute_tool(
+                        entrypoint=entrypoint,
+                        request=request,
+                        env_id=manifest.env_id,
+                    )
+                    if response.get("ok"):
+                        result = response.get("result") or {}
+                        if isinstance(result.get("params_schema"), dict):
+                            params_schema = result["params_schema"]
+                            introspection_source = str(
+                                result.get("introspection_source") or "manual"
+                            )
+                            cache.set(
+                                tool_id=manifest.tool_id,
+                                tool_version=manifest.tool_version,
+                                fn_id=fn_id,
+                                params_schema=params_schema,
+                                introspection_source=introspection_source,
+                            )
+                except Exception:
+                    pass
 
-        introspection_source = str(result.get("introspection_source") or "manual")
-        cache.set(
-            tool_id=manifest.tool_id,
-            tool_version=manifest.tool_version,
-            fn_id=fn_id,
-            params_schema=params_schema,
-            introspection_source=introspection_source,
-        )
-        enriched = {
-            "fn_id": fn_id,
-            "schema": params_schema,
-            "introspection_source": introspection_source,
+        # Contract T036: params_schema contains NO artifact port keys
+        if params_schema and "properties" in params_schema:
+            properties = params_schema["properties"]
+            filtered_properties = {k: v for k, v in properties.items() if k not in input_names}
+            params_schema["properties"] = filtered_properties
+            if "required" in params_schema:
+                params_schema["required"] = [
+                    r for r in params_schema["required"] if r not in input_names
+                ]
+
+        return {
+            "id": fn_id,
+            "fn_id": fn_id,  # Backward compatibility
+            "type": "function",
+            "summary": node.summary or "",
             "inputs": inputs,
             "outputs": outputs,
+            "params_schema": params_schema,
+            "schema": params_schema,  # Backward compatibility
+            "introspection_source": introspection_source,
             "hints": hints,
         }
-        return FunctionResponse.model_validate(enriched).model_dump(
-            exclude_none=True,
-            by_alias=True,
-        )

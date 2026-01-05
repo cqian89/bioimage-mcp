@@ -108,7 +108,18 @@ class InteractiveExecutionService:
         # Run workflow
         # ExecutionService.run_workflow returns dict with run_id, status, etc.
         # It handles DB entries for RunStore and ArtifactStore.
-        result = self.execution.run_workflow(spec)
+        result = self.execution.run_workflow(spec, session_id=session_id)
+
+        if result["status"] == "validation_failed":
+            return {
+                "session_id": session_id,
+                "step_id": step_id,
+                "status": "failed",
+                "id": fn_id,
+                "error": result["error"],
+                "outputs": {},
+            }
+
         hints = result.get("hints")
 
         # Record end time

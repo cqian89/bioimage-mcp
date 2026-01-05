@@ -7,6 +7,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from bioimage_mcp.api.schemas import ErrorDetail, StructuredError
 from bioimage_mcp.artifacts.memory import MemoryArtifactStore, build_mem_uri
 from bioimage_mcp.artifacts.metadata import extract_image_metadata
 from bioimage_mcp.artifacts.models import ArtifactRef
@@ -357,11 +358,10 @@ class ExecutionService:
         self.close()
         return False
 
-    def validate_workflow(self, spec: dict) -> list[dict]:
+    def validate_workflow(self, spec: dict) -> list[ErrorDetail]:
         """Validate workflow step I/O type compatibility before execution.
 
         Returns a list of validation errors (empty if workflow is valid).
-        Raises WorkflowValidationError if validation fails.
         """
         # Apply redirects (SC-001)
         spec, _warnings = _apply_legacy_redirects(spec)
@@ -380,13 +380,12 @@ class ExecutionService:
         errors = validate_workflow_compatibility(spec, function_ports)
 
         return [
-            {
-                "step_index": err.step_index,
-                "port_name": err.port_name,
-                "expected_type": err.expected_type,
-                "actual_type": err.actual_type,
-                "message": err.message,
-            }
+            ErrorDetail(
+                path=f"/steps/{err.step_index}/inputs/{err.port_name}",
+                expected=err.expected_type,
+                actual=err.actual_type,
+                hint=err.message,
+            )
             for err in errors
         ]
 
@@ -420,31 +419,63 @@ class ExecutionService:
                 return manifest.env_id
         return "default"
 
-    def run_workflow(self, spec: dict, *, skip_validation: bool = False) -> dict:
+    def run_workflow(
+        self, spec: dict, *, skip_validation: bool = False, session_id: str = "default-session"
+    ) -> dict:
         # Apply redirects (SC-001)
         spec, core_warnings = _apply_legacy_redirects(spec)
 
         steps = spec.get("steps") or []
-        if len(steps) != 1:
-            raise ValueError("v0.0 supports exactly 1 step")
+        if not steps:
+            return {
+                "session_id": session_id,
+                "run_id": "none",
+                "status": "validation_failed",
+                "id": "none",
+                "error": {
+                    "code": "VALIDATION_FAILED",
+                    "message": "Workflow must have at least one step",
+                },
+            }
 
-        # Validate workflow compatibility before execution (FR-006)
-        if not skip_validation:
-            validation_errors = self.validate_workflow(spec)
-            if validation_errors:
-                raise WorkflowValidationError(
-                    f"Workflow validation failed: {len(validation_errors)} error(s)",
-                    validation_errors,
-                )
+        if len(steps) != 1:
+            # For now, still supporting exactly 1 step as per existing logic,
+            # but returning structured error instead of raising.
+            return {
+                "session_id": session_id,
+                "run_id": "none",
+                "status": "validation_failed",
+                "id": steps[0].get("fn_id", "unknown"),
+                "error": {
+                    "code": "VALIDATION_FAILED",
+                    "message": "v0.0 supports exactly 1 step",
+                },
+            }
 
         step = steps[0]
         fn_id = step["fn_id"]
         params = step.get("params") or {}
         inputs = step.get("inputs") or {}
 
+        # Validate workflow compatibility before execution (FR-006)
+        if not skip_validation:
+            validation_errors = self.validate_workflow(spec)
+            if validation_errors:
+                return {
+                    "session_id": session_id,
+                    "run_id": "none",
+                    "status": "validation_failed",
+                    "id": fn_id,
+                    "error": {
+                        "code": "VALIDATION_FAILED",
+                        "message": f"Workflow validation failed: {len(validation_errors)} error(s)",
+                        "details": [err.model_dump() for err in validation_errors],
+                    },
+                }
+
         run_opts = spec.get("run_opts") or {}
         output_mode = run_opts.get("output_mode", "file")
-        session_id = run_opts.get("session_id", "default-session")
+        session_id = run_opts.get("session_id", session_id)
         timeout_seconds = run_opts.get("timeout_seconds")
 
         input_metadata: dict[str, dict] = {}
@@ -662,12 +693,14 @@ class ExecutionService:
                 session_id=session_id,
             )
         except KeyError as exc:
-            error_payload = {"message": f"Function not found: {exc}"}
+            error_payload = {"message": f"Function not found: {exc}", "code": "NOT_FOUND"}
             self._run_store.set_status(run.run_id, "failed", error=error_payload)
             return {
+                "session_id": session_id,
                 "run_id": run.run_id,
                 "status": "failed",
-                "log_ref_id": log_ref.ref_id,
+                "id": fn_id,
+                "log_ref": log_ref.model_dump(),
                 "error": error_payload,
             }
 
@@ -692,6 +725,10 @@ class ExecutionService:
                 if exit_code is not None:
                     error_payload.setdefault("exit_code", exit_code)
 
+            # Map error to StructuredError if possible
+            if "code" not in error_payload:
+                error_payload["code"] = "EXECUTION_FAILED"
+
             self._run_store.set_status(run.run_id, "failed", error=error_payload)
             hints = self._get_function_hints(fn_id)
             error_hints = hints.get("error_hints") if hints else {}
@@ -705,11 +742,14 @@ class ExecutionService:
                     "related_metadata": input_metadata,
                 }
             return {
+                "session_id": session_id,
                 "run_id": run.run_id,
                 "status": "failed",
-                "log_ref_id": log_ref.ref_id,
-                "input_metadata": input_metadata,
+                "id": fn_id,
+                "log_ref": log_ref.model_dump(),
+                "error": error_payload,
                 "hints": error_response_hints,
+                "warnings": all_warnings,
             }
 
         outputs_payload: dict = {}
@@ -847,24 +887,52 @@ class ExecutionService:
         self._run_store.set_status(run.run_id, "succeeded", outputs=outputs_payload)
         hints = self._get_function_hints(fn_id)
         success_hints = hints.get("success_hints") if hints else None
+
         return {
+            "session_id": session_id,
             "run_id": run.run_id,
-            "status": "succeeded",
-            "workflow_record_ref_id": workflow_record_ref.ref_id,
+            "status": "success",
+            "id": fn_id,
+            "outputs": outputs_payload,
+            "log_ref": log_ref.model_dump(),
             "hints": success_hints,
+            "warnings": all_warnings,
         }
 
     def get_run_status(self, run_id: str) -> dict:
-        run = self._run_store.get(run_id)
-        log_ref = self._artifact_store.get(run.log_ref_id)
+        try:
+            run = self._run_store.get(run_id)
+        except KeyError:
+            return {
+                "error": {
+                    "code": "NOT_FOUND",
+                    "message": f"Run not found: {run_id}",
+                }
+            }
+
+        log_ref = self._artifact_store.get(run.log_ref_id) if run.log_ref_id else None
+        # Map DB status to API status
+        api_status = "running"
+        if run.status == "succeeded":
+            api_status = "success"
+        elif run.status == "failed":
+            api_status = "failed"
+
         payload = {
             "run_id": run.run_id,
-            "status": run.status,
+            "status": api_status,
             "outputs": run.outputs or {},
-            "log_ref": log_ref.model_dump(),
+            "log_ref": log_ref.model_dump() if log_ref else None,
         }
         if run.error:
             payload["error"] = run.error
+
+        # Add progress if available (mocked for now as we don't have real progress yet)
+        if api_status == "running":
+            payload["progress"] = {"completed": 0, "total": 100}
+        elif api_status == "success":
+            payload["progress"] = {"completed": 100, "total": 100}
+
         return payload
 
     def replay_workflow(
