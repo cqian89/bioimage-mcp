@@ -10,8 +10,10 @@ from pathlib import Path
 from typing import Any, Literal, cast
 
 from bioimage_mcp.api.execution import ExecutionService
+from bioimage_mcp.api.discovery import DiscoveryService
 from bioimage_mcp.api.schemas import (
     ArtifactRef,
+    ErrorDetail,
     ExternalInput,
     InputSource,
     SessionExportRequest,
@@ -37,11 +39,28 @@ class SessionService:
         session_manager: SessionManager,
         artifact_store: ArtifactStore,
         execution_service: ExecutionService | None = None,
+        discovery_service: DiscoveryService | None = None,
     ) -> None:
         self.config = config
         self.session_manager = session_manager
         self.artifact_store = artifact_store
         self.execution_service = execution_service
+        self.discovery_service = discovery_service
+
+    def _function_exists(self, fn_id: str) -> bool:
+        """Check if a function exists in the registry."""
+        if not self.discovery_service:
+            # Fallback to execution service if discovery not available
+            if self.execution_service:
+                from bioimage_mcp.api.execution import _get_function_metadata
+
+                manifest, fn_def = _get_function_metadata(self.config, fn_id)
+                return manifest is not None
+            return True  # Cannot verify, assume exists
+
+        # Use discovery service to check registry
+        result = self.discovery_service.describe_function(fn_id=fn_id)
+        return "error" not in result
 
     def export_session(self, request: SessionExportRequest) -> SessionExportResponse:
         """Export session to a reproducible workflow record (T093)."""
@@ -192,6 +211,33 @@ class SessionService:
             raise ValueError(f"Failed to load workflow record: {e}")
 
         record = WorkflowRecord(**record_data)
+
+        # Pre-validate all functions exist (T114)
+        missing_functions = []
+        for idx, step in enumerate(record.steps):
+            if not self._function_exists(step.id):
+                missing_functions.append((idx, step.id))
+
+        if missing_functions:
+            return SessionReplayResponse(
+                run_id="none",
+                session_id="none",
+                status="validation_failed",
+                workflow_ref=request.workflow_ref,
+                error=StructuredError(
+                    code="VALIDATION_FAILED",
+                    message=f"Referenced function(s) not found: {', '.join(fn_id for _, fn_id in missing_functions)}",
+                    details=[
+                        ErrorDetail(
+                            path=f"/steps/{idx}/id",
+                            expected="valid function ID",
+                            actual=fn_id,
+                            hint="Function may have been removed or renamed. Use 'list' or 'search' to find valid functions.",
+                        )
+                        for idx, fn_id in missing_functions
+                    ],
+                ),
+            )
 
         # Validate external input bindings (T097, T088)
         mapped_inputs: dict[str, str] = {}

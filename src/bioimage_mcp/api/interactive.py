@@ -6,6 +6,7 @@ from typing import Any
 
 from bioimage_mcp.api.errors import execution_error
 from bioimage_mcp.api.execution import ExecutionService
+from bioimage_mcp.api.discovery import DiscoveryService
 from bioimage_mcp.api.interactive_summaries import summarize_artifact
 from bioimage_mcp.api.schemas import SessionExportRequest, SessionReplayRequest
 from bioimage_mcp.api.sessions import SessionService
@@ -19,6 +20,7 @@ class InteractiveExecutionService:
         self,
         session_manager: SessionManager,
         execution: ExecutionService,
+        discovery: DiscoveryService | None = None,
     ) -> None:
         self.session_manager = session_manager
         self.execution = execution
@@ -27,6 +29,7 @@ class InteractiveExecutionService:
             session_manager=session_manager,
             artifact_store=execution.artifact_store,
             execution_service=execution,
+            discovery_service=discovery,
         )
 
     def call_tool(

@@ -22,7 +22,7 @@ def end_to_end_context(mcp_services, tmp_path):
 
     session_store = SessionStore(config)
     session_manager = SessionManager(session_store, config)
-    interactive = InteractiveExecutionService(session_manager, execution)
+    interactive = InteractiveExecutionService(session_manager, execution, discovery=discovery)
 
     return {
         "config": config,

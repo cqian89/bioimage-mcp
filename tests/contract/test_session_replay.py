@@ -27,6 +27,8 @@ def session_service(tmp_path):
         artifact_store=store,
         execution_service=execution_service,
     )
+    # Mock _function_exists to return True by default so basic tests pass
+    service._function_exists = MagicMock(return_value=True)
     return service, session_manager, execution_service, store
 
 
@@ -153,13 +155,17 @@ def test_session_replay_function_not_found(session_service, tmp_path):
     wf_ref = create_mock_workflow(tmp_path)
     req = SessionReplayRequest(workflow_ref=wf_ref, inputs={"input1": "new-ref-123"})
 
-    execution_service.run_workflow.return_value = {
-        "run_id": "run-fail",
-        "session_id": "new-sess",
-        "status": "failed",
-        "error": {"code": "NOT_FOUND", "message": "Function not found"},
-    }
+    # Mock function not found
+    service._function_exists.return_value = False
 
     resp = service.replay_session(req)
-    assert resp.status == "running"
-    assert resp.error.code == "NOT_FOUND"
+
+    assert resp.status == "validation_failed"
+    assert resp.error.code == "VALIDATION_FAILED"
+    assert "Referenced function(s) not found: test.func" in resp.error.message
+    assert len(resp.error.details) == 1
+    assert resp.error.details[0].path == "/steps/0/id"
+    assert resp.error.details[0].actual == "test.func"
+
+    # Verify execution was NOT started
+    execution_service.run_workflow.assert_not_called()

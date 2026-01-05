@@ -69,7 +69,7 @@ def serve(*, stdio: bool) -> int:
     session_store = SessionStore(config)
     session_manager = SessionManager(session_store, config)
     execution = ExecutionService(config, artifact_store=artifact_store, run_store=run_store)
-    interactive = InteractiveExecutionService(session_manager, execution)
+    interactive = InteractiveExecutionService(session_manager, execution, discovery=service)
     artifacts = ArtifactsService(artifact_store)
 
     mcp = create_server(
