@@ -127,12 +127,14 @@ class Introspector:
         param_descriptions = self._parse_docstring_params(func)
 
         for param_name, param in sig.parameters.items():
-            # Map Python type annotation to JSON Schema type
-            param_type = self._map_type_to_json_schema(param.annotation)
-
             # Check if parameter has a default value
             has_default = param.default is not inspect.Parameter.empty
             default_value = self._make_json_serializable(param.default) if has_default else None
+
+            # Map Python type annotation to JSON Schema type
+            param_type = self._map_type_to_json_schema(
+                param.annotation, param.default if has_default else None
+            )
 
             # Parameter is required if it has no default
             is_required = not has_default
@@ -199,8 +201,11 @@ class Introspector:
         except Exception:
             return f"<{type(value).__name__}>"
 
-    def _map_type_to_json_schema(self, annotation: Any) -> str:
-        """Map Python type annotation to JSON Schema type string."""
+    def _map_type_to_json_schema(self, annotation: Any, default_value: Any = None) -> str:
+        """Map Python type annotation to JSON Schema type string.
+
+        If annotation is missing or unknown, uses default_value type if provided.
+        """
         # Handle common built-in types
         if annotation is int or annotation == "int":
             return "integer"
@@ -221,6 +226,15 @@ class Introspector:
                 return "number"
             elif "bool" in annotation.lower():
                 return "boolean"
+
+        # Fallback to type of default value if annotation is unhelpful
+        if default_value is not None:
+            if isinstance(default_value, bool):
+                return "boolean"
+            if isinstance(default_value, int):
+                return "integer"
+            if isinstance(default_value, float):
+                return "number"
 
         # Default to string for unknown/complex types
         return "string"

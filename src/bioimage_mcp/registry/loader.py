@@ -218,7 +218,11 @@ def load_manifest_file(path: Path) -> tuple[ToolManifest | None, ManifestDiagnos
             # Convert FunctionMetadata to Function objects
             for meta in discovered_metadata:
                 inputs, outputs = _map_io_pattern_to_ports(meta.io_pattern)
-                params_schema = _parameters_to_json_schema(meta.parameters)
+
+                # Filter out port names from parameters (T109)
+                port_names = {p.name for p in inputs} | {p.name for p in outputs}
+                filtered_params = {k: v for k, v in meta.parameters.items() if k not in port_names}
+                params_schema = _parameters_to_json_schema(filtered_params)
 
                 env_prefix = _env_prefix_from_tool_id(manifest.tool_id)
                 fn_id = meta.fn_id
