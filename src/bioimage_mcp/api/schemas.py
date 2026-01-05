@@ -253,12 +253,12 @@ class FunctionDescriptor(BaseModel):
     id: str
     type: Literal["function"] = "function"
     summary: str
-    tags: list[str] = []
+    tags: list[str] = Field(default_factory=list)
     inputs: dict[str, InputPort]
     outputs: dict[str, OutputPort]
     params_schema: dict[str, Any]
-    examples: list[FunctionExample] = []
-    next_steps: list[NextStep] = []
+    examples: list[FunctionExample] = Field(default_factory=list)
+    next_steps: list[NextStep] = Field(default_factory=list)
 
 
 class ArtifactTypeEnum(str, Enum):
@@ -293,7 +293,7 @@ class ArtifactRef(BaseModel):
     ndim: int | None = None
     dtype: str | None = None
     shape: list[int] | None = None
-    checksums: list[ArtifactChecksum] = []
+    checksums: list[ArtifactChecksum] = Field(default_factory=list)
     created_at: str | None = None
 
 
@@ -311,7 +311,7 @@ class StructuredError(BaseModel):
 
     code: str
     message: str
-    details: list[ErrorDetail] = []
+    details: list[ErrorDetail] = Field(default_factory=list)
 
 
 # List
@@ -350,7 +350,7 @@ class SearchResult(BaseModel):
     type: Literal["function"] = "function"
     name: str
     summary: str
-    tags: list[str] = []
+    tags: list[str] = Field(default_factory=list)
     io: IOSummary
     score: float
     match_count: int
@@ -365,7 +365,7 @@ class SearchResponse(BaseModel):
 class RunRequest(BaseModel):
     id: str
     inputs: dict[str, str]
-    params: dict[str, Any] = {}
+    params: dict[str, Any] = Field(default_factory=dict)
     session_id: str | None = None
     dry_run: bool = False
 
@@ -375,8 +375,8 @@ class RunResponse(BaseModel):
     run_id: str
     status: Literal["success", "running", "failed", "validation_failed"]
     id: str
-    outputs: dict[str, ArtifactRef] = {}
-    warnings: list[str] = []
+    outputs: dict[str, ArtifactRef] = Field(default_factory=dict)
+    warnings: list[str] = Field(default_factory=list)
     log_ref: ArtifactRef | None = None
     dry_run: bool | None = None
     error: StructuredError | None = None
@@ -396,7 +396,7 @@ class StatusResponse(BaseModel):
     run_id: str
     status: Literal["running", "success", "failed"]
     progress: Progress | None = None
-    outputs: dict[str, ArtifactRef] = {}
+    outputs: dict[str, ArtifactRef] = Field(default_factory=dict)
     log_ref: ArtifactRef | None = None
 
 
@@ -412,7 +412,7 @@ class ArtifactInfoResponse(BaseModel):
     uri: str
     mime_type: str | None = None
     size_bytes: int | None = None
-    checksums: list[ArtifactChecksum] = []
+    checksums: list[ArtifactChecksum] = Field(default_factory=list)
     text_preview: str | None = None
     dims: list[str] | None = None
     ndim: int | None = None
