@@ -6,6 +6,8 @@ from typing import Any
 
 from bioimage_mcp.api.execution import ExecutionService
 from bioimage_mcp.api.interactive_summaries import summarize_artifact
+from bioimage_mcp.api.schemas import SessionExportRequest, SessionReplayRequest
+from bioimage_mcp.api.sessions import SessionService
 from bioimage_mcp.artifacts.models import ArtifactRef
 from bioimage_mcp.sessions.manager import SessionManager
 
@@ -18,6 +20,12 @@ class InteractiveExecutionService:
     ) -> None:
         self.session_manager = session_manager
         self.execution = execution
+        self.session_service = SessionService(
+            config=execution._config,
+            session_manager=session_manager,
+            artifact_store=execution.artifact_store,
+            execution_service=execution,
+        )
 
     def call_tool(
         self,
@@ -79,21 +87,15 @@ class InteractiveExecutionService:
             "run_opts": {},
         }
 
-        if dry_run:
-            validation_errors = self.execution.validate_workflow(spec)
-            if validation_errors:
-                return {
-                    "session_id": session_id,
-                    "step_id": step_id,
-                    "status": "failed",
-                    "dry_run": True,
-                    "error": {
-                        "message": "Workflow validation failed",
-                        "code": "VALIDATION_FAILED",
-                        "details": validation_errors,
-                    },
-                    "outputs": {},
-                }
+        # Record start time
+        started_at = datetime.now(UTC).isoformat()
+
+        # Run workflow
+        # ExecutionService.run_workflow returns dict with run_id, status, etc.
+        # It handles DB entries for RunStore and ArtifactStore.
+        result = self.execution.run_workflow(spec, session_id=session_id, dry_run=dry_run)
+
+        if dry_run and result["status"] == "success":
             return {
                 "session_id": session_id,
                 "step_id": step_id,
@@ -102,19 +104,12 @@ class InteractiveExecutionService:
                 "outputs": {},
             }
 
-        # Record start time
-        started_at = datetime.now(UTC).isoformat()
-
-        # Run workflow
-        # ExecutionService.run_workflow returns dict with run_id, status, etc.
-        # It handles DB entries for RunStore and ArtifactStore.
-        result = self.execution.run_workflow(spec, session_id=session_id)
-
         if result["status"] == "validation_failed":
             return {
                 "session_id": session_id,
                 "step_id": step_id,
-                "status": "failed",
+                "status": "validation_failed",
+                "dry_run": dry_run,
                 "id": fn_id,
                 "error": result["error"],
                 "outputs": {},
@@ -208,61 +203,31 @@ class InteractiveExecutionService:
 
         return response
 
-    def export_session(self, session_id: str) -> dict[str, Any]:
-        """Export session to a reproducible workflow artifact.
-
-        Filters session steps to only include canonical (successful) executions,
-        preserving the execution order. The resulting artifact can be used to
-        replay the workflow.
-
-        Args:
-            session_id: The ID of the session to export.
-
-        Returns:
-            The serialized NativeOutputRef pointing to the workflow record.
-
-        Raises:
-            ValueError: If the session has no steps.
-        """
-        # Ensure session exists
-        self.session_manager.ensure_session(session_id)
-        steps = self.session_manager.store.list_step_attempts(session_id)
-
-        if not steps:
-            raise ValueError("Cannot export empty session")
-
-        # Filter for canonical steps
-        canonical_steps = [s for s in steps if s.canonical]
-        # Sort by ordinal (list_step_attempts usually does this, but be safe)
-        canonical_steps.sort(key=lambda s: s.ordinal)
-
-        workflow_spec = {
-            "steps": [
-                {
-                    "fn_id": s.fn_id,
-                    "inputs": s.inputs,
-                    "params": s.params,
-                }
-                for s in canonical_steps
-            ]
-        }
-
-        # Wrap in record structure
-        record = {
-            "session_id": session_id,
-            "workflow_spec": workflow_spec,
-            "exported_at": datetime.now(UTC).isoformat(),
-        }
-
-        # Write to artifact store
-        store = self.execution.artifact_store
-        ref = store.write_native_output(
-            content=record,
-            format="workflow-record-json",
-            metadata={"session_id": session_id},
-        )
+    def export_session(self, session_id: str, dest_path: str | None = None) -> dict[str, Any]:
+        """Export session to a reproducible workflow artifact."""
+        request = SessionExportRequest(session_id=session_id, dest_path=dest_path)
+        response = self.session_service.export_session(request)
 
         # Update session status
         self.session_manager.store.update_session_status(session_id, "exported")
 
-        return ref.model_dump()
+        return response.workflow_ref.model_dump()
+
+    def replay_session(
+        self,
+        workflow_ref: dict[str, Any],
+        inputs: dict[str, str],
+        params_overrides: dict[str, dict[str, Any]] | None = None,
+        step_overrides: dict[str, dict[str, Any]] | None = None,
+        dry_run: bool = False,
+    ) -> dict[str, Any]:
+        """Replay a workflow from an exported record."""
+        request = SessionReplayRequest(
+            workflow_ref=ArtifactRef(**workflow_ref),
+            inputs=inputs,
+            params_overrides=params_overrides,
+            step_overrides=step_overrides,
+            dry_run=dry_run,
+        )
+        response = self.session_service.replay_session(request)
+        return response.model_dump()

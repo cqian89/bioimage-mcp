@@ -420,7 +420,12 @@ class ExecutionService:
         return "default"
 
     def run_workflow(
-        self, spec: dict, *, skip_validation: bool = False, session_id: str = "default-session"
+        self,
+        spec: dict,
+        *,
+        skip_validation: bool = False,
+        session_id: str = "default-session",
+        dry_run: bool = False,
     ) -> dict:
         # Apply redirects (SC-001)
         spec, core_warnings = _apply_legacy_redirects(spec)
@@ -472,6 +477,16 @@ class ExecutionService:
                         "details": [err.model_dump() for err in validation_errors],
                     },
                 }
+
+        if dry_run:
+            return {
+                "session_id": session_id,
+                "run_id": "none",
+                "status": "success",
+                "id": fn_id,
+                "outputs": {},
+                "dry_run": True,
+            }
 
         run_opts = spec.get("run_opts") or {}
         output_mode = run_opts.get("output_mode", "file")

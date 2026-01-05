@@ -377,6 +377,7 @@ class RunResponse(BaseModel):
     outputs: dict[str, ArtifactRef] = {}
     warnings: list[str] = []
     log_ref: ArtifactRef | None = None
+    dry_run: bool | None = None
     error: StructuredError | None = None
 
 

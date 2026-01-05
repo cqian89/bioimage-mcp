@@ -7,6 +7,7 @@ These tests verify:
 - Failed execution returns log reference
 """
 
+import pytest
 from pathlib import Path
 from bioimage_mcp.api.execution import ExecutionService
 from bioimage_mcp.artifacts.store import ArtifactStore
@@ -172,3 +173,122 @@ def test_run_failed_includes_log_reference(tmp_path: Path, monkeypatch):
     assert "log_ref" in response
     assert "error" in response
     assert response["error"]["message"] == "Crash!"
+
+
+# T067: Dry-run success
+def test_dry_run_success(tmp_path: Path, monkeypatch):
+    """dry_run=true with valid inputs should return success without executing."""
+    config = Config(
+        artifact_store_root=tmp_path / "artifacts",
+        tool_manifest_roots=[tmp_path / "tools"],
+    )
+    svc = ExecutionService(config)
+
+    # Mock validate_workflow to return NO errors
+    monkeypatch.setattr(svc, "validate_workflow", lambda _s: [])
+
+    # Mock execute_step - it should NOT be called
+    def fail_if_called(**_kw):
+        pytest.fail("execute_step should not be called during dry_run")
+
+    monkeypatch.setattr("bioimage_mcp.api.execution.execute_step", fail_if_called)
+
+    # Mock _get_function_metadata
+    from unittest.mock import MagicMock
+
+    monkeypatch.setattr(
+        "bioimage_mcp.api.execution._get_function_metadata",
+        lambda _c, _id: (MagicMock(env_id="env1", entrypoint="main.py"), MagicMock()),
+    )
+
+    spec = {"steps": [{"fn_id": "base.ops.gaussian", "inputs": {"image": "ref1"}, "params": {}}]}
+    response = svc.run_workflow(spec, dry_run=True)
+
+    assert response["status"] == "success"
+    assert response.get("dry_run") is True
+    assert "outputs" in response
+    assert response["run_id"] == "none"
+
+
+# T068: Dry-run validation failure
+def test_dry_run_validation_failed_missing_input(tmp_path: Path, monkeypatch):
+    """dry_run=true should fail validation same as real run."""
+    config = Config(
+        artifact_store_root=tmp_path / "artifacts",
+        tool_manifest_roots=[tmp_path / "tools"],
+    )
+    svc = ExecutionService(config)
+
+    # Mock validate_workflow to return errors
+    from bioimage_mcp.api.schemas import ErrorDetail
+
+    monkeypatch.setattr(
+        svc,
+        "validate_workflow",
+        lambda _s: [
+            ErrorDetail(
+                path="/steps/0/inputs/image",
+                hint="Missing required input",
+                expected="BioImageRef",
+                actual="missing",
+            )
+        ],
+    )
+
+    # Mock _get_function_metadata
+    from unittest.mock import MagicMock
+
+    monkeypatch.setattr(
+        "bioimage_mcp.api.execution._get_function_metadata",
+        lambda _c, _id: (MagicMock(env_id="env1", entrypoint="main.py"), MagicMock()),
+    )
+
+    spec = {"steps": [{"fn_id": "base.ops.gaussian", "inputs": {}, "params": {}}]}
+    response = svc.run_workflow(spec, dry_run=True)
+
+    assert response["status"] == "validation_failed"
+    assert response["error"]["code"] == "VALIDATION_FAILED"
+    assert response["error"]["details"][0]["actual"] == "missing"
+
+
+# T069: Dry-run parity with real execution
+def test_dry_run_validation_parity(tmp_path: Path, monkeypatch):
+    """Dry-run validation should be identical to real execution validation."""
+    config = Config(
+        artifact_store_root=tmp_path / "artifacts",
+        tool_manifest_roots=[tmp_path / "tools"],
+    )
+    svc = ExecutionService(config)
+
+    # Mock validate_workflow
+    from bioimage_mcp.api.schemas import ErrorDetail
+
+    errors = [
+        ErrorDetail(
+            path="/steps/0/inputs/image",
+            hint="Type mismatch",
+            expected="BioImageRef",
+            actual="TableRef",
+        )
+    ]
+    monkeypatch.setattr(svc, "validate_workflow", lambda _s: errors)
+
+    # Mock _get_function_metadata
+    from unittest.mock import MagicMock
+
+    monkeypatch.setattr(
+        "bioimage_mcp.api.execution._get_function_metadata",
+        lambda _c, _id: (MagicMock(env_id="env1", entrypoint="main.py"), MagicMock()),
+    )
+
+    spec = {"steps": [{"fn_id": "base.ops.gaussian", "inputs": {"image": "ref1"}, "params": {}}]}
+
+    # Run dry
+    dry_response = svc.run_workflow(spec, dry_run=True)
+
+    # Run real
+    real_response = svc.run_workflow(spec, dry_run=False)
+
+    assert dry_response["status"] == "validation_failed"
+    assert real_response["status"] == "validation_failed"
+    assert dry_response["error"] == real_response["error"]

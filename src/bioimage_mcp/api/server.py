@@ -177,6 +177,8 @@ def create_server(
             "warnings": result.get("warnings", []),
             "log_ref": result.get("log_ref"),
         }
+        if "dry_run" in result:
+            response["dry_run"] = result["dry_run"]
         if result.get("error"):
             response["error"] = result["error"]
 
@@ -187,7 +189,11 @@ def create_server(
         return artifacts.get_artifact(ref_id)
 
     @mcp.tool()
-    def export_session(session_id: str | None = None, ctx: Context | None = None) -> dict[str, Any]:
+    def export_session(
+        session_id: str | None = None,
+        dest_path: str | None = None,
+        ctx: Context | None = None,
+    ) -> dict[str, Any]:
         """Export session to a reproducible workflow artifact.
 
         If session_id is not provided, uses the current MCP connection's session ID.
@@ -198,6 +204,23 @@ def create_server(
         if not session_id:
             raise ValueError("session_id must be provided or available in context")
 
-        return interactive.export_session(session_id)
+        return interactive.export_session(session_id, dest_path=dest_path)
+
+    @mcp.tool()
+    def replay_session(
+        workflow_ref: dict[str, Any],
+        inputs: dict[str, str],
+        params_overrides: dict[str, dict[str, Any]] | None = None,
+        step_overrides: dict[str, dict[str, Any]] | None = None,
+        dry_run: bool = False,
+    ) -> dict[str, Any]:
+        """Replay a workflow from an exported record."""
+        return interactive.replay_session(
+            workflow_ref=workflow_ref,
+            inputs=inputs,
+            params_overrides=params_overrides,
+            step_overrides=step_overrides,
+            dry_run=dry_run,
+        )
 
     return mcp

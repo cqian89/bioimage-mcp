@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import hashlib
 from datetime import UTC, datetime
+from pathlib import Path
 
 from bioimage_mcp.config.schema import Config
+from bioimage_mcp.registry.loader import load_manifests
 from bioimage_mcp.sessions.models import Session
 from bioimage_mcp.sessions.store import SessionStore
 
@@ -58,3 +61,26 @@ class SessionManager:
         session = self.store.get_session(session_id)
         self._validate_session_expiry(session)
         return session
+
+    def get_function_provenance(self, fn_id: str) -> dict[str, str]:
+        """Get provenance metadata for a function (T113)."""
+        manifests, _ = load_manifests(self.config.tool_manifest_roots)
+        for manifest in manifests:
+            for fn in manifest.functions:
+                if fn.fn_id == fn_id:
+                    try:
+                        manifest_content = Path(manifest.manifest_path).read_bytes()
+                        lock_hash = hashlib.sha256(manifest_content).hexdigest()
+                    except (OSError, TypeError):
+                        lock_hash = "unavailable"
+
+                    return {
+                        "tool_pack_id": manifest.tool_id,
+                        "tool_pack_version": manifest.tool_version,
+                        "lock_hash": lock_hash,
+                    }
+        return {
+            "tool_pack_id": "unknown",
+            "tool_pack_version": "0.0.0",
+            "lock_hash": "unavailable",
+        }

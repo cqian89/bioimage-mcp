@@ -14,7 +14,14 @@ class FakeExecutionService:
         self._run_status = run_status
         self.artifact_store = None
 
-    def run_workflow(self, spec: dict) -> dict:
+    def run_workflow(
+        self,
+        spec: dict,
+        *,
+        skip_validation: bool = False,
+        session_id: str = "default-session",
+        dry_run: bool = False,
+    ) -> dict:
         self.last_spec = spec
         return self._run_result
 
@@ -78,4 +85,39 @@ def test_call_tool_returns_hints_on_failure(tmp_path: Path) -> None:
     assert result["status"] == "failed"
     assert result["hints"] == hints
     assert result["isError"] is True
+    store.close()
+
+
+def test_call_tool_dry_run_success(tmp_path: Path) -> None:
+    execution = FakeExecutionService(
+        run_result={"run_id": "none", "status": "success", "dry_run": True},
+        run_status={"status": "success", "outputs": {}},
+    )
+    service, store = _make_service(tmp_path, execution)
+
+    result = service.call_tool(
+        session_id="sess-3", fn_id="fn.test", inputs={}, params={}, dry_run=True
+    )
+
+    assert result["status"] == "success"
+    assert result["dry_run"] is True
+    assert "run_id" not in result or result["run_id"] == "none"
+    store.close()
+
+
+def test_call_tool_dry_run_validation_failed(tmp_path: Path) -> None:
+    error = {"code": "VALIDATION_FAILED", "message": "bad"}
+    execution = FakeExecutionService(
+        run_result={"run_id": "none", "status": "validation_failed", "error": error},
+        run_status={"status": "failed", "outputs": {}},
+    )
+    service, store = _make_service(tmp_path, execution)
+
+    result = service.call_tool(
+        session_id="sess-4", fn_id="fn.test", inputs={}, params={}, dry_run=True
+    )
+
+    assert result["status"] == "validation_failed"
+    assert result["dry_run"] is True
+    assert result["error"] == error
     store.close()
