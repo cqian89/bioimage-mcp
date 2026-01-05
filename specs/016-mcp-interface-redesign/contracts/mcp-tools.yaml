@@ -1,0 +1,687 @@
+openapi: 3.1.0
+info:
+  title: BioImage-MCP Tools API
+  version: 1.0.0
+  description: |
+    MCP tool surface for BioImage-MCP server.
+    8 tools with consistent naming, structured errors, and artifact-based I/O.
+
+paths:
+  /tools/list:
+    post:
+      operationId: list
+      summary: Browse catalog hierarchy
+      description: Returns environments, packages, modules, and functions with child counts.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ListRequest'
+      responses:
+        '200':
+          description: Catalog nodes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListResponse'
+
+  /tools/describe:
+    post:
+      operationId: describe
+      summary: Describe any catalog node
+      description: |
+        Returns full details for environments, packages, modules, or functions.
+        For functions, includes params_schema, inputs, outputs, examples.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DescribeRequest'
+      responses:
+        '200':
+          description: Node details
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/FunctionDescriptor'
+                  - $ref: '#/components/schemas/CatalogNodeDetail'
+
+  /tools/search:
+    post:
+      operationId: search
+      summary: Search for functions
+      description: Find functions by query, keywords, tags, or I/O types.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchRequest'
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+
+  /tools/run:
+    post:
+      operationId: run
+      summary: Execute a function
+      description: |
+        Execute exactly one function call. Multi-step workflows are built via
+        repeated run calls under a session_id.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RunRequest'
+      responses:
+        '200':
+          description: Execution result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunResponse'
+
+  /tools/status:
+    post:
+      operationId: status
+      summary: Poll run status
+      description: Check the status of a running or completed execution.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StatusRequest'
+      responses:
+        '200':
+          description: Run status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+
+  /tools/artifact_info:
+    post:
+      operationId: artifact_info
+      summary: Get artifact metadata
+      description: Retrieve metadata for an artifact, optionally with text preview.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ArtifactInfoRequest'
+      responses:
+        '200':
+          description: Artifact metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArtifactInfoResponse'
+
+  /tools/session_export:
+    post:
+      operationId: session_export
+      summary: Export session workflow
+      description: Export a reproducible workflow record for replay.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionExportRequest'
+      responses:
+        '200':
+          description: Workflow reference
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionExportResponse'
+
+  /tools/session_replay:
+    post:
+      operationId: session_replay
+      summary: Replay workflow on new data
+      description: Re-run an exported workflow with new external inputs.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionReplayRequest'
+      responses:
+        '200':
+          description: Replay status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionReplayResponse'
+
+components:
+  schemas:
+    # ============ Enums ============
+    NodeType:
+      type: string
+      enum: [environment, package, module, function]
+
+    ArtifactType:
+      type: string
+      enum: [BioImageRef, LabelImageRef, TableRef, LogRef, NativeOutputRef, ScalarRef]
+
+    RunStatus:
+      type: string
+      enum: [success, running, failed, validation_failed]
+
+    # ============ Core Models ============
+    ChildCounts:
+      type: object
+      required: [total, by_type]
+      properties:
+        total:
+          type: integer
+        by_type:
+          type: object
+          additionalProperties:
+            type: integer
+
+    IOPort:
+      type: object
+      required: [name, type]
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        required:
+          type: boolean
+          default: true
+
+    IOSummary:
+      type: object
+      required: [inputs, outputs]
+      properties:
+        inputs:
+          type: array
+          items:
+            $ref: '#/components/schemas/IOPort'
+        outputs:
+          type: array
+          items:
+            $ref: '#/components/schemas/IOPort'
+
+    CatalogNode:
+      type: object
+      required: [id, type, name]
+      properties:
+        id:
+          type: string
+          description: Unique stable identifier
+        type:
+          $ref: '#/components/schemas/NodeType'
+        name:
+          type: string
+        summary:
+          type: string
+        children:
+          $ref: '#/components/schemas/ChildCounts'
+        io:
+          $ref: '#/components/schemas/IOSummary'
+
+    CatalogNodeDetail:
+      type: object
+      description: Extended catalog node with child preview
+      allOf:
+        - $ref: '#/components/schemas/CatalogNode'
+        - type: object
+          properties:
+            child_preview:
+              type: array
+              items:
+                $ref: '#/components/schemas/CatalogNode'
+
+    InputHints:
+      type: object
+      properties:
+        expected_axes:
+          type: array
+          items:
+            type: string
+        min_ndim:
+          type: integer
+        max_ndim:
+          type: integer
+        squeeze_singleton:
+          type: boolean
+          default: false
+
+    InputPort:
+      type: object
+      required: [type]
+      properties:
+        type:
+          type: string
+        required:
+          type: boolean
+          default: true
+        hints:
+          $ref: '#/components/schemas/InputHints'
+
+    OutputPort:
+      type: object
+      required: [type]
+      properties:
+        type:
+          type: string
+
+    FunctionExample:
+      type: object
+      required: [inputs, params]
+      properties:
+        inputs:
+          type: object
+          additionalProperties:
+            type: string
+        params:
+          type: object
+
+    NextStep:
+      type: object
+      required: [id, reason]
+      properties:
+        id:
+          type: string
+        reason:
+          type: string
+
+    FunctionDescriptor:
+      type: object
+      required: [id, type, summary, inputs, outputs, params_schema]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          const: function
+        summary:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        inputs:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/InputPort'
+        outputs:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/OutputPort'
+        params_schema:
+          type: object
+          description: JSON Schema for params (no artifact ports)
+        examples:
+          type: array
+          items:
+            $ref: '#/components/schemas/FunctionExample'
+        next_steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/NextStep'
+
+    ArtifactChecksum:
+      type: object
+      required: [algorithm, value]
+      properties:
+        algorithm:
+          type: string
+        value:
+          type: string
+
+    ArtifactRef:
+      type: object
+      required: [ref_id, type, uri]
+      properties:
+        ref_id:
+          type: string
+        type:
+          $ref: '#/components/schemas/ArtifactType'
+        uri:
+          type: string
+        mime_type:
+          type: string
+        format:
+          type: string
+        size_bytes:
+          type: integer
+        dims:
+          type: array
+          items:
+            type: string
+        ndim:
+          type: integer
+        dtype:
+          type: string
+        shape:
+          type: array
+          items:
+            type: integer
+        checksums:
+          type: array
+          items:
+            $ref: '#/components/schemas/ArtifactChecksum'
+
+    # ============ Error Model ============
+    ErrorDetail:
+      type: object
+      required: [path, hint]
+      properties:
+        path:
+          type: string
+          description: JSON Pointer to problematic field
+        expected:
+          type: string
+        actual:
+          type: string
+        hint:
+          type: string
+          description: Actionable guidance
+
+    StructuredError:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum: [VALIDATION_FAILED, NOT_FOUND, EXECUTION_FAILED, PERMISSION_DENIED, SCHEMA_MISMATCH]
+        message:
+          type: string
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/ErrorDetail'
+
+    # ============ Request/Response Models ============
+    ListRequest:
+      type: object
+      properties:
+        path:
+          type: string
+          description: Path to list (root if null)
+        cursor:
+          type: string
+        limit:
+          type: integer
+          default: 50
+        types:
+          type: array
+          items:
+            $ref: '#/components/schemas/NodeType'
+        include_counts:
+          type: boolean
+          default: true
+
+    ListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CatalogNode'
+        next_cursor:
+          type: string
+        expanded_from:
+          type: string
+
+    DescribeRequest:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: string
+
+    SearchRequest:
+      type: object
+      properties:
+        query:
+          type: string
+        keywords:
+          type: array
+          items:
+            type: string
+        tags:
+          type: array
+          items:
+            type: string
+        io_in:
+          type: string
+        io_out:
+          type: string
+        limit:
+          type: integer
+          default: 20
+        cursor:
+          type: string
+
+    SearchResult:
+      type: object
+      required: [id, type, name, summary, io, score]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          const: function
+        name:
+          type: string
+        summary:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        io:
+          $ref: '#/components/schemas/IOSummary'
+        score:
+          type: number
+        match_count:
+          type: integer
+
+    SearchResponse:
+      type: object
+      required: [results]
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SearchResult'
+        next_cursor:
+          type: string
+
+    RunRequest:
+      type: object
+      required: [id, inputs]
+      properties:
+        id:
+          type: string
+        inputs:
+          type: object
+          additionalProperties:
+            type: string
+        params:
+          type: object
+          default: {}
+        session_id:
+          type: string
+        dry_run:
+          type: boolean
+          default: false
+
+    RunResponse:
+      type: object
+      required: [session_id, run_id, status, id, outputs]
+      properties:
+        session_id:
+          type: string
+        run_id:
+          type: string
+        status:
+          $ref: '#/components/schemas/RunStatus'
+        id:
+          type: string
+        outputs:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/ArtifactRef'
+        warnings:
+          type: array
+          items:
+            type: string
+        log_ref:
+          $ref: '#/components/schemas/ArtifactRef'
+        error:
+          $ref: '#/components/schemas/StructuredError'
+
+    StatusRequest:
+      type: object
+      required: [run_id]
+      properties:
+        run_id:
+          type: string
+
+    Progress:
+      type: object
+      required: [completed, total]
+      properties:
+        completed:
+          type: integer
+        total:
+          type: integer
+
+    StatusResponse:
+      type: object
+      required: [run_id, status, outputs]
+      properties:
+        run_id:
+          type: string
+        status:
+          type: string
+          enum: [running, success, failed]
+        progress:
+          $ref: '#/components/schemas/Progress'
+        outputs:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/ArtifactRef'
+        log_ref:
+          $ref: '#/components/schemas/ArtifactRef'
+
+    ArtifactInfoRequest:
+      type: object
+      required: [ref_id]
+      properties:
+        ref_id:
+          type: string
+        text_preview_bytes:
+          type: integer
+
+    ArtifactInfoResponse:
+      type: object
+      required: [ref_id, type, uri]
+      properties:
+        ref_id:
+          type: string
+        type:
+          $ref: '#/components/schemas/ArtifactType'
+        uri:
+          type: string
+        mime_type:
+          type: string
+        size_bytes:
+          type: integer
+        checksums:
+          type: array
+          items:
+            $ref: '#/components/schemas/ArtifactChecksum'
+        text_preview:
+          type: string
+        dims:
+          type: array
+          items:
+            type: string
+        ndim:
+          type: integer
+        dtype:
+          type: string
+        shape:
+          type: array
+          items:
+            type: integer
+
+    SessionExportRequest:
+      type: object
+      required: [session_id]
+      properties:
+        session_id:
+          type: string
+
+    SessionExportResponse:
+      type: object
+      required: [session_id, workflow_ref]
+      properties:
+        session_id:
+          type: string
+        workflow_ref:
+          $ref: '#/components/schemas/ArtifactRef'
+
+    SessionReplayRequest:
+      type: object
+      required: [workflow_ref, inputs]
+      properties:
+        workflow_ref:
+          $ref: '#/components/schemas/ArtifactRef'
+        inputs:
+          type: object
+          additionalProperties:
+            type: string
+        params_overrides:
+          type: object
+          additionalProperties:
+            type: object
+        step_overrides:
+          type: object
+          additionalProperties:
+            type: object
+        mode:
+          type: string
+          enum: [strict, lenient]
+          default: strict
+        dry_run:
+          type: boolean
+          default: false
+
+    SessionReplayResponse:
+      type: object
+      required: [run_id, session_id, status, workflow_ref]
+      properties:
+        run_id:
+          type: string
+        session_id:
+          type: string
+        status:
+          type: string
+          enum: [running, ready, validation_failed]
+        workflow_ref:
+          $ref: '#/components/schemas/ArtifactRef'
+        log_ref:
+          $ref: '#/components/schemas/ArtifactRef'
+        error:
+          $ref: '#/components/schemas/StructuredError'

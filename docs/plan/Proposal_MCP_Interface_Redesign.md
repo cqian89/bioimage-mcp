@@ -80,7 +80,7 @@ This proposal is based on directly calling the existing BioImage-MCP server tool
 
 ## 4. Proposed Clean MCP Surface
 
-The MCP surface should be **7 tools** total. The names are intentionally short and consistent.
+The MCP surface should be **8 tools** total. The names are intentionally short and consistent.
 
 ### 4.1 `list` (replaces `list_tools`)
 
@@ -325,7 +325,9 @@ The MCP surface should be **7 tools** total. The names are intentionally short a
 
 ### 4.7 `session_export` (replaces `export_session`)
 
-**Purpose**: Export a reproducible workflow record (steps, inputs/params, tool versions, lockfile hashes, timestamps).
+**Purpose**: Export a reproducible workflow record for debugging and reuse.
+
+Even before server-side replay exists, this record should be usable by a client to re-issue calls ("manual replay"). With `session_replay` (below), it becomes the canonical input format.
 
 **Request**
 ```json
@@ -336,13 +338,120 @@ The MCP surface should be **7 tools** total. The names are intentionally short a
 ```json
 {
   "session_id": "session_...",
-  "workflow_ref": {"ref_id": "...", "type": "NativeOutputRef", "format": "workflow-record-json"}
+  "workflow_ref": {"ref_id": "...", "type": "TableRef", "format": "workflow-record-json"}
 }
 ```
 
+**Workflow record format (vNext)**
+
+The exported JSON must capture two distinct kinds of inputs:
+- **External inputs**: artifacts provided by the caller (starting data)
+- **Derived artifacts**: outputs produced by steps within the session
+
+A minimal shape:
+```json
+{
+  "schema_version": "2026-01",
+  "session_id": "session_...",
+  "external_inputs": {
+    "raw_image": {"type": "BioImageRef", "first_seen": {"step_index": 0, "port": "image"}},
+    "calibration_image": {"type": "BioImageRef", "first_seen": {"step_index": 3, "port": "image"}}
+  },
+  "steps": [
+    {
+      "index": 0,
+      "id": "base.skimage.filters.gaussian",
+      "inputs": {
+        "image": {"source": "external", "key": "raw_image"}
+      },
+      "params": {"sigma": 1.0},
+      "outputs": {
+        "output": {"ref_id": "...", "type": "BioImageRef"}
+      },
+      "status": "success",
+      "started_at": "...",
+      "ended_at": "...",
+      "provenance": {"tool_pack_id": "bioimage-mcp-base", "tool_pack_version": "...", "lock_hash": "..."},
+      "log_ref": {"ref_id": "...", "type": "LogRef"}
+    },
+    {
+      "index": 1,
+      "id": "base.xarray.transpose",
+      "inputs": {
+        "image": {"source": "step", "step_index": 0, "port": "output"}
+      },
+      "params": {"dims": ["T", "C", "Z", "Y", "X"]},
+      "outputs": {"output": {"ref_id": "...", "type": "BioImageRef"}},
+      "status": "success"
+    }
+  ]
+}
+```
+
+Notes:
+- `external_inputs` keys are stable handles for rebinding on replay. If the server auto-generates keys, prefer a deterministic scheme (e.g. `{port}_{n}`) and include `first_seen` to make them interpretable.
+- `inputs[port]` is a tagged reference to either an external key or a prior step output. This is the critical enabling feature for “replay on different starting files”.
+
 **Key changes**
 - Always exports a non-empty record if at least one call was attempted.
-- Record includes failed attempts and marks the “canonical” successful steps.
+- Record includes failed attempts and marks the canonical successful steps.
+- Record explicitly separates external inputs from derived artifacts.
+
+### 4.8 `session_replay`
+
+**Purpose**: Re-run a recorded session on new external inputs (different starting files), producing a new session/run.
+
+`session_replay` does not import files. It expects callers to provide `BioImageRef`/`TableRef` values that the server can already access.
+
+**Request**
+```json
+{
+  "workflow_ref": {"ref_id": "...", "type": "TableRef", "format": "workflow-record-json"},
+  "inputs": {
+    "raw_image": "<BioImageRef>",
+    "calibration_image": "<BioImageRef>"
+  },
+  "params_overrides": {
+    "base.skimage.filters.gaussian": {"sigma": 1.2}
+  },
+  "step_overrides": {
+    "step:2": {"params": {"threshold": 0.15}}
+  },
+  "mode": "strict",
+  "dry_run": false
+}
+```
+
+**Response**
+```json
+{
+  "run_id": "...",
+  "session_id": "session_...",
+  "status": "running",
+  "workflow_ref": {"ref_id": "...", "type": "TableRef", "format": "workflow-record-json"},
+  "log_ref": {"ref_id": "...", "type": "LogRef"}
+}
+```
+
+**Execution semantics**
+
+1. Parse the workflow record and validate `schema_version`.
+2. Validate `inputs` bindings:
+   - every required `external_inputs` key has a provided artifact
+   - artifact type matches (`BioImageRef`, `TableRef`, ...)
+3. Build a replay plan by resolving each step input:
+   - `source="external"` -> take from `inputs[key]`
+   - `source="step"` -> take from outputs produced earlier in the replay run
+4. Apply overrides:
+   - `params_overrides` applies by function `id`
+   - `step_overrides` applies by recorded step index (e.g. `"step:2"`)
+5. Execute steps in order, producing new output artifacts and logging per-step.
+
+`dry_run=true` validates bindings and schema compatibility and returns `status="validation_failed"` with details, or `status="ready"` plus a compact plan summary.
+
+**Key changes**
+- Enables deterministic reuse of workflows across different starting data.
+- Keeps the LLM-facing execution surface small: users can either call `run` step-by-step or call `session_replay` when they want repeatability.
 
 ## 5. What to Remove (Bloat)
 
@@ -423,7 +532,7 @@ Preferably:
 
 1. **Define new Pydantic models** for catalog nodes, search results, params schemas, and errors.
 2. **Implement new API handlers** under `src/bioimage_mcp/api/`:
-   - `list`, `describe`, `search`, `run`, `status`, `artifact_info`, `session_export`.
+   - `list`, `describe`, `search`, `run`, `status`, `artifact_info`, `session_export`, `session_replay`.
 3. **Delete/retire** old handlers and any supporting code paths (`describe_tool`, `run_workflow`, activation tools).
 4. **Fix schema generation**:
    - correct JSON schema types
@@ -444,4 +553,6 @@ Preferably:
 - `describe` returns correct JSON Schema types and separates artifact ports from params.
 - `dry_run` validates required inputs/params identically to real execution.
 - One execution tool exists (`run`), and it behaves consistently across environments.
+- `session_export` emits a record with `external_inputs` and step input sources.
+- `session_replay` can rebind `external_inputs` to new artifacts and run end-to-end.
 - Errors are structured and include fix hints.

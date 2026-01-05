@@ -1,11 +1,11 @@
 <!--
 Sync Impact Report
-- Version change: 0.8.1 -> 0.9.0 (MINOR bump - new principle guidance)
-- Principles updated: Section III (Artifact References & I/O) amended for native dimension preservation via `img.reader.data`.
+- Version change: 0.9.0 -> 1.0.0 (MAJOR bump - breaking MCP API changes)
+- Principles updated: Section I (Stable MCP Surface) redesigned; Architecture Constraints (API naming, Error model).
 - Added sections: None
 - Removed sections: None
 - Templates requiring updates: None
-- Follow-up TODOs: Update tool implementations to use native loading pattern and respect `dimension_requirements`.
+- Note: Breaking change: MCP tool surface reduced from 12+ to 8 tools.
 -->
 
 # Bioimage-MCP Constitution
@@ -16,11 +16,16 @@ Sync Impact Report
 Bioimage-MCP MUST keep the LLM-facing MCP interface stable and compact.
 
 Non-negotiables:
-- MCP discovery responses MUST be paginated and default to summaries.
-- Full schemas MUST be fetched only on-demand (e.g., via `describe_function(fn_id)`).
-- Tool calls and workflow execution MUST return IDs and artifact references, not large
-  in-message payloads.
-- Changes that expand the MCP surface area MUST include a version bump justification.
+- MCP tool surface MUST consist of exactly 8 tools: `list`, `describe`, `search`, `run`,
+  `status`, `artifact_info`, `session_export`, `session_replay`.
+- Discovery via `list` MUST return child counts (`total` and `by_type`) for all non-leaf
+  catalog nodes.
+- Full schemas MUST be fetched only on-demand via `describe(id)`.
+- Tool calls via `run` MUST return artifact references with bounded metadata (dims, dtype,
+  shape, size_bytes), not large in-message payloads.
+- `describe` for functions MUST return `inputs`, `outputs`, and `params_schema` as separate
+  fields - artifact ports MUST NOT appear inside params_schema.
+- Changes that modify the MCP tool surface MUST include a version bump justification.
 
 Rationale: Tool catalogs grow quickly in bioimage analysis; the interface must scale
 without forcing prompt/context growth.
@@ -167,7 +172,11 @@ stabilization.
   patterns for registry, env manager, and subprocess executors.
 - **Tool naming**: Functions SHOULD use `env.package.module.function` naming scheme
   (e.g., `base.skimage.filters.gaussian`) for clarity and discoverability.
-- **API naming**: `run_function` is the canonical name for function execution.
+- **API naming**: `run` is the canonical name for function execution. The MCP surface uses
+  short, consistent tool names: `list`, `describe`, `search`, `run`, `status`, `artifact_info`,
+  `session_export`, `session_replay`.
+- **Error model**: All MCP tools MUST return structured errors with `code`, `message`, and
+  `details` array. Error details MUST include JSON Pointer `path` and actionable `hint` text.
 
 ## Development Workflow & Quality Gates
 
@@ -203,4 +212,4 @@ Compliance expectations:
 - Exceptions MUST be documented in the plan with rationale and mitigation, and MUST
   be approved in review.
 
-**Version**: 0.9.0 | **Ratified**: 2025-12-26 | **Last Amended**: 2026-01-04
+**Version**: 1.0.0 | **Ratified**: 2025-12-26 | **Last Amended**: 2026-01-05

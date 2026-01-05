@@ -119,21 +119,52 @@ To expose comprehensive library capabilities (e.g., `skimage`, `scipy`, `phasorp
 - **GPU selection**: inherits `CUDA_VISIBLE_DEVICES` from parent, or tool manifest can override
 - **Roadmap**: persistent workers for heavy runtimes (Cellpose, StarDist) in post-MVP
 
-## 6. Workflow Execution (MVP: LLM-driven linear plan)
+## 6. Workflow Execution (Session-Based)
 
-### 6.1 MVP approach
-- LLM plans and calls tools sequentially via MCP; no formal DAG engine required.
-- Workflows are **linear plans**: ordered steps with typed I/O validation.
-- Workflows are saved as **JSON/Markdown artifacts** for reproducibility.
-- `replay_workflow(artifact_path)` is exposed as an MCP function for re-execution.
+### 6.1 Execution Model
+- Multi-step workflows are built via repeated `run` calls under a shared `session_id`.
+- Each `run` call is recorded with inputs, params, outputs, and provenance.
+- Workflows are **linear sequences**: ordered steps with typed I/O validation.
 
-### 6.2 Post-MVP: DAG engine integration
+### 6.2 Workflow Record Format
+Exported via `session_export`, the workflow record captures:
+- **external_inputs**: Artifacts provided by the caller (starting data) with `first_seen` info.
+- **steps**: Array of executed calls with input sources marked as `external` or `step` references.
+- **provenance**: tool_pack, tool_version, lock_hash for each step.
+
+```json
+{
+  "schema_version": "2026-01",
+  "session_id": "session_...",
+  "external_inputs": {
+    "raw_image": {"type": "BioImageRef", "first_seen": {"step_index": 0, "port": "image"}}
+  },
+  "steps": [
+    {
+      "index": 0,
+      "id": "base.skimage.filters.gaussian",
+      "inputs": {"image": {"source": "external", "key": "raw_image"}},
+      "params": {"sigma": 1.0},
+      "outputs": {"output": {"ref_id": "...", "type": "BioImageRef"}},
+      "status": "success",
+      "provenance": {"tool_pack": "bioimage-mcp-base", "tool_version": "...", "lock_hash": "..."}
+    }
+  ]
+}
+```
+
+### 6.3 Workflow Replay
+`session_replay` enables deterministic reuse:
+- Rebind `external_inputs` to new artifact references.
+- Apply `params_overrides` by function id or `step_overrides` by step index.
+- Validate all bindings before execution begins.
+- Dry-run mode returns validation status without executing.
+
+### 6.4 Post-MVP: DAG Engine Integration
 Consider integrating **Pydra** if/when:
 - Complex parallel pipelines emerge (batch processing hundreds of images)
 - Formal caching by parameter/input hash becomes essential
 - Users request automated retries with exponential backoff
-
-Alternatives for "platform" features: **Prefect** or **Dagster**.
 
 ## 7. Extensibility Architecture
 
@@ -187,16 +218,33 @@ bioimage-mcp configure claude-desktop
 bioimage-mcp serve --stdio
 ```
 
-## 9. Constant LLM-facing API (anti–context-bloat)
-- All discovery endpoints are **paginated**; default responses are summaries.
-- The LLM fetches full schemas only via `describe_function(fn_id)` for the specific functions it needs.
-- Workflow execution returns opaque IDs (`workflow_id`, `run_id`, `artifact_ref`) and lets the client fetch details on demand.
+## 9. Clean MCP Surface (8 Tools)
+The MCP surface is intentionally small and consistent to prevent context bloat.
 
-### 9.1 LLM Guidance Hints
+### 9.1 Tool Surface
+| Tool | Purpose |
+|------|---------|
+| `list` | Browse catalog (environments, packages, modules, functions) with pagination and child counts |
+| `describe` | Get full details for any catalog node (functions include `inputs`, `outputs`, `params_schema`) |
+| `search` | Find functions by query, tags, or I/O types with ranked results |
+| `run` | Execute a single function with separate `inputs` and `params` fields |
+| `status` | Poll running executions with progress information |
+| `artifact_info` | Retrieve artifact metadata and optional text preview |
+| `session_export` | Export reproducible workflow records with `external_inputs` and step provenance |
+| `session_replay` | Re-run workflows on new external inputs with optional param overrides |
+
+### 9.2 Discovery Principles
+- `list` returns child counts (`total` and `by_type`) for every non-leaf node.
+- `list` includes lightweight I/O summaries for function nodes to reduce follow-up calls.
+- `describe` for functions returns correct JSON Schema types (numbers as numbers, booleans as booleans).
+- Artifact ports (`inputs`/`outputs`) are always separate from `params_schema`.
+
+### 9.3 LLM Guidance Hints
 To guide the LLM through complex workflows:
-- **Input Schemas**: `describe_function` returns semantic input requirements (e.g., "expected_axes: TYX").
-- **Next-Step Hints**: Tool execution results include `hints.next_steps` (suggested follow-up functions) and `hints.common_issues`.
-- **Error Hints**: Failures provide specific diagnosis and fix suggestions (e.g., "Axis mismatch: try swapping Z and T").
+- **Input Schemas**: `describe` returns semantic input requirements (e.g., `expected_axes: ["Y", "X"]`).
+- **Next-Step Hints**: `describe` includes `next_steps` with suggested follow-up functions and reasons.
+- **Error Hints**: Failures provide structured errors with JSON Pointer paths and actionable hints.
+- **Examples**: `describe` includes example `inputs` and `params` for common use cases.
 
 ## 10. napari-mcp Integration
 - napari-mcp focuses on controlling napari interactively through MCP.
@@ -237,3 +285,40 @@ datasets/               # Git LFS-tracked test data
 - **Data versioning**: Git LFS for test datasets
 - **Type checking**: `pyright`
 - **Documentation**: `mkdocs` with `mkdocs-material`
+
+## 14. Structured Error Model
+All MCP tools return structured errors for actionable LLM self-correction.
+
+### 14.1 Error Response Shape
+```json
+{
+  "error": {
+    "code": "VALIDATION_FAILED",
+    "message": "Missing required input 'image'",
+    "details": [
+      {
+        "path": "/inputs/image",
+        "expected": "BioImageRef",
+        "actual": "missing",
+        "hint": "Provide a BioImageRef from a prior tool output"
+      }
+    ]
+  }
+}
+```
+
+### 14.2 Error Codes
+| Code | Meaning |
+|------|---------|
+| `VALIDATION_FAILED` | Input/param validation failed |
+| `NOT_FOUND` | Catalog node or artifact not found |
+| `EXECUTION_FAILED` | Tool execution crashed or timed out |
+| `PERMISSION_DENIED` | Path outside allowed roots |
+| `REPLAY_FAILED` | Workflow replay validation or execution failed |
+
+### 14.3 Error Details
+- `path`: JSON Pointer to the problematic field (e.g., `/inputs/image`, `/params/sigma`)
+- `expected`: What was expected (type, value range, etc.)
+- `actual`: What was received
+- `hint`: Actionable guidance for automated retry or user correction
+
