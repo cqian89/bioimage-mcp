@@ -111,7 +111,8 @@ class TestReplayExportedSession:
         if not hasattr(interactive, "export_session"):
             pytest.skip("export_session not implemented yet")
 
-        export_ref = interactive.export_session(session_id)
+        export_response = interactive.export_session(session_id)
+        export_ref = export_response["workflow_ref"]
 
         # 3. Replay Workflow
         # Use replay_workflow from ExecutionService (which we know exists)
@@ -143,7 +144,8 @@ class TestReplayExportedSession:
         if not hasattr(interactive, "export_session"):
             pytest.skip("export_session not implemented yet")
 
-        export_ref = interactive.export_session(session_id)
+        export_response = interactive.export_session(session_id)
+        export_ref = export_response["workflow_ref"]
 
         # 3. Delete the artifact produced in the session
         # This simulates a cleanup or lost storage scenario
@@ -164,7 +166,8 @@ class TestReplayExportedSession:
         )
 
         # Re-export with 2 steps
-        export_ref_2 = interactive.export_session(session_id)
+        export_response_2 = interactive.export_session(session_id)
+        export_ref_2 = export_response_2["workflow_ref"]
 
         # Now delete step 1's output artifact
         with artifact_store._conn:

@@ -148,18 +148,20 @@ class TestExportSession:
         export_result = interactive.export_session(session_id)
 
         # 6. Verify Export Result
-        assert export_result["type"] == "NativeOutputRef"
-        assert export_result["format"] == "workflow-record-json"
+        assert export_result["session_id"] == session_id
+        workflow_ref = export_result["workflow_ref"]
+        assert workflow_ref["type"] == "NativeOutputRef"
+        assert workflow_ref["format"] == "workflow-record-json"
 
         # 7. Verify Content
-        record_content = artifact_store.get_raw_content(export_result["ref_id"])
+        record_content = artifact_store.get_raw_content(workflow_ref["ref_id"])
         if isinstance(record_content, bytes):
             record = json.loads(record_content.decode())
         else:
             record = json.loads(record_content)
 
         assert record["session_id"] == session_id
-        steps = record["workflow_spec"]["steps"]
+        steps = record["steps"]
         assert len(steps) == 2
 
         # Verify Step 1 is the successful attempt

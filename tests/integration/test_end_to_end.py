@@ -193,7 +193,9 @@ def test_session_export_replay_flow(end_to_end_context, monkeypatch):
     assert res2["status"] == "success"
 
     # 3. export_session(session_id="s1")
-    export_result = interactive.export_session(session_id=session_id)
+    export_response = interactive.export_session(session_id=session_id)
+    assert export_response["session_id"] == session_id
+    export_result = export_response["workflow_ref"]
     assert "ref_id" in export_result
     assert export_result["type"] == "NativeOutputRef"
 

@@ -62,7 +62,14 @@ class SessionService:
 
         # Get canonical steps (T092)
         steps = self.session_manager.store.list_step_attempts(session_id)
-        canonical_steps = [s for s in steps if s.canonical and s.status == "success"]
+        canonical_steps = [
+            s
+            for s in steps
+            if getattr(s, "canonical", False) and s.status in ("success", "succeeded")
+        ]
+
+        if not canonical_steps:
+            raise ValueError("Cannot export empty session: no canonical successful steps found")
 
         # Identify external inputs and mark step input sources (T094, T095)
         external_inputs: dict[str, ExternalInput] = {}

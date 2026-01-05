@@ -977,12 +977,13 @@ class ExecutionService:
         # T028: Parse the workflow record
         record_data = self._artifact_store.parse_native_output(native_output_ref_id)
 
-        # Validate workflow record structure
-        if "workflow_spec" not in record_data:
-            raise ValueError("Invalid workflow record: missing 'workflow_spec'")
-
         # Extract workflow components
-        workflow_spec = record_data["workflow_spec"]
+        if "workflow_spec" in record_data:
+            workflow_spec = record_data["workflow_spec"]
+        else:
+            # Fallback for new WorkflowRecord schema where steps are at top level
+            workflow_spec = {"steps": record_data.get("steps", [])}
+
         _original_inputs = record_data.get("inputs", {})  # Keep for future input override
         original_params = record_data.get("params", {})
         original_run_id = record_data.get("run_id") or record_data.get("session_id", "unknown")
@@ -996,8 +997,26 @@ class ExecutionService:
         for i, step in enumerate(steps):
             step_inputs = step.get("inputs", {})
             for input_name, input_ref in step_inputs.items():
-                if isinstance(input_ref, dict) and "ref_id" in input_ref:
-                    ref_id = input_ref["ref_id"]
+                ref_id = None
+                if isinstance(input_ref, dict):
+                    if "ref_id" in input_ref:
+                        ref_id = input_ref["ref_id"]
+                    elif input_ref.get("source") == "external" and "key" in input_ref:
+                        ref_id = input_ref["key"]
+                    elif input_ref.get("source") == "step":
+                        source_idx = input_ref.get("step_index")
+                        port = input_ref.get("port")
+                        if source_idx is not None and port:
+                            try:
+                                source_step = steps[source_idx]
+                                source_outputs = source_step.get("outputs", {})
+                                out_ref = source_outputs.get(port)
+                                if isinstance(out_ref, dict):
+                                    ref_id = out_ref.get("ref_id")
+                            except (IndexError, KeyError):
+                                pass
+
+                if ref_id:
                     try:
                         self._artifact_store.get(ref_id)
                     except KeyError as exc:
@@ -1019,7 +1038,12 @@ class ExecutionService:
 
         for step in replay_spec.get("steps", []):
             step_spec = replay_spec.copy()
-            step_spec["steps"] = [step]
+            # Map 'id' to 'fn_id' for compatibility with run_workflow if using new schema
+            single_step = step.copy()
+            if "id" in single_step and "fn_id" not in single_step:
+                single_step["fn_id"] = single_step["id"]
+
+            step_spec["steps"] = [single_step]
 
             result = self.run_workflow(step_spec, skip_validation=True)
 

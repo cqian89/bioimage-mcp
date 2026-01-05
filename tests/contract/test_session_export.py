@@ -42,6 +42,7 @@ def test_session_export_basic(session_service):
         }
     }
     mock_step.status = "succeeded"
+    mock_step.canonical = True
     mock_step.log_ref_id = "log-123"
     mock_step.started_at = "2024-01-01T00:00:00Z"
     mock_step.ended_at = "2024-01-01T00:00:01Z"

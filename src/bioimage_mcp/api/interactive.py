@@ -212,7 +212,10 @@ class InteractiveExecutionService:
         # Update session status
         self.session_manager.store.update_session_status(session_id, "exported")
 
-        return response.workflow_ref.model_dump()
+        return {
+            "session_id": session_id,
+            "workflow_ref": response.workflow_ref.model_dump(),
+        }
 
     def replay_session(
         self,
