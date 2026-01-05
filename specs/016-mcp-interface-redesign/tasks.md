@@ -23,9 +23,9 @@
 
 **Purpose**: Verify project structure matches implementation plan
 
-- [ ] T001 Verify project structure exists per plan.md in src/bioimage_mcp/api/
-- [ ] T002 Verify pytest and pytest-asyncio are in pyproject.toml dependencies
-- [ ] T003 [P] Create tests/contract/ directory structure if missing
+- [x] T001 Verify project structure exists per plan.md in src/bioimage_mcp/api/
+- [x] T002 Verify pytest and pytest-asyncio are in pyproject.toml dependencies
+- [x] T003 [P] Create tests/contract/ directory structure if missing
 
 ---
 
@@ -37,46 +37,34 @@
 
 ### Core Pydantic Models
 
-- [ ] T004 [P] Define NodeType enum in src/bioimage_mcp/api/schemas.py
-- [ ] T005 [P] Define ChildCounts model in src/bioimage_mcp/api/schemas.py
-- [ ] T006 [P] Define IOPort and IOSummary models in src/bioimage_mcp/api/schemas.py
-- [ ] T007 [P] Define CatalogNode model in src/bioimage_mcp/api/schemas.py
-- [ ] T008 [P] Define InputHints, InputPort, OutputPort models in src/bioimage_mcp/api/schemas.py
-- [ ] T009 [P] Define FunctionExample and NextStep models in src/bioimage_mcp/api/schemas.py
-- [ ] T010 [P] Define FunctionDescriptor model in src/bioimage_mcp/api/schemas.py
-- [ ] T011 [P] Define ArtifactType enum and ArtifactChecksum model in src/bioimage_mcp/api/schemas.py
-- [ ] T012 [P] Define ArtifactRef model in src/bioimage_mcp/api/schemas.py
-- [ ] T013 [P] Define ErrorDetail and StructuredError models in src/bioimage_mcp/api/schemas.py
-
-### Request/Response Models
-
-- [ ] T014 [P] Define ListRequest and ListResponse models in src/bioimage_mcp/api/schemas.py
-- [ ] T015 [P] Define DescribeRequest and DescribeResponse models in src/bioimage_mcp/api/schemas.py
-- [ ] T016 [P] Define SearchRequest, SearchResult, SearchResponse models in src/bioimage_mcp/api/schemas.py
-- [ ] T017 [P] Define RunRequest and RunResponse models in src/bioimage_mcp/api/schemas.py
-- [ ] T018 [P] Define StatusRequest, Progress, StatusResponse models in src/bioimage_mcp/api/schemas.py
-- [ ] T019 [P] Define ArtifactInfoRequest and ArtifactInfoResponse models in src/bioimage_mcp/api/schemas.py
-- [ ] T020 [P] Define SessionExportRequest (optional dest_path) and SessionExportResponse models in src/bioimage_mcp/api/schemas.py
-- [ ] T021 [P] Define SessionReplayRequest and SessionReplayResponse models in src/bioimage_mcp/api/schemas.py
-
-### Workflow Models
-
-- [ ] T022 [P] Define ExternalInput and InputSource models in src/bioimage_mcp/api/schemas.py
-- [ ] T023 [P] Define StepProvenance (tool_pack_id, tool_pack_version, lock_hash, timestamps) and WorkflowStep models in src/bioimage_mcp/api/schemas.py
-- [ ] T024 [P] Define WorkflowRecord model in src/bioimage_mcp/api/schemas.py
-
-### Cleanup Deprecated Tools
-
-- [ ] T025 Remove describe_tool handler from src/bioimage_mcp/api/server.py
-- [ ] T026 [P] Remove activate_functions handler from src/bioimage_mcp/api/server.py
-- [ ] T027 [P] Remove deactivate_functions handler from src/bioimage_mcp/api/server.py
-- [ ] T028 [P] Remove run_workflow handler from src/bioimage_mcp/api/server.py
-- [ ] T029 [P] Remove resume_session handler from src/bioimage_mcp/api/server.py
-- [ ] T030 [P] Remove export_artifact handler from src/bioimage_mcp/api/artifacts.py
-
-### Error Handling Infrastructure
-
-- [ ] T031 Create structured error helper functions in src/bioimage_mcp/api/errors.py (validation_error, not_found_error, execution_error)
+- [x] T004 [P] Define NodeType enum in src/bioimage_mcp/api/schemas.py
+- [x] T005 [P] Define ChildCounts model in src/bioimage_mcp/api/schemas.py
+- [x] T006 [P] Define IOPort and IOSummary models in src/bioimage_mcp/api/schemas.py
+- [x] T007 [P] Define CatalogNode model in src/bioimage_mcp/api/schemas.py
+- [x] T008 [P] Define InputHints, InputPort, OutputPort models in src/bioimage_mcp/api/schemas.py
+- [x] T009 [P] Define FunctionExample and NextStep models in src/bioimage_mcp/api/schemas.py
+- [x] T010 [P] Define FunctionDescriptor model in src/bioimage_mcp/api/schemas.py
+- [x] T011 [P] Define ArtifactType enum and ArtifactChecksum model in src/bioimage_mcp/api/schemas.py
+- [x] T012 [P] Define ArtifactRef model in src/bioimage_mcp/api/schemas.py
+- [x] T013 [P] Define ErrorDetail and StructuredError models in src/bioimage_mcp/api/schemas.py
+- [x] T014 [P] Define ListRequest and ListResponse models in src/bioimage_mcp/api/schemas.py
+- [x] T015 [P] Define DescribeRequest and DescribeResponse models in src/bioimage_mcp/api/schemas.py
+- [x] T016 [P] Define SearchRequest, SearchResult, SearchResponse models in src/bioimage_mcp/api/schemas.py
+- [x] T017 [P] Define RunRequest and RunResponse models in src/bioimage_mcp/api/schemas.py
+- [x] T018 [P] Define StatusRequest, Progress, StatusResponse models in src/bioimage_mcp/api/schemas.py
+- [x] T019 [P] Define ArtifactInfoRequest and ArtifactInfoResponse models in src/bioimage_mcp/api/schemas.py
+- [x] T020 [P] Define SessionExportRequest (optional dest_path) and SessionExportResponse models in src/bioimage_mcp/api/schemas.py
+- [x] T021 [P] Define SessionReplayRequest and SessionReplayResponse models in src/bioimage_mcp/api/schemas.py
+- [x] T022 [P] Define ExternalInput and InputSource models in src/bioimage_mcp/api/schemas.py
+- [x] T023 [P] Define StepProvenance (tool_pack_id, tool_pack_version, lock_hash, timestamps) and WorkflowStep models in src/bioimage_mcp/api/schemas.py
+- [x] T024 [P] Define WorkflowRecord model in src/bioimage_mcp/api/schemas.py
+- [x] T025 Remove describe_tool handler from src/bioimage_mcp/api/server.py
+- [x] T026 [P] Remove activate_functions handler from src/bioimage_mcp/api/server.py
+- [x] T027 [P] Remove deactivate_functions handler from src/bioimage_mcp/api/server.py
+- [x] T028 [P] Remove run_workflow handler from src/bioimage_mcp/api/server.py
+- [x] T029 [P] Remove resume_session handler from src/bioimage_mcp/api/server.py
+- [x] T030 [P] Remove export_artifact handler from src/bioimage_mcp/api/artifacts.py
+- [x] T031 Create structured error helper functions in src/bioimage_mcp/api/errors.py (validation_error, not_found_error, execution_error)
 
 **Checkpoint**: Foundation ready - user story implementation can now begin
 
@@ -90,36 +78,36 @@
 
 ### Tests for US1+US3 (TDD: Write FIRST, must FAIL before implementation)
 
-- [ ] T032 [P] [US1] RED: Contract test for list tool deterministic ordering + cursor pagination (`cursor`, `limit`, `next_cursor`) in tests/contract/test_list.py
-- [ ] T033 [P] [US1] RED: Contract test for list tool child counts in tests/contract/test_list.py
-- [ ] T034 [P] [US1] RED: Contract test for list tool I/O summaries in tests/contract/test_list.py
-- [ ] T035 [P] [US1] RED: Contract test for list tool NOT_FOUND error in tests/contract/test_list.py
-- [ ] T036 [P] [US1] RED: Contract test for describe function with separated inputs/outputs/params in tests/contract/test_describe.py
-- [ ] T037 [P] [US1] RED: Contract test for describe non-function node in tests/contract/test_describe.py
-- [ ] T038 [P] [US1] RED: Contract test for describe NOT_FOUND error in tests/contract/test_describe.py
-- [ ] T039 [P] [US1] RED: Contract test for run tool success in tests/contract/test_run.py
-- [ ] T040 [P] [US1] RED: Contract test for run tool VALIDATION_FAILED error in tests/contract/test_run.py
-- [ ] T041 [P] [US1] RED: Contract test for run tool structured error format in tests/contract/test_run.py
-- [ ] T119 [P] [US1] RED: Contract test for run tool status:"failed" with log reference when underlying function crashes in tests/contract/test_run.py
-- [ ] T042 [P] [US1] RED: Contract test for status tool in tests/contract/test_status.py
+- [x] T032 [P] [US1] RED: Contract test for list tool deterministic ordering + cursor pagination (`cursor`, `limit`, `next_cursor`) in tests/contract/test_list.py
+- [x] T033 [P] [US1] RED: Contract test for list tool child counts in tests/contract/test_list.py
+- [x] T034 [P] [US1] RED: Contract test for list tool I/O summaries in tests/contract/test_list.py
+- [x] T035 [P] [US1] RED: Contract test for list tool NOT_FOUND error in tests/contract/test_list.py
+- [x] T036 [P] [US1] RED: Contract test for describe function with separated inputs/outputs/params in tests/contract/test_describe.py
+- [x] T037 [P] [US1] RED: Contract test for describe non-function node in tests/contract/test_describe.py
+- [x] T038 [P] [US1] RED: Contract test for describe NOT_FOUND error in tests/contract/test_describe.py
+- [x] T039 [P] [US1] RED: Contract test for run tool success in tests/contract/test_run.py
+- [x] T040 [P] [US1] RED: Contract test for run tool VALIDATION_FAILED error in tests/contract/test_run.py
+- [x] T041 [P] [US1] RED: Contract test for run tool structured error format in tests/contract/test_run.py
+- [x] T119 [P] [US1] RED: Contract test for run tool status:"failed" with log reference when underlying function crashes in tests/contract/test_run.py
+- [x] T042 [P] [US1] RED: Contract test for status tool in tests/contract/test_status.py
 
 ### Implementation for US1+US3 (GREEN: Make tests pass)
 
-- [ ] T043 [US1] Implement list handler in src/bioimage_mcp/api/discovery.py with pagination
-- [ ] T044 [US1] Add child counts computation to list handler in src/bioimage_mcp/api/discovery.py
-- [ ] T045 [US1] Add I/O summaries for function nodes in list handler in src/bioimage_mcp/api/discovery.py
-- [ ] T046 [US1] Implement describe handler in src/bioimage_mcp/api/discovery.py
-- [ ] T047 [US1] Add separated inputs/outputs/params_schema generation in describe handler in src/bioimage_mcp/api/discovery.py
-- [ ] T048 [US1] Implement run handler in src/bioimage_mcp/api/execution.py
-- [ ] T049 [US1] Add input validation with structured errors to run handler in src/bioimage_mcp/api/execution.py
-- [ ] T050 [US1] Add output artifact generation to run handler in src/bioimage_mcp/api/execution.py
-- [ ] T051 [US1] Implement status handler in src/bioimage_mcp/api/execution.py
-- [ ] T052 [US1] Register list, describe, run, status tools in src/bioimage_mcp/api/server.py
+- [x] T043 [US1] Implement list handler in src/bioimage_mcp/api/discovery.py with pagination
+- [x] T044 [US1] Add child counts computation to list handler in src/bioimage_mcp/api/discovery.py
+- [x] T045 [US1] Add I/O summaries for function nodes in list handler in src/bioimage_mcp/api/discovery.py
+- [x] T046 [US1] Implement describe handler in src/bioimage_mcp/api/discovery.py
+- [x] T047 [US1] Add separated inputs/outputs/params_schema generation in describe handler in src/bioimage_mcp/api/discovery.py
+- [x] T048 [US1] Implement run handler in src/bioimage_mcp/api/execution.py
+- [x] T049 [US1] Add input validation with structured errors to run handler in src/bioimage_mcp/api/execution.py
+- [x] T050 [US1] Add output artifact generation to run handler in src/bioimage_mcp/api/execution.py
+- [x] T051 [US1] Implement status handler in src/bioimage_mcp/api/execution.py
+- [x] T052 [US1] Register list, describe, run, status tools in src/bioimage_mcp/api/server.py
 
 ### Refactor for US1+US3
 
-- [ ] T053 [US1] Verify params_schema contains no artifact port keys (FR-005) in describe handler
-- [ ] T054 [US1] Verify JSON Schema types are correct (numbers as numbers, booleans as booleans) in describe handler
+- [x] T053 [US1] Verify params_schema contains no artifact port keys (FR-005) in describe handler
+- [x] T054 [US1] Verify JSON Schema types are correct (numbers as numbers, booleans as booleans) in describe handler
 
 **Checkpoint**: Core discover-describe-run flow works - MVP complete
 
@@ -133,22 +121,22 @@
 
 ### Tests for US2 (TDD: Write FIRST, must FAIL before implementation)
 
-- [ ] T055 [P] [US2] RED: Contract test for search with query parameter in tests/contract/test_search.py
-- [ ] T056 [P] [US2] RED: Contract test for search with io_in/io_out filters in tests/contract/test_search.py
-- [ ] T057 [P] [US2] RED: Contract test for search with tags filter in tests/contract/test_search.py
-- [ ] T058 [P] [US2] RED: Contract test for search I/O summaries in results in tests/contract/test_search.py
-- [ ] T059 [P] [US2] RED: Contract test for search VALIDATION_FAILED when no query or keywords in tests/contract/test_search.py
-- [ ] T112 [P] [US2] RED: Contract test for search VALIDATION_FAILED when BOTH query and keywords are provided in tests/contract/test_search.py
+- [x] T055 [P] [US2] RED: Contract test for search with query parameter in tests/contract/test_search.py
+- [x] T056 [P] [US2] RED: Contract test for search with io_in/io_out filters in tests/contract/test_search.py
+- [x] T057 [P] [US2] RED: Contract test for search with tags filter in tests/contract/test_search.py
+- [x] T058 [P] [US2] RED: Contract test for search I/O summaries in results in tests/contract/test_search.py
+- [x] T059 [P] [US2] RED: Contract test for search VALIDATION_FAILED when no query or keywords in tests/contract/test_search.py
+- [x] T112 [P] [US2] RED: Contract test for search VALIDATION_FAILED when BOTH query and keywords are provided in tests/contract/test_search.py
 
 ### Implementation for US2 (GREEN: Make tests pass)
 
-- [ ] T060 [US2] Implement search handler in src/bioimage_mcp/api/discovery.py
-- [ ] T061 [US2] Add query/keywords validation (exactly one required) in search handler
-- [ ] T062 [US2] Add io_in/io_out filtering in search handler
-- [ ] T063 [US2] Add tags filtering in search handler
-- [ ] T064 [US2] Add I/O summaries to search results in search handler
-- [ ] T065 [US2] Add scoring and ranking to search results in search handler
-- [ ] T066 [US2] Register search tool in src/bioimage_mcp/api/server.py
+- [x] T060 [US2] Implement search handler in src/bioimage_mcp/api/discovery.py
+- [x] T061 [US2] Add query/keywords validation (exactly one required) in search handler
+- [x] T062 [US2] Add io_in/io_out filtering in search handler
+- [x] T063 [US2] Add tags filtering in search handler
+- [x] T064 [US2] Add I/O summaries to search results in search handler
+- [x] T065 [US2] Add scoring and ranking to search results in search handler
+- [x] T066 [US2] Register search tool in src/bioimage_mcp/api/server.py
 
 **Checkpoint**: Search functionality complete - LLMs can efficiently find functions
 
@@ -162,15 +150,15 @@
 
 ### Tests for US5 (TDD: Write FIRST, must FAIL before implementation)
 
-- [ ] T067 [P] [US5] RED: Contract test for dry_run success in tests/contract/test_run.py
-- [ ] T068 [P] [US5] RED: Contract test for dry_run validation_failed with missing input in tests/contract/test_run.py
-- [ ] T069 [P] [US5] RED: Contract test for dry_run validation parity with real execution in tests/contract/test_run.py
+- [x] T067 [P] [US5] RED: Contract test for dry_run success in tests/contract/test_run.py
+- [x] T068 [P] [US5] RED: Contract test for dry_run validation_failed with missing input in tests/contract/test_run.py
+- [x] T069 [P] [US5] RED: Contract test for dry_run validation parity with real execution in tests/contract/test_run.py
 
 ### Implementation for US5 (GREEN: Make tests pass)
 
-- [ ] T070 [US5] Add dry_run flag handling to run handler in src/bioimage_mcp/api/execution.py
-- [ ] T071 [US5] Ensure dry_run performs identical validation to real execution in run handler
-- [ ] T072 [US5] Return validation_failed status with structured error on dry_run failure in run handler
+- [x] T070 [US5] Add dry_run flag handling to run handler in src/bioimage_mcp/api/execution.py
+- [x] T071 [US5] Ensure dry_run performs identical validation to real execution in run handler
+- [x] T072 [US5] Return validation_failed status with structured error on dry_run failure in run handler
 
 **Checkpoint**: Dry-run validation works - LLMs can pre-validate before expensive operations
 
@@ -184,19 +172,19 @@
 
 ### Tests for US6 (TDD: Write FIRST, must FAIL before implementation)
 
-- [ ] T073 [P] [US6] RED: Contract test for artifact_info metadata retrieval in tests/contract/test_artifact_info.py
-- [ ] T074 [P] [US6] RED: Contract test for artifact_info text preview in tests/contract/test_artifact_info.py
-- [ ] T075 [P] [US6] RED: Contract test for artifact_info checksums in tests/contract/test_artifact_info.py
-- [ ] T076 [P] [US6] RED: Contract test for artifact_info NOT_FOUND error in tests/contract/test_artifact_info.py
-- [ ] T077 [P] [US6] RED: Contract test for artifact_info image metadata (dims, dtype, shape) in tests/contract/test_artifact_info.py
+- [x] T073 [P] [US6] RED: Contract test for artifact_info metadata retrieval in tests/contract/test_artifact_info.py
+- [x] T074 [P] [US6] RED: Contract test for artifact_info text preview in tests/contract/test_artifact_info.py
+- [x] T075 [P] [US6] RED: Contract test for artifact_info checksums in tests/contract/test_artifact_info.py
+- [x] T076 [P] [US6] RED: Contract test for artifact_info NOT_FOUND error in tests/contract/test_artifact_info.py
+- [x] T077 [P] [US6] RED: Contract test for artifact_info image metadata (dims, dtype, shape) in tests/contract/test_artifact_info.py
 
 ### Implementation for US6 (GREEN: Make tests pass)
 
-- [ ] T078 [US6] Implement artifact_info handler in src/bioimage_mcp/api/artifacts.py
-- [ ] T079 [US6] Add metadata retrieval (mime_type, size_bytes, checksums) in artifact_info handler
-- [ ] T080 [US6] Add text_preview support for safe text artifacts in artifact_info handler
-- [ ] T081 [US6] Add image metadata (dims, dtype, shape) extraction in artifact_info handler
-- [ ] T082 [US6] Register artifact_info tool in src/bioimage_mcp/api/server.py
+- [x] T078 [US6] Implement artifact_info handler in src/bioimage_mcp/api/artifacts.py
+- [x] T079 [US6] Add metadata retrieval (mime_type, size_bytes, checksums) in artifact_info handler
+- [x] T080 [US6] Add text_preview support for safe text artifacts in artifact_info handler
+- [x] T081 [US6] Add image metadata (dims, dtype, shape) extraction in artifact_info handler
+- [x] T082 [US6] Register artifact_info tool in src/bioimage_mcp/api/server.py
 
 **Checkpoint**: Artifact inspection works - Users can inspect without downloading
 
@@ -210,32 +198,32 @@
 
 ### Tests for US4 (TDD: Write FIRST, must FAIL before implementation)
 
-- [ ] T083 [P] [US4] RED: Contract test for session_export basic export in tests/contract/test_session_export.py
-- [ ] T084 [P] [US4] RED: Contract test for session_export external_inputs tracking in tests/contract/test_session_export.py
-- [ ] T085 [P] [US4] RED: Contract test for session_export step input sources in tests/contract/test_session_export.py
-- [ ] T113 [P] [US4] RED: Contract test for session_export provenance fields (tool_pack_id, tool_pack_version, lock_hash, timestamps) in tests/contract/test_session_export.py
-- [ ] T117 [P] [US4] RED: Contract test for session_export dest_path allowlist enforcement (DENIED when outside allowed roots) in tests/contract/test_session_export.py
-- [ ] T086 [P] [US4] RED: Contract test for session_replay basic replay in tests/contract/test_session_replay.py
-- [ ] T087 [P] [US4] RED: Contract test for session_replay with new input bindings in tests/contract/test_session_replay.py
-- [ ] T088 [P] [US4] RED: Contract test for session_replay missing external input error in tests/contract/test_session_replay.py
+- [x] T083 [P] [US4] RED: Contract test for session_export basic export in tests/contract/test_session_export.py
+- [x] T084 [P] [US4] RED: Contract test for session_export external_inputs tracking in tests/contract/test_session_export.py
+- [x] T085 [P] [US4] RED: Contract test for session_export step input sources in tests/contract/test_session_export.py
+- [x] T113 [P] [US4] RED: Contract test for session_export provenance fields (tool_pack_id, tool_pack_version, lock_hash, timestamps) in tests/contract/test_session_export.py
+- [x] T117 [P] [US4] RED: Contract test for session_export dest_path allowlist enforcement (DENIED when outside allowed roots) in tests/contract/test_session_export.py
+- [x] T086 [P] [US4] RED: Contract test for session_replay basic replay in tests/contract/test_session_replay.py
+- [x] T087 [P] [US4] RED: Contract test for session_replay with new input bindings in tests/contract/test_session_replay.py
+- [x] T088 [P] [US4] RED: Contract test for session_replay missing external input error in tests/contract/test_session_replay.py
 - [ ] T114 [P] [US4] RED: Contract test for session_replay VALIDATION_FAILED when a referenced function no longer exists in tests/contract/test_session_replay.py
-- [ ] T089 [P] [US4] RED: Contract test for session_replay params_overrides in tests/contract/test_session_replay.py
-- [ ] T090 [P] [US4] RED: Contract test for session_replay step_overrides in tests/contract/test_session_replay.py
+- [x] T089 [P] [US4] RED: Contract test for session_replay params_overrides in tests/contract/test_session_replay.py
+- [x] T090 [P] [US4] RED: Contract test for session_replay step_overrides in tests/contract/test_session_replay.py
 
 ### Implementation for US4 (GREEN: Make tests pass)
 
-- [ ] T091 [US4] Create sessions.py module in src/bioimage_mcp/api/sessions.py
-- [ ] T092 [US4] Implement session state tracking (external_inputs vs step outputs) in sessions.py
-- [ ] T093 [US4] Implement session_export handler in src/bioimage_mcp/api/sessions.py
-- [ ] T094 [US4] Generate WorkflowRecord with external_inputs classification in session_export
-- [ ] T095 [US4] Mark step input sources with source field (external vs step) in session_export
-- [ ] T096 [US4] Implement session_replay handler in src/bioimage_mcp/api/sessions.py
-- [ ] T097 [US4] Add external input binding validation in session_replay
-- [ ] T098 [US4] Add params_overrides support (by function id) in session_replay
-- [ ] T099 [US4] Add step_overrides support (by step index) in session_replay
-- [ ] T118 [US4] Enforce allowed-roots validation for SessionExportRequest.dest_path in src/bioimage_mcp/api/sessions.py (session_export handler)
-- [ ] T100 [US4] Register session_export and session_replay tools in src/bioimage_mcp/api/server.py
-- [ ] T101 [US4] Integrate session tracking with run handler in src/bioimage_mcp/api/execution.py
+- [x] T091 [US4] Create sessions.py module in src/bioimage_mcp/api/sessions.py
+- [x] T092 [US4] Implement session state tracking (external_inputs vs step outputs) in sessions.py
+- [x] T093 [US4] Implement session_export handler in src/bioimage_mcp/api/sessions.py
+- [x] T094 [US4] Generate WorkflowRecord with external_inputs classification in session_export
+- [x] T095 [US4] Mark step input sources with source field (external vs step) in session_export
+- [x] T096 [US4] Implement session_replay handler in src/bioimage_mcp/api/sessions.py
+- [x] T097 [US4] Add external input binding validation in session_replay
+- [x] T098 [US4] Add params_overrides support (by function id) in session_replay
+- [x] T099 [US4] Add step_overrides support (by step index) in session_replay
+- [x] T118 [US4] Enforce allowed-roots validation for SessionExportRequest.dest_path in src/bioimage_mcp/api/sessions.py (session_export handler)
+- [x] T100 [US4] Register session_export and session_replay tools in src/bioimage_mcp/api/server.py
+- [x] T101 [US4] Integrate session tracking with run handler in src/bioimage_mcp/api/execution.py
 
 **Checkpoint**: Workflow replay works - Full reproducibility on new data
 
@@ -247,11 +235,11 @@
 
 ### Integration Tests
 
-- [ ] T102 [P] Integration test for full discover->describe->run flow in tests/integration/test_end_to_end.py
-- [ ] T103 [P] Integration test for search->describe->run flow in tests/integration/test_end_to_end.py
-- [ ] T104 [P] Integration test for multi-step session->export->replay flow in tests/integration/test_end_to_end.py
-- [ ] T120 [P] Integration test for run crash -> status failed + log artifact reference in tests/integration/test_end_to_end.py
-- [ ] T121 [P] Integration test for concurrent runs in one session (append-only; may interleave) in tests/integration/test_end_to_end.py
+- [x] T102 [P] Integration test for full discover->describe->run flow in tests/integration/test_end_to_end.py
+- [x] T103 [P] Integration test for search->describe->run flow in tests/integration/test_end_to_end.py
+- [x] T104 [P] Integration test for multi-step session->export->replay flow in tests/integration/test_end_to_end.py
+- [x] T120 [P] Integration test for run crash -> status failed + log artifact reference in tests/integration/test_end_to_end.py
+- [x] T121 [P] Integration test for concurrent runs in one session (append-only; may interleave) in tests/integration/test_end_to_end.py
 
 ### Documentation & Validation
 
