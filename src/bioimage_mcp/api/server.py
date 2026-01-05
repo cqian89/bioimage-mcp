@@ -6,7 +6,6 @@ from bioimage_mcp.api.artifacts import ArtifactsService
 from bioimage_mcp.api.discovery import DiscoveryService
 from bioimage_mcp.api.execution import ExecutionService
 from bioimage_mcp.api.interactive import InteractiveExecutionService
-from bioimage_mcp.api.permissions import PermissionService
 from bioimage_mcp.sessions.manager import SessionManager
 
 try:
@@ -78,55 +77,6 @@ def create_server(
         raise RuntimeError("MCP SDK not available; install `mcp` to use serve")
 
     mcp = FastMCP("bioimage-mcp")
-    permission_service = PermissionService()
-
-    def get_session(ctx: Context) -> Any:
-        """Helper to get the current session from the request context."""
-        if not ctx.session:
-            raise RuntimeError("No session context available")
-        return session_manager.ensure_session(get_session_identifier(ctx))
-
-    # --- Implementation helpers for testing ---
-    def _filter_tools_impl(tools_result: dict, active_ids: list[str]) -> dict:
-        allowed_prefixes: set[str] = set()
-        for fn_id in active_ids:
-            parts = fn_id.split(".")
-            for idx in range(1, len(parts) + 1):
-                allowed_prefixes.add(".".join(parts[:idx]))
-
-        tools_result["tools"] = [
-            node for node in tools_result["tools"] if node.get("full_path") in allowed_prefixes
-        ]
-        return tools_result
-
-    def _filter_functions_impl(functions_result: dict, active_ids: list[str]) -> dict:
-        allowed_fn_ids = set(active_ids)
-        functions_result["functions"] = [
-            f for f in functions_result["functions"] if f["fn_id"] in allowed_fn_ids
-        ]
-        return functions_result
-
-    async def _activate_functions_impl(ctx: Context, fn_ids: list[str]) -> dict[str, Any]:
-        if not ctx or not ctx.session:
-            raise RuntimeError("Session context required for activation")
-
-        session_id = get_session_identifier(ctx)
-        session_manager.ensure_session(session_id)
-        session_manager.store.replace_active_functions(session_id, fn_ids)
-
-        await ctx.session.send_tool_list_changed()
-        return {"session_id": session_id, "active": fn_ids}
-
-    async def _deactivate_functions_impl(ctx: Context) -> dict[str, Any]:
-        if not ctx or not ctx.session:
-            raise RuntimeError("Session context required for deactivation")
-
-        session_id = get_session_identifier(ctx)
-        session_manager.ensure_session(session_id)
-        session_manager.store.replace_active_functions(session_id, [])
-
-        await ctx.session.send_tool_list_changed()
-        return {"session_id": session_id, "active": []}
 
     @mcp.tool()
     def list_tools(
@@ -135,28 +85,14 @@ def create_server(
         flatten: bool | None = None,
         cursor: str | None = None,
         limit: int | None = None,
-        ctx: Context | None = None,
     ) -> dict[str, Any]:
-        tools_result = discovery.list_tools(
+        return discovery.list_tools(
             path=path,
             paths=paths,
             flatten=flatten,
             limit=limit,
             cursor=cursor,
         )
-
-        if ctx and ctx.session:
-            session_id = get_session_identifier(ctx)
-            session_manager.ensure_session(session_id)
-            active_ids = session_manager.store.get_active_functions(session_id)
-            if active_ids:
-                return _filter_tools_impl(tools_result, active_ids)
-
-        return tools_result
-
-    @mcp.tool()
-    def describe_tool(tool_id: str) -> dict[str, Any]:
-        return discovery.describe_tool(tool_id)
 
     @mcp.tool()
     def search_functions(
@@ -167,9 +103,8 @@ def create_server(
         io_out: str | None = None,
         cursor: str | None = None,
         limit: int | None = None,
-        ctx: Context | None = None,
     ) -> dict[str, Any]:
-        result = discovery.search_functions(
+        return discovery.search_functions(
             keywords=keywords,
             query=query,
             tags=tags,
@@ -179,39 +114,11 @@ def create_server(
             limit=limit,
         )
 
-        if ctx and ctx.session:
-            session_id = get_session_identifier(ctx)
-            session_manager.ensure_session(session_id)
-            active_ids = session_manager.store.get_active_functions(session_id)
-            if active_ids:
-                return _filter_functions_impl(result, active_ids)
-
-        return result
-
-    @mcp.tool()
-    async def activate_functions(fn_ids: list[str], ctx: Context | None = None) -> dict[str, Any]:
-        """Activate a specific set of functions for the current session."""
-        if ctx is None:
-            raise RuntimeError("Context missing")
-        return await _activate_functions_impl(ctx, fn_ids)
-
-    @mcp.tool()
-    async def deactivate_functions(ctx: Context | None = None) -> dict[str, Any]:
-        """Deactivate all function filters (restore full access) for the current session."""
-        if ctx is None:
-            raise RuntimeError("Context missing")
-        return await _deactivate_functions_impl(ctx)
-
     @mcp.tool()
     def describe_function(
         fn_id: str | None = None, fn_ids: list[str] | None = None
     ) -> dict[str, Any]:
         return discovery.describe_function(fn_id=fn_id, fn_ids=fn_ids)
-
-    @mcp.tool()
-    def run_workflow(steps: list[dict], run_opts: dict | None = None) -> dict[str, Any]:
-        spec = {"steps": steps, "run_opts": run_opts or {}}
-        return execution.run_workflow(spec)
 
     @mcp.tool()
     def get_run_status(run_id: str) -> dict[str, Any]:
@@ -242,23 +149,6 @@ def create_server(
             params = {}
 
         session_manager.ensure_session(session_id)
-        active_ids = session_manager.store.get_active_functions(session_id)
-        is_activated = fn_id in active_ids if active_ids else False
-
-        workflow_hint = None
-        warnings: list[str] | None = None
-        if not is_activated:
-            workflow_hint = "TIP: Use activate_functions before run_function for better guidance"
-            warn_override = None
-            if metadata and isinstance(metadata, dict):
-                warn_override = metadata.get("warn_unactivated")
-            warn_unactivated = (
-                warn_override
-                if warn_override is not None
-                else session_manager.config.agent_guidance.warn_unactivated
-            )
-            if warn_unactivated:
-                warnings = [workflow_hint]
 
         result = interactive.call_tool(
             session_id=session_id,
@@ -269,28 +159,11 @@ def create_server(
             dry_run=dry_run,
         )
 
-        response: dict[str, Any] = {"result": result, "workflow_hint": workflow_hint}
-        if warnings:
-            response["warnings"] = warnings
-        return response
+        return {"result": result}
 
     @mcp.tool()
     def get_artifact(ref_id: str) -> dict[str, Any]:
         return artifacts.get_artifact(ref_id)
-
-    @mcp.tool()
-    def export_artifact(
-        ref_id: str,
-        dest_path: str,
-        ctx: Context | None = None,
-    ) -> dict[str, Any]:
-        session = ctx.session if ctx and ctx.session else None
-        return artifacts.export_artifact(
-            ref_id,
-            dest_path,
-            session=session,
-            permission_service=permission_service,
-        )
 
     @mcp.tool()
     def export_session(session_id: str | None = None, ctx: Context | None = None) -> dict[str, Any]:
@@ -305,26 +178,5 @@ def create_server(
             raise ValueError("session_id must be provided or available in context")
 
         return interactive.export_session(session_id)
-
-    @mcp.tool()
-    def resume_session(session_id: str) -> dict[str, Any]:
-        """Resume an existing session.
-
-        Returns the session details, including the session_id and active functions.
-        """
-        try:
-            session = session_manager.get_session(session_id)
-        except KeyError:
-            raise ValueError(f"Session {session_id} not found") from None
-
-        active_fns = session_manager.store.get_active_functions(session_id)
-
-        return {
-            "session_id": session.session_id,
-            "status": session.status,
-            "created_at": session.created_at,
-            "last_activity_at": session.last_activity_at,
-            "active_functions": active_fns,
-        }
 
     return mcp

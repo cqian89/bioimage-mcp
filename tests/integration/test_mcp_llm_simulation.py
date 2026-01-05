@@ -354,19 +354,19 @@ class TestMCPLLMSimulation:
         labels_ref = outputs["labels"]
         labels_export_path = tmp_path / "exported_labels.ome.tiff"
 
-        export_result = artifacts_svc.export_artifact(labels_ref["ref_id"], str(labels_export_path))
+        exported = artifact_store.export(labels_ref["ref_id"], labels_export_path)
 
         assert labels_export_path.exists(), "Exported labels file not found"
-        assert "exported_path" in export_result
+        assert str(exported) == str(labels_export_path)
 
         # Export the native output (cellpose bundle)
         bundle_ref = outputs["cellpose_bundle"]
         bundle_export_path = tmp_path / "exported_bundle.npy"
 
-        export_result = artifacts_svc.export_artifact(bundle_ref["ref_id"], str(bundle_export_path))
+        exported = artifact_store.export(bundle_ref["ref_id"], bundle_export_path)
 
         assert bundle_export_path.exists(), "Exported bundle file not found"
-        assert "exported_path" in export_result
+        assert str(exported) == str(bundle_export_path)
 
     def test_full_llm_workflow_simulation(self, mcp_environment):
         """
@@ -449,15 +449,16 @@ class TestMCPLLMSimulation:
         # === LLM Step 5: Export outputs ===
         print("\n[LLM] Exporting outputs...")
         outputs = status["outputs"]
+        artifact_store = mcp_environment["artifact_store"]
 
         # Export OME-TIFF labels
         labels_path = tmp_path / "segmentation_labels.ome.tiff"
-        artifacts_svc.export_artifact(outputs["labels"]["ref_id"], str(labels_path))
+        artifact_store.export(outputs["labels"]["ref_id"], labels_path)
         print(f"[LLM] Exported labels to: {labels_path}")
 
         # Export native bundle
         bundle_path = tmp_path / "cellpose_bundle.npy"
-        artifacts_svc.export_artifact(outputs["cellpose_bundle"]["ref_id"], str(bundle_path))
+        artifact_store.export(outputs["cellpose_bundle"]["ref_id"], bundle_path)
         print(f"[LLM] Exported native bundle to: {bundle_path}")
 
         # Verify outputs exist

@@ -67,9 +67,6 @@ def test_list_tools_ensures_session(monkeypatch, tmp_path) -> None:
         session_manager=session_manager,
     )
 
-    ctx = SimpleNamespace(session=SimpleNamespace(id="session-1"))
-
-    result = mcp.tools["list_tools"](ctx=ctx)
+    result = mcp.tools["list_tools"]()
 
     assert result["tools"][0]["full_path"] == "base"
-    assert session_manager.get_session("session-1").session_id == "session-1"

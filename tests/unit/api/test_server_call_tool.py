@@ -97,7 +97,5 @@ def test_run_function_params_optional(monkeypatch, tmp_path) -> None:
     )
 
     assert result["result"]["ok"] is True
-    assert result["workflow_hint"] is None
-    assert "warnings" not in result
     assert interactive.calls
     assert interactive.calls[0]["params"] == {}
