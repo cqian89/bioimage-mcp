@@ -23,7 +23,7 @@ from datetime import UTC  # noqa: E402
 
 from bioimage_mcp_base.ops import io as io_ops  # noqa: E402
 
-TOOL_VERSION = "0.1.0"
+TOOL_VERSION = "0.2.0"
 TOOL_ENV_NAME = "bioimage-mcp-base"
 DYNAMIC_FN_PREFIXES = ("base.", f"{TOOL_ENV_NAME}.")
 
@@ -473,6 +473,11 @@ def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
         import os
 
         os.environ["BIOIMAGE_MCP_FS_ALLOWLIST_READ"] = json.dumps(allowlist)
+
+    # Set write allowlist in environment for the duration of this request
+    write_allowlist = request.get("fs_allowlist_write")
+    if write_allowlist is not None:
+        os.environ["BIOIMAGE_MCP_FS_ALLOWLIST_WRITE"] = json.dumps(write_allowlist)
 
     warnings = []
     if fn_id in LEGACY_REDIRECTS:

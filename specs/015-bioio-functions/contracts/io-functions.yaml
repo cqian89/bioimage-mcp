@@ -126,20 +126,16 @@ functions:
     tool_id: tools.base
     name: Export artifact to file
     description: |
-      Export an image or table artifact to a specific file format.
-      Supports OME-TIFF, OME-Zarr, PNG for images and CSV for tables.
+      Export an image artifact to a specific file format.
+      Supports OME-TIFF, OME-Zarr, PNG, and NPY.
       Replaces deprecated base.bioio.export function.
     tags: [image, io, export]
     input_mode: xarray
     inputs:
       - name: image
         artifact_type: BioImageRef
-        required: false
+        required: true
         description: Image artifact to export
-      - name: table
-        artifact_type: TableRef
-        required: false
-        description: Table artifact to export
     outputs:
       - name: output
         artifact_type: BioImageRef
@@ -149,7 +145,7 @@ functions:
       properties:
         format:
           type: string
-          enum: [OME-TIFF, OME-Zarr, PNG, CSV, NPY]
+          enum: [OME-TIFF, OME-Zarr, PNG, NPY]
           description: Target export format. If omitted, inferred from artifact type.
         path:
           type: string

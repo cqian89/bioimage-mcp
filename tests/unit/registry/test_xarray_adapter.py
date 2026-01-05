@@ -114,8 +114,8 @@ def test_axis_padding_standard_order_3d(tmp_path):
     assert outputs[0]["metadata"]["shape"] == [5, 10, 10]
 
 
-def test_bioio_export_works(tmp_path):
-    """Test that base.bioio.export works (statically mapped)."""
+def test_io_bioimage_export_works(tmp_path):
+    """Test that base.io.bioimage.export works (statically mapped)."""
     # Add tools/base to sys.path
     tools_base = Path(__file__).resolve().parents[3] / "tools" / "base"
     if str(tools_base) not in sys.path:
@@ -128,7 +128,7 @@ def test_bioio_export_works(tmp_path):
     OmeTiffWriter.save(data, str(img_path), dim_order="TCZYX")
 
     request = {
-        "fn_id": "base.bioio.export",
+        "fn_id": "base.io.bioimage.export",
         "inputs": {
             "image": {"type": "BioImageRef", "format": "OME-TIFF", "uri": img_path.as_uri()}
         },

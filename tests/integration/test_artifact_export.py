@@ -38,8 +38,8 @@ def test_export_enforces_write_allowlist(tmp_path: Path) -> None:
 
 
 @pytest.mark.integration
-def test_base_bioio_export_materializes_mem_to_file(mcp_services):
-    """T020: base.bioio.export materializes mem:// to file-backed artifact."""
+def test_base_io_bioimage_export_materializes_mem_to_file(mcp_services):
+    """T020: base.io.bioimage.export materializes mem:// to file-backed artifact."""
     execution_service = mcp_services["execution"]
     tmp_path = mcp_services["tmp_path"]
 
@@ -80,11 +80,11 @@ def test_base_bioio_export_materializes_mem_to_file(mcp_services):
     assert mem_ref["uri"].startswith("mem://"), f"Expected mem:// URI, got {mem_ref['uri']}"
     assert mem_ref["storage_type"] == "memory"
 
-    # 2. Call base.bioio.export to materialize it
+    # 2. Call base.io.bioimage.export to materialize it
     export_workflow = {
         "steps": [
             {
-                "fn_id": "base.bioio.export",
+                "fn_id": "base.io.bioimage.export",
                 "params": {"format": "OME-TIFF"},
                 "inputs": {"image": {"ref_id": mem_ref["ref_id"]}},
             }

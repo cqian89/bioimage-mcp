@@ -87,7 +87,7 @@ class TestPersistentWorkerLifecycle:
         # Prepare a simple execute request (meta.describe doesn't need file I/O)
         request = {
             "fn_id": "meta.describe",
-            "params": {"target_fn": "base.bioio.export"},
+            "params": {"target_fn": "base.io.bioimage.export"},
             "inputs": {},
             "work_dir": str(tmp_path),
         }
@@ -168,14 +168,14 @@ class TestPersistentWorkerLifecycle:
         request1 = {
             "fn_id": "meta.describe",
             "inputs": {},
-            "params": {"target_fn": "base.bioio.export"},
+            "params": {"target_fn": "base.io.bioimage.export"},
             "work_dir": str(tmp_path),
         }
 
         request2 = {
             "fn_id": "meta.describe",
             "inputs": {},
-            "params": {"target_fn": "base.bioio.export"},
+            "params": {"target_fn": "base.io.bioimage.export"},
             "work_dir": str(tmp_path),
         }
 
@@ -259,7 +259,7 @@ class TestPersistentWorkerLifecycle:
                 request = {
                     "fn_id": "meta.describe",
                     "inputs": {},
-                    "params": {"target_fn": "base.bioio.export"},
+                    "params": {"target_fn": "base.io.bioimage.export"},
                     "work_dir": str(tmp_path),
                 }
                 response = worker.execute(request, memory_store=memory_store)
@@ -363,7 +363,7 @@ class TestPersistentWorkerLifecycle:
         request = {
             "fn_id": "meta.describe",
             "inputs": {},
-            "params": {"target_fn": "base.bioio.export"},
+            "params": {"target_fn": "base.io.bioimage.export"},
             "work_dir": str(tmp_path),
         }
 
@@ -406,7 +406,7 @@ class TestPersistentWorkerLifecycle:
         request2 = {
             "fn_id": "meta.describe",
             "inputs": {},
-            "params": {"target_fn": "base.bioio.export"},
+            "params": {"target_fn": "base.io.bioimage.export"},
             "work_dir": str(tmp_path),
         }
 
@@ -456,7 +456,7 @@ class TestPersistentWorkerLifecycle:
                 "command": "execute",
                 "fn_id": "meta.describe",
                 "inputs": {},
-                "params": {"target_fn": "base.bioio.export"},
+                "params": {"target_fn": "base.io.bioimage.export"},
                 "work_dir": str(tmp_path),
                 "ordinal": 1,
             }
@@ -546,7 +546,7 @@ class TestMemoryArtifacts:
         # Execute a tool that should create a memory artifact
         # We'll use a transform operation with output_mode='memory' in params
         request = {
-            "fn_id": "base.bioio.export",
+            "fn_id": "base.io.bioimage.export",
             "inputs": {"image": {"uri": f"file://{test_image}"}},  # Export expects 'image' input
             "params": {
                 "format": "OME-TIFF",
@@ -637,7 +637,7 @@ class TestMemoryArtifacts:
 
         # Step 1: Execute tool A with output_mode='memory'
         request_a = {
-            "fn_id": "base.bioio.export",
+            "fn_id": "base.io.bioimage.export",
             "inputs": {"image": {"uri": f"file://{test_image}"}},  # Export expects 'image' input
             "params": {
                 "format": "OME-TIFF",
@@ -663,7 +663,7 @@ class TestMemoryArtifacts:
         # Step 2: Execute tool B using mem:// artifact as input (same worker)
         # Use the same export function to verify memory-to-memory transfer
         request_b = {
-            "fn_id": "base.bioio.export",
+            "fn_id": "base.io.bioimage.export",
             "inputs": {"image": {"uri": mem_artifact_uri}},  # Pass mem:// URI directly
             "params": {
                 "format": "OME-TIFF",
@@ -722,7 +722,7 @@ class TestMemoryArtifacts:
 
         # Step 1: Create a mem:// artifact in worker
         request = {
-            "fn_id": "base.bioio.export",
+            "fn_id": "base.io.bioimage.export",
             "inputs": {"image": {"uri": f"file://{test_image}"}},
             "params": {
                 "format": "OME-TIFF",
@@ -741,7 +741,7 @@ class TestMemoryArtifacts:
 
         # Step 2: Verify artifact is accessible (use it in another operation)
         request2 = {
-            "fn_id": "base.bioio.export",
+            "fn_id": "base.io.bioimage.export",
             "inputs": {"image": {"uri": mem_artifact_uri}},
             "params": {
                 "format": "OME-TIFF",
@@ -763,7 +763,7 @@ class TestMemoryArtifacts:
 
         # Step 5: Verify subsequent access to ref_id fails with clear error
         request3 = {
-            "fn_id": "base.bioio.export",
+            "fn_id": "base.io.bioimage.export",
             "inputs": {"image": {"uri": mem_artifact_uri}},
             "params": {
                 "format": "OME-TIFF",
@@ -838,7 +838,7 @@ class TestCrossEnvironmentHandoff:
         workflow1 = {
             "steps": [
                 {
-                    "fn_id": "base.bioio.export",
+                    "fn_id": "base.io.bioimage.export",
                     "inputs": {"image": {"ref_id": test_artifact.ref_id}},
                     "params": {"format": "OME-TIFF"},
                 }
@@ -866,7 +866,7 @@ class TestCrossEnvironmentHandoff:
         workflow2 = {
             "steps": [
                 {
-                    "fn_id": "base.bioio.export",  # Same env, should NOT materialize
+                    "fn_id": "base.io.bioimage.export",  # Same env, should NOT materialize
                     "inputs": {"image": {"ref_id": mem_artifact_ref_id}},
                     "params": {"format": "OME-TIFF"},
                 }
@@ -883,7 +883,7 @@ class TestCrossEnvironmentHandoff:
         workflow2 = {
             "steps": [
                 {
-                    "fn_id": "base.bioio.export",  # Same env, should NOT materialize
+                    "fn_id": "base.io.bioimage.export",  # Same env, should NOT materialize
                     "inputs": {"image": {"ref_id": mem_artifact_ref_id}},
                     "params": {"format": "OME-TIFF"},
                 }
@@ -936,7 +936,7 @@ class TestCrossEnvironmentHandoff:
         worker = manager.get_worker(session_id=session_id, env_id=env_id)
 
         request = {
-            "fn_id": "base.bioio.export",
+            "fn_id": "base.io.bioimage.export",
             "inputs": {"image": {"uri": f"file://{test_image}"}},
             "params": {
                 "format": "OME-TIFF",
@@ -1026,7 +1026,7 @@ class TestCrossEnvironmentHandoff:
         worker = manager.get_worker(session_id=session_id, env_id=env_id)
 
         request = {
-            "fn_id": "base.bioio.export",
+            "fn_id": "base.io.bioimage.export",
             "inputs": {"image": {"uri": f"file://{test_image}"}},
             "params": {
                 "format": "OME-TIFF",

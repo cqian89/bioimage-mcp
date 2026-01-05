@@ -6,7 +6,7 @@ General purpose image processing tools for bioimage analysis.
 
 ### Image I/O & Export
 
-*   `base.bioio.export`: Export image to file-backed artifact (OME-TIFF or OME-Zarr). Used for explicit materialization or cross-environment handoff.
+*   `base.io.bioimage.export`: Export image to file-backed artifact (OME-TIFF or OME-Zarr). Used for explicit materialization or cross-environment handoff.
     *   **Inputs**: `image` (BioImageRef, required)
     *   **Params**:
         *   `format` (string): Output format (`OME-TIFF` or `OME-Zarr`). Default: `OME-TIFF`.
@@ -15,7 +15,7 @@ General purpose image processing tools for bioimage analysis.
 
 ### Axis Manipulation (xarray-based)
 
-> **Note**: These tools produce memory-backed artifacts (`mem://`) by default for efficient chaining within the same tool environment. Use `base.bioio.export` to materialize to disk when needed.
+> **Note**: These tools produce memory-backed artifacts (`mem://`) by default for efficient chaining within the same tool environment. Use `base.io.bioimage.export` to materialize to disk when needed.
 
 #### `base.xarray.rename`
 Description: Rename dimension labels (e.g., Z -> T) while preserving metadata.
@@ -141,10 +141,10 @@ Outputs:
 
 ### Legacy Tools (Deprecated)
 
-> ⚠️ **DEPRECATED**: The following legacy tools are deprecated and will be removed in v1.0.0. Use the new `base.xarray.*` or `base.bioio.*` tools instead.
+> ⚠️ **DEPRECATED**: The following legacy tools are deprecated and will be removed in v1.0.0. Use the new `base.xarray.*` or `base.io.bioimage.*` tools instead.
 
-*   `base.convert_to_ome_zarr` -> Use `base.bioio.export(format="OME-Zarr")`
-*   `base.export_ome_tiff` -> Use `base.bioio.export(format="OME-TIFF")`
+*   `base.convert_to_ome_zarr` -> Use `base.io.bioimage.export(format="OME-Zarr")`
+*   `base.export_ome_tiff` -> Use `base.io.bioimage.export(format="OME-TIFF")`
 *   `base.project_sum` -> Use `base.xarray.sum`
 *   `base.project_max` -> Use `base.xarray.max`
 *   `base.crop` -> Use `base.xarray.isel`

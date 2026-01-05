@@ -27,6 +27,6 @@ def test_base_manifest_includes_gaussian_and_convert() -> None:
     fn_ids = {fn.fn_id for fn in base_manifest.functions}
 
     assert "base.skimage.filters.gaussian" in fn_ids
-    assert "base.bioio.export" in fn_ids
+    assert "base.io.bioimage.export" in fn_ids
     # Verify legacy wrapper is gone
     assert "base.wrapper.io.convert_to_ome_zarr" not in fn_ids

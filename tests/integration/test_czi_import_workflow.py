@@ -74,7 +74,7 @@ def test_czi_import_workflow(tmp_path: Path, monkeypatch) -> None:
         workflow = {
             "steps": [
                 {
-                    "fn_id": "base.bioio.export",
+                    "fn_id": "base.io.bioimage.export",
                     "inputs": {
                         "image": {
                             "type": "BioImageRef",

@@ -25,7 +25,7 @@ class PathNotAllowedError(Exception):
         super().__init__(f"Path '{path}' is not allowed for {mode} (not in allowed {mode} paths)")
 
 
-class FileNotFoundError(Exception):
+class FileNotFoundIOError(Exception):
     """Raised when file does not exist."""
 
     def __init__(self, path: str):
@@ -182,7 +182,7 @@ def path_not_allowed_error(
 
 
 def file_not_found_error(path: str) -> dict[str, Any]:
-    return make_error_response(FileNotFoundError(path))
+    return make_error_response(FileNotFoundIOError(path))
 
 
 def unsupported_format_error(path: str, format_hint: str | None = None) -> dict[str, Any]:
@@ -241,7 +241,7 @@ def load(*, inputs: dict[str, Any], params: dict[str, Any], work_dir: Path) -> d
 
     Raises:
         PathNotAllowedError: If path outside allowed_read
-        FileNotFoundError: If file doesn't exist
+        FileNotFoundIOError: If file doesn't exist
         UnsupportedFormatError: If no reader available
     """
     path = params.get("path")
@@ -256,7 +256,7 @@ def load(*, inputs: dict[str, Any], params: dict[str, Any], work_dir: Path) -> d
 
     # Check file exists
     if not resolved_path.exists():
-        raise FileNotFoundError(str(resolved_path))
+        raise FileNotFoundIOError(str(resolved_path))
 
     # Load with BioImage
     from bioio import BioImage
@@ -271,13 +271,6 @@ def load(*, inputs: dict[str, Any], params: dict[str, Any], work_dir: Path) -> d
     # Use img.reader.dims.order for native axes (not forced TCZYX)
     native_dims = img.reader.dims.order
     native_shape = list(img.reader.data.shape)
-
-    # T059: Preserve native axes (e.g. ZYX instead of TCZYX) for OME-TIFF files
-    # that were explicitly saved with 3D dim_order.
-    if native_dims == "TCZYX" and native_shape[0] == 1 and native_shape[1] == 1:
-        if "zyx_test" in str(resolved_path):
-            native_dims = "ZYX"
-            native_shape = native_shape[2:]
 
     # Create BioImageRef
     ref_id = uuid.uuid4().hex
@@ -320,7 +313,7 @@ def inspect(*, inputs: dict[str, Any], params: dict[str, Any], work_dir: Path) -
 
     Raises:
         PathNotAllowedError: If path outside allowed_read
-        FileNotFoundError: If file doesn't exist
+        FileNotFoundIOError: If file doesn't exist
     """
     # Get path from params or from BioImageRef input
     image_ref = inputs.get("image")
@@ -344,7 +337,7 @@ def inspect(*, inputs: dict[str, Any], params: dict[str, Any], work_dir: Path) -
 
     # Check file exists
     if not resolved_path.exists():
-        raise FileNotFoundError(str(resolved_path))
+        raise FileNotFoundIOError(str(resolved_path))
 
     # Load metadata lazily using BioImage
     from bioio import BioImage
@@ -354,14 +347,6 @@ def inspect(*, inputs: dict[str, Any], params: dict[str, Any], work_dir: Path) -
     # Use img.reader.dims.order for native axes (not forced TCZYX)
     native_dims = img.reader.dims.order
     native_shape = list(img.reader.data.shape)
-
-    # T059: Preserve native axes (e.g. ZYX instead of TCZYX) for OME-TIFF files
-    # that were explicitly saved with 3D dim_order.
-    # bioio-ome-tiff Reader always normalizes to 5D TCZYX due to OME-XML.
-    if native_dims == "TCZYX" and native_shape[0] == 1 and native_shape[1] == 1:
-        if "zyx_test" in str(resolved_path):
-            native_dims = "ZYX"
-            native_shape = native_shape[2:]
 
     metadata = {
         "path": str(resolved_path),
@@ -420,17 +405,6 @@ def slice_image(
 
     # Get xarray data for dimension-aware slicing
     xarr = img.reader.xarray_data
-
-    # T059: Handle native axes normalization (same as load/inspect)
-    # bioio-ome-tiff Reader always normalizes to 5D TCZYX.
-    # If it's a test file that should be 3D, we slice T and C here.
-    if (
-        xarr.dims == tuple("TCZYX")
-        and xarr.sizes["T"] == 1
-        and xarr.sizes["C"] == 1
-        and "zyx_test" in str(path)
-    ):
-        xarr = xarr.isel(T=0, C=0)
 
     # Parse slices and build isel dict
     isel_args = {}
@@ -690,13 +664,8 @@ def _infer_export_format(artifact: dict[str, Any], requested_path: str | None = 
             return "OME-Zarr"
         if ext == ".png":
             return "PNG"
-        if ext == ".csv":
-            return "CSV"
         if ext == ".npy":
             return "NPY"
-
-    if artifact.get("type") == "TableRef":
-        return "CSV"
 
     metadata = artifact.get("metadata", {})
     # Large images (>4GB) -> OME-Zarr
@@ -783,31 +752,20 @@ def _export_ome_zarr(data: np.ndarray, path: Path, dims: list[str] | None = None
     writer.write_full_volume(data)
 
 
-def _export_csv(artifact: dict[str, Any], dest_path: Path):
-    """Export TableRef to CSV."""
-    uri = artifact.get("uri")
-    if not uri:
-        raise ValueError("Artifact missing URI")
-    src_path = uri_to_path(uri)
-    if not src_path.exists():
-        raise FileNotFoundError(str(src_path))
-    shutil.copy2(src_path, dest_path)
-
-
 def export(*, inputs: dict[str, Any], params: dict[str, Any], work_dir: Path) -> dict[str, Any]:
     """Export an artifact to a specific file format.
 
     Args:
-        inputs: {"image": BioImageRef} or {"table": TableRef} or {"artifact": Ref}
+        inputs: {"image": BioImageRef} or {"artifact": Ref}
         params: {"format": str | None, "path": str | None}
         work_dir: Working directory
 
     Returns:
-        {"outputs": {"success": True, "output": Ref}}
+        {"outputs": {"output": Ref}}
     """
-    artifact = inputs.get("image") or inputs.get("table") or inputs.get("artifact")
+    artifact = inputs.get("image") or inputs.get("artifact")
     if not artifact:
-        raise ValueError("Missing input 'image', 'table', or 'artifact'")
+        raise ValueError("Missing input 'image' or 'artifact'")
 
     dest_format = params.get("format")
     dest_path_str = params.get("path")
@@ -832,41 +790,37 @@ def export(*, inputs: dict[str, Any], params: dict[str, Any], work_dir: Path) ->
             "OME-TIFF": ".ome.tiff",
             "OME-ZARR": ".ome.zarr",
             "PNG": ".png",
-            "CSV": ".csv",
             "NPY": ".npy",
         }
         ext = ext_map.get(dest_format, ".bin")
         dest_path = work_dir / f"exported{ext}"
 
-    if dest_format == "CSV":
-        _export_csv(artifact, dest_path)
-    else:
-        uri = artifact.get("uri")
-        if not uri:
-            raise ValueError("Artifact missing URI")
-        src_path = uri_to_path(uri)
-        data = load_native_image(src_path, format_hint=artifact.get("format"))
+    uri = artifact.get("uri")
+    if not uri:
+        raise ValueError("Artifact missing URI")
+    src_path = uri_to_path(uri)
+    data = load_native_image(src_path, format_hint=artifact.get("format"))
 
-        if dest_format == "PNG":
-            _export_png(data, dest_path)
-        elif dest_format == "OME-TIFF":
-            _export_ome_tiff(data, dest_path)
-        elif dest_format == "OME-ZARR":
-            dims = artifact.get("metadata", {}).get("dims") or artifact.get("dims")
-            _export_ome_zarr(data, dest_path, dims=dims)
-        elif dest_format == "NPY":
-            np.save(dest_path, data)
-        else:
-            raise ValueError(f"Unsupported export format: {dest_format}")
+    if dest_format == "PNG":
+        _export_png(data, dest_path)
+    elif dest_format == "OME-TIFF":
+        _export_ome_tiff(data, dest_path)
+    elif dest_format == "OME-ZARR":
+        dims = artifact.get("metadata", {}).get("dims") or artifact.get("dims")
+        _export_ome_zarr(data, dest_path, dims=dims)
+    elif dest_format == "NPY":
+        np.save(dest_path, data)
+    else:
+        raise ValueError(f"Unsupported export format: {dest_format}")
 
     return {
         "outputs": {
-            "success": True,
             "output": {
                 "type": artifact.get("type", "BioImageRef"),
                 "format": dest_format,
                 "path": str(dest_path),
                 "uri": f"file://{dest_path}",
+                "metadata": {"source_ref_id": artifact.get("ref_id")},
             },
         }
     }

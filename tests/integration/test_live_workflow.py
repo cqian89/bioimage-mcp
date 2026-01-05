@@ -84,7 +84,7 @@ def test_live_workflow_project_sum_cellpose(tmp_path: Path) -> None:
                         "uri": _path_to_uri(image_file),
                     }
                 },
-                "params": {"dim": "T"},
+                "params": {"dim": "Z"},
             }
         ]
     }
@@ -99,7 +99,7 @@ def test_live_workflow_project_sum_cellpose(tmp_path: Path) -> None:
     workflow1b = {
         "steps": [
             {
-                "fn_id": "base.bioio.export",
+                "fn_id": "base.io.bioimage.export",
                 "inputs": {"image": output_ref},
                 "params": {"format": "OME-TIFF"},
             }
@@ -114,7 +114,7 @@ def test_live_workflow_project_sum_cellpose(tmp_path: Path) -> None:
     workflow2 = {
         "steps": [
             {
-                "fn_id": "cellpose.segment",
+                "fn_id": "cellpose.eval",
                 "inputs": {"image": tiff_output_ref},
                 "params": {"model_type": "cyto3", "diameter": 30.0},
             }
@@ -131,7 +131,7 @@ def test_live_workflow_project_sum_cellpose(tmp_path: Path) -> None:
     record = artifact_store.parse_native_output(run_record["ref_id"])
     tool_manifests = record.get("tool_manifests", [])
     versions = {tm.get("tool_id"): tm.get("tool_version") for tm in tool_manifests}
-    # Note: Only the tools used in this specific run (cellpose.segment) are recorded
+    # Note: Only the tools used in this specific run (cellpose.eval) are recorded
     assert versions.get("tools.cellpose") == _manifest_tool_version("tools.cellpose")
 
     # Output isolation: separate run ids

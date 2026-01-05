@@ -42,7 +42,7 @@ Example:    mem://session-abc123/bioimage-mcp-base/img-xyz789
 - **Fast**: No disk serialization overhead.
 - **Session-scoped**: Only valid within the creating session.
 
-**Materialization**: Use `base.bioio.export` to convert `mem://` to file-backed artifacts when:
+**Materialization**: Use `base.io.bioimage.export` to convert `mem://` to file-backed artifacts when:
 - Data needs to persist beyond the session.
 - Data needs to cross environment boundaries.
 
