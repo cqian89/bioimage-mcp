@@ -110,6 +110,8 @@ class DynamicSource(BaseModel):
     modules: list[str]
     include_patterns: list[str] = Field(default_factory=lambda: ["*"])
     exclude_patterns: list[str] = Field(default_factory=lambda: ["_*", "test_*"])
+    target_class: str | None = None
+    class_methods: list[str] | None = None
 
 
 class ToolManifest(BaseModel):

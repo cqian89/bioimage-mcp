@@ -66,6 +66,13 @@ class IPCError(BaseModel):
 # ============================================================================
 
 
+class ClassContext(BaseModel):
+    """Context for instantiating a class before executing a method."""
+
+    python_class: str = Field(..., description="Fully qualified class name")
+    init_params: dict[str, Any] = Field(default_factory=dict, description="Constructor arguments")
+
+
 class ExecuteRequest(BaseModel):
     """Request to execute a tool function within the worker environment.
 
@@ -79,6 +86,9 @@ class ExecuteRequest(BaseModel):
     )
     params: dict[str, Any] = Field(..., description="Function parameters (JSON-serializable)")
     work_dir: str = Field(..., description="Working directory for file outputs")
+    class_context: ClassContext | None = Field(
+        None, description="Optional class context for OO-API calls"
+    )
     hints: dict[str, Any] | None = Field(
         None, description="Function hints (dimension requirements, etc.)"
     )

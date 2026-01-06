@@ -21,6 +21,7 @@ ARTIFACT_TYPES = {
     "LogRef": "Execution log output",
     "NativeOutputRef": "Tool-native output bundle (format is tool-dependent)",
     "PlotRef": "Visualization plots (PNG/SVG)",
+    "ObjectRef": "Serialized Python object (e.g., ML model)",
 }
 
 
@@ -66,8 +67,10 @@ class ArtifactRef(BaseModel):
                     "Invalid memory URI format. Expected mem://<session_id>/<env_id>/<artifact_id>"
                 )
         elif self.storage_type == "memory":
-            if not self.uri.startswith("mem://"):
-                raise ValueError("Artifact with storage_type='memory' must have a mem:// URI")
+            if not (self.uri.startswith("mem://") or self.uri.startswith("obj://")):
+                raise ValueError(
+                    "Artifact with storage_type='memory' must have a mem:// or obj:// URI"
+                )
         return self
 
     # T011: Add model_validator for dimension metadata consistency
@@ -178,3 +181,26 @@ class PhasorMetadata(BaseModel):
     frequency_hz: float | None = None
     is_calibrated: bool = False
     reference_lifetime_ns: float | None = None
+
+
+class ObjectRef(ArtifactRef):
+    """Reference to a serialized Python object (e.g., ML model)."""
+
+    type: Literal["ObjectRef"] = "ObjectRef"
+    python_class: str  # e.g., "cellpose.models.CellposeModel"
+    mime_type: str = "application/x-python-pickle"
+    size_bytes: int = 0
+
+    @model_validator(mode="after")
+    def validate_object_ref(self) -> ObjectRef:
+        # Validate obj:// URI format
+        if self.uri.startswith("obj://"):
+            if self.storage_type != "memory":
+                raise ValueError("ObjectRef with obj:// URI must have storage_type='memory'")
+            parts = self.uri[6:].split("/")
+            if len(parts) != 3 or any(not p for p in parts):
+                raise ValueError("Invalid object URI format")
+        elif self.storage_type == "memory":
+            if not self.uri.startswith("obj://"):
+                raise ValueError("ObjectRef with storage_type='memory' must have an obj:// URI")
+        return self

@@ -84,6 +84,17 @@ class SkimageAdapter(BaseAdapter):
                 if not (inspect.isfunction(obj) or inspect.isbuiltin(obj)):
                     continue
 
+                # Discovery should exclude methods with **kwargs unless overlay exists (T047)
+                try:
+                    sig = inspect.signature(obj)
+                    if any(
+                        p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()
+                    ):
+                        continue
+                except (ValueError, TypeError):
+                    # Builtins might not have signatures
+                    pass
+
                 # Check inclusion (simple check if 'include' in config)
                 include_patterns = (
                     module_config.get("include_patterns") or module_config.get("include") or ["*"]
