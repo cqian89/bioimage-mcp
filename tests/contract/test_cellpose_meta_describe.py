@@ -194,3 +194,49 @@ class TestCellposeMetaDescribeContract:
         assert "properties" in schema
         assert "required" in schema
         assert isinstance(schema["required"], list)
+
+    def test_cellpose_model_eval_describe_contract(self) -> None:
+        """T049: Contract test for describe of CellposeModel.eval.
+
+        Asserts ObjectRef input port and that artifact ports are NOT in params_schema.
+        """
+        from bioimage_mcp.artifacts.models import ARTIFACT_TYPES
+        from bioimage_mcp.registry.manifest_schema import Function
+
+        # Verify ObjectRef is a known artifact type
+        assert "ObjectRef" in ARTIFACT_TYPES
+
+        # This will likely fail if Function model doesn't support the new port structure or if
+
+        # the function isn't yet correctly defined in the system.
+        fn = Function(
+            fn_id="cellpose.CellposeModel.eval",
+            tool_id="bioimage-mcp-cellpose",
+            name="eval",
+            description="Run Cellpose segmentation",
+            inputs=[
+                {"name": "x", "artifact_type": "BioImageRef", "required": True},
+                {"name": "model_ref", "artifact_type": "ObjectRef", "required": True},
+            ],
+            outputs=[{"name": "masks", "artifact_type": "LabelImageRef"}],
+            params_schema={
+                "type": "object",
+                "properties": {
+                    "channels": {"type": "array", "items": {"type": "integer"}},
+                    "diameter": {"type": "number"},
+                },
+                "required": ["channels"],
+            },
+        )
+
+        # Assertions
+        input_names = [p.name for p in fn.inputs]
+        assert "model_ref" in input_names
+
+        model_ref_port = next(p for p in fn.inputs if p.name == "model_ref")
+        assert model_ref_port.artifact_type == "ObjectRef"
+
+        # Verify artifact ports NOT in params_schema
+        assert "x" not in fn.params_schema["properties"]
+        assert "model_ref" not in fn.params_schema["properties"]
+        assert "masks" not in fn.params_schema["properties"]

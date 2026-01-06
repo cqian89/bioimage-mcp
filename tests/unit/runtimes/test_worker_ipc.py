@@ -141,19 +141,24 @@ class TestNDJSONFraming:
 class TestIPCMessageModels:
     """Unit tests for IPC message Pydantic models (T009)."""
 
+    def test_class_context_model(self):
+        """T007: Test ClassContext model with python_class and init_params."""
+        from bioimage_mcp.runtimes.worker_ipc import ClassContext
+
+        ctx = ClassContext(
+            python_class="cellpose.models.CellposeModel",
+            init_params={"model_type": "cyto", "gpu": False},
+        )
+        assert ctx.python_class == "cellpose.models.CellposeModel"
+        assert ctx.init_params["model_type"] == "cyto"
+
     def test_execute_request_model(self):
         """Verify ExecuteRequest model has required fields.
 
         Related: T009 - ExecuteRequest Pydantic model
-
-        Required fields:
-        - command: Literal["execute"]
-        - fn_id: str
-        - inputs: dict[str, Any]
-        - params: dict[str, Any]
-        - work_dir: str
+        T007: Added class_context field
         """
-        from bioimage_mcp.runtimes.worker_ipc import ExecuteRequest
+        from bioimage_mcp.runtimes.worker_ipc import ClassContext, ExecuteRequest
 
         msg = ExecuteRequest(
             command="execute",
@@ -161,12 +166,14 @@ class TestIPCMessageModels:
             inputs={"image": "file:///tmp/test.tif"},
             params={"dim": "T"},
             work_dir="/tmp/run_123",
+            class_context=ClassContext(python_class="MyClass", init_params={"a": 1}),
         )
 
         assert msg.command == "execute"
         assert msg.fn_id == "base.xarray.sum"
         assert msg.params["dim"] == "T"
         assert msg.work_dir == "/tmp/run_123"
+        assert msg.class_context.python_class == "MyClass"
 
     def test_execute_response_model(self):
         """Verify ExecuteResponse model has required fields.
