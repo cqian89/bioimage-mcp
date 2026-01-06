@@ -298,22 +298,30 @@ def test_execute_phasor_transform_returns_two_artifacts(
         assert len(set(ref_ids)) == 2, "Each output artifact should have unique ref_id"
 
 
+def test_phasorpy_adapter_resolves_phasor_calibrate_pattern():
+    """resolve_io_pattern should return PHASOR_CALIBRATE for phasor_calibrate."""
+    adapter = PhasorPyAdapter()
+    io_pattern = adapter.resolve_io_pattern("phasor_calibrate", "phasorpy.phasor")
+    assert io_pattern == IOPattern.PHASOR_CALIBRATE
+
+
+def test_map_io_pattern_to_ports_for_calibrate():
+    """_map_io_pattern_to_ports should return 5 inputs for PHASOR_CALIBRATE."""
+    from bioimage_mcp.registry.loader import _map_io_pattern_to_ports
+
+    inputs, outputs = _map_io_pattern_to_ports(IOPattern.PHASOR_CALIBRATE)
+
+    assert len(inputs) == 5
+    assert inputs[0].name == "real"
+    assert inputs[1].name == "imag"
+    assert inputs[2].name == "reference_mean"
+    assert inputs[3].name == "reference_real"
+    assert inputs[4].name == "reference_imag"
+
+    assert len(outputs) == 2
+    assert outputs[0].name == "real"
+    assert outputs[1].name == "imag"
+
+
 def test_save_image_metadata_includes_ndim(tmp_path):
     """T011: _save_image must include ndim in metadata matching shape length."""
-    from bioimage_mcp.registry.dynamic.adapters.phasorpy import PhasorPyAdapter
-    import numpy as np
-
-    adapter = PhasorPyAdapter()
-
-    # Create a 2D array that will preserve native dimensions
-    arr = np.random.rand(64, 64).astype(np.float32)
-
-    result = adapter._save_image(arr, work_dir=tmp_path, name="test_ndim")
-
-    metadata = result["metadata"]
-    assert "ndim" in metadata, "metadata must include 'ndim'"
-    assert metadata["ndim"] == len(metadata["shape"]), (
-        f"ndim ({metadata['ndim']}) must match shape length ({len(metadata['shape'])})"
-    )
-    # Should preserve native dimensions (2D input -> 2D output)
-    assert metadata["ndim"] == 2

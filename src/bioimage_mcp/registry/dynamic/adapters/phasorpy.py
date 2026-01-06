@@ -156,9 +156,13 @@ class PhasorPyAdapter:
         if func_name == "phasor_from_signal":
             return IOPattern.SIGNAL_TO_PHASOR
 
-        # PHASOR_TRANSFORM: phasor_transform, phasor_calibrate
-        if func_name in ("phasor_transform", "phasor_calibrate"):
+        # PHASOR_TRANSFORM: phasor_transform
+        if func_name == "phasor_transform":
             return IOPattern.PHASOR_TRANSFORM
+
+        # PHASOR_CALIBRATE: phasor_calibrate (needs 5 inputs including reference arrays)
+        if func_name == "phasor_calibrate":
+            return IOPattern.PHASOR_CALIBRATE
 
         # PHASOR_TO_SCALAR: phasor_to_apparent_lifetime, phasor_to_polar
         if "to_apparent_lifetime" in func_name or "to_polar" in func_name:

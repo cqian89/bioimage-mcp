@@ -60,6 +60,19 @@ def _map_io_pattern_to_ports(pattern: IOPattern) -> tuple[list[Port], list[Port]
             Port(name="real", artifact_type="BioImageRef"),
             Port(name="imag", artifact_type="BioImageRef"),
         ]
+    elif pattern == IOPattern.PHASOR_CALIBRATE:
+        # phasor_calibrate: (real, imag, ref_mean, ref_real, ref_imag) -> (real, imag)
+        inputs = [
+            Port(name="real", artifact_type="BioImageRef"),
+            Port(name="imag", artifact_type="BioImageRef"),
+            Port(name="reference_mean", artifact_type="BioImageRef"),
+            Port(name="reference_real", artifact_type="BioImageRef"),
+            Port(name="reference_imag", artifact_type="BioImageRef"),
+        ]
+        outputs = [
+            Port(name="real", artifact_type="BioImageRef"),
+            Port(name="imag", artifact_type="BioImageRef"),
+        ]
     else:
         # Default/Generic: single input/output
         inputs = [Port(name="input", artifact_type="BioImageRef")]
@@ -221,9 +234,18 @@ def load_manifest_file(path: Path) -> tuple[ToolManifest | None, ManifestDiagnos
 
                 # Filter out port names from parameters (T109)
                 port_names = {p.name for p in inputs} | {p.name for p in outputs}
-                artifact_types = {"BioImageRef", "LabelImageRef", "TableRef", "ScalarRef", "LogRef", "NativeOutputRef", "PlotRef"}
+                artifact_types = {
+                    "BioImageRef",
+                    "LabelImageRef",
+                    "TableRef",
+                    "ScalarRef",
+                    "LogRef",
+                    "NativeOutputRef",
+                    "PlotRef",
+                }
                 filtered_params = {
-                    k: v for k, v in meta.parameters.items()
+                    k: v
+                    for k, v in meta.parameters.items()
                     if k not in port_names and v.type not in artifact_types
                 }
                 params_schema = _parameters_to_json_schema(filtered_params)

@@ -104,7 +104,15 @@ class SessionService:
         for idx, step in enumerate(canonical_steps):
             step_inputs: dict[str, InputSource] = {}
             for port, inp in step.inputs.items():
-                ref_id = inp if isinstance(inp, str) else inp.get("ref_id")
+                # Handle different input value types
+                if isinstance(inp, str):
+                    ref_id = inp
+                elif isinstance(inp, dict):
+                    ref_id = inp.get("ref_id")
+                else:
+                    # Skip non-artifact inputs (booleans, numbers, etc.)
+                    continue
+
                 if not ref_id:
                     continue
 

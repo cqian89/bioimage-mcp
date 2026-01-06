@@ -76,6 +76,18 @@ def test_plot_functions_return_plot_pattern():
 
     for fn in plot_fns:
         assert fn.io_pattern == IOPattern.PLOT, f"Function {fn.name} should have PLOT pattern"
-        # Since PlotRef is a semantic type assigned by the adapter during execution,
-        # discovery might not show it as the return type yet if it's based on introspector
-        # but we should ensure the adapter is configured to produce them.
+
+
+def test_phasor_calibrate_returns_calibrate_pattern():
+    """Verify phasor_calibrate returns PHASOR_CALIBRATE pattern."""
+    adapter = PhasorPyAdapter()
+    module_config = {"modules": ["phasorpy.lifetime"], "include": ["phasor_calibrate"]}
+    discovered = adapter.discover(module_config)
+
+    assert len(discovered) == 1
+    fn = discovered[0]
+    assert fn.name == "phasor_calibrate"
+    assert fn.io_pattern == IOPattern.PHASOR_CALIBRATE
+    # Since PlotRef is a semantic type assigned by the adapter during execution,
+    # discovery might not show it as the return type yet if it's based on introspector
+    # but we should ensure the adapter is configured to produce them.

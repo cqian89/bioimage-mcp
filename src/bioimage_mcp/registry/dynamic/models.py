@@ -17,6 +17,7 @@ class IOPattern(str, Enum):
     LABELS_TO_TABLE = "labels_to_table"
     SIGNAL_TO_PHASOR = "signal_to_phasor"
     PHASOR_TRANSFORM = "phasor_transform"
+    PHASOR_CALIBRATE = "phasor_calibrate"
     PHASOR_TO_OTHER = "phasor_to_other"
     PHASOR_TO_SCALAR = "phasor_to_scalar"
     SCALAR_TO_PHASOR = "scalar_to_phasor"

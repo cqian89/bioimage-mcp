@@ -39,6 +39,10 @@ def execute_tool(
     if allowlist_read is not None:
         env["BIOIMAGE_MCP_FS_ALLOWLIST_READ"] = json.dumps(allowlist_read)
 
+    allowlist_write = request.get("fs_allowlist_write")
+    if allowlist_write is not None:
+        env["BIOIMAGE_MCP_FS_ALLOWLIST_WRITE"] = json.dumps(allowlist_write)
+
     proc = subprocess.Popen(
         cmd,
         stdin=subprocess.PIPE,

@@ -85,6 +85,9 @@ class ExecuteRequest(BaseModel):
     fs_allowlist_read: list[str] | None = Field(
         None, description="Allowed filesystem read roots for this request"
     )
+    fs_allowlist_write: list[str] | None = Field(
+        None, description="Allowed filesystem write roots for this request"
+    )
     ordinal: int | None = Field(None, description="Request sequence number for correlation")
 
     @field_validator("command")

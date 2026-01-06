@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 import os
 import subprocess
-import sys
 import threading
 import time
 from datetime import UTC, datetime
@@ -313,6 +312,7 @@ class WorkerProcess:
                 work_dir=request.get("work_dir", "."),
                 hints=request.get("hints"),
                 fs_allowlist_read=request.get("fs_allowlist_read"),
+                fs_allowlist_write=request.get("fs_allowlist_write"),
                 ordinal=ordinal,
             )
 
@@ -1056,7 +1056,6 @@ class PersistentWorkerManager:
 
         Related: spec012 US4 - Graceful Worker Crash Recovery
         """
-        import time
 
         logger.info("Worker monitor thread started")
 

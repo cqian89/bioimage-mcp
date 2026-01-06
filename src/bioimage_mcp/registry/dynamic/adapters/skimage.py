@@ -28,6 +28,19 @@ except ImportError:
     tifffile = None
 
 
+# Parameters that are artifact inputs, not schema params
+ARTIFACT_INPUT_PARAMS = {
+    "image",
+    "input",
+    "labels",
+    "label_image",
+    "intensity_image",
+    "input_image",
+    "source",
+    "src",
+}
+
+
 class SkimageAdapter(BaseAdapter):
     """Adapter for exposing scikit-image functions dynamically."""
 
@@ -88,6 +101,18 @@ class SkimageAdapter(BaseAdapter):
                     source_adapter="skimage",
                     io_pattern=io_pattern,
                 )
+
+                # Keep original parameter names for hint generation before filtering
+                all_param_names = list(meta.parameters.keys())
+
+                # Filter out parameters that are artifact inputs, not schema params
+                # This prevents them from appearing in the MCP tools params_schema
+                meta.parameters = {
+                    p_name: p_schema
+                    for p_name, p_schema in meta.parameters.items()
+                    if p_name not in ARTIFACT_INPUT_PARAMS
+                }
+
                 meta.module = mod_name
                 meta.qualified_name = f"{mod_name}.{name}"
                 meta.fn_id = f"{mod_name}.{name}"
@@ -99,10 +124,8 @@ class SkimageAdapter(BaseAdapter):
 
                     # Populate hints for the primary image input
                     # Most skimage functions take the image as the first argument
-                    # We'll use the name discovered by introspector
-                    param_names = list(meta.parameters.keys())
-                    if param_names:
-                        first_param = param_names[0]
+                    if all_param_names:
+                        first_param = all_param_names[0]
                         meta.hints = FunctionHints(
                             inputs={
                                 first_param: InputRequirement(

@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from bioimage_mcp.api.errors import execution_error, not_found_error, validation_error
-from bioimage_mcp.api.schemas import ErrorDetail, StructuredError
+from bioimage_mcp.api.schemas import ErrorDetail
 from bioimage_mcp.artifacts.memory import MemoryArtifactStore, build_mem_uri
 from bioimage_mcp.artifacts.metadata import extract_image_metadata
 from bioimage_mcp.artifacts.models import ArtifactRef
@@ -173,7 +173,6 @@ def execute_step(
     worker_manager: PersistentWorkerManager | None = None,
     session_id: str = "default-session",
 ) -> tuple[dict, str, int]:
-    import sys
 
     manifest, fn_def = _get_function_metadata(config, fn_id)
     if not manifest:
@@ -200,6 +199,7 @@ def execute_step(
         "work_dir": str(work_dir),
         "hints": hints,
         "fs_allowlist_read": [str(path) for path in config.fs_allowlist_read],
+        "fs_allowlist_write": [str(path) for path in config.fs_allowlist_write],
     }
 
     if worker_manager:
