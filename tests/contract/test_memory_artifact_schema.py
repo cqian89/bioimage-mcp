@@ -40,7 +40,8 @@ class TestMemoryArtifactSchema:
     def test_memory_storage_type_requires_mem_uri(self):
         """Test that storage_type='memory' requires mem:// URI."""
         with pytest.raises(
-            ValidationError, match="Artifact with storage_type='memory' must have a mem:// URI"
+            ValidationError,
+            match="Artifact with storage_type='memory' must have a mem:// or obj:// URI",
         ):
             ArtifactRef(
                 ref_id="mem-123",
