@@ -6,10 +6,10 @@ from typing import Any
 
 from bioimage_mcp.api.errors import not_found_error, validation_error
 from bioimage_mcp.api.pagination import decode_cursor, encode_cursor, resolve_limit
+from bioimage_mcp.artifacts.models import ARTIFACT_TYPES
 from bioimage_mcp.config.loader import load_config
 from bioimage_mcp.registry.index import RegistryIndex, ToolIndex
 from bioimage_mcp.registry.loader import load_manifests
-from bioimage_mcp.registry.manifest_schema import FunctionResponse
 from bioimage_mcp.registry.schema_cache import SchemaCache
 from bioimage_mcp.registry.search import SearchIndex, any_tag_matches, io_type_matches
 from bioimage_mcp.runtimes.executor import execute_tool
@@ -237,7 +237,10 @@ class DiscoveryService:
                     "error": validation_error(
                         message="Cursor does not match request",
                         path="cursor",
-                        hint="The cursor was generated for a different search request. Do not modify search parameters when paginating.",
+                        hint=(
+                            "The cursor was generated for a different search request. "
+                            "Do not modify search parameters when paginating."
+                        ),
                     ).model_dump(),
                 }
             offset = int(payload.get("offset") or 0)
@@ -515,8 +518,8 @@ class DiscoveryService:
             properties = params_schema["properties"]
             port_names = input_names | set(outputs.keys())
             # Artifact types to exclude from params_schema
-            artifact_types = {"BioImageRef", "LabelImageRef", "TableRef", "ScalarRef", "LogRef", "NativeOutputRef", "PlotRef"}
-            
+            artifact_types = set(ARTIFACT_TYPES.keys())
+
             filtered_properties = {}
             for k, v in properties.items():
                 # Filter by name
@@ -526,11 +529,17 @@ class DiscoveryService:
                 if isinstance(v, dict) and v.get("type") in artifact_types:
                     continue
                 filtered_properties[k] = v
-                
+
             params_schema["properties"] = filtered_properties
             if "required" in params_schema:
                 params_schema["required"] = [
-                    r for r in params_schema["required"] if r not in port_names and (not isinstance(properties.get(r), dict) or properties.get(r).get("type") not in artifact_types)
+                    r
+                    for r in params_schema["required"]
+                    if r not in port_names
+                    and (
+                        not isinstance(properties.get(r), dict)
+                        or properties.get(r).get("type") not in artifact_types
+                    )
                 ]
 
         return {
