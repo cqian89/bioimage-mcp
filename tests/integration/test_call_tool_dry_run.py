@@ -171,14 +171,14 @@ functions:
     )
 
     assert result["session_id"] == session_id
-    assert result["status"] == "failed"
+    assert result["status"] == "validation_failed"
     assert result.get("dry_run") is True
     assert "error" in result
     # The error from validate_workflow is usually a list of dicts.
     # Our implementation will wrap it.
     assert result["error"]["code"] == "VALIDATION_FAILED"
     assert len(result["error"]["details"]) > 0
-    assert result["error"]["details"][0]["message"]
+    assert result["error"]["details"][0]["hint"]
 
     # Verify NO step recorded
     steps = session_store.list_step_attempts(session_id)
