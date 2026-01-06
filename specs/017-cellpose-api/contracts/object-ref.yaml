@@ -1,0 +1,40 @@
+# Schema: ObjectRef
+# Version: 0.1.0
+
+components:
+  schemas:
+    ObjectRef:
+      type: object
+      description: Reference to a serialized Python object
+      required: [ref_id, type, uri, format, python_class, storage_type]
+      properties:
+        ref_id:
+          type: string
+          description: Unique identifier for the artifact
+        type:
+          type: string
+          enum: [ObjectRef]
+          description: Canonical artifact type
+        uri:
+          type: string
+          description: "URI of the object (e.g., obj://session_id/env_id/object_id)"
+        format:
+          type: string
+          description: Serialization format (e.g., pickle)
+        python_class:
+          type: string
+          description: Fully qualified class name
+        storage_type:
+          type: string
+          enum: [memory, file]
+          description: Backing storage for the object
+        metadata:
+          type: object
+          description: Arbitrary metadata for the object
+          properties:
+            device:
+              type: string
+              description: CPU or CUDA
+            weights_path:
+              type: string
+              description: Path to model weights if applicable

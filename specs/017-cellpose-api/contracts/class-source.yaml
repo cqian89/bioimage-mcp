@@ -1,0 +1,39 @@
+# Schema: ClassSource
+# Version: 0.1.0
+
+components:
+  schemas:
+    DynamicSource:
+      type: object
+      description: Configuration for dynamic class discovery
+      required: [adapter, prefix, modules]
+      properties:
+        adapter:
+          type: string
+          description: Adapter to use for introspection
+        prefix:
+          type: string
+          description: Prefix for all discovered functions
+        modules:
+          type: array
+          items:
+            type: string
+          description: Modules to scan
+        target_class:
+          type: string
+          description: "Optional: class to discover (e.g., cellpose.models.CellposeModel)"
+        class_methods:
+          type: array
+          items:
+            type: string
+          description: "Optional: explicit list of methods to expose as functions"
+        include_patterns:
+          type: array
+          items:
+            type: string
+          default: ["*"]
+        exclude_patterns:
+          type: array
+          items:
+            type: string
+          default: ["_*", "test_*"]

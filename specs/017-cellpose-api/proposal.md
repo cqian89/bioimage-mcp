@@ -136,9 +136,9 @@ The `ObjectRef` and Class-Based Execution patterns are designed to be library-ag
 - **FR-005**: Discovery MUST support class-based sources, extracting both `__init__` and method signatures.
 - **FR-006**: Runtime MUST correctly split parameters into `init_params` and method parameters based on `class_config`.
 - **FR-007**: ObjectRef instances MUST be persisted across steps in the same session via a local cache.
-- **FR-008**: System MUST provide an eviction policy or explicit `clear_cache` tool to manage VRAM.
-- **FR-009**: Errors involving invalid or expired `ObjectRef` MUST return a `410 Gone` or equivalent informative error.
-- **FR-010**: Workflow export MUST include enough metadata in `ObjectRef` to allow reconstruction or re-download of the model.
+- **FR-008**: System MUST provide an eviction policy and allow manual cache management via a standard tool-pack function callable through existing MCP `run` (e.g., `cellpose.cache.clear`), explicitly noting this is not a new MCP tool.
+- **FR-009**: Errors involving invalid or expired `ObjectRef` MUST return constitution-aligned structured errors (`code`, `message`, `details[]` entries with `path` + `hint`).
+- **FR-010**: Workflow export/records MUST include enough metadata (class name, `init_params`, optional device) to allow reconstruction in a new session.
 
 ### Non-Functional Requirements
 - **NFR-001**: `ObjectRef` serialization (pickling) must complete in <10s for typical models (e.g., Cellpose, StarDist).

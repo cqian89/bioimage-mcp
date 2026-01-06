@@ -292,6 +292,8 @@ python scripts/validate_pipeline.py
 - Python 3.13 (core server); Python 3.13 (base tool env) + MCP Python SDK (`mcp>=1.25.0`), `pydantic>=2.0`, `bioio`, `numpy`, `pytest`, `pyyaml` (008-api-refinement)
 - Python 3.13 (core server; tool envs may differ) + MCP Python SDK (`mcp`), `pydantic>=2.0`, `bioio`, `zarr`, `bioio-ome-zarr`, `bioio-ome-tiff` (014-native-artifact-types)
 - Python 3.13 (core server; tool envs may differ) + MCP Python SDK (`mcp>=1.25.0`), `pydantic>=2.0`, `bioio`, `fastmcp` (016-mcp-interface-redesign)
+- Python 3.13 (core server; tool envs may differ) + MCP Python SDK (`mcp`), `pydantic`, `bioio`, `torch`, `cellpose` (017-cellpose-api)
+- Local filesystem artifact store (pickle for objects) + SQLite index (017-cellpose-api)
 
 ## Recent Changes
 - 004-interactive-tool-calling: Added Python 3.13 (core server; tool envs may differ)
