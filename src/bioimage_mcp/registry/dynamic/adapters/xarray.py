@@ -102,13 +102,26 @@ class XarrayAdapterForRegistry(BaseAdapter):
 
         reader = None
         if fmt == "OME-TIFF":
-            from bioio_ome_tiff import Reader as OmeTiffReader
+            try:
+                from bioio_ome_tiff import Reader as OmeTiffReader
 
-            reader = OmeTiffReader
+                reader = OmeTiffReader
+            except ImportError:
+                pass
+        elif fmt == "TIFF":
+            try:
+                from bioio_tifffile import Reader as TiffReader
+
+                reader = TiffReader
+            except ImportError:
+                pass
         elif fmt == "OME-Zarr":
-            from bioio_ome_zarr import Reader as OmeZarrReader
+            try:
+                from bioio_ome_zarr import Reader as OmeZarrReader
 
-            reader = OmeZarrReader
+                reader = OmeZarrReader
+            except ImportError:
+                pass
 
         return BioImage(str(path), reader=reader)
 

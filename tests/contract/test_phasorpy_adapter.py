@@ -305,7 +305,7 @@ def test_save_image_metadata_includes_ndim(tmp_path):
 
     adapter = PhasorPyAdapter()
 
-    # Create a 2D array that will be expanded to 5D
+    # Create a 2D array that will preserve native dimensions
     arr = np.random.rand(64, 64).astype(np.float32)
 
     result = adapter._save_image(arr, work_dir=tmp_path, name="test_ndim")
@@ -315,5 +315,5 @@ def test_save_image_metadata_includes_ndim(tmp_path):
     assert metadata["ndim"] == len(metadata["shape"]), (
         f"ndim ({metadata['ndim']}) must match shape length ({len(metadata['shape'])})"
     )
-    # After expansion, should be 5D
-    assert metadata["ndim"] == 5
+    # Should preserve native dimensions (2D input -> 2D output)
+    assert metadata["ndim"] == 2

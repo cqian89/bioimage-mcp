@@ -220,6 +220,13 @@ class PhasorPyAdapter:
                 reader = OmeTiffReader
             except ImportError:
                 pass
+        elif fmt == "TIFF":
+            try:
+                from bioio_tifffile import Reader as TiffReader
+
+                reader = TiffReader
+            except ImportError:
+                pass
         elif fmt == "OME-Zarr":
             try:
                 from bioio_ome_zarr import Reader as OmeZarrReader
@@ -243,7 +250,12 @@ class PhasorPyAdapter:
             else:
                 raise
 
-        data = img.data
+        # Use native dimensions (like skimage adapter)
+        try:
+            data = img.reader.xarray_data.values
+        except (AttributeError, Exception):
+            data = img.reader.data
+
         if hasattr(data, "compute"):
             data = data.compute()
         return data
@@ -253,7 +265,7 @@ class PhasorPyAdapter:
         array: np.ndarray,
         work_dir: Path | None = None,
         name: str = "output",
-        axes: str = "TCZYX",
+        axes: str | None = None,  # Changed from "TCZYX"
         extra_metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Save image array to file and return artifact reference dict."""
@@ -267,6 +279,11 @@ class PhasorPyAdapter:
         else:
             work_dir.mkdir(parents=True, exist_ok=True)
             path = work_dir / f"{name}{ext}"
+
+        # Infer axes from array dimensions if not provided
+        if axes is None:
+            axes_map = {2: "YX", 3: "ZYX", 4: "CZYX", 5: "TCZYX"}
+            axes = axes_map.get(array.ndim, "TCZYX"[-array.ndim :])
 
         # Ensure array has same number of dimensions as axes
         if array.ndim < len(axes):

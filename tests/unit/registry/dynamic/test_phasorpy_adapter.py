@@ -105,7 +105,7 @@ def test_load_image_fallback():
     try:
         data = adapter._load_image(artifact)
         assert data is not None
-        assert data.ndim == 5
+        assert data.ndim >= 2  # Native dimensions, at least 2D
     except Exception as e:
         pytest.fail(f"_load_image failed even with fallback: {e}")
 

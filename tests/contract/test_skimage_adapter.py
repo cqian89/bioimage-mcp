@@ -165,3 +165,22 @@ def test_skimage_adapter_execute_accepts_multiple_inputs(mock_regionprops, mock_
 
     assert outputs[0]["type"] == "TableRef"
     assert outputs[0]["path"].endswith(".csv")
+
+
+def test_skimage_adapter_dimension_hints_for_regionprops():
+    """generate_dimension_hints should include regionprops and label in require_2d_or_3d."""
+    adapter = SkimageAdapter()
+
+    hint_regionprops = adapter.generate_dimension_hints("skimage.measure", "regionprops_table")
+    assert hint_regionprops is not None
+    assert hint_regionprops.squeeze_singleton is True
+    assert hint_regionprops.min_ndim == 2
+    assert hint_regionprops.max_ndim == 3
+
+    hint_label = adapter.generate_dimension_hints("skimage.measure", "label")
+    assert hint_label is not None
+    assert hint_label.squeeze_singleton is True
+
+    hint_gaussian = adapter.generate_dimension_hints("skimage.filters", "gaussian")
+    assert hint_gaussian is not None
+    assert hint_gaussian.squeeze_singleton is True
