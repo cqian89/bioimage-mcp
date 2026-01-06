@@ -5,8 +5,15 @@ from typing import Any
 
 import pytest
 import yaml
+import json
 
 from bioimage_mcp.test_harness import WorkflowTestCase
+from bioimage_mcp.api.execution import ExecutionService
+from bioimage_mcp.api.interactive import InteractiveExecutionService
+from bioimage_mcp.artifacts.store import ArtifactStore
+from bioimage_mcp.config.schema import Config
+from bioimage_mcp.sessions.manager import SessionManager
+from bioimage_mcp.sessions.store import SessionStore
 
 WORKFLOW_CASES_DIR = Path(__file__).parent / "workflow_cases"
 
@@ -219,3 +226,228 @@ def test_workflow_from_yaml(mcp_test_client, case: WorkflowTestCase | None) -> N
                     continue
                 actual = _get_metadata_value(metadata, assertion.key)
                 assert actual == assertion.value
+
+
+class TestSessionReplayObjectRef:
+    """T044: Integration tests for session_replay reconstruction of ObjectRef."""
+
+    @pytest.fixture
+    def services(self, tmp_path, monkeypatch):
+        """Setup services with temporary stores and mocked execution."""
+        config = Config(
+            artifact_store_root=tmp_path / "artifacts",
+            tool_manifest_roots=[tmp_path / "tools"],
+            fs_allowlist_read=[tmp_path],
+            fs_allowlist_write=[tmp_path],
+            fs_denylist=[],
+        )
+        (tmp_path / "tools").mkdir()
+
+        # Setup stores
+        artifact_store = ArtifactStore(config)
+        session_store = SessionStore()
+
+        # Setup services
+        session_manager = SessionManager(session_store, config)
+        execution_service = ExecutionService(config, artifact_store=artifact_store)
+        interactive_service = InteractiveExecutionService(session_manager, execution_service)
+
+        # Mock function exists to allow test tools
+        monkeypatch.setattr(
+            "bioimage_mcp.api.sessions.SessionService._function_exists",
+            lambda self, fn_id: True,
+        )
+
+        return interactive_service, execution_service, artifact_store
+
+    @pytest.mark.xfail(reason="ObjectRef reconstruction (T046) not yet implemented")
+    def test_replay_reconstructs_objectref_from_init_params(self, services, monkeypatch):
+        """Assert ObjectRef is reconstructed using init_params during replay (FR-004)."""
+        interactive, execution, artifact_store = services
+        session_id = "reconstruction-test-001"
+
+        # 1. Mock execution to return an ObjectRef with init_params
+        mock_calls = []
+
+        def _mock_execute_step(fn_id, inputs, params, **kwargs):
+            mock_calls.append({"fn_id": fn_id, "inputs": inputs, "params": params})
+            if fn_id == "test.create":
+                return (
+                    {
+                        "ok": True,
+                        "outputs": {
+                            "model": {
+                                "type": "ObjectRef",
+                                "ref_id": "obj-123",
+                                "uri": "obj://session/env/obj-123",
+                                "python_class": "test.MyModel",
+                                "metadata": {"init_params": {"arg1": "val1"}},
+                                "format": "pickle",
+                                "mime_type": "application/x-python-pickle",
+                                "size_bytes": 1024,
+                            }
+                        },
+                    },
+                    "Created",
+                    0,
+                )
+            else:  # test.use
+                # Verify that the input has been resolved/reconstructed
+                model_input = inputs.get("model")
+                if not model_input or "uri" not in model_input:
+                    return (
+                        {
+                            "ok": False,
+                            "error": {
+                                "code": "INPUT_ERROR",
+                                "message": f"Input 'model' not resolved: {model_input}",
+                            },
+                        },
+                        "Failed",
+                        1,
+                    )
+                return (
+                    {
+                        "ok": True,
+                        "outputs": {
+                            "res": {
+                                "type": "ScalarRef",
+                                "ref_id": "s1",
+                                "uri": "mem://s1",
+                                "metadata": {"val": 42},
+                                "format": "json",
+                                "mime_type": "application/json",
+                                "size_bytes": 0,
+                            }
+                        },
+                    },
+                    "Used",
+                    0,
+                )
+
+        monkeypatch.setattr("bioimage_mcp.api.execution.execute_step", _mock_execute_step)
+
+        # 2. Create session with ObjectRef creation step and usage
+        res1 = interactive.call_tool(session_id, "test.create", {}, {"arg1": "val1"})
+        obj_ref = res1["outputs"]["model"]
+
+        res2 = interactive.call_tool(session_id, "test.use", {"model": obj_ref}, {})
+        assert res2["status"] == "success"
+
+        # 3. Export session
+        export_res = interactive.export_session(session_id)
+        workflow_ref = export_res["workflow_ref"]
+
+        # 4. Clear/invalidate the ObjectRef from cache/memory
+        # This simulates the object being lost before replay
+        execution._memory_store._artifacts.clear()
+
+        # To ensure it's missing when Step 2 runs during replay,
+        # we mock run_workflow to clear memory before Step 2.
+        original_run_workflow = execution.run_workflow
+
+        def _mock_run_workflow(spec, **kwargs):
+            if spec["steps"][0]["fn_id"] == "test.use":
+                execution._memory_store._artifacts.clear()
+            return original_run_workflow(spec, **kwargs)
+
+        monkeypatch.setattr(execution, "run_workflow", _mock_run_workflow)
+
+        # 5. Replay the workflow
+        # We use a new session for replay
+        replay_res = interactive.replay_session(workflow_ref, inputs={})
+
+        # 6. Assert the reconstruction uses init_params and python_class
+        # This is expected to fail initially (TDD) as reconstruction is not yet implemented
+        if replay_res.get("error"):
+            pytest.fail(f"Replay failed with error: {replay_res['error']}")
+
+        assert replay_res["status"] in ("running", "success")
+
+    @pytest.mark.xfail(reason="ObjectRef reconstruction (T046) not yet implemented")
+    def test_replay_uses_python_class_for_reconstruction(self, services, monkeypatch):
+        """Assert python_class is used to identify the class to reconstruct."""
+        interactive, execution, artifact_store = services
+        session_id = "reconstruction-test-002"
+
+        # Similar setup but focus on asserting python_class usage
+        def _mock_execute_step(fn_id, inputs, params, **kwargs):
+            if fn_id == "test.create":
+                return (
+                    {
+                        "ok": True,
+                        "outputs": {
+                            "model": {
+                                "type": "ObjectRef",
+                                "ref_id": "obj-456",
+                                "uri": "obj://session/env/obj-456",
+                                "python_class": "test.SpecialModel",
+                                "metadata": {"init_params": {"x": 10}},
+                                "format": "pickle",
+                                "mime_type": "application/x-python-pickle",
+                                "size_bytes": 1024,
+                            }
+                        },
+                    },
+                    "OK",
+                    0,
+                )
+            # Verify reconstruction
+            model_input = inputs.get("model")
+            if not model_input or "uri" not in model_input:
+                return (
+                    {
+                        "ok": False,
+                        "error": {
+                            "code": "INPUT_ERROR",
+                            "message": f"Input 'model' not resolved: {model_input}",
+                        },
+                    },
+                    "Failed",
+                    1,
+                )
+            return (
+                {
+                    "ok": True,
+                    "outputs": {
+                        "out": {
+                            "type": "ScalarRef",
+                            "ref_id": "s2",
+                            "uri": "mem://s2",
+                            "metadata": {"v": 1},
+                            "format": "json",
+                            "mime_type": "application/json",
+                            "size_bytes": 0,
+                        }
+                    },
+                },
+                "OK",
+                0,
+            )
+
+        monkeypatch.setattr("bioimage_mcp.api.execution.execute_step", _mock_execute_step)
+
+        interactive.call_tool(session_id, "test.create", {}, {"x": 10})
+        interactive.call_tool(session_id, "test.use", {"model": {"ref_id": "obj-456"}}, {})
+        export_res = interactive.export_session(session_id)
+
+        # Clear cache
+        execution._memory_store._artifacts.clear()
+
+        # Mock run_workflow to clear memory before the next step during replay
+        original_run_workflow = execution.run_workflow
+
+        def _mock_run_workflow(spec, **kwargs):
+            if spec["steps"][0]["fn_id"] != "test.create":
+                execution._memory_store._artifacts.clear()
+            return original_run_workflow(spec, **kwargs)
+
+        monkeypatch.setattr(execution, "run_workflow", _mock_run_workflow)
+
+        # Replay
+        replay_res = interactive.replay_session(export_res["workflow_ref"], inputs={})
+
+        # Verify result
+        if replay_res.get("error"):
+            pytest.fail(f"Replay failed with error: {replay_res['error']}")
+        assert replay_res["status"] != "failed"
