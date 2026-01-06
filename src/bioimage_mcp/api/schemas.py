@@ -14,6 +14,7 @@ ArtifactType = Literal[
     "LogRef",
     "NativeOutputRef",
     "PlotRef",
+    "ObjectRef",
 ]
 StorageType = Literal["file", "zarr-temp"]
 
@@ -268,6 +269,7 @@ class ArtifactTypeEnum(str, Enum):
     LABEL_IMAGE = "LabelImageRef"
     TABLE = "TableRef"
     SCALAR = "ScalarRef"
+    OBJECT = "ObjectRef"
     MODEL = "ModelRef"
     LOG = "LogRef"
     NATIVE_OUTPUT = "NativeOutputRef"
@@ -295,6 +297,8 @@ class ArtifactRef(BaseModel):
     shape: list[int] | None = None
     checksums: list[ArtifactChecksum] = Field(default_factory=list)
     created_at: str | None = None
+    python_class: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class ErrorDetail(BaseModel):
