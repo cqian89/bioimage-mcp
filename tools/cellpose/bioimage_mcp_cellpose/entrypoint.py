@@ -28,6 +28,7 @@ if str(TOOLS_ROOT) not in sys.path:
 
 # Global memory store in worker process
 _MEMORY_ARTIFACTS: dict[str, Any] = {}
+_OBJECT_CACHE: dict[str, Any] = {}
 
 # Worker identity
 _SESSION_ID: str | None = None
@@ -87,6 +88,40 @@ def _load_from_memory(uri: str) -> Any:
         raise KeyError(f"Memory artifact not found: {artifact_id}")
 
     return _MEMORY_ARTIFACTS[artifact_id]
+
+
+def _store_object(obj: Any) -> tuple[str, str]:
+    """Store object in cache, return (object_id, obj:// URI)."""
+    if _SESSION_ID is None or _ENV_ID is None:
+        raise RuntimeError("Worker identity not initialized. Cannot create obj:// URI.")
+
+    object_id = uuid.uuid4().hex
+    _OBJECT_CACHE[object_id] = obj
+
+    obj_uri = f"obj://{_SESSION_ID}/{_ENV_ID}/{object_id}"
+    return object_id, obj_uri
+
+
+def _load_object(uri: str) -> Any:
+    """Load object from cache by obj:// URI."""
+    if not uri.startswith("obj://"):
+        raise ValueError(f"Invalid object URI: {uri}")
+
+    parts = uri[6:].split("/")
+    if len(parts) != 3:
+        raise ValueError(f"Invalid object URI format: {uri}")
+
+    session_id, env_id, object_id = parts
+
+    if session_id != _SESSION_ID or env_id != _ENV_ID:
+        raise ValueError(
+            f"Object {uri} belongs to different worker (current: {_SESSION_ID}/{_ENV_ID})"
+        )
+
+    if object_id not in _OBJECT_CACHE:
+        raise KeyError(f"Object not found: {object_id}")
+
+    return _OBJECT_CACHE[object_id]
 
 
 def _load_input_data(input_ref: str | dict) -> Any:
@@ -222,7 +257,7 @@ def handle_meta_describe(params: dict[str, Any]) -> dict[str, Any]:
     """Handle meta.describe requests for Cellpose functions."""
     target_fn = params.get("target_fn", "")
 
-    if target_fn in ("cellpose.segment", "cellpose.eval"):
+    if target_fn in ("cellpose.segment", "cellpose.eval", "cellpose.CellposeModel.eval"):
         schema = _introspect_cellpose_eval()
         return {
             "ok": True,
@@ -236,15 +271,67 @@ def handle_meta_describe(params: dict[str, Any]) -> dict[str, Any]:
         return {"ok": False, "error": f"Unknown function: {target_fn}"}
 
 
+def handle_model_init(
+    inputs: dict[str, Any],
+    params: dict[str, Any],
+    work_dir: Path,
+) -> dict[str, Any]:
+    """Handle cellpose.CellposeModel instantiation."""
+    from cellpose.models import CellposeModel
+    import torch
+    from datetime import datetime, timezone
+
+    model_type = params.get("model_type", "cyto3")
+    gpu = params.get("gpu", torch.cuda.is_available())
+
+    # Create model
+    model = CellposeModel(model_type=model_type, gpu=gpu)
+
+    # Store in cache
+    object_id, obj_uri = _store_object(model)
+
+    # Return ObjectRef
+    output = {
+        "ref_id": object_id,
+        "type": "ObjectRef",
+        "uri": obj_uri,
+        "format": "pickle",
+        "python_class": "cellpose.models.CellposeModel",
+        "storage_type": "memory",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "metadata": {
+            "model_type": model_type,
+            "gpu": gpu,
+            "device": "cuda" if gpu and torch.cuda.is_available() else "cpu",
+        },
+    }
+
+    return {
+        "ok": True,
+        "outputs": {"model": output},
+        "log": f"CellposeModel({model_type}) initialized",
+    }
+
+
 def handle_segment(
     inputs: dict[str, Any],
     params: dict[str, Any],
     work_dir: Path,
 ) -> dict[str, Any]:
-    """Handle cellpose.segment execution."""
+    """Handle cellpose.segment and cellpose.CellposeModel.eval execution."""
     from bioimage_mcp_cellpose.ops.segment import run_segment
 
-    outputs = run_segment(inputs=inputs, params=params, work_dir=work_dir)
+    # Check for model in inputs (ObjectRef)
+    model_obj = None
+    model_ref = inputs.get("model")
+    if isinstance(model_ref, dict) and model_ref.get("uri", "").startswith("obj://"):
+        model_obj = _load_object(model_ref["uri"])
+
+    # Map 'x' to 'image' for CellposeModel.eval style calls
+    if "x" in inputs and "image" not in inputs:
+        inputs["image"] = inputs["x"]
+
+    outputs = run_segment(inputs=inputs, params=params, work_dir=work_dir, model=model_obj)
     return {
         "ok": True,
         "outputs": outputs,
@@ -268,6 +355,8 @@ def handle_train_seg(
 FUNCTION_HANDLERS = {
     "cellpose.segment": handle_segment,
     "cellpose.eval": handle_segment,  # Same implementation
+    "cellpose.CellposeModel": handle_model_init,
+    "cellpose.CellposeModel.eval": handle_segment,
     "cellpose.train_seg": handle_train_seg,
 }
 
@@ -350,7 +439,7 @@ def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
 
 
 def _convert_outputs_to_memory(outputs: dict[str, Any], work_dir: Path) -> dict[str, Any]:
-    from datetime import UTC, datetime
+    from datetime import datetime, timezone
 
     mem_outputs = {}
     for key, value in outputs.items():
@@ -371,7 +460,7 @@ def _convert_outputs_to_memory(outputs: dict[str, Any], work_dir: Path) -> dict[
                     "storage_type": "memory",
                     "mime_type": "application/octet-stream",
                     "size_bytes": data.nbytes,
-                    "created_at": datetime.now(UTC).isoformat(),
+                    "created_at": datetime.now(timezone.utc).isoformat(),
                     "metadata": {
                         "shape": list(data.shape),
                         "dtype": str(data.dtype),
@@ -395,7 +484,7 @@ def _convert_outputs_to_memory(outputs: dict[str, Any], work_dir: Path) -> dict[
                 "storage_type": "memory",
                 "mime_type": "application/octet-stream",
                 "size_bytes": data.nbytes,
-                "created_at": datetime.now(UTC).isoformat(),
+                "created_at": datetime.now(timezone.utc).isoformat(),
                 "metadata": {
                     "shape": list(data.shape),
                     "dtype": str(data.dtype),

@@ -79,6 +79,47 @@ functions:
       type: object
       properties: {}
 
+  - fn_id: cellpose.CellposeModel
+    tool_id: tools.cellpose
+    name: Initialize Cellpose Model
+    description: Instantiate a CellposeModel and return an ObjectRef for reuse.
+    tags: [initialization, deep-learning]
+    inputs: []
+    outputs:
+      - name: model
+        artifact_type: ObjectRef
+        required: true
+    params_schema:
+      type: object
+      properties:
+        model_type:
+          type: string
+          default: "cyto3"
+        gpu:
+          type: boolean
+          default: false
+
+  - fn_id: cellpose.CellposeModel.eval
+    tool_id: tools.cellpose
+    name: Evaluate Cellpose Model
+    description: Run evaluation on a pre-initialized CellposeModel.
+    tags: [segmentation, deep-learning]
+    inputs:
+      - name: model
+        artifact_type: ObjectRef
+        required: true
+      - name: x
+        artifact_type: BioImageRef
+        required: true
+    outputs:
+      - name: labels
+        artifact_type: LabelImageRef
+        format: OME-TIFF
+        required: true
+    params_schema:
+      type: object
+      properties: {}
+
   - fn_id: meta.describe
     tool_id: tools.cellpose
     name: Describe Function

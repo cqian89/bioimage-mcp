@@ -173,7 +173,6 @@ def execute_step(
     worker_manager: PersistentWorkerManager | None = None,
     session_id: str = "default-session",
 ) -> tuple[dict, str, int]:
-
     manifest, fn_def = _get_function_metadata(config, fn_id)
     if not manifest:
         raise KeyError(fn_id)
@@ -837,6 +836,28 @@ class ExecutionService:
                 logger.info("Memory output generated: ref_id=%s storage_type=%s", ref_id, "memory")
                 outputs_payload[name] = ref.model_dump()
                 record_artifact_dimensions(run.provenance, f"output.{name}", outputs_payload[name])
+            elif out_type == "ObjectRef":
+                # Handle ObjectRef (T018-T024)
+                # Register in memory store so it can be resolved for next steps
+                ref_id = out.get("ref_id")
+                uri = out.get("uri")
+                from bioimage_mcp.artifacts.models import ObjectRef
+
+                ref = ObjectRef(
+                    ref_id=ref_id,
+                    type="ObjectRef",
+                    uri=uri,
+                    format=out.get("format", "pickle"),
+                    storage_type="memory",
+                    created_at=ObjectRef.now(),
+                    metadata=out.get("metadata", {}),
+                    python_class=out.get("python_class", "unknown"),
+                )
+                self._memory_store.register(ref)
+                # Also register with worker manager for session tracking
+                self._worker_manager.register_artifact(session_id, env_id, ref_id)
+                logger.info("Object output registered: ref_id=%s uri=%s", ref_id, uri)
+                outputs_payload[name] = ref.model_dump()
             elif path:
                 p = Path(path)
                 out_type = out.get("type", "BioImageRef")
@@ -928,6 +949,7 @@ class ExecutionService:
             "id": fn_id,
             "outputs": outputs_payload,
             "log_ref": log_ref.model_dump(),
+            "workflow_record_ref_id": workflow_record_ref.ref_id,
             "hints": success_hints,
             "warnings": all_warnings,
         }

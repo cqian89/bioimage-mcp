@@ -50,12 +50,15 @@ class TestCellposeStateful:
         )
         model_ref = res1["outputs"]["model"]
 
-        # 2. Create mock image
+        # 2. Create valid mock image
+        import numpy as np
+        import tifffile
+
         img_path = tmp_path / "test_image.ome.tif"
-        img_path.write_bytes(b"fake tiff data")
+        data = np.zeros((1, 1, 1, 64, 64), dtype=np.uint16)
+        tifffile.imwrite(str(img_path), data, ome=True)
 
         # 3. Call eval with ObjectRef
-        # This should fail initially because eval doesn't take ObjectRef or fn_id is wrong
         res2 = execution.run_workflow(
             {
                 "steps": [
@@ -85,12 +88,17 @@ class TestCellposeStateful:
         )
         model_ref = res1["outputs"]["model"]
 
+        # 2. Create valid mock image
+        import numpy as np
+        import tifffile
+
         img_path = tmp_path / "test_image.ome.tif"
-        img_path.write_bytes(b"fake tiff data")
+        data = np.zeros((1, 1, 1, 64, 64), dtype=np.uint16)
+        tifffile.imwrite(str(img_path), data, ome=True)
 
         def run_eval():
             start = time.perf_counter()
-            execution.run_workflow(
+            res = execution.run_workflow(
                 {
                     "steps": [
                         {
@@ -103,6 +111,7 @@ class TestCellposeStateful:
                     ]
                 }
             )
+            assert res["status"] == "success", f"Eval failed: {res.get('error')}"
             return time.perf_counter() - start
 
         # First call might be slow due to model setup (though already instantiated)

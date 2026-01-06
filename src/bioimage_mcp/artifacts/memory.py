@@ -21,17 +21,22 @@ class ArtifactInvalidatedError(Exception):
 
 
 def parse_mem_uri(uri: str) -> tuple[str, str, str]:
-    """Parse mem://<session_id>/<env_id>/<artifact_id>.
+    """Parse mem:// or obj:// URI.
 
+    Format: <scheme>://<session_id>/<env_id>/<artifact_id>.
     Returns (session_id, env_id, artifact_id).
     """
-    if not uri.startswith("mem://"):
+    if uri.startswith("mem://"):
+        scheme_len = 6
+    elif uri.startswith("obj://"):
+        scheme_len = 6
+    else:
         raise ValueError(f"Invalid memory URI: {uri}")
 
-    parts = uri[6:].split("/")
+    parts = uri[scheme_len:].split("/")
     if len(parts) != 3:
         raise ValueError(
-            f"Invalid memory URI format: {uri}. Expected mem://<session_id>/<env_id>/<artifact_id>"
+            f"Invalid memory URI format: {uri}. Expected <scheme>://<session_id>/<env_id>/<artifact_id>"
         )
 
     return parts[0], parts[1], parts[2]

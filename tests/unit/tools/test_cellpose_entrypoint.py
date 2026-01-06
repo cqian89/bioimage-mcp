@@ -33,6 +33,7 @@ def cellpose_entrypoint():
     os.environ["BIOIMAGE_MCP_ENV_ID"] = "bioimage-mcp-cellpose"
 
     spec.loader.exec_module(module)
+    module._initialize_worker("test-session", "bioimage-mcp-cellpose")
     return module
 
 

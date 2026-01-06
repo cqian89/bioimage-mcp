@@ -29,6 +29,7 @@ def run_segment(
     inputs: dict[str, Any],
     params: dict[str, Any],
     work_dir: Path,
+    model: Any | None = None,
 ) -> dict[str, Any]:
     """Run Cellpose segmentation on an input image.
 
@@ -97,8 +98,9 @@ def run_segment(
     if diameter is None or diameter == 0:
         diameter = None  # Cellpose will estimate
 
-    # Initialize model
-    model = CellposeModel(model_type=model_type)
+    # Initialize model if not provided
+    if model is None:
+        model = CellposeModel(model_type=model_type)
 
     # Run segmentation
     # Note: CellposeModel.eval() returns (masks, flows, styles)
