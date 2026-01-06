@@ -37,9 +37,9 @@
 - [X] T005 [P] Write ObjectRef URI validation tests (obj:// scheme) in `tests/contract/test_object_ref.py`
 - [X] T006 [P] Write DynamicSource extension tests (target_class, class_methods) in `tests/unit/registry/test_class_discovery.py`
 - [X] T047 [P] Write unit tests for `**kwargs` filtering in class-based discovery in `tests/unit/registry/test_class_discovery.py`
-- [ ] T049 [P] Write contract test for `describe` of `CellposeModel.eval` asserting `ObjectRef` input port in `tests/contract/test_cellpose_meta_describe.py` (Verify artifact ports NOT in `params_schema`)
-- [ ] T043 [P] Write integration tests for `session_export` (workflow-record-json) containing `ObjectRef` in `tests/integration/test_export_session.py` (Assert `init_params` and class identity are recorded) [Blocking FR-004]
-- [ ] T044 [P] Write integration tests for `session_replay` reconstruction of `ObjectRef` in `tests/integration/test_workflows.py` [Blocking FR-004]
+- [X] T049 [P] Write contract test for `describe` of `CellposeModel.eval` asserting `ObjectRef` input port in `tests/contract/test_cellpose_meta_describe.py` (Verify artifact ports NOT in `params_schema`)
+- [X] T043 [P] Write integration tests for `session_export` (workflow-record-json) containing `ObjectRef` in `tests/integration/test_export_session.py` (Assert `init_params` and class identity are recorded) [Blocking FR-004]
+- [X] T044 [P] Write integration tests for `session_replay` reconstruction of `ObjectRef` in `tests/integration/test_workflows.py` [Blocking FR-004]
 - [X] T007 [P] Write ExecuteRequest class_context tests in `tests/unit/runtimes/test_worker_ipc.py`
 
 ### Implementation for Foundational
@@ -48,8 +48,8 @@
 - [X] T009 Implement ObjectRef Pydantic model with python_class, obj:// URI validator in `src/bioimage_mcp/artifacts/models.py` (Include optional fields: `device`, `sha256`, `init_params`)
 - [X] T010 Add target_class and class_methods fields to DynamicSource in `src/bioimage_mcp/registry/manifest_schema.py`
 - [X] T048 Implement `**kwargs` filtering logic in `src/bioimage_mcp/registry/dynamic/discovery.py` (or adapter) to ensure methods with `**kwargs` are excluded unless schema overlay exists
-- [ ] T045 Update `src/bioimage_mcp/runs/models.py` and `src/bioimage_mcp/api/schemas.py` to support `ObjectRef` metadata in workflow records [Blocking FR-004]
-- [ ] T046 Implement `ObjectRef` reconstruction logic in `src/bioimage_mcp/api/execution.py` and `src/bioimage_mcp/api/sessions.py` (Use `init_params` to re-instantiate if artifact load fails) [Blocking FR-004]
+- [X] T045 Update `src/bioimage_mcp/runs/models.py` and `src/bioimage_mcp/api/schemas.py` to support `ObjectRef` metadata in workflow records [Blocking FR-004]
+- [X] T046 Implement `ObjectRef` reconstruction logic in `src/bioimage_mcp/api/execution.py` and `src/bioimage_mcp/api/sessions.py` (Use `init_params` to re-instantiate if artifact load fails) [Blocking FR-004]
 - [X] T011 Add ClassContext model with init_params to `src/bioimage_mcp/runtimes/worker_ipc.py`
 - [X] T012 Add class_context field to ExecuteRequest in `src/bioimage_mcp/runtimes/worker_ipc.py`
 - [X] T013 Run foundational tests and verify all pass
