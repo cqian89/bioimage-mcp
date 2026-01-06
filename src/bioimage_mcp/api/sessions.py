@@ -4,6 +4,7 @@ Includes support for session export and replay for reproducibility.
 """
 
 import json
+import logging
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
@@ -28,6 +29,9 @@ from bioimage_mcp.api.schemas import (
 from bioimage_mcp.artifacts.store import ArtifactStore
 from bioimage_mcp.config.schema import Config
 from bioimage_mcp.sessions.manager import SessionManager
+
+
+logger = logging.getLogger(__name__)
 
 
 class SessionService:
@@ -275,14 +279,50 @@ class SessionService:
             inputs = {}
             for port, source in step.inputs.items():
                 if source.source == "external":
-                    inputs[port] = {"ref_id": mapped_inputs[source.key]}
+                    ref_id = mapped_inputs[source.key]
                 else:
                     ref_id = step_outputs.get((source.step_index, source.port))
                     if not ref_id:
                         raise ValueError(
                             f"Step {idx} depends on missing output from step {source.step_index}"
                         )
-                    inputs[port] = {"ref_id": ref_id}
+
+                # Check for ObjectRef reconstruction metadata (T046)
+                original_art_ref = None
+                if source.source == "step":
+                    source_step = record.steps[source.step_index]
+                    original_art_ref = source_step.outputs.get(source.port)
+
+                # Build input with available metadata to enable lazy reconstruction in execution service
+                resolved_input = {"ref_id": ref_id}
+                if original_art_ref:
+                    resolved_input.update(original_art_ref.model_dump(exclude_none=True))
+
+                if (
+                    original_art_ref
+                    and original_art_ref.type == "ObjectRef"
+                    and not self.execution_service._memory_store.get(ref_id)
+                ):
+                    # Attempt eager reconstruction
+                    python_class = original_art_ref.python_class
+                    metadata = original_art_ref.metadata or {}
+                    init_params = metadata.get("init_params")
+
+                    if python_class and init_params is not None:
+                        logger.info(
+                            "Eagerly reconstructing ObjectRef %s (%s)", ref_id, python_class
+                        )
+                        try:
+                            self.execution_service.reconstruct_object(
+                                python_class=python_class,
+                                init_params=init_params,
+                                session_id=replay_session_id,
+                                ref_id=ref_id,
+                            )
+                        except Exception as e:
+                            logger.error("Failed eager reconstruction for %s: %s", ref_id, e)
+
+                inputs[port] = resolved_input
 
             # 2. Resolve parameters
             params = step.params.copy()

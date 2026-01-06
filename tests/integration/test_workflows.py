@@ -260,7 +260,6 @@ class TestSessionReplayObjectRef:
 
         return interactive_service, execution_service, artifact_store
 
-    @pytest.mark.xfail(reason="ObjectRef reconstruction (T046) not yet implemented")
     def test_replay_reconstructs_objectref_from_init_params(self, services, monkeypatch):
         """Assert ObjectRef is reconstructed using init_params during replay (FR-004)."""
         interactive, execution, artifact_store = services
@@ -289,6 +288,27 @@ class TestSessionReplayObjectRef:
                         },
                     },
                     "Created",
+                    0,
+                )
+            elif fn_id == "core.reconstruct":
+                # Handle reconstruction call (T046)
+                class_ctx = kwargs.get("class_context") or {}
+                py_class = class_ctx.get("python_class")
+                init_params = class_ctx.get("init_params")
+                return (
+                    {
+                        "ok": True,
+                        "outputs": {
+                            "model": {
+                                "type": "ObjectRef",
+                                "ref_id": "obj-123",
+                                "uri": "obj://session/env/obj-123",
+                                "python_class": py_class,
+                                "metadata": {"init_params": init_params},
+                            }
+                        },
+                    },
+                    "Reconstructed",
                     0,
                 )
             else:  # test.use
@@ -364,7 +384,6 @@ class TestSessionReplayObjectRef:
 
         assert replay_res["status"] in ("running", "success")
 
-    @pytest.mark.xfail(reason="ObjectRef reconstruction (T046) not yet implemented")
     def test_replay_uses_python_class_for_reconstruction(self, services, monkeypatch):
         """Assert python_class is used to identify the class to reconstruct."""
         interactive, execution, artifact_store = services
@@ -386,6 +405,24 @@ class TestSessionReplayObjectRef:
                                 "format": "pickle",
                                 "mime_type": "application/x-python-pickle",
                                 "size_bytes": 1024,
+                            }
+                        },
+                    },
+                    "OK",
+                    0,
+                )
+            elif fn_id == "core.reconstruct":
+                class_ctx = kwargs.get("class_context") or {}
+                return (
+                    {
+                        "ok": True,
+                        "outputs": {
+                            "model": {
+                                "type": "ObjectRef",
+                                "ref_id": "obj-456",
+                                "uri": "obj://session/env/obj-456",
+                                "python_class": class_ctx.get("python_class"),
+                                "metadata": {"init_params": class_ctx.get("init_params")},
                             }
                         },
                     },

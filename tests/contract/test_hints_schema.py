@@ -28,6 +28,7 @@ ALLOWED_ARTIFACT_TYPES = {
     "LogRef",
     "NativeOutputRef",
     "PlotRef",
+    "ObjectRef",
 }
 ALLOWED_STORAGE_TYPES = {"file", "zarr-temp"}
 

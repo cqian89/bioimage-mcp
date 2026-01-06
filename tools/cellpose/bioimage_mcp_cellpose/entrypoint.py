@@ -8,6 +8,8 @@ Supports persistent worker mode (NDJSON).
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+import importlib
 import inspect
 import json
 import os
@@ -279,7 +281,6 @@ def handle_model_init(
     """Handle cellpose.CellposeModel instantiation."""
     from cellpose.models import CellposeModel
     import torch
-    from datetime import datetime, timezone
 
     model_type = params.get("model_type", "cyto3")
     gpu = params.get("gpu", torch.cuda.is_available())
@@ -361,6 +362,82 @@ FUNCTION_HANDLERS = {
 }
 
 
+def handle_reconstruct(request: dict[str, Any]) -> dict[str, Any]:
+    """Handle core.reconstruct - instantiate a class and return an ObjectRef.
+
+    Args:
+        request: ExecuteRequest dict with class_context
+
+    Returns:
+        ExecuteResponse dict
+    """
+    class_context = request.get("class_context")
+    ordinal = request.get("ordinal")
+
+    if not class_context:
+        params = request.get("params") or {}
+        python_class_name = params.get("python_class")
+        init_params = params.get("init_params", {})
+    else:
+        python_class_name = class_context.get("python_class")
+        init_params = class_context.get("init_params", {})
+
+    if not python_class_name:
+        return {
+            "command": "execute_result",
+            "ok": False,
+            "ordinal": ordinal,
+            "error": {
+                "code": "INVALID_REQUEST",
+                "message": "Missing python_class for reconstruction",
+            },
+        }
+
+    try:
+        if "." not in python_class_name:
+            raise ValueError(f"Invalid fully qualified class name: {python_class_name}")
+
+        module_name, class_name = python_class_name.rsplit(".", 1)
+        module = importlib.import_module(module_name)
+        cls = getattr(module, class_name)
+
+        # Instantiate
+        obj = cls(**init_params)
+
+        # Store in object cache
+        object_id, obj_uri = _store_object(obj)
+
+        return {
+            "command": "execute_result",
+            "ok": True,
+            "ordinal": ordinal,
+            "outputs": {
+                "model": {
+                    "ref_id": object_id,
+                    "type": "ObjectRef",
+                    "uri": obj_uri,
+                    "format": "pickle",
+                    "python_class": python_class_name,
+                    "storage_type": "memory",
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "metadata": {"init_params": init_params},
+                }
+            },
+            "log": f"Reconstructed {python_class_name}",
+        }
+
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "command": "execute_result",
+            "ok": False,
+            "ordinal": ordinal,
+            "error": {
+                "code": "RECONSTRUCTION_FAILED",
+                "message": f"Failed to reconstruct {python_class_name}: {exc}",
+            },
+        }
+
+
 def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
     fn_id = request.get("fn_id", "")
     params = request.get("params") or {}
@@ -373,6 +450,8 @@ def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
 
     try:
         inputs = _convert_memory_inputs_to_files(inputs, work_dir)
+        if fn_id == "core.reconstruct":
+            return handle_reconstruct(request)
         if fn_id == "meta.describe":
             result_response = handle_meta_describe(params)
             if result_response.get("ok"):

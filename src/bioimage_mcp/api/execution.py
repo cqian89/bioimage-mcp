@@ -172,6 +172,7 @@ def execute_step(
     timeout_seconds: int | None,
     worker_manager: PersistentWorkerManager | None = None,
     session_id: str = "default-session",
+    class_context: dict | None = None,
 ) -> tuple[dict, str, int]:
     manifest, fn_def = _get_function_metadata(config, fn_id)
     if not manifest:
@@ -197,6 +198,7 @@ def execute_step(
         "inputs": inputs,
         "work_dir": str(work_dir),
         "hints": hints,
+        "class_context": class_context,
         "fs_allowlist_read": [str(path) for path in config.fs_allowlist_read],
         "fs_allowlist_write": [str(path) for path in config.fs_allowlist_write],
     }
@@ -420,6 +422,75 @@ class ExecutionService:
                 return manifest.env_id
         return "default"
 
+    def reconstruct_object(
+        self,
+        python_class: str,
+        init_params: dict[str, Any],
+        session_id: str,
+        ref_id: str | None = None,
+    ) -> ArtifactRef:
+        """Reconstruct an object from its class and init_params (T046).
+
+        This is used during session replay or when an object is evicted from memory.
+        It calls the constructor in the appropriate environment.
+        """
+        # Determine target environment from python_class
+        # Heuristic: try to find env via _get_target_env with a guessed fn_id
+        target_env = self._get_target_env(python_class)
+
+        # Execute the reconstruction
+        work_dir = (
+            self._config.artifact_store_root / "work" / "reconstruct" / (ref_id or uuid.uuid4().hex)
+        )
+        work_dir.mkdir(parents=True, exist_ok=True)
+
+        # We use a special internal fn_id 'core.reconstruct'
+        response, _log, _exit_code = execute_step(
+            config=self._config,
+            fn_id="core.reconstruct",
+            params={},  # init_params passed via class_context
+            inputs={},
+            work_dir=work_dir,
+            timeout_seconds=60,
+            worker_manager=self._worker_manager,
+            session_id=session_id,
+            class_context={
+                "python_class": python_class,
+                "init_params": init_params,
+            },
+        )
+
+        if not response.get("ok"):
+            error_msg = response.get("error", {}).get("message", "Unknown error")
+            raise RuntimeError(f"Reconstruction failed for {python_class}: {error_msg}")
+
+        # The response should contain the new ObjectRef
+        outputs = response.get("outputs") or {}
+        # Find the ObjectRef in outputs. We expect at least one.
+        obj_ref_data = None
+        for out in outputs.values():
+            if isinstance(out, dict) and out.get("type") == "ObjectRef":
+                obj_ref_data = out
+                break
+
+        if not obj_ref_data:
+            raise RuntimeError(f"Reconstruction of {python_class} did not return an ObjectRef")
+
+        # Update ref_id if requested
+        if ref_id:
+            obj_ref_data["ref_id"] = ref_id
+
+        # Wrap as ArtifactRef (or specifically ObjectRef if imported)
+        from bioimage_mcp.artifacts.models import ObjectRef
+
+        ref = ObjectRef(**obj_ref_data)
+
+        # Ensure it's registered in memory store (execute_step might have already done this via worker_manager)
+        if not self._memory_store.get(ref.ref_id):
+            self._memory_store.register(ref)
+
+        return ref
+
     def run_workflow(
         self,
         spec: dict,
@@ -546,9 +617,30 @@ class ExecutionService:
         for input_name, input_ref in inputs.items():
             if not isinstance(input_ref, dict):
                 continue
-            if "ref_id" in input_ref and "uri" not in input_ref:
+            if "ref_id" in input_ref:
+                ref_id = input_ref["ref_id"]
                 # Resolve from memory store first (mem://) (T016)
-                mem_ref = self._memory_store.get(input_ref["ref_id"])
+                mem_ref = self._memory_store.get(ref_id)
+
+                # Check for ObjectRef reconstruction (T046)
+                if not mem_ref and input_ref.get("type") == "ObjectRef":
+                    python_class = input_ref.get("python_class")
+                    metadata = input_ref.get("metadata") or {}
+                    init_params = metadata.get("init_params")
+                    if python_class and init_params is not None:
+                        logger.info("Reconstructing missing ObjectRef %s", ref_id)
+                        try:
+                            self.reconstruct_object(
+                                python_class=python_class,
+                                init_params=init_params,
+                                session_id=session_id,
+                                ref_id=ref_id,
+                            )
+                            # Refresh mem_ref after reconstruction
+                            mem_ref = self._memory_store.get(ref_id)
+                        except Exception as e:
+                            logger.error("Failed to reconstruct %s: %s", ref_id, e)
+
                 if mem_ref:
                     resolved = mem_ref.model_dump()
                     # Use simulated file path for tool input (T016 Fix)
@@ -565,13 +657,14 @@ class ExecutionService:
                     continue
 
                 # Resolve from file store
-                try:
-                    ref = self._artifact_store.get(input_ref["ref_id"])
-                except KeyError:
-                    continue
-                resolved = ref.model_dump()
-                resolved.update(input_ref)
-                inputs[input_name] = resolved
+                if "uri" not in input_ref:
+                    try:
+                        ref = self._artifact_store.get(ref_id)
+                    except KeyError:
+                        continue
+                    resolved = ref.model_dump()
+                    resolved.update(input_ref)
+                    inputs[input_name] = resolved
 
         storage_requirements = _get_input_storage_requirements(self._config, fn_id)
         materialized_inputs: dict[str, str] = {}

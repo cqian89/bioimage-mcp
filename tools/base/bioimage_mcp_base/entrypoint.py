@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import importlib
 import json
 import sys
 import uuid
@@ -33,7 +34,8 @@ DYNAMIC_FN_PREFIXES = ("base.", f"{TOOL_ENV_NAME}.")
 
 # Global memory store in worker process
 # artifact_id -> numpy array
-_MEMORY_ARTIFACTS: dict[str, np.ndarray] = {}
+_MEMORY_ARTIFACTS: dict[str, Any] = {}
+_OBJECT_CACHE: dict[str, Any] = {}
 
 # Worker identity (set by initialization handshake or env vars)
 _SESSION_ID: str | None = None
@@ -444,6 +446,97 @@ def handle_evict(request: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def handle_reconstruct(request: dict[str, Any]) -> dict[str, Any]:
+    """Handle core.reconstruct - instantiate a class and return an ObjectRef.
+
+    Args:
+        request: ExecuteRequest dict with class_context
+
+    Returns:
+        ExecuteResponse dict
+    """
+    class_context = request.get("class_context")
+    ordinal = request.get("ordinal")
+
+    if not class_context:
+        # Fallback: check if python_class and init_params are in params
+        params = request.get("params") or {}
+        python_class_name = params.get("python_class")
+        init_params = params.get("init_params", {})
+    else:
+        python_class_name = class_context.get("python_class")
+        init_params = class_context.get("init_params", {})
+
+    if not python_class_name:
+        return {
+            "command": "execute_result",
+            "ok": False,
+            "ordinal": ordinal,
+            "error": {
+                "code": "INVALID_REQUEST",
+                "message": "Missing python_class for reconstruction",
+            },
+        }
+
+    try:
+        # Resolve class
+        if "." not in python_class_name:
+            raise ValueError(f"Invalid fully qualified class name: {python_class_name}")
+
+        module_name, class_name = python_class_name.rsplit(".", 1)
+        module = importlib.import_module(module_name)
+        cls = getattr(module, class_name)
+
+        # Instantiate
+        obj = cls(**init_params)
+
+        # Store in object cache (if we have one, otherwise use _MEMORY_ARTIFACTS)
+        # Note: base entrypoint currently uses _MEMORY_ARTIFACTS for everything.
+        # But we should probably have an _OBJECT_CACHE like cellpose.
+
+        # Let's ensure _OBJECT_CACHE exists
+        if "_OBJECT_CACHE" not in globals():
+            globals()["_OBJECT_CACHE"] = {}
+
+        object_id = uuid.uuid4().hex
+        globals()["_OBJECT_CACHE"][object_id] = obj
+
+        # Also store in _MEMORY_ARTIFACTS for compatibility with _load_from_memory
+        _MEMORY_ARTIFACTS[object_id] = obj
+
+        obj_uri = f"obj://{_SESSION_ID}/{_ENV_ID}/{object_id}"
+
+        return {
+            "command": "execute_result",
+            "ok": True,
+            "ordinal": ordinal,
+            "outputs": {
+                "model": {
+                    "ref_id": object_id,
+                    "type": "ObjectRef",
+                    "uri": obj_uri,
+                    "format": "pickle",
+                    "python_class": python_class_name,
+                    "storage_type": "memory",
+                    "created_at": _now_iso(),
+                    "metadata": {"init_params": init_params},
+                }
+            },
+            "log": f"Reconstructed {python_class_name}",
+        }
+
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "command": "execute_result",
+            "ok": False,
+            "ordinal": ordinal,
+            "error": {
+                "code": "RECONSTRUCTION_FAILED",
+                "message": f"Failed to reconstruct {python_class_name}: {exc}",
+            },
+        }
+
+
 def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
     """Process a single execute request (new format or legacy format).
 
@@ -493,6 +586,8 @@ def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
         # This allows functions that expect file paths to work with memory artifacts
         # IMPORTANT: This must be inside try/except to catch evicted artifact errors
         inputs = _convert_memory_inputs_to_files(inputs, work_dir)
+        if fn_id == "core.reconstruct":
+            return handle_reconstruct(request)
         if fn_id == "meta.describe":
             result_response = handle_meta_describe(params)
             # handle_meta_describe returns {"ok": bool, "result": ...}
