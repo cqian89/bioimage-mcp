@@ -488,3 +488,151 @@ class TestSessionReplayObjectRef:
         if replay_res.get("error"):
             pytest.fail(f"Replay failed with error: {replay_res['error']}")
         assert replay_res["status"] != "failed"
+
+
+class TestGPUReplay:
+    """T055: Integration tests for GPU->CPU replay behavior."""
+
+    @pytest.fixture
+    def services(self, tmp_path, monkeypatch):
+        """Setup services with temporary stores."""
+        from bioimage_mcp.config.schema import Config
+        from bioimage_mcp.artifacts.store import ArtifactStore
+        from bioimage_mcp.sessions.manager import SessionManager
+        from bioimage_mcp.sessions.store import SessionStore
+        from bioimage_mcp.api.execution import ExecutionService
+        from bioimage_mcp.api.interactive import InteractiveExecutionService
+
+        config = Config(
+            artifact_store_root=tmp_path / "artifacts",
+            tool_manifest_roots=[tmp_path / "tools"],
+            fs_allowlist_read=[tmp_path],
+            fs_allowlist_write=[tmp_path],
+            fs_denylist=[],
+        )
+        (tmp_path / "tools").mkdir()
+
+        artifact_store = ArtifactStore(config)
+        session_store = SessionStore()
+        session_manager = SessionManager(session_store, config)
+        execution_service = ExecutionService(config, artifact_store=artifact_store)
+        interactive_service = InteractiveExecutionService(session_manager, execution_service)
+
+        monkeypatch.setattr(
+            "bioimage_mcp.api.sessions.SessionService._function_exists",
+            lambda self, fn_id: True,
+        )
+
+        return interactive_service, execution_service
+
+    def test_gpu_to_cpu_replay_fallback_or_error(self, services, monkeypatch):
+        """Assert replaying a GPU workflow on CPU returns structured error or remaps."""
+        interactive, execution = services
+        session_id = "gpu-replay-test"
+
+        # 1. Mock execution to return a GPU ObjectRef
+        execution_count = 0
+
+        def _mock_execute_step(fn_id, inputs, params, **kwargs):
+            nonlocal execution_count
+            execution_count += 1
+            if fn_id == "cellpose.CellposeModel":
+                # First call succeeds (recording), second call fails (replay on CPU)
+                if execution_count > 1 and params.get("gpu") is True:
+                    return (
+                        {
+                            "ok": False,
+                            "error": {
+                                "code": "EXECUTION_FAILED",
+                                "message": "CUDA not available",
+                                "details": [
+                                    {"path": "params.gpu", "hint": "Set gpu=False for CPU replay"}
+                                ],
+                            },
+                        },
+                        "Failed",
+                        1,
+                    )
+                return (
+                    {
+                        "ok": True,
+                        "outputs": {
+                            "model": {
+                                "type": "ObjectRef",
+                                "ref_id": "gpu-model",
+                                "uri": "obj://s/e/gpu-model",
+                                "python_class": "cellpose.models.CellposeModel",
+                                "metadata": {
+                                    "init_params": {"model_type": "cyto3", "gpu": True},
+                                    "device": "cuda",
+                                },
+                            }
+                        },
+                    },
+                    "Created GPU Model",
+                    0,
+                )
+
+                return (
+                    {
+                        "ok": True,
+                        "outputs": {
+                            "model": {
+                                "type": "ObjectRef",
+                                "ref_id": "gpu-model",
+                                "uri": "obj://s/e/gpu-model",
+                                "python_class": "cellpose.models.CellposeModel",
+                                "metadata": {
+                                    "init_params": {"model_type": "cyto3", "gpu": True},
+                                    "device": "cuda",
+                                },
+                            }
+                        },
+                    },
+                    "Created GPU Model",
+                    0,
+                )
+            elif fn_id == "core.reconstruct":
+                # Simulate reconstruction failure on CPU if gpu=True is requested
+                class_ctx = kwargs.get("class_context") or {}
+                init_params = class_ctx.get("init_params") or {}
+                if init_params.get("gpu") is True:
+                    # In a real scenario, this might fail because no GPU is found
+                    # or we might want it to return a structured error.
+                    return (
+                        {
+                            "ok": False,
+                            "error": {
+                                "code": "EXECUTION_FAILED",
+                                "message": "CUDA not available",
+                                "details": [
+                                    {"path": "params.gpu", "hint": "Set gpu=False for CPU replay"}
+                                ],
+                            },
+                        },
+                        "Failed",
+                        1,
+                    )
+                return ({"ok": True, "outputs": {}}, "OK", 0)
+            return ({"ok": True, "outputs": {}}, "OK", 0)
+
+        monkeypatch.setattr("bioimage_mcp.api.execution.execute_step", _mock_execute_step)
+
+        # 2. Record a "GPU" session
+        interactive.call_tool(session_id, "cellpose.CellposeModel", {}, {"gpu": True})
+        export_res = interactive.export_session(session_id)
+        workflow_ref = export_res["workflow_ref"]
+
+        # 3. Replay (simulating CPU environment)
+        # We expect it to either fail with a structured error or succeed if remapped
+        replay_res = interactive.replay_session(workflow_ref, inputs={})
+
+        # For TDD: We expect it to FAIL or show structured error if it can't remap
+
+        # If it fails, it MUST have the structured error shape
+        assert replay_res.get("error") is not None, (
+            "Replay should have failed with structured error"
+        )
+        error = replay_res["error"]
+        assert error["code"] == "EXECUTION_FAILED"
+        assert any("gpu" in d.get("hint", "").lower() for d in error.get("details", []))

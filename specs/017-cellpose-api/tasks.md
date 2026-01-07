@@ -94,18 +94,18 @@
 
 ### Tests for User Story 2 (TDD - write first, must FAIL) ⚠️
 
-- [ ] T026 [P] [US2] Write integration test for train_seg output artifacts in `tests/integration/test_cellpose_training.py`
-- [ ] T027 [P] [US2] Write integration test for using trained weights in new model in `tests/integration/test_cellpose_training.py`
-- [ ] T028 [P] [US2] Write unit test for training parameter schema in `tests/unit/tools/test_cellpose_training.py`
+- [X] T026 [P] [US2] Write integration test for train_seg output artifacts in `tests/integration/test_cellpose_training.py`
+- [X] T027 [P] [US2] Write integration test for using trained weights in new model in `tests/integration/test_cellpose_training.py`
+- [X] T028 [P] [US2] Write unit test for training parameter schema in `tests/unit/tools/test_cellpose_training.py`
 
 ### Implementation for User Story 2
 
-- [ ] T029 [US2] Create training ops module in `tools/cellpose/bioimage_mcp_cellpose/ops/training.py`
-- [ ] T030 [US2] Implement run_train_seg function with NativeOutputRef + TableRef outputs in `tools/cellpose/bioimage_mcp_cellpose/ops/training.py`
-- [ ] T031 [US2] Create handle_train_seg function in entrypoint in `tools/cellpose/bioimage_mcp_cellpose/entrypoint.py`
-- [ ] T032 [US2] Update handle_model_init to accept pretrained_model weights path in `tools/cellpose/bioimage_mcp_cellpose/entrypoint.py`
-- [ ] T033 [US2] Update FUNCTION_HANDLERS with train_seg entry in `tools/cellpose/bioimage_mcp_cellpose/entrypoint.py`
-- [ ] T034 [US2] Run User Story 2 tests and verify all pass
+- [X] T029 [US2] Create training ops module in `tools/cellpose/bioimage_mcp_cellpose/ops/training.py`
+- [X] T030 [US2] Implement run_train_seg function with NativeOutputRef + TableRef outputs in `tools/cellpose/bioimage_mcp_cellpose/ops/training.py`
+- [X] T031 [US2] Create handle_train_seg function in entrypoint in `tools/cellpose/bioimage_mcp_cellpose/entrypoint.py`
+- [X] T032 [US2] Update handle_model_init to accept pretrained_model weights path in `tools/cellpose/bioimage_mcp_cellpose/entrypoint.py`
+- [X] T033 [US2] Update FUNCTION_HANDLERS with train_seg entry in `tools/cellpose/bioimage_mcp_cellpose/entrypoint.py`
+- [X] T034 [US2] Run User Story 2 tests and verify all pass
 
 **Checkpoint**: User Stories 1 AND 2 should both work independently
 
@@ -115,20 +115,20 @@
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T035 [P] Write tests for ObjectRef eviction in `tests/unit/tools/test_cellpose_eviction.py`
-- [ ] T036 Extend handle_evict to support ObjectRef (obj:// URIs) in `tools/cellpose/bioimage_mcp_cellpose/entrypoint.py`
-- [ ] T051 [P] Write integration test for `cellpose.cache.clear` tool-pack function in `tests/integration/test_cellpose_cache.py`
-- [ ] T052 Add `cellpose.cache.clear` function definition to `tools/cellpose/manifest.yaml`
-- [ ] T053 Implement `handle_cache_clear` in `tools/cellpose/bioimage_mcp_cellpose/entrypoint.py`
-- [ ] T037 [P] Add error handling for evicted/invalid ObjectRef with constitution-compliant structured errors in `tools/cellpose/bioimage_mcp_cellpose/entrypoint.py` (Require `code`, `message`, `details[]` with `path` + `hint`)
-- [ ] T050 [P] Write unit tests validating structured error shape for ObjectRef failures (missing artifact, incompatible device) in `tests/unit/api/test_errors.py`
-- [ ] T054 [P] Write test for missing ObjectRef artifact (URI deleted) returning structured `ArtifactNotFoundError` (FR-009) in `tests/unit/api/test_errors.py`
-- [ ] T055 [P] Write test for GPU->CPU replay behavior (map_location or structured error with hint) in `tests/integration/test_workflows.py`
-- [ ] T038 [P] Update CellposeAdapter to handle class-based discovery in `src/bioimage_mcp/registry/dynamic/adapters/cellpose.py`
-- [ ] T039 [P] Document ObjectRef usage in `specs/017-cellpose-api/quickstart.md`
-- [ ] T040 Update `AGENTS.md` with ObjectRef artifact type
-- [ ] T041 Run full test suite and verify all tests pass
-- [ ] T042 Validate quickstart.md scenarios work end-to-end
+- [X] T035 [P] Write tests for ObjectRef eviction in `tests/unit/tools/test_cellpose_eviction.py`
+- [X] T036 Extend handle_evict to support ObjectRef (obj:// URIs) in `tools/cellpose/bioimage_mcp_cellpose/entrypoint.py`
+- [X] T051 [P] Write integration test for `cellpose.cache.clear` tool-pack function in `tests/integration/test_cellpose_cache.py`
+- [X] T052 Add `cellpose.cache.clear` function definition to `tools/cellpose/manifest.yaml`
+- [X] T053 Implement `handle_cache_clear` in `tools/cellpose/bioimage_mcp_cellpose/entrypoint.py`
+- [X] T037 [P] Add error handling for evicted/invalid ObjectRef with constitution-compliant structured errors in `tools/cellpose/bioimage_mcp_cellpose/entrypoint.py` (Require `code`, `message`, `details[]` with `path` + `hint`)
+- [X] T050 [P] Write unit tests validating structured error shape for ObjectRef failures (missing artifact, incompatible device) in `tests/unit/api/test_errors.py`
+- [X] T054 [P] Write test for missing ObjectRef artifact (URI deleted) returning structured `ArtifactNotFoundError` (FR-009) in `tests/unit/api/test_errors.py`
+- [X] T055 [P] Write test for GPU->CPU replay behavior (map_location or structured error with hint) in `tests/integration/test_workflows.py`
+- [X] T038 [P] Update CellposeAdapter to handle class-based discovery in `src/bioimage_mcp/registry/dynamic/adapters/cellpose.py`
+- [X] T039 [P] Document ObjectRef usage in `specs/017-cellpose-api/quickstart.md`
+- [X] T040 Update `AGENTS.md` with ObjectRef artifact type
+- [X] T041 Run full test suite and verify all tests pass
+- [X] T042 Validate quickstart.md scenarios work end-to-end
 
 ---
 

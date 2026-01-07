@@ -171,7 +171,10 @@ Key settings:
 - **LabelImageRef**: Segmentation label images (0=background, 1..N=instances)
 - **TableRef**: Measurement/feature tables
 - **LogRef**: Run logs
-- **NativeOutputRef**: Workflow records (format: `workflow-record-json`)
+- **NativeOutputRef**: Tool-native output bundle (format is tool-dependent)
+- **ObjectRef**: Serialized Python object (e.g., ML model) held in tool memory.
+  - Fields: `ref_id`, `uri` (starting with `obj://`), `python_class` (fully qualified name), `storage_type` ("memory").
+  - Example: `{"type": "ObjectRef", "uri": "obj://...", "python_class": "cellpose.models.CellposeModel"}`
 
 ## PR Guidelines
 

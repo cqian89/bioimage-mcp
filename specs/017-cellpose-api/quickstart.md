@@ -51,21 +51,55 @@ labels2 = mcp.run(
 mcp.run("evict", inputs={"ref": model_ref})
 ```
 
-### Scenario 2: Model Fine-Tuning (Future P2)
+### Scenario 2: Model Fine-Tuning
+Train a model on specific data and then use the resulting weights for inference.
+
 ```python
-# Train a model and get the updated weights as an ObjectRef
-new_model_ref = mcp.run(
-    "cellpose.train",
-    inputs={"train_data": dataset_ref},
-    params={"n_epochs": 10}
+# 1. Train or fine-tune a model
+# This returns a NativeOutputRef for the weights and a TableRef for losses
+train_results = mcp.run(
+    "cellpose.train_seg",
+    inputs={
+        "image": train_image_ref,
+        "mask": train_label_ref
+    },
+    params={
+        "n_epochs": 10,
+        "model_type": "cyto3"
+    }
+)
+weights_ref = train_results.outputs["weights"]
+
+# 2. Initialize a model using the newly trained weights
+# We pass the weights ref to the 'pretrained_model' parameter
+model_ref = mcp.run(
+    "cellpose.CellposeModel",
+    params={
+        "pretrained_model": weights_ref,
+        "gpu": True
+    }
 )
 
-# Use the fine-tuned model for inference
+# 3. Use the fine-tuned model for inference
 labels = mcp.run(
     "cellpose.CellposeModel.eval",
     inputs={
-        "model": new_model_ref,
+        "model": model_ref,
         "x": test_image_ref
     }
 )
+```
+
+### Resource Management
+
+#### Evicting individual objects
+To free up memory for a specific model:
+```python
+mcp.run("evict", inputs={"ref": model_ref})
+```
+
+#### Clearing the entire cache
+To clear all models and objects from the tool's memory:
+```python
+mcp.run("cellpose.cache.clear")
 ```

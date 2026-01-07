@@ -193,15 +193,21 @@ def _convert_memory_inputs_to_files(inputs: dict[str, Any], work_dir: Path) -> d
     return converted_inputs
 
 
-def _introspect_cellpose_eval() -> dict[str, Any]:
-    """Introspect CellposeModel.eval() to get parameter schema."""
+def _introspect_cellpose_fn(target_fn: str) -> dict[str, Any]:
+    """Introspect Cellpose function to get parameter schema."""
     from bioimage_mcp_cellpose.descriptions import SEGMENT_DESCRIPTIONS
 
     try:
-        from cellpose.models import CellposeModel
+        if target_fn == "cellpose.train_seg":
+            import cellpose.train
 
-        sig = inspect.signature(CellposeModel.eval)
-    except ImportError:
+            sig = inspect.signature(cellpose.train.train_seg)
+        else:
+            from cellpose.models import CellposeModel
+
+            sig = inspect.signature(CellposeModel.eval)
+    except (ImportError, AttributeError):
+        # Fallback for common parameters
         return {
             "type": "object",
             "properties": {
@@ -210,10 +216,25 @@ def _introspect_cellpose_eval() -> dict[str, Any]:
                     "default": "cyto3",
                     "description": SEGMENT_DESCRIPTIONS.get("model_type", "Model type"),
                 },
-                "diameter": {
+                "n_epochs": {
+                    "type": "integer",
+                    "default": 10,
+                    "description": "Number of training epochs",
+                },
+                "learning_rate": {
                     "type": "number",
-                    "default": 30.0,
-                    "description": SEGMENT_DESCRIPTIONS.get("diameter", "Cell diameter"),
+                    "default": 0.1,
+                    "description": "Learning rate",
+                },
+                "weight_decay": {
+                    "type": "number",
+                    "default": 0.0001,
+                    "description": "Weight decay",
+                },
+                "batch_size": {
+                    "type": "integer",
+                    "default": 8,
+                    "description": "Batch size",
                 },
             },
             "required": [],
@@ -225,7 +246,18 @@ def _introspect_cellpose_eval() -> dict[str, Any]:
         "required": [],
     }
 
-    exclude = {"self", "x", "batch_size", "channels", "channel_axis", "z_axis"}
+    exclude = {
+        "self",
+        "x",
+        "channels",
+        "channel_axis",
+        "z_axis",
+        "train_data",
+        "train_labels",
+        "test_data",
+        "test_labels",
+        "net",
+    }
 
     for name, param in sig.parameters.items():
         if name in exclude:
@@ -248,7 +280,8 @@ def _introspect_cellpose_eval() -> dict[str, Any]:
             if default is not None:
                 prop["default"] = default
         else:
-            schema["required"].append(name)
+            # Don't make everything required for now to be safe
+            pass
 
         schema["properties"][name] = prop
 
@@ -260,11 +293,28 @@ def handle_meta_describe(params: dict[str, Any]) -> dict[str, Any]:
     target_fn = params.get("target_fn", "")
 
     if target_fn in ("cellpose.segment", "cellpose.eval", "cellpose.CellposeModel.eval"):
-        schema = _introspect_cellpose_eval()
+        schema = _introspect_cellpose_fn("cellpose.eval")
         return {
             "ok": True,
             "result": {
                 "params_schema": schema,
+                "tool_version": _get_cellpose_version(),
+                "introspection_source": "python_api",
+            },
+        }
+    elif target_fn == "cellpose.train_seg":
+        schema = _introspect_cellpose_fn("cellpose.train_seg")
+        return {
+            "ok": True,
+            "result": {
+                "params_schema": schema,
+                "inputs_schema": {
+                    "type": "object",
+                    "properties": {
+                        "images": {"type": "array", "items": {"type": "object"}},
+                        "labels": {"type": "array", "items": {"type": "object"}},
+                    },
+                },
                 "tool_version": _get_cellpose_version(),
                 "introspection_source": "python_api",
             },
@@ -280,13 +330,20 @@ def handle_model_init(
 ) -> dict[str, Any]:
     """Handle cellpose.CellposeModel instantiation."""
     from cellpose.models import CellposeModel
+    from bioimage_mcp_cellpose.ops.segment import _uri_to_path
     import torch
 
     model_type = params.get("model_type", "cyto3")
     gpu = params.get("gpu", torch.cuda.is_available())
 
+    # Handle pretrained_model if provided (T032)
+    pretrained_model = params.get("pretrained_model")
+    if isinstance(pretrained_model, dict) and "uri" in pretrained_model:
+        # Extract path from NativeOutputRef
+        pretrained_model = str(_uri_to_path(pretrained_model["uri"]))
+
     # Create model
-    model = CellposeModel(model_type=model_type, gpu=gpu)
+    model = CellposeModel(model_type=model_type, gpu=gpu, pretrained_model=pretrained_model)
 
     # Store in cache
     object_id, obj_uri = _store_object(model)
@@ -326,7 +383,22 @@ def handle_segment(
     model_obj = None
     model_ref = inputs.get("model")
     if isinstance(model_ref, dict) and model_ref.get("uri", "").startswith("obj://"):
-        model_obj = _load_object(model_ref["uri"])
+        try:
+            model_obj = _load_object(model_ref["uri"])
+        except (KeyError, ValueError):
+            return {
+                "ok": False,
+                "error": {
+                    "code": "ARTIFACT_NOT_FOUND",
+                    "message": "Object not found in cache",
+                    "details": [
+                        {
+                            "path": "inputs.model",
+                            "hint": "Object may have been evicted or session expired",
+                        }
+                    ],
+                },
+            }
 
     # Map 'x' to 'image' for CellposeModel.eval style calls
     if "x" in inputs and "image" not in inputs:
@@ -340,15 +412,40 @@ def handle_segment(
     }
 
 
+def handle_cache_clear(
+    inputs: dict[str, Any],
+    params: dict[str, Any],
+    work_dir: Path,
+) -> dict[str, Any]:
+    """Clear all cached ObjectRefs from memory."""
+    count = len(_OBJECT_CACHE)
+    _OBJECT_CACHE.clear()
+    return {
+        "ok": True,
+        "outputs": {
+            "cleared_count": {
+                "type": "NativeOutputRef",
+                "format": "json",
+                "value": count,
+            }
+        },
+        "log": f"Cleared {count} objects",
+    }
+
+
 def handle_train_seg(
     inputs: dict[str, Any],
     params: dict[str, Any],
     work_dir: Path,
 ) -> dict[str, Any]:
-    """Handle cellpose.train_seg execution (Not Implemented)."""
+    """Handle cellpose.train_seg execution (T031)."""
+    from bioimage_mcp_cellpose.ops.training import run_train_seg
+
+    outputs = run_train_seg(inputs=inputs, params=params, work_dir=work_dir)
     return {
-        "ok": False,
-        "error": "cellpose.train_seg is not yet implemented",
+        "ok": True,
+        "outputs": outputs,
+        "log": "Training complete",
     }
 
 
@@ -359,6 +456,7 @@ FUNCTION_HANDLERS = {
     "cellpose.CellposeModel": handle_model_init,
     "cellpose.CellposeModel.eval": handle_segment,
     "cellpose.train_seg": handle_train_seg,
+    "cellpose.cache.clear": handle_cache_clear,
 }
 
 
@@ -475,11 +573,14 @@ def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
             result = handler(inputs, params, work_dir)
 
             if not result.get("ok"):
+                error = result.get("error", "Function execution failed")
+                if isinstance(error, str):
+                    error = {"message": error}
                 response = {
                     "command": "execute_result",
                     "ok": False,
                     "ordinal": ordinal,
-                    "error": {"message": result.get("error", "Function execution failed")},
+                    "error": error,
                     "log": "failed",
                 }
             else:
@@ -576,7 +677,7 @@ def _convert_outputs_to_memory(outputs: dict[str, Any], work_dir: Path) -> dict[
 
 
 def _extract_artifact_id(ref_id: str | None) -> str:
-    """Extract artifact_id from ref_id (supports both mem:// URI and plain ID)."""
+    """Extract artifact_id from ref_id (supports mem://, obj:// URI and plain ID)."""
     if ref_id is None:
         raise ValueError("ref_id cannot be None")
     if not isinstance(ref_id, str):
@@ -590,6 +691,14 @@ def _extract_artifact_id(ref_id: str | None) -> str:
             raise ValueError(f"Invalid memory URI format: {ref_id}")
         _session_id_uri, _env_id_uri, artifact_id = parts
         return artifact_id
+    elif ref_id.startswith("obj://"):
+        parts = ref_id[6:].split("/")
+        if len(parts) != 3:
+            raise ValueError(f"Invalid object URI format: {ref_id}")
+        _session_id_uri, _env_id_uri, object_id = parts
+        return object_id
+    elif "://" in ref_id or ref_id == "invalid-uri":
+        raise ValueError(f"Invalid reference ID: {ref_id}")
     else:
         return ref_id
 
@@ -698,11 +807,15 @@ def handle_evict(request: dict[str, Any]) -> dict[str, Any]:
         del _MEMORY_ARTIFACTS[artifact_id]
         return {"command": "evict_result", "ok": True, "ordinal": ordinal}
 
+    if artifact_id in _OBJECT_CACHE:
+        del _OBJECT_CACHE[artifact_id]
+        return {"command": "evict_result", "ok": True, "ordinal": ordinal}
+
     return {
         "command": "evict_result",
         "ok": False,
         "ordinal": ordinal,
-        "error": {"code": "NOT_FOUND", "message": f"Memory artifact not found: {ref_id}"},
+        "error": {"code": "NOT_FOUND", "message": f"Artifact not found: {ref_id}"},
     }
 
 

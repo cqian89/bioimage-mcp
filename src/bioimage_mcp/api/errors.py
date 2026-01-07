@@ -10,6 +10,7 @@ from bioimage_mcp.api.schemas import ErrorDetail, StructuredError
 # Error Codes
 VALIDATION_FAILED = "VALIDATION_FAILED"  # Request validation error
 NOT_FOUND = "NOT_FOUND"  # Catalog node or artifact not found
+ARTIFACT_NOT_FOUND = "ARTIFACT_NOT_FOUND"  # Specific artifact missing from store or cache
 EXECUTION_FAILED = "EXECUTION_FAILED"  # Tool execution error
 PERMISSION_DENIED = "PERMISSION_DENIED"  # Filesystem access denied
 SCHEMA_MISMATCH = "SCHEMA_MISMATCH"  # Workflow record schema incompatibility
@@ -82,6 +83,31 @@ def not_found_error(
     detail = ErrorDetail(path=path, expected=expected, hint=hint)
     return StructuredError(
         code=NOT_FOUND,
+        message=message,
+        details=[detail],
+    )
+
+
+def artifact_not_found_error(
+    message: str,
+    path: str,
+    expected: str | None = None,
+    hint: str = "",
+) -> StructuredError:
+    """Create an ARTIFACT_NOT_FOUND error.
+
+    Args:
+        message: Human-readable error summary (e.g., "ObjectRef not found in cache")
+        path: JSON Pointer to the field that referenced the missing artifact
+        expected: Description of what was expected
+        hint: Actionable guidance (e.g., "Object may have been evicted")
+
+    Returns:
+        StructuredError with code ARTIFACT_NOT_FOUND
+    """
+    detail = ErrorDetail(path=path, expected=expected, hint=hint)
+    return StructuredError(
+        code=ARTIFACT_NOT_FOUND,
         message=message,
         details=[detail],
     )

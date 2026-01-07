@@ -71,9 +71,17 @@ functions:
       - name: image
         artifact_type: BioImageRef
         required: true
+      - name: mask
+        artifact_type: LabelImageRef
+        required: true
     outputs:
-      - name: model
+      - name: weights
         artifact_type: NativeOutputRef
+        format: cellpose-model
+        required: true
+      - name: losses
+        artifact_type: TableRef
+        format: csv
         required: true
     params_schema:
       type: object
@@ -116,6 +124,17 @@ functions:
         artifact_type: LabelImageRef
         format: OME-TIFF
         required: true
+    params_schema:
+      type: object
+      properties: {}
+
+  - fn_id: cellpose.cache.clear
+    tool_id: tools.cellpose
+    name: Clear Model Cache
+    description: Clear all cached ObjectRefs from memory
+    tags: [cache, memory]
+    inputs: []
+    outputs: []
     params_schema:
       type: object
       properties: {}

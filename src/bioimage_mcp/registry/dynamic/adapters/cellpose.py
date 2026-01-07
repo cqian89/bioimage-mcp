@@ -4,6 +4,7 @@ Cellpose adapter for dynamic function registry.
 
 from __future__ import annotations
 
+import importlib
 import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -52,9 +53,16 @@ class CellposeAdapter:
             module_config: Configuration from manifest with:
                 - module_name: module name to scan (e.g., "cellpose.models.CellposeModel")
                 - modules: alternative list of module names
+                - target_class: class name to scan (T038)
+                - class_methods: methods to discover (T038)
         """
         module_name = module_config.get("module_name", "")
         modules = module_config.get("modules", [])
+
+        # New fields from DynamicSource (T038)
+        target_class_name = module_config.get("target_class")
+        class_methods = module_config.get("class_methods", [])
+        prefix = module_config.get("prefix", "cellpose")
 
         target_modules = modules + ([module_name] if module_name else [])
 
@@ -63,6 +71,46 @@ class CellposeAdapter:
         target_modules = [module_mapping.get(t, t) for t in target_modules]
 
         all_metadata = []
+
+        # 1. Handle explicit target_class (T038)
+        if target_class_name:
+            cls = self._resolve_class(target_class_name)
+            if cls:
+                class_simple_name = target_class_name.split(".")[-1]
+                methods = class_methods or self.DISCOVERABLE_FUNCTIONS.get(target_class_name, [])
+                for method_name in methods:
+                    if method_name == "__init__":
+                        # Constructor: e.g. cellpose.CellposeModel (T038)
+                        display_name = class_simple_name
+                        fn_id = f"{prefix}.{display_name}"
+                        meta = self._introspect_and_format(
+                            cls, target_class_name, fn_id, display_name
+                        )
+                        # Constructors return ObjectRef
+                        meta.returns = "ObjectRef"
+                        meta.tags.append("constructor")
+                        meta.tags.append(f"returns:{target_class_name}")
+                        all_metadata.append(meta)
+                    elif hasattr(cls, method_name):
+                        # Method: e.g. cellpose.CellposeModel.eval (T038)
+                        display_name = f"{class_simple_name}.{method_name}"
+                        fn_id = f"{prefix}.{display_name}"
+                        meta = self._introspect_and_format(
+                            getattr(cls, method_name), target_class_name, fn_id, display_name
+                        )
+                        # Class methods take ObjectRef as input for the instance
+                        from bioimage_mcp.registry.dynamic.models import ParameterSchema
+
+                        meta.parameters["model"] = ParameterSchema(
+                            name="model",
+                            type="ObjectRef",
+                            description=f"Instance of {target_class_name}",
+                            required=True,
+                        )
+                        all_metadata.append(meta)
+
+        # 2. Handle legacy module-based discovery
+        seen_fn_ids = {m.fn_id for m in all_metadata}
 
         for target in target_modules:
             if target in self.DISCOVERABLE_FUNCTIONS:
@@ -74,13 +122,18 @@ class CellposeAdapter:
                         continue
 
                     for func_name in funcs_to_discover:
+                        fn_id = f"cellpose.{func_name}"
+                        if fn_id in seen_fn_ids:
+                            continue
+
                         if hasattr(CellposeModel, func_name):
                             func = getattr(CellposeModel, func_name)
                             # Primary discovery (cellpose.eval)
                             meta = self._introspect_and_format(
-                                func, "cellpose.models", f"cellpose.{func_name}", func_name
+                                func, "cellpose.models", fn_id, func_name
                             )
                             all_metadata.append(meta)
+                            seen_fn_ids.add(fn_id)
 
                 # Handling for modules
                 elif target == "cellpose.train":
@@ -88,14 +141,38 @@ class CellposeAdapter:
                         continue
 
                     for func_name in funcs_to_discover:
+                        fn_id = f"cellpose.{func_name}"
+                        if fn_id in seen_fn_ids:
+                            continue
+
                         if hasattr(cellpose_train, func_name):
                             func = getattr(cellpose_train, func_name)
                             meta = self._introspect_and_format(
-                                func, "cellpose.train", f"cellpose.{func_name}", func_name
+                                func, "cellpose.train", fn_id, func_name
                             )
                             all_metadata.append(meta)
+                            seen_fn_ids.add(fn_id)
 
         return all_metadata
+
+    def _resolve_class(self, class_path: str) -> Any:
+        """Resolve a class from a string path."""
+        if not class_path:
+            return None
+        try:
+            # Handle CellposeModel explicitly as it's already imported
+            if class_path == "cellpose.models.CellposeModel" and CellposeModel is not None:
+                return CellposeModel
+
+            parts = class_path.split(".")
+            if len(parts) < 2:
+                return None
+            module_name = ".".join(parts[:-1])
+            class_name = parts[-1]
+            module = importlib.import_module(module_name)
+            return getattr(module, class_name)
+        except (ImportError, AttributeError):
+            return None
 
     def _introspect_and_format(
         self, func: Any, module: str, fn_id: str, display_name: str
@@ -117,7 +194,9 @@ class CellposeAdapter:
             del metadata.parameters["self"]
 
         # Add model_type as a parameter for segmentation functions if not present
-        if display_name in ["eval", "segment"] and "model_type" not in metadata.parameters:
+        # Handle both 'eval' and 'CellposeModel.eval' (T038)
+        base_name = display_name.split(".")[-1]
+        if base_name in ["eval", "segment"] and "model_type" not in metadata.parameters:
             from bioimage_mcp.registry.dynamic.models import ParameterSchema
 
             metadata.parameters["model_type"] = ParameterSchema(
@@ -140,7 +219,9 @@ class CellposeAdapter:
         Returns:
             Categorized I/O pattern
         """
-        if func_name in ["segment", "eval"]:
+        # Handle both 'eval' and 'CellposeModel.eval' (T038)
+        base_name = func_name.split(".")[-1]
+        if base_name in ["segment", "eval"]:
             return IOPattern.IMAGE_TO_LABELS
         if func_name == "train_seg":
             return IOPattern.TRAINING
@@ -164,10 +245,39 @@ class CellposeAdapter:
         Returns:
             List of output artifacts
         """
-        if fn_id not in ["cellpose.segment", "cellpose.eval"]:
+        # Check if it's a segmentation function (T038: handle new fn_ids)
+        is_segment = any(name in fn_id for name in ["segment", "eval"])
+        is_init = "CellposeModel" in fn_id and "eval" not in fn_id
+
+        if not (is_segment or is_init):
             raise NotImplementedError(
                 f"Execution for {fn_id} is not yet implemented in CellposeAdapter."
             )
+
+        # Handle model initialization (constructor) (T038)
+        if is_init:
+            if CellposeModel is None:
+                raise RuntimeError("Cellpose is not installed in the core environment.")
+
+            model_type = params.get("model_type", "cyto3")
+            # In a real scenario, this would be stored in the object cache
+            # For this adapter, we just simulate the return of an ObjectRef
+            from datetime import datetime, timezone
+            import uuid
+
+            object_id = uuid.uuid4().hex
+            return [
+                {
+                    "ref_id": object_id,
+                    "type": "ObjectRef",
+                    "uri": f"obj://local/cellpose/{object_id}",
+                    "format": "pickle",
+                    "python_class": "cellpose.models.CellposeModel",
+                    "storage_type": "memory",
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "metadata": {"model_type": model_type},
+                }
+            ]
 
         # Ensure we can import run_segment from the cellpose tool pack
         try:
@@ -246,7 +356,7 @@ class CellposeAdapter:
         """
         from bioimage_mcp.api.schemas import DimensionRequirement
 
-        if func_name in ["segment", "eval"]:
+        if any(name in func_name for name in ["segment", "eval"]):
             return DimensionRequirement(
                 min_ndim=2,
                 max_ndim=3,
