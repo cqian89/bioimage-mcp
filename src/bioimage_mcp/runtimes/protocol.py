@@ -25,7 +25,7 @@ class WorkflowPort:
     """Represents an input or output port in a workflow step."""
 
     name: str
-    artifact_type: str
+    artifact_type: str | list[str]
     format: str | None = None
 
 
@@ -62,7 +62,7 @@ def validate_workflow_compatibility(
     steps = workflow_spec.get("steps", [])
 
     # Track available outputs from previous steps
-    available_outputs: dict[str, str] = {}  # output_ref -> artifact_type
+    available_outputs: dict[str, str | list[str]] = {}  # output_ref -> artifact_type
 
     for step_idx, step in enumerate(steps):
         fn_id = step.get("fn_id", "")
@@ -79,11 +79,18 @@ def validate_workflow_compatibility(
         for input_name, input_def in input_defs.items():
             if input_def.get("required", False) and input_name not in step_inputs:
                 msg = f"Step {step_idx} missing required input '{input_name}'"
+
+                raw_type = input_def.get("artifact_type", "")
+                if isinstance(raw_type, list):
+                    expected_type_str = " | ".join(str(t) for t in raw_type)
+                else:
+                    expected_type_str = str(raw_type or "")
+
                 errors.append(
                     WorkflowCompatibilityError(
                         step_index=step_idx,
                         port_name=str(input_name),
-                        expected_type=str(input_def.get("artifact_type", "") or ""),
+                        expected_type=expected_type_str,
                         actual_type="missing",
                         message=msg,
                     )
@@ -94,7 +101,14 @@ def validate_workflow_compatibility(
             if input_name not in input_defs:
                 continue  # Unknown input - might be optional
 
-            expected_type = str(input_defs[input_name].get("artifact_type", "") or "")
+            raw_expected_type = input_defs[input_name].get("artifact_type", "")
+            if isinstance(raw_expected_type, list):
+                expected_types = [str(t) for t in raw_expected_type]
+                expected_type_str = " | ".join(expected_types)
+            else:
+                expected_types = [str(raw_expected_type)] if raw_expected_type else []
+                expected_type_str = str(raw_expected_type or "")
+
             actual_type = ""
 
             # Input can be an artifact ref or a reference to previous step output
@@ -104,20 +118,33 @@ def validate_workflow_compatibility(
                 actual_type = available_outputs[input_value]
 
             # Check type compatibility
-            if expected_type and actual_type and expected_type != actual_type:
-                msg = (
-                    f"Step {step_idx} input '{input_name}': "
-                    f"expected {expected_type}, got {actual_type}"
-                )
-                errors.append(
-                    WorkflowCompatibilityError(
-                        step_index=step_idx,
-                        port_name=str(input_name),
-                        expected_type=expected_type,
-                        actual_type=actual_type,
-                        message=msg,
+            if expected_types and actual_type:
+                actual_types = actual_type if isinstance(actual_type, list) else [actual_type]
+                # Cast to string for comparison
+                actual_types = [str(t) for t in actual_types]
+
+                # Check if all possible actual types are covered by expected types
+                is_compatible = all(t in expected_types for t in actual_types)
+
+                if not is_compatible:
+                    actual_type_str = (
+                        " | ".join(actual_types)
+                        if isinstance(actual_type, list)
+                        else str(actual_type)
                     )
-                )
+                    msg = (
+                        f"Step {step_idx} input '{input_name}': "
+                        f"expected {expected_type_str}, got {actual_type_str}"
+                    )
+                    errors.append(
+                        WorkflowCompatibilityError(
+                            step_index=step_idx,
+                            port_name=str(input_name),
+                            expected_type=expected_type_str,
+                            actual_type=actual_type_str,
+                            message=msg,
+                        )
+                    )
 
         # Register this step's outputs as available
         for output_name, output_def in output_defs.items():

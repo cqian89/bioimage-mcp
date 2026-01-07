@@ -26,11 +26,11 @@ def validate_interchange_format(value: str | None, artifact_type: str | None = N
         return None
 
     # Only validate format for image artifact types if artifact_type is known
-    if artifact_type is not None and artifact_type not in (
-        "BioImageRef",
-        "LabelImageRef",
-    ):
-        return value
+    if artifact_type is not None:
+        # Handle list or string for artifact_type
+        types = [artifact_type] if isinstance(artifact_type, str) else artifact_type
+        if not any(t in ("BioImageRef", "LabelImageRef") for t in types):
+            return value
 
     try:
         # Validate against InterchangeFormat enum
@@ -45,7 +45,7 @@ def validate_interchange_format(value: str | None, artifact_type: str | None = N
 
 class Port(BaseModel):
     name: str
-    artifact_type: str
+    artifact_type: str | list[str]
     description: str | None = None
     format: str | None = None
     required: bool = True

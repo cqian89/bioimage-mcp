@@ -11,7 +11,6 @@ from typing import Any
 from urllib.parse import unquote
 
 import numpy as np
-import tifffile
 
 
 def _uri_to_path(uri: str) -> Path:
@@ -86,22 +85,9 @@ def run_denoise(
 
     # Extract parameters with defaults
     diameter = params.get("diameter")
-    flow_threshold = params.get("flow_threshold", 0.4)
-    cellprob_threshold = params.get("cellprob_threshold", 0.0)
     channels = params.get("channels")
-    channel_axis = params.get("channel_axis")
-    z_axis = params.get("z_axis")
-    do_3D = params.get("do_3D", False)
-    stitch_threshold = params.get("stitch_threshold", 0.0)
     normalize = params.get("normalize", True)
-    invert = params.get("invert", False)
-    min_size = params.get("min_size", 15)
-    rescale = params.get("rescale")
     tile = params.get("tile", True)
-    tile_overlap = params.get("tile_overlap", 0.1)
-    augment = params.get("augment", False)
-    resample = params.get("resample", True)
-    net_avg = params.get("net_avg", True)
 
     # Handle diameter=0 or None as "auto-estimate"
     if diameter is None or diameter == 0:
@@ -118,34 +104,29 @@ def run_denoise(
     denoised = model.eval(
         img,
         diameter=diameter,
-        flow_threshold=flow_threshold,
-        cellprob_threshold=cellprob_threshold,
         channels=channels,
-        channel_axis=channel_axis,
-        z_axis=z_axis,
-        do_3D=do_3D,
-        stitch_threshold=stitch_threshold,
         normalize=normalize,
-        invert=invert,
-        min_size=min_size,
-        rescale=rescale,
         tile=tile,
-        tile_overlap=tile_overlap,
-        augment=augment,
-        resample=resample,
-        net_avg=net_avg,
     )
 
     # Output path
     denoised_path = work_dir / "denoised.ome.tiff"
 
     # Write OME-TIFF
-    tifffile.imwrite(
-        str(denoised_path),
-        denoised,
-        compression="zlib",
-        metadata={"axes": "YX" if denoised.ndim == 2 else "ZYX"},
-    )
+    from bioio.writers import OmeTiffWriter
+
+    # Determine dim order based on array shape
+    if denoised.ndim == 2:
+        dim_order = "YX"
+    elif denoised.ndim == 3:
+        dim_order = "ZYX"  # Cellpose usually returns ZYX or CYX; bioio expects one
+    elif denoised.ndim == 4:
+        dim_order = "CZYX"
+    else:
+        # Fallback to standard 5D
+        dim_order = "TCZYX"[-denoised.ndim :]
+
+    OmeTiffWriter.save(denoised, str(denoised_path), dim_order=dim_order)
 
     return {
         "denoised": {

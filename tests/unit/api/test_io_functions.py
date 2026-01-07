@@ -397,6 +397,30 @@ def test_export_schema_validation(tmp_path):
         )
 
 
+def test_export_accepts_label_image_ref(tmp_path, monkeypatch):
+    """Test that export accepts LabelImageRef and preserves the type."""
+    monkeypatch.setenv("BIOIMAGE_MCP_FS_ALLOWLIST_WRITE", json.dumps([str(tmp_path)]))
+
+    # Create temp image
+    img_path = str(tmp_path / "labels.ome.tif")
+    from bioio.writers import OmeTiffWriter
+
+    data = np.zeros((1, 1, 1, 10, 10), dtype="uint32")  # Labels are often uint32
+    OmeTiffWriter.save(data, img_path, dim_order="TCZYX")
+
+    label_ref = {"type": "LabelImageRef", "uri": f"file://{img_path}"}
+    out_path = str(tmp_path / "exported_labels.ome.tif")
+
+    result = export(
+        inputs={"image": label_ref},
+        params={"path": out_path, "format": "OME-TIFF"},
+        work_dir=tmp_path,
+    )
+
+    assert Path(out_path).exists()
+    assert result["outputs"]["output"]["type"] == "LabelImageRef"
+
+
 # ============== Validate and Supported Formats Tests (T028-T032, T064) ==============
 
 

@@ -15,7 +15,14 @@ def any_tag_matches(function_tags: Iterable[str], required_tags: list[str] | Non
 def io_type_matches(ports: Iterable[dict], artifact_type: str | None) -> bool:
     if not artifact_type:
         return True
-    return any(p.get("artifact_type") == artifact_type for p in ports)
+    for p in ports:
+        ptype = p.get("artifact_type")
+        if isinstance(ptype, list):
+            if artifact_type in ptype:
+                return True
+        elif ptype == artifact_type:
+            return True
+    return False
 
 
 class SearchIndex:

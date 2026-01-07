@@ -383,12 +383,12 @@ functions:
     input_mode: xarray
     inputs:
       - name: image
-        artifact_type: BioImageRef
+        artifact_type: [BioImageRef, LabelImageRef]
         required: true
-        description: Image artifact to export
+        description: Image or label artifact to export
     outputs:
       - name: output
-        artifact_type: BioImageRef
+        artifact_type: [BioImageRef, LabelImageRef]
         description: Exported file artifact
     params_schema:
       type: object

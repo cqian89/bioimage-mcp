@@ -11,7 +11,6 @@ from typing import Any
 from urllib.parse import unquote
 
 import numpy as np
-import tifffile
 
 
 def _uri_to_path(uri: str) -> Path:
@@ -132,12 +131,19 @@ def run_segment(
     else:
         masks_out = masks.astype(np.uint32)
 
-    tifffile.imwrite(
-        str(labels_path),
-        masks_out,
-        compression="zlib",
-        metadata={"axes": "YX" if masks.ndim == 2 else "ZYX"},
-    )
+    from bioio.writers import OmeTiffWriter
+
+    # Determine dim order based on array shape
+    if masks_out.ndim == 2:
+        dim_order = "YX"
+    elif masks_out.ndim == 3:
+        dim_order = "ZYX"
+    elif masks_out.ndim == 4:
+        dim_order = "CZYX"
+    else:
+        dim_order = "TCZYX"[-masks_out.ndim :]
+
+    OmeTiffWriter.save(masks_out, str(labels_path), dim_order=dim_order)
 
     # Write Cellpose native bundle (T019a)
     # This preserves flows, styles, and other Cellpose-specific data
