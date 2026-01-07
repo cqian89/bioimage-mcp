@@ -5,15 +5,14 @@ from typing import Any
 
 import pytest
 import yaml
-import json
 
-from bioimage_mcp.test_harness import WorkflowTestCase
 from bioimage_mcp.api.execution import ExecutionService
 from bioimage_mcp.api.interactive import InteractiveExecutionService
 from bioimage_mcp.artifacts.store import ArtifactStore
 from bioimage_mcp.config.schema import Config
 from bioimage_mcp.sessions.manager import SessionManager
 from bioimage_mcp.sessions.store import SessionStore
+from bioimage_mcp.test_harness import WorkflowTestCase
 
 WORKFLOW_CASES_DIR = Path(__file__).parent / "workflow_cases"
 
@@ -496,12 +495,12 @@ class TestGPUReplay:
     @pytest.fixture
     def services(self, tmp_path, monkeypatch):
         """Setup services with temporary stores."""
-        from bioimage_mcp.config.schema import Config
-        from bioimage_mcp.artifacts.store import ArtifactStore
-        from bioimage_mcp.sessions.manager import SessionManager
-        from bioimage_mcp.sessions.store import SessionStore
         from bioimage_mcp.api.execution import ExecutionService
         from bioimage_mcp.api.interactive import InteractiveExecutionService
+        from bioimage_mcp.artifacts.store import ArtifactStore
+        from bioimage_mcp.config.schema import Config
+        from bioimage_mcp.sessions.manager import SessionManager
+        from bioimage_mcp.sessions.store import SessionStore
 
         config = Config(
             artifact_store_root=tmp_path / "artifacts",

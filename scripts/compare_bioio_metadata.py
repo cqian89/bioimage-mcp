@@ -1,8 +1,8 @@
-import time
 import sys
-import numpy as np
-from bioio import BioImage
+import time
+
 import xarray as xr
+from bioio import BioImage
 
 # Use a sample image that is likely to exist and have metadata
 # Using one from datasets/FLUTE_FLIM_data_tif/Embryo.tif as seen in the file list

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import inspect
+
 import pytest
 from pydantic import ValidationError
 
@@ -29,10 +30,10 @@ def test_kwargs_filtering_in_discovery():
     invokes discovery mechanism, asserts that the method with **kwargs
     is NOT returned in discovery results.
     """
-    from bioimage_mcp.registry.dynamic.adapters.skimage import SkimageAdapter
-    import types
     import sys
-    import inspect
+    import types
+
+    from bioimage_mcp.registry.dynamic.adapters.skimage import SkimageAdapter
 
     # Create a dummy module
     mod_name = "test_discovery_module"

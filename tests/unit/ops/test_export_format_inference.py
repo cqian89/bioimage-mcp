@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import pytest
 from bioimage_mcp.artifacts.export import infer_export_format
 
 

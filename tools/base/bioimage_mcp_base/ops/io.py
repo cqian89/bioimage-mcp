@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import json
 import os
-import shutil
 import uuid
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -442,7 +441,7 @@ def slice_image(
 
     # Save sliced result as new artifact
     import uuid
-    from datetime import datetime, UTC
+    from datetime import UTC, datetime
 
     out_path = work_dir / f"sliced_{uuid.uuid4().hex[:8]}.ome.zarr"
 
@@ -612,8 +611,9 @@ def get_supported_formats(
         {"outputs": {"result": {"formats": FormatList, "readers": ReaderList}}}
     """
     # Query bioio for registered reader plugins
-    from bioio.plugins import get_plugins
     import importlib.metadata
+
+    from bioio.plugins import get_plugins
 
     plugins = get_plugins(use_cache=True)
 

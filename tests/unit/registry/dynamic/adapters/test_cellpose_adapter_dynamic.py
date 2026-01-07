@@ -1,7 +1,9 @@
-import sys
 import importlib
+import sys
 from unittest.mock import MagicMock, patch
+
 import pytest
+
 from bioimage_mcp.registry.dynamic.models import IOPattern
 
 

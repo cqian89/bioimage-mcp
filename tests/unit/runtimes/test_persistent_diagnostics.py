@@ -1,7 +1,6 @@
+
 import pytest
-import sys
-import time
-from pathlib import Path
+
 from bioimage_mcp.runtimes.persistent import WorkerProcess
 
 

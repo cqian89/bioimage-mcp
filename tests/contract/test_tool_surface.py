@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-import sqlite3
-import pytest
 from unittest.mock import MagicMock
 
-from bioimage_mcp.api.server import create_server
+from bioimage_mcp.api.artifacts import ArtifactsService
 from bioimage_mcp.api.discovery import DiscoveryService
 from bioimage_mcp.api.execution import ExecutionService
 from bioimage_mcp.api.interactive import InteractiveExecutionService
-from bioimage_mcp.api.artifacts import ArtifactsService
+from bioimage_mcp.api.server import create_server
 from bioimage_mcp.sessions.manager import SessionManager
 
 

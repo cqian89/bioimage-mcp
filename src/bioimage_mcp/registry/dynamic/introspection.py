@@ -86,14 +86,11 @@ class Introspector:
             pass
         return None
 
-    def _parse_docstring_params(self, func: Callable) -> dict[str, str]:
-        """Extract parameter descriptions from NumPy-style docstring.
-
-        Args:
-            func: Function to parse docstring from
+    def _parse_docstring_params(self, func: Callable) -> dict[str, dict[str, str]]:
+        """Extract parameter info from NumPy-style docstring.
 
         Returns:
-            Dict mapping parameter name to its description
+            Dict mapping parameter name to {"description": str, "type": str}
         """
         if not func.__doc__:
             return {}
@@ -102,15 +99,16 @@ class Introspector:
             from numpydoc.docscrape import FunctionDoc
 
             doc = FunctionDoc(func)
-            descriptions = {}
+            param_info = {}
             for param in doc["Parameters"]:
                 # Parameter name may include type like "image : ndarray"
                 name = param.name.split(":")[0].strip()
                 # Description is a list of strings, join them
                 desc = " ".join(param.desc).strip()
-                if desc:
-                    descriptions[name] = desc
-            return descriptions
+                # param.type contains the type annotation from docstring
+                doc_type = param.type if hasattr(param, "type") and param.type else ""
+                param_info[name] = {"description": desc, "type": doc_type}
+            return param_info
         except ImportError:
             # numpydoc not available - graceful degradation
             return {}
@@ -123,8 +121,8 @@ class Introspector:
         sig = inspect.signature(func)
         parameters = {}
 
-        # Parse docstring for parameter descriptions
-        param_descriptions = self._parse_docstring_params(func)
+        # Parse docstring for parameter info (description and type hint)
+        param_info = self._parse_docstring_params(func)
 
         for param_name, param in sig.parameters.items():
             # Check if parameter has a default value
@@ -132,15 +130,37 @@ class Introspector:
             default_value = self._make_json_serializable(param.default) if has_default else None
 
             # Map Python type annotation to JSON Schema type
+            # Priority: 1) Signature annotation, 2) Default value type (if conclusive), 3) Docstring type
+            annotation = param.annotation
+
+            # If signature annotation is empty, try to infer from default value first
+            if annotation is inspect.Parameter.empty or annotation is Any:
+                if has_default and isinstance(param.default, (bool, int, float, str)):
+                    # Default value provides strong type signal - use it directly
+                    if isinstance(param.default, bool):
+                        annotation = bool
+                    elif isinstance(param.default, int):
+                        annotation = int
+                    elif isinstance(param.default, float):
+                        annotation = float
+                    elif isinstance(param.default, str):
+                        annotation = str
+                elif param_name in param_info:
+                    # Fall back to docstring type only if no strong default signal
+                    doc_type = param_info[param_name].get("type")
+                    if doc_type:
+                        annotation = doc_type
+
             param_type = self._map_type_to_json_schema(
-                param.annotation, param.default if has_default else None
+                annotation, param.default if has_default else None
             )
 
             # Parameter is required if it has no default
             is_required = not has_default
 
             # Get description from docstring if available
-            description = param_descriptions.get(param_name, "")
+            info = param_info.get(param_name, {})
+            description = info.get("description", "")
 
             parameters[param_name] = ParameterSchema(
                 name=param_name,
@@ -218,14 +238,33 @@ class Introspector:
 
         # Handle string annotations (forward references)
         if isinstance(annotation, str):
-            if "int" in annotation.lower():
+            lower_annotation = annotation.lower()
+            if "int" in lower_annotation and "point" not in lower_annotation:
                 return "integer"
-            elif "str" in annotation.lower():
+            elif "str" in lower_annotation:
                 return "string"
-            elif "float" in annotation.lower():
+            elif "float" in lower_annotation:
                 return "number"
-            elif "bool" in annotation.lower():
+            elif "bool" in lower_annotation:
                 return "boolean"
+            # Scientific array types - treat as number for scalar compatibility
+            elif "arraylike" in lower_annotation or "array_like" in lower_annotation:
+                # ArrayLike often means "scalar or array" - use number for MCP
+                return "number"
+            elif "ndarray" in lower_annotation:
+                # numpy ndarray - for scalar params, treat as number
+                return "number"
+
+        # Handle typing module types like Optional[float], Union[int, float]
+        origin = getattr(annotation, "__origin__", None)
+        if origin is not None:
+            # Get type arguments (e.g., (int, None) for Optional[int])
+            args = getattr(annotation, "__args__", ())
+            # Filter out None type
+            non_none_args = [a for a in args if a is not type(None)]
+            if non_none_args:
+                # Recursively map the first non-None type
+                return self._map_type_to_json_schema(non_none_args[0], default_value)
 
         # Fallback to type of default value if annotation is unhelpful
         if default_value is not None:

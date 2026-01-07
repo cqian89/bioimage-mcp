@@ -1,9 +1,6 @@
 from __future__ import annotations
 
 import pytest
-from typing import Any
-from pathlib import Path
-import unittest.mock as mock
 
 # Import the module to test
 import tools.cellpose.bioimage_mcp_cellpose.entrypoint as entrypoint

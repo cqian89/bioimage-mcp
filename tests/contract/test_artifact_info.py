@@ -3,9 +3,10 @@
 Verifies retrieval of artifact metadata and text previews.
 """
 
-import json
 from pathlib import Path
+
 import pytest
+
 from bioimage_mcp.api.artifacts import ArtifactsService
 from bioimage_mcp.artifacts.store import ArtifactStore
 from bioimage_mcp.config.schema import Config

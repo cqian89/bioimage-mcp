@@ -30,7 +30,6 @@ from bioimage_mcp.artifacts.store import ArtifactStore
 from bioimage_mcp.config.schema import Config
 from bioimage_mcp.sessions.manager import SessionManager
 
-
 logger = logging.getLogger(__name__)
 
 

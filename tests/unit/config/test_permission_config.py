@@ -1,5 +1,6 @@
 from pathlib import Path
-from bioimage_mcp.config.schema import PermissionSettings, PermissionMode, Config
+
+from bioimage_mcp.config.schema import Config, PermissionMode, PermissionSettings
 
 
 def test_permission_settings_default_is_hybrid():

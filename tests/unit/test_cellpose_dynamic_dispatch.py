@@ -1,4 +1,3 @@
-import pytest
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -67,10 +66,19 @@ def test_dynamic_dispatch_train_seg():
         "work_dir": "/tmp/work_train",
         "ordinal": 1,
     }
-    response = process_execute_request(request)
-    assert response["ok"] is False
-    assert "implemented" in response["error"]["message"].lower()
-    assert "not" in response["error"]["message"].lower()
+    # Mock the handler to avoid importing torch
+    mock_handle = MagicMock()
+    mock_handle.return_value = {
+        "ok": False,
+        "error": {"message": "not implemented"},
+    }
+    with patch.dict(
+        "bioimage_mcp_cellpose.entrypoint.FUNCTION_HANDLERS", {"cellpose.train_seg": mock_handle}
+    ):
+        response = process_execute_request(request)
+        assert response["ok"] is False
+        assert "implemented" in response["error"]["message"].lower()
+        assert "not" in response["error"]["message"].lower()
 
 
 def test_dynamic_dispatch_unknown():
@@ -95,9 +103,9 @@ def test_meta_describe_eval():
         "work_dir": "/tmp/work_meta",
         "ordinal": 1,
     }
-    # Mock _introspect_cellpose_eval and _get_cellpose_version to avoid heavy imports
+    # Mock _introspect_cellpose_fn and _get_cellpose_version to avoid heavy imports
     with (
-        patch("bioimage_mcp_cellpose.entrypoint._introspect_cellpose_eval") as mock_intro,
+        patch("bioimage_mcp_cellpose.entrypoint._introspect_cellpose_fn") as mock_intro,
         patch("bioimage_mcp_cellpose.entrypoint._get_cellpose_version") as mock_version,
         patch("bioimage_mcp_cellpose.entrypoint._convert_memory_inputs_to_files") as mock_convert,
     ):

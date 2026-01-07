@@ -1,8 +1,9 @@
-import time
 import sys
+import time
+
 import numpy as np
-from bioio import BioImage
 import xarray as xr
+from bioio import BioImage
 
 # Use the same image
 image_path = "datasets/FLUTE_FLIM_data_tif/Embryo.tif"
@@ -40,7 +41,7 @@ def compare_attr(attr_name):
         print(f"  Same object?      {wrapper_val is reader_val}")
         # Equality might fail for arrays or complex objects
         if isinstance(wrapper_val, (np.ndarray, list, tuple)) or isinstance(reader_val, (np.ndarray, list, tuple)):
-            print(f"  Equal value?      (Skipped for complex types)")
+            print("  Equal value?      (Skipped for complex types)")
         else:
             print(f"  Equal value?      {wrapper_val == reader_val}")
     except:

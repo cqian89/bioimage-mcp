@@ -1,8 +1,7 @@
-import pytest
 import numpy as np
-from pathlib import Path
-from bioimage_mcp.registry.dynamic.adapters.xarray import XarrayAdapterForRegistry
 from bioio.writers import OmeTiffWriter
+
+from bioimage_mcp.registry.dynamic.adapters.xarray import XarrayAdapterForRegistry
 
 
 def test_xarray_adapter_preserves_native_dimensions(tmp_path):

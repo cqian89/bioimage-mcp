@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import json
-import os
 import sys
 from pathlib import Path
 
-import pytest
 import numpy as np
+import pytest
 
 # Add tools/base to sys.path so we can import bioimage_mcp_base
 BASE_TOOLS_ROOT = Path(__file__).resolve().parents[3] / "tools" / "base"
@@ -16,6 +15,7 @@ if str(BASE_TOOLS_ROOT) not in sys.path:
 # These imports are expected to fail in the TDD RED phase
 try:
     from bioimage_mcp_base.ops.io import (
+        SliceOutOfBoundsError,
         export,
         file_not_found_error,
         get_supported_formats,
@@ -23,7 +23,6 @@ try:
         load,
         path_not_allowed_error,
         slice_image,
-        SliceOutOfBoundsError,
         unsupported_format_error,
         validate,
         validate_read_path,

@@ -1,8 +1,7 @@
 """Contract tests for PhasorPy dynamic discovery."""
 
-import pytest
 from bioimage_mcp.registry.dynamic.adapters.phasorpy import PhasorPyAdapter
-from bioimage_mcp.registry.dynamic.models import IOPattern, FunctionMetadata
+from bioimage_mcp.registry.dynamic.models import FunctionMetadata, IOPattern
 
 
 def test_iopattern_includes_new_values():

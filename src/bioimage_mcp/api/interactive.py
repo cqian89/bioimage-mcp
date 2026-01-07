@@ -4,14 +4,13 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
+from bioimage_mcp.api.discovery import DiscoveryService
 from bioimage_mcp.api.errors import execution_error
 from bioimage_mcp.api.execution import ExecutionService
-from bioimage_mcp.api.discovery import DiscoveryService
 from bioimage_mcp.api.interactive_summaries import summarize_artifact
 from bioimage_mcp.api.schemas import SessionExportRequest, SessionReplayRequest
 from bioimage_mcp.api.sessions import SessionService
 from bioimage_mcp.artifacts.models import ArtifactRef
-
 from bioimage_mcp.sessions.manager import SessionManager
 
 

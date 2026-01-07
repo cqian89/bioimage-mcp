@@ -1,7 +1,8 @@
-import pytest
 import numpy as np
-from bioimage_mcp.registry.dynamic.adapters.xarray import XarrayAdapterForRegistry
+import pytest
 from bioio.writers import OmeTiffWriter
+
+from bioimage_mcp.registry.dynamic.adapters.xarray import XarrayAdapterForRegistry
 
 
 def test_squeeze_non_singleton_dimension_error(tmp_path):

@@ -8,6 +8,7 @@ These tests verify the new API behavior with:
 """
 
 import sqlite3
+
 from bioimage_mcp.api.discovery import DiscoveryService
 from bioimage_mcp.storage.sqlite import init_schema
 

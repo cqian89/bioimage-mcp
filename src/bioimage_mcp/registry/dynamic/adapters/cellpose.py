@@ -12,6 +12,8 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from bioimage_mcp.api.schemas import DimensionRequirement
 
+from datetime import UTC
+
 from bioimage_mcp.artifacts.base import Artifact
 from bioimage_mcp.registry.dynamic.introspection import Introspector
 from bioimage_mcp.registry.dynamic.models import FunctionMetadata, IOPattern
@@ -262,8 +264,8 @@ class CellposeAdapter:
             model_type = params.get("model_type", "cyto3")
             # In a real scenario, this would be stored in the object cache
             # For this adapter, we just simulate the return of an ObjectRef
-            from datetime import datetime, timezone
             import uuid
+            from datetime import datetime
 
             object_id = uuid.uuid4().hex
             return [
@@ -274,7 +276,7 @@ class CellposeAdapter:
                     "format": "pickle",
                     "python_class": "cellpose.models.CellposeModel",
                     "storage_type": "memory",
-                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "created_at": datetime.now(UTC).isoformat(),
                     "metadata": {"model_type": model_type},
                 }
             ]

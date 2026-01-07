@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from bioimage_mcp.artifacts.models import ArtifactRef
@@ -10,7 +9,7 @@ if TYPE_CHECKING:
 
 
 def infer_export_format(
-    artifact: Union[ArtifactRef, dict[str, Any]],
+    artifact: ArtifactRef | dict[str, Any],
     data_shape: tuple[int, ...] | None = None,
     data_dtype: str | None = None,
 ) -> str:

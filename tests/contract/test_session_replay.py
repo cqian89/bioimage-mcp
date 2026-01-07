@@ -1,13 +1,14 @@
 """Contract tests for the session_replay tool (T086-T090, T114)."""
 
-import pytest
 import json
-from pathlib import Path
 from unittest.mock import MagicMock
+
+import pytest
+
+from bioimage_mcp.api.schemas import ArtifactRef, SessionReplayRequest
 from bioimage_mcp.api.sessions import SessionService
-from bioimage_mcp.api.schemas import SessionReplayRequest, ArtifactRef
-from bioimage_mcp.config.schema import Config
 from bioimage_mcp.artifacts.store import ArtifactStore
+from bioimage_mcp.config.schema import Config
 
 
 @pytest.fixture

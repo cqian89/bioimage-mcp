@@ -1,9 +1,11 @@
-import pytest
-import numpy as np
 from pathlib import Path
-from bioimage_mcp.registry.dynamic.adapters.xarray import XarrayAdapterForRegistry
-from bioimage_mcp.registry.dynamic.adapters.skimage import SkimageAdapter
+
+import numpy as np
+import pytest
 from bioio.writers import OmeTiffWriter
+
+from bioimage_mcp.registry.dynamic.adapters.skimage import SkimageAdapter
+from bioimage_mcp.registry.dynamic.adapters.xarray import XarrayAdapterForRegistry
 
 
 @pytest.mark.integration

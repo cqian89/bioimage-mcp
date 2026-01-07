@@ -7,8 +7,10 @@ These tests verify:
 - Failed execution returns log reference
 """
 
-import pytest
 from pathlib import Path
+
+import pytest
+
 from bioimage_mcp.api.execution import ExecutionService
 from bioimage_mcp.artifacts.store import ArtifactStore
 from bioimage_mcp.config.schema import Config

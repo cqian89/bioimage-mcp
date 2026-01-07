@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from pathlib import Path
-import pytest
-from bioimage_mcp.artifacts.export import export_artifact
 from unittest.mock import MagicMock
+
+from bioimage_mcp.artifacts.export import export_artifact
 
 
 def test_export_respects_explicit_format(tmp_path):

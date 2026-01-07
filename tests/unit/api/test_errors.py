@@ -1,15 +1,11 @@
 from __future__ import annotations
 
-import pytest
-from bioimage_mcp.api.schemas import StructuredError, ErrorDetail
 from bioimage_mcp.api.errors import (
     EXECUTION_FAILED,
-    NOT_FOUND,
-    # ARTIFACT_NOT_FOUND,  # This will fail if not defined
     execution_error,
-    not_found_error,
     # artifact_not_found_error,  # This will fail if not defined
 )
+from bioimage_mcp.api.schemas import ErrorDetail, StructuredError
 
 # For now, we'll try to import them and if it fails, we know the implementation is missing
 try:

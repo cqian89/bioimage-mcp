@@ -1,5 +1,3 @@
-import pytest
-import numpy as np
 from bioimage_mcp.artifacts.store import ArtifactStore
 from bioimage_mcp.config.schema import Config
 

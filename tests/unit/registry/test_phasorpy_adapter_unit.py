@@ -3,10 +3,11 @@ Unit tests for PhasorPyAdapter.
 """
 
 from unittest.mock import MagicMock, patch
+
 import numpy as np
-import pytest
-from bioimage_mcp.registry.dynamic.adapters.phasorpy import PhasorPyAdapter
+
 from bioimage_mcp.artifacts.models import ArtifactRef
+from bioimage_mcp.registry.dynamic.adapters.phasorpy import PhasorPyAdapter
 
 
 def test_load_image_with_format_hint():

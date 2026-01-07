@@ -1,15 +1,17 @@
 """Integration tests for PhasorPy workflow execution."""
 
-import pytest
-import numpy as np
 import subprocess
 from pathlib import Path
 from urllib.parse import quote
-from bioimage_mcp.registry.dynamic.adapters.phasorpy import PhasorPyAdapter
-from bioimage_mcp.artifacts.models import ArtifactRef, PlotRef, PlotMetadata
+
+import numpy as np
+import pytest
+
 from bioimage_mcp.api.execution import ExecutionService
+from bioimage_mcp.artifacts.models import ArtifactRef, PlotMetadata, PlotRef
 from bioimage_mcp.artifacts.store import ArtifactStore
 from bioimage_mcp.config.schema import Config
+from bioimage_mcp.registry.dynamic.adapters.phasorpy import PhasorPyAdapter
 from bioimage_mcp.storage.sqlite import connect
 
 

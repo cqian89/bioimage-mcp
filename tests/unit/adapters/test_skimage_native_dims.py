@@ -1,7 +1,6 @@
-import pytest
 import numpy as np
 import tifffile
-from pathlib import Path
+
 from bioimage_mcp.registry.dynamic.adapters.skimage import SkimageAdapter
 
 

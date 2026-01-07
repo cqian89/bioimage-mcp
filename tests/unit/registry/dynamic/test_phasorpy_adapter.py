@@ -4,6 +4,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+
 from bioimage_mcp.artifacts.models import ArtifactRef, PlotMetadata, PlotRef
 from bioimage_mcp.registry.dynamic.adapters.phasorpy import PhasorPyAdapter
 

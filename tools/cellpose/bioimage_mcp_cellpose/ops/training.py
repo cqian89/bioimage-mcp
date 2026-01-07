@@ -40,8 +40,8 @@ def run_train_seg(
     Returns:
         Dict with output paths for weights and losses
     """
-    from cellpose.models import CellposeModel
     import torch
+    from cellpose.models import CellposeModel
 
     # Get inputs
     image_ref = inputs.get("image") or inputs.get("images", {})

@@ -4,7 +4,6 @@ import csv
 from pathlib import Path
 
 import numpy as np
-import pytest
 import tifffile
 
 from bioimage_mcp.artifacts.metadata import extract_image_metadata

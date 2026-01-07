@@ -1,5 +1,3 @@
-import pytest
-from pathlib import Path
 from bioimage_mcp.runtimes.persistent import PersistentWorkerManager
 
 
@@ -23,7 +21,7 @@ def test_resolve_entrypoint_from_manifest(tmp_path):
     entrypoint_path = mock_tool_dir / "mock_entrypoint.py"
     entrypoint_path.write_text("print('hello')")
 
-    manifest_content = f"""
+    manifest_content = """
 manifest_version: "1.0"
 tool_id: tools.mock
 tool_version: "0.1.0"

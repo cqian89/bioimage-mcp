@@ -184,14 +184,28 @@ class DiscoveryService:
         limit: int | None = None,
         cursor: str | None = None,
     ) -> dict[str, Any]:
-        # T061: Exactly one of query or keywords must be provided
-        if (query is None and keywords is None) or (query is not None and keywords is not None):
+        # Validate: query and keywords are mutually exclusive
+        if query is not None and keywords is not None:
             return {
                 "results": [],
                 "error": validation_error(
-                    message="Exactly one of query or keywords must be provided",
+                    message="query and keywords are mutually exclusive",
                     path="query",
                     hint="Provide either 'query' (string) or 'keywords' (list), but not both.",
+                ).model_dump(),
+            }
+
+        # Validate: at least one search criterion must be provided
+        has_text_search = query is not None or keywords is not None
+        has_filter = io_in is not None or io_out is not None or tags is not None
+
+        if not has_text_search and not has_filter:
+            return {
+                "results": [],
+                "error": validation_error(
+                    message="At least one search criterion required (query, keywords, io_in, io_out, or tags)",
+                    path="query",
+                    hint="Provide 'query' (string), 'keywords' (list), or filter by 'io_in', 'io_out', or 'tags'.",
                 ).model_dump(),
             }
 
@@ -200,7 +214,9 @@ class DiscoveryService:
 
         raw_keywords = keywords if keywords is not None else query
 
-        if isinstance(raw_keywords, str):
+        if raw_keywords is None:
+            keyword_list = []
+        elif isinstance(raw_keywords, str):
             keyword_list = [kw for kw in raw_keywords.split() if kw]
         else:
             keyword_list = [str(kw) for kw in raw_keywords]
@@ -214,7 +230,7 @@ class DiscoveryService:
             seen.add(cleaned)
             normalized_keywords.append(cleaned)
 
-        if not normalized_keywords:
+        if has_text_search and not normalized_keywords:
             return {
                 "results": [],
                 "error": validation_error(
@@ -278,8 +294,21 @@ class DiscoveryService:
             scan_after = batch[-1]["fn_id"]
 
         # T065: Add scoring and ranking
-        index = SearchIndex()
-        ranked = index.rank(keywords=normalized_keywords, candidates=collected)
+        if normalized_keywords:
+            index = SearchIndex()
+            ranked = index.rank(keywords=normalized_keywords, candidates=collected)
+        else:
+            # If no keywords (filter-only search), return all collected candidates with 0 score
+            ranked = [
+                {
+                    **candidate,
+                    "score": 0.0,
+                    "match_count": 0,
+                }
+                for candidate in collected
+            ]
+            # Maintain deterministic ordering for filter-only results
+            ranked.sort(key=lambda item: item["fn_id"])
 
         page = ranked[offset : offset + resolved_limit]
         next_cursor = None

@@ -1,12 +1,13 @@
 """Contract tests for the session_export tool (T083-T085, T113, T117)."""
 
-import pytest
-from pathlib import Path
 from unittest.mock import MagicMock
+
+import pytest
+
+from bioimage_mcp.api.schemas import SessionExportRequest
 from bioimage_mcp.api.sessions import SessionService
-from bioimage_mcp.api.schemas import SessionExportRequest, WorkflowRecord
-from bioimage_mcp.config.schema import Config
 from bioimage_mcp.artifacts.store import ArtifactStore
+from bioimage_mcp.config.schema import Config
 
 
 @pytest.fixture
@@ -123,7 +124,7 @@ def test_session_export_tracks_external_inputs(session_service):
     # Read the generated artifact to verify content
     import json
 
-    with open(resp.workflow_ref.uri.replace("file://", ""), "r") as f:
+    with open(resp.workflow_ref.uri.replace("file://", "")) as f:
         record = json.load(f)
 
     assert "ext-1" in record["external_inputs"]
@@ -160,7 +161,7 @@ def test_session_export_provenance(session_service):
 
     import json
 
-    with open(resp.workflow_ref.uri.replace("file://", ""), "r") as f:
+    with open(resp.workflow_ref.uri.replace("file://", "")) as f:
         record = json.load(f)
 
     prov = record["steps"][0]["provenance"]

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import sqlite3
+
 import pytest
+
 from bioimage_mcp.api.discovery import DiscoveryService
 from bioimage_mcp.storage.sqlite import init_schema
 
@@ -113,13 +115,13 @@ def test_search_results_include_io_summaries(service):
     assert fn["io"]["outputs"][0]["type"] == "LabelImageRef"
 
 
-# T059: Validation error when neither query nor keywords
-def test_search_validation_failed_no_query_or_keywords(service):
-    """Search should fail if neither query nor keywords provided."""
+# T059: Validation error when NO criteria provided
+def test_search_validation_failed_no_criteria(service):
+    """Search should fail if no search criteria (query, keywords, io_in, io_out, tags) are provided."""
     result = service.search_functions(limit=20, cursor=None)
     assert "error" in result
     assert result["error"]["code"] == "VALIDATION_FAILED"
-    assert "Exactly one of query or keywords" in result["error"]["message"]
+    assert "At least one search criterion required" in result["error"]["message"]
 
 
 # T112: Validation error when BOTH query and keywords
@@ -128,4 +130,20 @@ def test_search_validation_failed_both_query_and_keywords(service):
     result = service.search_functions(query="blur", keywords=["blur"], limit=20, cursor=None)
     assert "error" in result
     assert result["error"]["code"] == "VALIDATION_FAILED"
-    assert "Exactly one of query or keywords" in result["error"]["message"]
+    assert "query and keywords are mutually exclusive" in result["error"]["message"]
+
+
+# T113: Standalone filter search
+def test_search_with_standalone_io_filter(service):
+    """Search should work with only io_in or io_out filters."""
+    # Search by io_out only
+    result = service.search_functions(io_out="LabelImageRef", limit=20)
+    assert "results" in result
+    assert len(result["results"]) == 1
+    assert result["results"][0]["id"] == "cellpose.segment"
+    assert result["results"][0]["score"] == 0.0
+
+    # Search by tags only
+    result = service.search_functions(tags=["blur"], limit=20)
+    assert len(result["results"]) == 1
+    assert result["results"][0]["id"] == "base.skimage.filters.gaussian"

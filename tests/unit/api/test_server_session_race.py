@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from types import SimpleNamespace
-
 from bioimage_mcp.api import server as server_module
 from bioimage_mcp.config.schema import Config
 from bioimage_mcp.sessions.manager import SessionManager

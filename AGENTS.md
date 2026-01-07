@@ -49,6 +49,9 @@ pytest tests/integration/
 # Run a single test file
 pytest tests/unit/api/test_artifacts.py
 
+# Run tool-specific integration tests (requires conda env)
+conda run -n bioimage-mcp-cellpose pytest tests/integration/test_cellpose*.py -v
+
 # Lint and format check
 ruff check .
 ruff format --check .
@@ -129,6 +132,54 @@ Key test patterns:
 - Contract tests validate manifest schemas match tool definitions
 - Integration tests use `datasets/FLUTE_FLIM_data_tif/` for real image data
 
+### Testing in Tool-Specific Environments
+
+Tool packs like Cellpose have heavy dependencies (torch, cellpose) that are isolated in their own conda environments per Constitution Principle 2. This means:
+
+- **Unit tests** (in `tests/unit/`) must mock tool-specific dependencies and run in the core environment
+- **Integration tests** (in `tests/integration/`) should run in the tool's conda environment for real validation
+
+#### Running Cellpose Integration Tests
+
+```bash
+# Run Cellpose-specific integration tests in the Cellpose environment
+conda run -n bioimage-mcp-cellpose pytest tests/integration/test_cellpose*.py -v
+
+# Run the full integration suite (requires all tool envs)
+conda run -n bioimage-mcp-cellpose pytest tests/integration/ -v
+
+# Run only tests that don't require special environments
+pytest -m "not requires_cellpose" tests/integration/
+```
+
+#### Running Tests Without Heavy Dependencies
+
+```bash
+# Run only unit tests (no heavy deps required)
+pytest tests/unit/ tests/contract/ -v
+
+# Skip slow tests and tests requiring tool environments
+pytest -m "not slow and not requires_cellpose"
+```
+
+#### Test Markers for Tool Dependencies
+
+Use pytest markers to indicate environment requirements:
+
+```python
+import pytest
+
+# Mark tests that require Cellpose environment
+@pytest.mark.requires_cellpose
+def test_cellpose_segmentation():
+    ...
+
+# Mark tests that require any specific tool env
+@pytest.mark.requires_env("bioimage-mcp-cellpose")
+def test_with_cellpose():
+    ...
+```
+
 ## Tool Pack Development
 
 Each tool pack in `tools/<name>/` must have:
@@ -198,6 +249,15 @@ Base toolkit:
 Cellpose environment:
 - `cellpose`
 - `torch` (optional, for GPU)
+
+## API Usage Notes
+
+### Handling Functions with No Parameters
+When calling a function via `run` that has no required parameters (or all parameters have defaults and you wish to use them), you **MUST omit the `params` field entirely**. Passing an empty dictionary or a placeholder will cause a validation error in the tool runtime.
+
+- ✅ **Correct:** `run(fn_id="base.xarray.squeeze", inputs={"img": "..."})`
+- ❌ **Incorrect:** `run(fn_id="base.xarray.squeeze", inputs={"img": "..."}, params={})`
+- ❌ **Incorrect:** `run(fn_id="base.xarray.squeeze", inputs={"img": "..."}, params={"_placeholder": true})`
 
 ## Common Tasks
 

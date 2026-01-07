@@ -146,8 +146,8 @@ def test_export_2d_to_ome_zarr_no_metadata_dims(tmp_path):
 
 def test_export_ome_zarr_squeezes_singletons_to_match_dims(tmp_path):
     """_export_ome_zarr should squeeze singleton dims to match provided dims list."""
-    from bioimage_mcp_base.ops.io import _export_ome_zarr as export_ome_zarr
     import numpy as np
+    from bioimage_mcp_base.ops.io import _export_ome_zarr as export_ome_zarr
 
     # 5D data with singletons: (1, 1, 1, 64, 64) - effectively 2D
     data = np.random.rand(1, 1, 1, 64, 64).astype(np.float32)

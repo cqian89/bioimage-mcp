@@ -1,16 +1,14 @@
 from __future__ import annotations
 
-import pytest
-from pathlib import Path
-from typing import Any
 import uuid
+from pathlib import Path
+
+import pytest
 
 from bioimage_mcp.api.discovery import DiscoveryService
-from bioimage_mcp.api.execution import ExecutionService
 from bioimage_mcp.api.interactive import InteractiveExecutionService
 from bioimage_mcp.sessions.manager import SessionManager
 from bioimage_mcp.sessions.store import SessionStore
-from bioimage_mcp.config.schema import Config
 
 
 @pytest.fixture
@@ -206,7 +204,7 @@ def test_session_export_replay_flow(end_to_end_context, monkeypatch):
 
     # 5. Verify replay produces outputs
     assert "run_id" in replay_result
-    assert replay_result["status"] in {"success", "success", "running", "queued"}
+    assert replay_result["status"] in {"success", "running", "queued"}
 
 
 @pytest.mark.integration

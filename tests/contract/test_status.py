@@ -4,10 +4,11 @@ These tests verify status polling for running/completed executions.
 """
 
 from pathlib import Path
+
 from bioimage_mcp.api.execution import ExecutionService
 from bioimage_mcp.artifacts.store import ArtifactStore
-from bioimage_mcp.runs.store import RunStore
 from bioimage_mcp.config.schema import Config
+from bioimage_mcp.runs.store import RunStore
 
 
 # T042: Status tool

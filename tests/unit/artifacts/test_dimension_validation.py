@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 from pydantic import ValidationError
+
 from bioimage_mcp.artifacts.models import ArtifactRef
 
 

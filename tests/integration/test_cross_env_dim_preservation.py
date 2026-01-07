@@ -1,10 +1,12 @@
-import pytest
-import numpy as np
 from pathlib import Path
+
+import numpy as np
+import pytest
+
 from bioimage_mcp.api.discovery import DiscoveryService
 from bioimage_mcp.api.execution import ExecutionService
-from bioimage_mcp.config.schema import Config
 from bioimage_mcp.artifacts.store import ArtifactStore
+from bioimage_mcp.config.schema import Config
 from tests.integration.mcp_test_client import MCPTestClient
 
 

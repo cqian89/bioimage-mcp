@@ -79,10 +79,8 @@ def test_artifact_metadata_has_physical_pixel_sizes(tmp_path: Path) -> None:
 
 
 import json
+
 import jsonschema
-from bioimage_mcp.artifacts.models import ArtifactRef
-from bioimage_mcp.artifacts.store import ArtifactStore
-from bioimage_mcp.config.schema import Config
 
 
 def test_artifact_metadata_schema_compliance(tmp_path: Path) -> None:
@@ -98,7 +96,7 @@ def test_artifact_metadata_schema_compliance(tmp_path: Path) -> None:
     if not schema_path.exists():
         pytest.skip("Schema file not found")
 
-    with open(schema_path, "r") as f:
+    with open(schema_path) as f:
         schema = json.load(f)
 
     # Validate the full artifact reference against the schema

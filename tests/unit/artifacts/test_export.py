@@ -34,8 +34,9 @@ def test_export_artifact_exports_file(tmp_path: Path) -> None:
 
 def test_export_artifact_rejects_conversion(tmp_path: Path) -> None:
     """Test that export_artifact rejects format conversion."""
-    from bioimage_mcp.errors import ArtifactStoreError
     import pytest
+
+    from bioimage_mcp.errors import ArtifactStoreError
 
     config = Config(
         artifact_store_root=tmp_path / "artifacts",

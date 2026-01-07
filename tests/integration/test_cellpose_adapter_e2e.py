@@ -4,8 +4,9 @@ This test requires the bioimage-mcp-cellpose environment to be installed.
 Run with: conda run -n bioimage-mcp-cellpose pytest tests/integration/test_cellpose_adapter_e2e.py -v
 """
 
-import pytest
 from pathlib import Path
+
+import pytest
 
 # Skip entire module if cellpose not available
 cellpose = pytest.importorskip("cellpose")

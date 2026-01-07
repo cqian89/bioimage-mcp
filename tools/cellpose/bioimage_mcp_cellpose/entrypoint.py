@@ -8,13 +8,13 @@ Supports persistent worker mode (NDJSON).
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import importlib
 import inspect
 import json
 import os
 import sys
 import uuid
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -329,9 +329,10 @@ def handle_model_init(
     work_dir: Path,
 ) -> dict[str, Any]:
     """Handle cellpose.CellposeModel instantiation."""
-    from cellpose.models import CellposeModel
-    from bioimage_mcp_cellpose.ops.segment import _uri_to_path
     import torch
+    from cellpose.models import CellposeModel
+
+    from bioimage_mcp_cellpose.ops.segment import _uri_to_path
 
     model_type = params.get("model_type", "cyto3")
     gpu = params.get("gpu", torch.cuda.is_available())
@@ -356,7 +357,7 @@ def handle_model_init(
         "format": "pickle",
         "python_class": "cellpose.models.CellposeModel",
         "storage_type": "memory",
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
         "metadata": {
             "model_type": model_type,
             "gpu": gpu,
@@ -422,14 +423,8 @@ def handle_cache_clear(
     _OBJECT_CACHE.clear()
     return {
         "ok": True,
-        "outputs": {
-            "cleared_count": {
-                "type": "NativeOutputRef",
-                "format": "json",
-                "value": count,
-            }
-        },
-        "log": f"Cleared {count} objects",
+        "outputs": {},  # No outputs - clearing is a side effect
+        "log": f"Cleared {count} cached objects",
     }
 
 
@@ -517,7 +512,7 @@ def handle_reconstruct(request: dict[str, Any]) -> dict[str, Any]:
                     "format": "pickle",
                     "python_class": python_class_name,
                     "storage_type": "memory",
-                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "created_at": datetime.now(UTC).isoformat(),
                     "metadata": {"init_params": init_params},
                 }
             },
@@ -619,7 +614,7 @@ def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
 
 
 def _convert_outputs_to_memory(outputs: dict[str, Any], work_dir: Path) -> dict[str, Any]:
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     mem_outputs = {}
     for key, value in outputs.items():
@@ -640,7 +635,7 @@ def _convert_outputs_to_memory(outputs: dict[str, Any], work_dir: Path) -> dict[
                     "storage_type": "memory",
                     "mime_type": "application/octet-stream",
                     "size_bytes": data.nbytes,
-                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "created_at": datetime.now(UTC).isoformat(),
                     "metadata": {
                         "shape": list(data.shape),
                         "dtype": str(data.dtype),
@@ -664,7 +659,7 @@ def _convert_outputs_to_memory(outputs: dict[str, Any], work_dir: Path) -> dict[
                 "storage_type": "memory",
                 "mime_type": "application/octet-stream",
                 "size_bytes": data.nbytes,
-                "created_at": datetime.now(timezone.utc).isoformat(),
+                "created_at": datetime.now(UTC).isoformat(),
                 "metadata": {
                     "shape": list(data.shape),
                     "dtype": str(data.dtype),
@@ -831,9 +826,9 @@ def main() -> int:
             raise ImportError("Simulated numpy import failure")
 
         # Heavy imports
-        import numpy as np  # noqa: F401
         import bioio  # noqa: F401
         import cellpose  # noqa: F401
+        import numpy as np  # noqa: F401
 
         # Verify torch if needed
         try:

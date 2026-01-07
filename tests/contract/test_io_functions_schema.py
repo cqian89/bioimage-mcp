@@ -1,5 +1,7 @@
 from pathlib import Path
+
 import pytest
+
 from bioimage_mcp.registry.loader import load_manifests
 
 EXPECTED_IO_FUNCTIONS = {
