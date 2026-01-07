@@ -97,7 +97,45 @@ functions:
         required: true
     params_schema:
       type: object
-      properties: {}
+      properties:
+        diameter:
+          type: number
+          default: 30.0
+          description: "Estimated cell diameter in pixels. Use 0 for automatic diameter estimation. Critical for accurate segmentation."
+        flow_threshold:
+          type: number
+          default: 0.4
+          description: "Flow error threshold for mask reconstruction (0.0-1.0). Lower values = stricter, fewer masks."
+        cellprob_threshold:
+          type: number
+          default: 0.0
+          description: "Cell probability threshold (-6.0 to 6.0). Lower values = larger cells. Higher values = smaller, more confident detections."
+        do_3D:
+          type: boolean
+          default: false
+          description: "Run 3D segmentation. Input must have Z dimension."
+        channels:
+          type: array
+          items:
+            type: integer
+          default: [0, 0]
+          description: "Channels to use for segmentation. [cytoplasm, nucleus] with 0=grayscale."
+        min_size:
+          type: integer
+          default: 15
+          description: "Minimum mask size in pixels. Masks smaller than this are removed."
+        normalize:
+          type: boolean
+          default: true
+          description: "Normalize image intensities. Set to False if image is already normalized."
+        tile:
+          type: boolean
+          default: false
+          description: "Tile large images for processing."
+        augment:
+          type: boolean
+          default: false
+          description: "Use test-time augmentation. May improve results at 4x processing time cost."
 
   - fn_id: cellpose.denoise.DenoiseModel
     tool_id: tools.cellpose
@@ -138,7 +176,25 @@ functions:
         required: true
     params_schema:
       type: object
-      properties: {}
+      properties:
+        diameter:
+          type: number
+          default: 30.0
+          description: "Estimated cell diameter in pixels. Use 0 for automatic estimation."
+        channels:
+          type: array
+          items:
+            type: integer
+          default: [0, 0]
+          description: "Channels to use. [cytoplasm, nucleus] with 0=grayscale."
+        normalize:
+          type: boolean
+          default: true
+          description: "Normalize image intensities."
+        tile:
+          type: boolean
+          default: false
+          description: "Tile large images for processing."
 
   - fn_id: cellpose.metrics.average_precision
     tool_id: tools.cellpose

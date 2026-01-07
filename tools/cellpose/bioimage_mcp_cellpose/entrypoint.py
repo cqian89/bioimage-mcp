@@ -13,6 +13,7 @@ import inspect
 import json
 import os
 import sys
+import traceback
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
@@ -666,6 +667,7 @@ def handle_reconstruct(request: dict[str, Any]) -> dict[str, Any]:
         }
 
     except Exception as exc:  # noqa: BLE001
+        tb_str = traceback.format_exc()
         return {
             "command": "execute_result",
             "ok": False,
@@ -673,6 +675,7 @@ def handle_reconstruct(request: dict[str, Any]) -> dict[str, Any]:
             "error": {
                 "code": "RECONSTRUCTION_FAILED",
                 "message": f"Failed to reconstruct {python_class_name}: {exc}",
+                "traceback": tb_str,
             },
         }
 
@@ -748,13 +751,14 @@ def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
                 "log": "failed",
             }
     except Exception as exc:  # noqa: BLE001
+        tb_str = traceback.format_exc()
         response = {
             "command": "execute_result",
             "ok": False,
             "ordinal": ordinal,
             "error": {"message": str(exc)},
             "outputs": {},
-            "log": "failed",
+            "log": tb_str,
         }
     return response
 

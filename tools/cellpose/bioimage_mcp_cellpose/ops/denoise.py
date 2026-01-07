@@ -84,6 +84,29 @@ def run_denoise(
     # Squeeze singleton dimensions for cellpose
     img = np.squeeze(img_data)
 
+    # Extract parameters with defaults
+    diameter = params.get("diameter")
+    flow_threshold = params.get("flow_threshold", 0.4)
+    cellprob_threshold = params.get("cellprob_threshold", 0.0)
+    channels = params.get("channels")
+    channel_axis = params.get("channel_axis")
+    z_axis = params.get("z_axis")
+    do_3D = params.get("do_3D", False)
+    stitch_threshold = params.get("stitch_threshold", 0.0)
+    normalize = params.get("normalize", True)
+    invert = params.get("invert", False)
+    min_size = params.get("min_size", 15)
+    rescale = params.get("rescale")
+    tile = params.get("tile", True)
+    tile_overlap = params.get("tile_overlap", 0.1)
+    augment = params.get("augment", False)
+    resample = params.get("resample", True)
+    net_avg = params.get("net_avg", True)
+
+    # Handle diameter=0 or None as "auto-estimate"
+    if diameter is None or diameter == 0:
+        diameter = None  # Cellpose will estimate
+
     # Initialize model if not provided
     if model is None:
         model_type = params.get("model_type", "denoise_cyto3")
@@ -92,8 +115,26 @@ def run_denoise(
 
     # Run denoising
     # DenoiseModel.eval returns the denoised image.
-    # It takes many of the same parameters as CellposeModel.eval
-    denoised = model.eval(img, **params)
+    denoised = model.eval(
+        img,
+        diameter=diameter,
+        flow_threshold=flow_threshold,
+        cellprob_threshold=cellprob_threshold,
+        channels=channels,
+        channel_axis=channel_axis,
+        z_axis=z_axis,
+        do_3D=do_3D,
+        stitch_threshold=stitch_threshold,
+        normalize=normalize,
+        invert=invert,
+        min_size=min_size,
+        rescale=rescale,
+        tile=tile,
+        tile_overlap=tile_overlap,
+        augment=augment,
+        resample=resample,
+        net_avg=net_avg,
+    )
 
     # Output path
     denoised_path = work_dir / "denoised.ome.tiff"
