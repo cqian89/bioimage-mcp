@@ -54,10 +54,10 @@ def test_cellpose_adapter_discover():
 
         assert len(discovered) > 0
         fn_ids = [m.fn_id for m in discovered]
-        assert "cellpose.eval" in fn_ids
+        assert "cellpose.models.CellposeModel.eval" in fn_ids
 
         # Check that eval function has correct metadata
-        eval_meta = next(m for m in discovered if m.fn_id == "cellpose.eval")
+        eval_meta = next(m for m in discovered if m.fn_id == "cellpose.models.CellposeModel.eval")
         assert eval_meta.io_pattern == IOPattern.IMAGE_TO_LABELS
         assert "model_type" in eval_meta.parameters
 
@@ -115,7 +115,9 @@ def test_cellpose_adapter_execute_logic():
             "bioimage_mcp_cellpose.ops.segment": mock_ops,
         },
     ):
-        outputs = adapter.execute("cellpose.eval", [mock_input], {"diameter": 30})
+        outputs = adapter.execute(
+            "cellpose.models.CellposeModel.eval", [mock_input], {"diameter": 30}
+        )
 
         assert len(outputs) == 2
         assert outputs[0]["type"] == "LabelImageRef"

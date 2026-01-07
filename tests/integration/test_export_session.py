@@ -251,7 +251,7 @@ class TestExportSessionObjectRef:
         # 2. Call tool that returns an ObjectRef
         result = interactive.call_tool(
             session_id=session_id,
-            fn_id="cellpose.CellposeModel",
+            fn_id="cellpose.models.CellposeModel",
             inputs={},
             params={"model_type": "cyto"},
         )
@@ -332,12 +332,14 @@ class TestExportSessionObjectRef:
 
         # Step 1
         res1 = interactive.call_tool(
-            session_id, "cellpose.CellposeModel", {}, {"pretrained_model": "cyto3"}
+            session_id, "cellpose.models.CellposeModel", {}, {"pretrained_model": "cyto3"}
         )
         model_ref = res1["outputs"]["model"]
 
         # Step 2
-        interactive.call_tool(session_id, "cellpose.CellposeModel.eval", {"model": model_ref}, {})
+        interactive.call_tool(
+            session_id, "cellpose.models.CellposeModel.eval", {"model": model_ref}, {}
+        )
 
         # Export
         export_result = interactive.export_session(session_id)

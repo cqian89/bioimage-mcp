@@ -71,9 +71,9 @@ class TestValidatePipeline:
                 {
                     "steps": [
                         {
-                            "fn_id": "cellpose.segment",
+                            "fn_id": "cellpose.models.CellposeModel.eval",
                             "inputs": {
-                                "image": {
+                                "x": {
                                     "type": "BioImageRef",
                                     "format": "OME-TIFF",
                                     "uri": "file:///sample/image.tiff",
@@ -113,7 +113,11 @@ class TestValidatePipeline:
 
         with ExecutionService(config) as svc:
             result = svc.run_workflow(
-                {"steps": [{"fn_id": "cellpose.segment", "inputs": {}, "params": {}}]},
+                {
+                    "steps": [
+                        {"fn_id": "cellpose.models.CellposeModel.eval", "inputs": {}, "params": {}}
+                    ]
+                },
                 skip_validation=True,
             )
 
@@ -162,9 +166,9 @@ class TestValidatePipeline:
                     {
                         "steps": [
                             {
-                                "fn_id": "cellpose.segment",
+                                "fn_id": "cellpose.models.CellposeModel.eval",
                                 "inputs": {
-                                    "image": {
+                                    "x": {
                                         "type": "BioImageRef",
                                         "uri": f"file:///samples/{sample}",
                                     }

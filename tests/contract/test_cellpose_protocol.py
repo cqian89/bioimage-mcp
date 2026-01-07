@@ -67,13 +67,13 @@ class TestToolProtocolRequestContract:
     def test_valid_request_accepted(self) -> None:
         """Test that a valid request passes validation."""
         request = {
-            "fn_id": "cellpose.segment",
+            "fn_id": "cellpose.models.CellposeModel.eval",
             "params": {"model_type": "cyto3", "diameter": 30.0},
-            "inputs": {"image": {"ref_id": "abc123", "uri": "file:///path/to/image.tiff"}},
+            "inputs": {"x": {"ref_id": "abc123", "uri": "file:///path/to/image.tiff"}},
             "work_dir": "/tmp/work",
         }
         validated = ToolProtocolRequest(**request)
-        assert validated.fn_id == "cellpose.segment"
+        assert validated.fn_id == "cellpose.models.CellposeModel.eval"
         assert validated.params["model_type"] == "cyto3"
 
     def test_request_requires_fn_id(self) -> None:
@@ -90,7 +90,7 @@ class TestToolProtocolRequestContract:
     def test_request_requires_work_dir(self) -> None:
         """Test that work_dir is required."""
         request = {
-            "fn_id": "cellpose.segment",
+            "fn_id": "cellpose.models.CellposeModel.eval",
             "params": {},
             "inputs": {},
             "work_dir": "",
@@ -101,10 +101,10 @@ class TestToolProtocolRequestContract:
     def test_request_with_artifact_ref_input(self) -> None:
         """Test request with a full artifact reference as input."""
         request = {
-            "fn_id": "cellpose.segment",
+            "fn_id": "cellpose.models.CellposeModel.eval",
             "params": {"diameter": 30.0},
             "inputs": {
-                "image": {
+                "x": {
                     "ref_id": "abc123",
                     "type": "BioImageRef",
                     "uri": "file:///path/to/image.ome.tiff",
@@ -118,7 +118,7 @@ class TestToolProtocolRequestContract:
             "work_dir": "/tmp/work",
         }
         validated = ToolProtocolRequest(**request)
-        assert validated.inputs["image"]["type"] == "BioImageRef"
+        assert validated.inputs["x"]["type"] == "BioImageRef"
 
 
 class TestToolProtocolResponseContract:
@@ -203,8 +203,8 @@ class TestToolProtocolResponseContract:
         with pytest.raises(ValueError, match="missing 'path' field"):
             ToolProtocolResponse(**response)
 
-    def test_cellpose_segment_expected_outputs(self) -> None:
-        """Test that cellpose.segment response has expected output types."""
+    def test_cellpose_models_cellpose_model_eval_expected_outputs(self) -> None:
+        """Test that cellpose.models.CellposeModel.eval response has expected output types."""
         response = {
             "ok": True,
             "outputs": {
@@ -223,7 +223,7 @@ class TestToolProtocolResponseContract:
         }
         validated = ToolProtocolResponse(**response)
 
-        # Verify expected output types for cellpose.segment
+        # Verify expected output types for cellpose.models.CellposeModel.eval
         assert validated.outputs["labels"]["type"] == "LabelImageRef"
         assert validated.outputs["labels"]["format"] == "OME-TIFF"
         assert validated.outputs["cellpose_bundle"]["type"] == "NativeOutputRef"

@@ -67,7 +67,7 @@ class TestCellposeManifestContract:
         )
 
     def test_manifest_has_eval_function(self) -> None:
-        """Test that manifest defines a cellpose.eval function."""
+        """Test that manifest defines a cellpose.models.CellposeModel.eval function."""
         if not CELLPOSE_MANIFEST_PATH.exists():
             pytest.skip("Cellpose manifest not yet created")
 
@@ -77,7 +77,9 @@ class TestCellposeManifestContract:
         functions = raw.get("functions", [])
         fn_ids = [f.get("fn_id") for f in functions]
 
-        assert "cellpose.eval" in fn_ids, "Manifest must define cellpose.eval function"
+        assert "cellpose.models.CellposeModel.eval" in fn_ids, (
+            "Manifest must define cellpose.models.CellposeModel.eval function"
+        )
 
     def test_manifest_has_meta_describe_function(self) -> None:
         """Test that manifest defines a meta.describe function."""
@@ -95,7 +97,7 @@ class TestCellposeManifestContract:
         )
 
     def test_eval_function_io_ports(self) -> None:
-        """Test that cellpose.eval has correct I/O ports."""
+        """Test that cellpose.models.CellposeModel.eval has correct I/O ports."""
         if not CELLPOSE_MANIFEST_PATH.exists():
             pytest.skip("Cellpose manifest not yet created")
 
@@ -104,18 +106,20 @@ class TestCellposeManifestContract:
 
         functions = raw.get("functions", [])
         eval_fn = next(
-            (f for f in functions if f.get("fn_id") == "cellpose.eval"),
+            (f for f in functions if f.get("fn_id") == "cellpose.models.CellposeModel.eval"),
             None,
         )
 
-        assert eval_fn is not None, "cellpose.eval function not found"
+        assert eval_fn is not None, "cellpose.models.CellposeModel.eval function not found"
 
         # Check inputs
         inputs = eval_fn.get("inputs", [])
         input_names = [i.get("name") for i in inputs]
-        assert "image" in input_names, "cellpose.eval must have 'image' input"
+        assert "x" in input_names, "cellpose.models.CellposeModel.eval must have 'x' input"
 
         # Check outputs
         outputs = eval_fn.get("outputs", [])
         output_names = [o.get("name") for o in outputs]
-        assert "labels" in output_names, "cellpose.eval must have 'labels' output"
+        assert "labels" in output_names, (
+            "cellpose.models.CellposeModel.eval must have 'labels' output"
+        )

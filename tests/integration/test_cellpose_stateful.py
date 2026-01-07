@@ -13,15 +13,15 @@ class TestCellposeStateful:
     """Integration tests for stateful model reuse in Cellpose."""
 
     def test_create_model_returns_object_ref(self, mcp_services) -> None:
-        """T014: Test that cellpose.CellposeModel returns an ObjectRef."""
+        """T014: Test that cellpose.models.CellposeModel returns an ObjectRef."""
         execution = mcp_services["execution"]
 
-        # This should fail initially because cellpose.CellposeModel is not in manifest
+        # This should fail initially because cellpose.models.CellposeModel is not in manifest
         result = execution.run_workflow(
             {
                 "steps": [
                     {
-                        "fn_id": "cellpose.CellposeModel",
+                        "fn_id": "cellpose.models.CellposeModel",
                         "params": {"model_type": "cyto3", "gpu": False},
                     }
                 ]
@@ -38,12 +38,19 @@ class TestCellposeStateful:
         assert "cellpose.models.CellposeModel" in model_ref["python_class"]
 
     def test_eval_with_object_ref(self, mcp_services, tmp_path: Path) -> None:
-        """T015: Test that cellpose.CellposeModel.eval accepts an ObjectRef."""
+        """T015: Test that cellpose.models.CellposeModel.eval accepts an ObjectRef."""
         execution = mcp_services["execution"]
 
         # 1. Create model
         res1 = execution.run_workflow(
-            {"steps": [{"fn_id": "cellpose.CellposeModel", "params": {"model_type": "cyto3"}}]}
+            {
+                "steps": [
+                    {
+                        "fn_id": "cellpose.models.CellposeModel",
+                        "params": {"model_type": "cyto3"},
+                    }
+                ]
+            }
         )
         model_ref = res1["outputs"]["model"]
 
@@ -60,7 +67,7 @@ class TestCellposeStateful:
             {
                 "steps": [
                     {
-                        "fn_id": "cellpose.CellposeModel.eval",
+                        "fn_id": "cellpose.models.CellposeModel.eval",
                         "inputs": {
                             "model": model_ref,
                             "x": {"type": "BioImageRef", "uri": f"file://{img_path}"},
@@ -81,7 +88,14 @@ class TestCellposeStateful:
 
         # 1. Create model
         res1 = execution.run_workflow(
-            {"steps": [{"fn_id": "cellpose.CellposeModel", "params": {"model_type": "cyto3"}}]}
+            {
+                "steps": [
+                    {
+                        "fn_id": "cellpose.models.CellposeModel",
+                        "params": {"model_type": "cyto3"},
+                    }
+                ]
+            }
         )
         model_ref = res1["outputs"]["model"]
 
@@ -99,7 +113,7 @@ class TestCellposeStateful:
                 {
                     "steps": [
                         {
-                            "fn_id": "cellpose.CellposeModel.eval",
+                            "fn_id": "cellpose.models.CellposeModel.eval",
                             "inputs": {
                                 "model": model_ref,
                                 "x": {"type": "BioImageRef", "uri": f"file://{img_path}"},

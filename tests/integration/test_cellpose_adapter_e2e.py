@@ -59,7 +59,7 @@ class TestCellposeAdapterE2E:
         # Execute eval with minimal params
         # Note: CellposeAdapter.execute currently calls run_segment regardless of fn_id
         outputs = adapter.execute(
-            fn_id="cellpose.eval",
+            fn_id="cellpose.models.CellposeModel.eval",
             inputs=[input_artifact],
             params={"model_type": "cyto3", "diameter": 30.0},
             work_dir=work_dir,

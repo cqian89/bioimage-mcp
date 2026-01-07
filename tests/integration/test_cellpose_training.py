@@ -14,7 +14,7 @@ class TestCellposeTraining:
     """Integration tests for Cellpose training functions."""
 
     def test_train_seg_returns_weights_and_losses(self, mcp_services, tmp_path: Path) -> None:
-        """T026: Test that cellpose.train_seg returns weights (NativeOutputRef) and losses (TableRef)."""
+        """T026: Test that cellpose.train.train_seg returns weights (NativeOutputRef) and losses (TableRef)."""
         execution = mcp_services["execution"]
 
         # 1. Create mock training data
@@ -35,7 +35,7 @@ class TestCellposeTraining:
             {
                 "steps": [
                     {
-                        "fn_id": "cellpose.train_seg",
+                        "fn_id": "cellpose.train.train_seg",
                         "inputs": {
                             "image": {"type": "BioImageRef", "uri": f"file://{train_img_path}"},
                             "mask": {"type": "LabelImageRef", "uri": f"file://{train_mask_path}"},
@@ -84,7 +84,7 @@ class TestCellposeTraining:
             {
                 "steps": [
                     {
-                        "fn_id": "cellpose.train_seg",
+                        "fn_id": "cellpose.train.train_seg",
                         "inputs": {
                             "image": {"type": "BioImageRef", "uri": f"file://{img_path}"},
                             "mask": {"type": "LabelImageRef", "uri": f"file://{mask_path}"},
@@ -107,7 +107,7 @@ class TestCellposeTraining:
             {
                 "steps": [
                     {
-                        "fn_id": "cellpose.CellposeModel",
+                        "fn_id": "cellpose.models.CellposeModel",
                         "params": {
                             "pretrained_model": weights_ref,
                             "gpu": False,
@@ -132,7 +132,7 @@ class TestCellposeTraining:
             {
                 "steps": [
                     {
-                        "fn_id": "cellpose.CellposeModel.eval",
+                        "fn_id": "cellpose.models.CellposeModel.eval",
                         "inputs": {
                             "model": model_ref,
                             "x": {"type": "BioImageRef", "uri": f"file://{test_img_path}"},

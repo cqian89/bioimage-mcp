@@ -28,46 +28,17 @@ dynamic_sources:
       - "test_*"
 
 functions:
-  # New evaluation function (primary for modern API)
-  - fn_id: cellpose.eval
-    tool_id: tools.cellpose
-    name: Cellpose Eval
-    description: Core evaluation function for Cellpose models.
-    tags: [segmentation, deep-learning]
-    inputs:
-      - name: image
-        artifact_type: BioImageRef
-        required: true
-    outputs:
-      - name: labels
-        artifact_type: LabelImageRef
-        format: OME-TIFF
-        required: true
-    params_schema:
-      type: object
-      properties: {}
-    hints:
-      inputs:
-        image:
-          type: BioImageRef
-          required: true
-          description: "Input image for segmentation"
-          dimension_requirements:
-            min_ndim: 2
-            max_ndim: 3
-            expected_axes: ["Y", "X"]
-            squeeze_singleton: true
-    resource_hints:
-      gpu_recommended: true
-      memory_mb: 4096
-
   # Training function (dynamically discovered)
-  - fn_id: cellpose.train_seg
+  - fn_id: cellpose.train.train_seg
     tool_id: tools.cellpose
     name: Cellpose Training
     description: Train or fine-tune Cellpose models.
     tags: [training, deep-learning]
     inputs:
+      - name: net
+        artifact_type: ObjectRef
+        required: false
+        description: Pre-initialized model to train (optional, will create new if not provided)
       - name: image
         artifact_type: BioImageRef
         required: true
@@ -87,7 +58,7 @@ functions:
       type: object
       properties: {}
 
-  - fn_id: cellpose.CellposeModel
+  - fn_id: cellpose.models.CellposeModel
     tool_id: tools.cellpose
     name: Initialize Cellpose Model
     description: Instantiate a CellposeModel and return an ObjectRef for reuse.
@@ -107,7 +78,7 @@ functions:
           type: boolean
           default: false
 
-  - fn_id: cellpose.CellposeModel.eval
+  - fn_id: cellpose.models.CellposeModel.eval
     tool_id: tools.cellpose
     name: Evaluate Cellpose Model
     description: Run evaluation on a pre-initialized CellposeModel.
@@ -127,6 +98,74 @@ functions:
     params_schema:
       type: object
       properties: {}
+
+  - fn_id: cellpose.denoise.DenoiseModel
+    tool_id: tools.cellpose
+    name: Initialize Denoise Model
+    description: Instantiate a DenoiseModel and return an ObjectRef for reuse.
+    tags: [initialization, deep-learning, denoise]
+    inputs: []
+    outputs:
+      - name: model
+        artifact_type: ObjectRef
+        required: true
+    params_schema:
+      type: object
+      properties:
+        model_type:
+          type: string
+          default: "denoise_cyto3"
+        gpu:
+          type: boolean
+          default: false
+
+  - fn_id: cellpose.denoise.DenoiseModel.eval
+    tool_id: tools.cellpose
+    name: Denoise Image
+    description: Run denoising on an image using a pre-initialized DenoiseModel.
+    tags: [denoise, deep-learning]
+    inputs:
+      - name: model
+        artifact_type: ObjectRef
+        required: true
+      - name: x
+        artifact_type: BioImageRef
+        required: true
+    outputs:
+      - name: denoised
+        artifact_type: BioImageRef
+        format: OME-TIFF
+        required: true
+    params_schema:
+      type: object
+      properties: {}
+
+  - fn_id: cellpose.metrics.average_precision
+    tool_id: tools.cellpose
+    name: Average Precision
+    description: Compute average precision between predicted and ground truth masks at multiple IoU thresholds.
+    tags: [metrics, evaluation]
+    inputs:
+      - name: masks_pred
+        artifact_type: LabelImageRef
+        required: true
+      - name: masks_true
+        artifact_type: LabelImageRef
+        required: true
+    outputs:
+      - name: results
+        artifact_type: TableRef
+        format: json
+        required: true
+    params_schema:
+      type: object
+      properties:
+        threshold:
+          type: array
+          items:
+            type: number
+          default: [0.5, 0.75, 0.9]
+          description: IoU thresholds for computing AP
 
   - fn_id: cellpose.cache.clear
     tool_id: tools.cellpose

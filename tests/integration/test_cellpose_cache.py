@@ -19,13 +19,27 @@ class TestCellposeCache:
 
         # 1. Create multiple models (ObjectRefs)
         res1 = execution.run_workflow(
-            {"steps": [{"fn_id": "cellpose.CellposeModel", "params": {"model_type": "cyto3"}}]}
+            {
+                "steps": [
+                    {
+                        "fn_id": "cellpose.models.CellposeModel",
+                        "params": {"model_type": "cyto3"},
+                    }
+                ]
+            }
         )
         assert res1["status"] == "success"
         model_ref1 = res1["outputs"]["model"]
 
         res2 = execution.run_workflow(
-            {"steps": [{"fn_id": "cellpose.CellposeModel", "params": {"model_type": "nuclei"}}]}
+            {
+                "steps": [
+                    {
+                        "fn_id": "cellpose.models.CellposeModel",
+                        "params": {"model_type": "nuclei"},
+                    }
+                ]
+            }
         )
         assert res2["status"] == "success"
         model_ref2 = res2["outputs"]["model"]
@@ -39,7 +53,7 @@ class TestCellposeCache:
             {
                 "steps": [
                     {
-                        "fn_id": "cellpose.CellposeModel.eval",
+                        "fn_id": "cellpose.models.CellposeModel.eval",
                         "inputs": {
                             "model": model_ref1,
                             "x": {"type": "BioImageRef", "uri": f"file://{img_path}"},
@@ -60,7 +74,7 @@ class TestCellposeCache:
             {
                 "steps": [
                     {
-                        "fn_id": "cellpose.CellposeModel.eval",
+                        "fn_id": "cellpose.models.CellposeModel.eval",
                         "inputs": {
                             "model": model_ref1,
                             "x": {"type": "BioImageRef", "uri": f"file://{img_path}"},

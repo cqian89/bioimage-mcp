@@ -55,4 +55,9 @@ SEGMENT_DESCRIPTIONS: dict[str, str] = {
         "Use test-time augmentation. May improve results at the cost of 4x processing time."
     ),
     "resample": ("Resample image to model's native resolution. Generally improves results."),
+    # Evaluation
+    "threshold": (
+        "Intersection over Union (IoU) threshold(s) for matching masks. "
+        "Can be a single value or a list/array of values."
+    ),
 }

@@ -198,10 +198,18 @@ def _introspect_cellpose_fn(target_fn: str) -> dict[str, Any]:
     from bioimage_mcp_cellpose.descriptions import SEGMENT_DESCRIPTIONS
 
     try:
-        if target_fn == "cellpose.train_seg":
+        if target_fn == "cellpose.train.train_seg":
             import cellpose.train
 
             sig = inspect.signature(cellpose.train.train_seg)
+        elif target_fn == "cellpose.denoise.DenoiseModel.eval":
+            from cellpose.denoise import DenoiseModel
+
+            sig = inspect.signature(DenoiseModel.eval)
+        elif target_fn == "cellpose.metrics.average_precision":
+            import cellpose.metrics
+
+            sig = inspect.signature(cellpose.metrics.average_precision)
         else:
             from cellpose.models import CellposeModel
 
@@ -257,6 +265,8 @@ def _introspect_cellpose_fn(target_fn: str) -> dict[str, Any]:
         "test_data",
         "test_labels",
         "net",
+        "masks_true",
+        "masks_pred",
     }
 
     for name, param in sig.parameters.items():
@@ -292,8 +302,8 @@ def handle_meta_describe(params: dict[str, Any]) -> dict[str, Any]:
     """Handle meta.describe requests for Cellpose functions."""
     target_fn = params.get("target_fn", "")
 
-    if target_fn in ("cellpose.segment", "cellpose.eval", "cellpose.CellposeModel.eval"):
-        schema = _introspect_cellpose_fn("cellpose.eval")
+    if target_fn == "cellpose.models.CellposeModel.eval":
+        schema = _introspect_cellpose_fn("cellpose.models.CellposeModel.eval")
         return {
             "ok": True,
             "result": {
@@ -302,8 +312,8 @@ def handle_meta_describe(params: dict[str, Any]) -> dict[str, Any]:
                 "introspection_source": "python_api",
             },
         }
-    elif target_fn == "cellpose.train_seg":
-        schema = _introspect_cellpose_fn("cellpose.train_seg")
+    elif target_fn == "cellpose.train.train_seg":
+        schema = _introspect_cellpose_fn("cellpose.train.train_seg")
         return {
             "ok": True,
             "result": {
@@ -315,6 +325,26 @@ def handle_meta_describe(params: dict[str, Any]) -> dict[str, Any]:
                         "labels": {"type": "array", "items": {"type": "object"}},
                     },
                 },
+                "tool_version": _get_cellpose_version(),
+                "introspection_source": "python_api",
+            },
+        }
+    elif target_fn == "cellpose.denoise.DenoiseModel.eval":
+        schema = _introspect_cellpose_fn("cellpose.denoise.DenoiseModel.eval")
+        return {
+            "ok": True,
+            "result": {
+                "params_schema": schema,
+                "tool_version": _get_cellpose_version(),
+                "introspection_source": "python_api",
+            },
+        }
+    elif target_fn == "cellpose.metrics.average_precision":
+        schema = _introspect_cellpose_fn("cellpose.metrics.average_precision")
+        return {
+            "ok": True,
+            "result": {
+                "params_schema": schema,
                 "tool_version": _get_cellpose_version(),
                 "introspection_source": "python_api",
             },
@@ -369,6 +399,84 @@ def handle_model_init(
         "ok": True,
         "outputs": {"model": output},
         "log": f"CellposeModel({model_type}) initialized",
+    }
+
+
+def handle_denoise_init(
+    inputs: dict[str, Any],
+    params: dict[str, Any],
+    work_dir: Path,
+) -> dict[str, Any]:
+    """Handle cellpose.denoise.DenoiseModel instantiation."""
+    import torch
+    from cellpose.denoise import DenoiseModel
+
+    model_type = params.get("model_type", "denoise_cyto3")
+    gpu = params.get("gpu", torch.cuda.is_available())
+
+    # Create model
+    model = DenoiseModel(model_type=model_type, gpu=gpu)
+
+    # Store in cache
+    object_id, obj_uri = _store_object(model)
+
+    # Return ObjectRef
+    output = {
+        "ref_id": object_id,
+        "type": "ObjectRef",
+        "uri": obj_uri,
+        "format": "pickle",
+        "python_class": "cellpose.denoise.DenoiseModel",
+        "storage_type": "memory",
+        "created_at": datetime.now(UTC).isoformat(),
+        "metadata": {
+            "model_type": model_type,
+            "gpu": gpu,
+            "device": "cuda" if gpu and torch.cuda.is_available() else "cpu",
+        },
+    }
+
+    return {
+        "ok": True,
+        "outputs": {"model": output},
+        "log": f"DenoiseModel({model_type}) initialized",
+    }
+
+
+def handle_denoise_eval(
+    inputs: dict[str, Any],
+    params: dict[str, Any],
+    work_dir: Path,
+) -> dict[str, Any]:
+    """Handle cellpose.denoise.DenoiseModel.eval execution."""
+    from bioimage_mcp_cellpose.ops.denoise import run_denoise
+
+    # Check for model in inputs (ObjectRef)
+    model_obj = None
+    model_ref = inputs.get("model")
+    if isinstance(model_ref, dict) and model_ref.get("uri", "").startswith("obj://"):
+        try:
+            model_obj = _load_object(model_ref["uri"])
+        except (KeyError, ValueError):
+            return {
+                "ok": False,
+                "error": {
+                    "code": "ARTIFACT_NOT_FOUND",
+                    "message": "Object not found in cache",
+                    "details": [
+                        {
+                            "path": "inputs.model",
+                            "hint": "Object may have been evicted or session expired",
+                        }
+                    ],
+                },
+            }
+
+    outputs = run_denoise(inputs=inputs, params=params, work_dir=work_dir, model=model_obj)
+    return {
+        "ok": True,
+        "outputs": outputs,
+        "log": "Denoising complete",
     }
 
 
@@ -428,6 +536,22 @@ def handle_cache_clear(
     }
 
 
+def handle_average_precision(
+    inputs: dict[str, Any],
+    params: dict[str, Any],
+    work_dir: Path,
+) -> dict[str, Any]:
+    """Handle cellpose.metrics.average_precision execution."""
+    from bioimage_mcp_cellpose.ops.metrics import run_average_precision
+
+    outputs = run_average_precision(inputs=inputs, params=params, work_dir=work_dir)
+    return {
+        "ok": True,
+        "outputs": outputs,
+        "log": "Average precision computed",
+    }
+
+
 def handle_train_seg(
     inputs: dict[str, Any],
     params: dict[str, Any],
@@ -436,7 +560,28 @@ def handle_train_seg(
     """Handle cellpose.train_seg execution (T031)."""
     from bioimage_mcp_cellpose.ops.training import run_train_seg
 
-    outputs = run_train_seg(inputs=inputs, params=params, work_dir=work_dir)
+    # Check for net in inputs (ObjectRef)
+    model_obj = None
+    net_ref = inputs.get("net")
+    if isinstance(net_ref, dict) and net_ref.get("uri", "").startswith("obj://"):
+        try:
+            model_obj = _load_object(net_ref["uri"])
+        except (KeyError, ValueError):
+            return {
+                "ok": False,
+                "error": {
+                    "code": "ARTIFACT_NOT_FOUND",
+                    "message": "Object not found in cache",
+                    "details": [
+                        {
+                            "path": "inputs.net",
+                            "hint": "Object may have been evicted or session expired",
+                        }
+                    ],
+                },
+            }
+
+    outputs = run_train_seg(inputs=inputs, params=params, work_dir=work_dir, model=model_obj)
     return {
         "ok": True,
         "outputs": outputs,
@@ -446,11 +591,12 @@ def handle_train_seg(
 
 # Function dispatch table
 FUNCTION_HANDLERS = {
-    "cellpose.segment": handle_segment,
-    "cellpose.eval": handle_segment,  # Same implementation
-    "cellpose.CellposeModel": handle_model_init,
-    "cellpose.CellposeModel.eval": handle_segment,
-    "cellpose.train_seg": handle_train_seg,
+    "cellpose.models.CellposeModel": handle_model_init,
+    "cellpose.models.CellposeModel.eval": handle_segment,
+    "cellpose.denoise.DenoiseModel": handle_denoise_init,
+    "cellpose.denoise.DenoiseModel.eval": handle_denoise_eval,
+    "cellpose.train.train_seg": handle_train_seg,
+    "cellpose.metrics.average_precision": handle_average_precision,
     "cellpose.cache.clear": handle_cache_clear,
 }
 

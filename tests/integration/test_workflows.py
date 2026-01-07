@@ -535,7 +535,7 @@ class TestGPUReplay:
         def _mock_execute_step(fn_id, inputs, params, **kwargs):
             nonlocal execution_count
             execution_count += 1
-            if fn_id == "cellpose.CellposeModel":
+            if fn_id == "cellpose.models.CellposeModel":
                 # First call succeeds (recording), second call fails (replay on CPU)
                 if execution_count > 1 and params.get("gpu") is True:
                     return (
@@ -618,7 +618,7 @@ class TestGPUReplay:
         monkeypatch.setattr("bioimage_mcp.api.execution.execute_step", _mock_execute_step)
 
         # 2. Record a "GPU" session
-        interactive.call_tool(session_id, "cellpose.CellposeModel", {}, {"gpu": True})
+        interactive.call_tool(session_id, "cellpose.models.CellposeModel", {}, {"gpu": True})
         export_res = interactive.export_session(session_id)
         workflow_ref = export_res["workflow_ref"]
 

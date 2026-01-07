@@ -82,7 +82,11 @@ class TestFailedRunLogs:
 
         with ExecutionService(config) as svc:
             result = svc.run_workflow(
-                {"steps": [{"fn_id": "cellpose.segment", "inputs": {}, "params": {}}]},
+                {
+                    "steps": [
+                        {"fn_id": "cellpose.models.CellposeModel.eval", "inputs": {}, "params": {}}
+                    ]
+                },
                 skip_validation=True,
             )
 
@@ -109,7 +113,11 @@ class TestFailedRunLogs:
 
         with ExecutionService(config) as svc:
             result = svc.run_workflow(
-                {"steps": [{"fn_id": "cellpose.segment", "inputs": {}, "params": {}}]},
+                {
+                    "steps": [
+                        {"fn_id": "cellpose.models.CellposeModel.eval", "inputs": {}, "params": {}}
+                    ]
+                },
                 skip_validation=True,
             )
             status = svc.get_run_status(result["run_id"])
@@ -137,7 +145,11 @@ class TestFailedRunLogs:
 
         with ExecutionService(config) as svc:
             result = svc.run_workflow(
-                {"steps": [{"fn_id": "cellpose.segment", "inputs": {}, "params": {}}]},
+                {
+                    "steps": [
+                        {"fn_id": "cellpose.models.CellposeModel.eval", "inputs": {}, "params": {}}
+                    ]
+                },
                 skip_validation=True,
             )
 
@@ -162,7 +174,11 @@ class TestFailedRunLogs:
 
         with ExecutionService(config) as svc:
             result = svc.run_workflow(
-                {"steps": [{"fn_id": "cellpose.segment", "inputs": {}, "params": {}}]},
+                {
+                    "steps": [
+                        {"fn_id": "cellpose.models.CellposeModel.eval", "inputs": {}, "params": {}}
+                    ]
+                },
                 skip_validation=True,
             )
             status = svc.get_run_status(result["run_id"])
@@ -190,7 +206,11 @@ class TestFailedRunLogs:
 
         with ExecutionService(config) as svc:
             result = svc.run_workflow(
-                {"steps": [{"fn_id": "cellpose.segment", "inputs": {}, "params": {}}]},
+                {
+                    "steps": [
+                        {"fn_id": "cellpose.models.CellposeModel.eval", "inputs": {}, "params": {}}
+                    ]
+                },
                 skip_validation=True,
             )
 

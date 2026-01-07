@@ -70,10 +70,10 @@ def test_cellpose_adapter_discovers_multiple_functions(adapter):
 
     assert len(discovered) >= 1
     fn_ids = [m.fn_id for m in discovered]
-    assert "cellpose.eval" in fn_ids
+    assert "cellpose.models.CellposeModel.eval" in fn_ids
 
     # Check eval metadata
-    eval_meta = next(m for m in discovered if m.fn_id == "cellpose.eval")
+    eval_meta = next(m for m in discovered if m.fn_id == "cellpose.models.CellposeModel.eval")
     assert eval_meta.io_pattern == IOPattern.IMAGE_TO_LABELS
     assert "diameter" in eval_meta.parameters
     assert "model_type" in eval_meta.parameters
@@ -86,10 +86,10 @@ def test_cellpose_adapter_discovers_train_seg(adapter):
 
     assert len(discovered) >= 1
     fn_ids = [m.fn_id for m in discovered]
-    assert "cellpose.train_seg" in fn_ids
+    assert "cellpose.train.train_seg" in fn_ids
 
     # Check train_seg metadata
-    train_meta = next(m for m in discovered if m.fn_id == "cellpose.train_seg")
+    train_meta = next(m for m in discovered if m.fn_id == "cellpose.train.train_seg")
     assert train_meta.io_pattern == IOPattern.TRAINING
     assert "n_epochs" in train_meta.parameters
     assert train_meta.parameters["n_epochs"].default == 500
@@ -124,7 +124,9 @@ def test_cellpose_adapter_execute(adapter):
             "bioimage_mcp_cellpose.ops.segment": mock_ops,
         },
     ):
-        outputs = adapter.execute("cellpose.eval", [mock_input], {"diameter": 30})
+        outputs = adapter.execute(
+            "cellpose.models.CellposeModel.eval", [mock_input], {"diameter": 30}
+        )
 
         assert len(outputs) == 2
         assert outputs[0]["type"] == "LabelImageRef"

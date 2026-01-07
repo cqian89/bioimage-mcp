@@ -62,19 +62,19 @@ class TestWorkflowRecordSerialization:
             workflow_spec={
                 "steps": [
                     {
-                        "fn_id": "cellpose.segment",
-                        "inputs": {"image": {"type": "BioImageRef"}},
+                        "fn_id": "cellpose.models.CellposeModel.eval",
+                        "inputs": {"x": {"type": "BioImageRef"}},
                         "params": {"diameter": 30.0, "flow_threshold": 0.4},
                     }
                 ]
             },
-            inputs={"image": {"ref_id": "img-001", "type": "BioImageRef"}},
+            inputs={"x": {"ref_id": "img-001", "type": "BioImageRef"}},
             params={"diameter": 30.0},
             outputs={
                 "labels": {"ref_id": "lbl-001", "type": "LabelImageRef"},
                 "workflow_record": {"ref_id": "wr-001", "type": "NativeOutputRef"},
             },
-            provenance={"fn_id": "cellpose.segment", "tool_version": "4.0.1"},
+            provenance={"fn_id": "cellpose.models.CellposeModel.eval", "tool_version": "4.0.1"},
             tool_manifests=[{"tool_id": "tools.cellpose", "tool_version": "4.0.1"}],
             env_fingerprint={"python_version": "3.13", "platform": "linux-64"},
         )

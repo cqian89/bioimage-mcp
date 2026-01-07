@@ -72,8 +72,8 @@ class TestReplayWorkflow:
                 {
                     "steps": [
                         {
-                            "fn_id": "cellpose.segment",
-                            "inputs": {"image": {"type": "BioImageRef"}},
+                            "fn_id": "cellpose.models.CellposeModel.eval",
+                            "inputs": {"x": {"type": "BioImageRef"}},
                             "params": {"diameter": 30.0},
                         }
                     ]
@@ -114,7 +114,7 @@ class TestReplayWorkflow:
                 {
                     "steps": [
                         {
-                            "fn_id": "cellpose.segment",
+                            "fn_id": "cellpose.models.CellposeModel.eval",
                             "inputs": {},
                             "params": {"diameter": 30.0},
                         }
@@ -154,7 +154,11 @@ class TestReplayWorkflow:
 
         with ExecutionService(config) as svc:
             original_result = svc.run_workflow(
-                {"steps": [{"fn_id": "cellpose.segment", "inputs": {}, "params": {}}]},
+                {
+                    "steps": [
+                        {"fn_id": "cellpose.models.CellposeModel.eval", "inputs": {}, "params": {}}
+                    ]
+                },
                 skip_validation=True,
             )
 
@@ -184,9 +188,9 @@ class TestReplayWorkflow:
             "workflow_spec": {
                 "steps": [
                     {
-                        "fn_id": "cellpose.segment",
+                        "fn_id": "cellpose.models.CellposeModel.eval",
                         "inputs": {
-                            "image": {
+                            "x": {
                                 "ref_id": "nonexistent-image-ref",
                                 "type": "BioImageRef",
                             }
@@ -195,7 +199,7 @@ class TestReplayWorkflow:
                     }
                 ]
             },
-            "inputs": {"image": {"ref_id": "nonexistent-image-ref"}},
+            "inputs": {"x": {"ref_id": "nonexistent-image-ref"}},
             "params": {"diameter": 30.0},
             "outputs": {},
         }
@@ -229,7 +233,11 @@ class TestReplayWorkflow:
         store = ArtifactStore(config)
         with ExecutionService(config, artifact_store=store) as svc:
             result = svc.run_workflow(
-                {"steps": [{"fn_id": "cellpose.segment", "inputs": {}, "params": {}}]},
+                {
+                    "steps": [
+                        {"fn_id": "cellpose.models.CellposeModel.eval", "inputs": {}, "params": {}}
+                    ]
+                },
                 skip_validation=True,
             )
 

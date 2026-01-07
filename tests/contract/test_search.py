@@ -40,12 +40,12 @@ def service():
 
     # Cellpose Segment (segmentation, image in, label out)
     service.upsert_function(
-        fn_id="cellpose.segment",
+        fn_id="cellpose.models.CellposeModel.eval",
         tool_id="tools.cellpose",
         name="Cellpose Segment",
         description="Segment cells using Cellpose",
         tags=["segmentation", "cells"],
-        inputs=[{"name": "image", "artifact_type": "BioImageRef", "required": True}],
+        inputs=[{"name": "x", "artifact_type": "BioImageRef", "required": True}],
         outputs=[{"name": "labels", "artifact_type": "LabelImageRef", "required": True}],
         params_schema={"type": "object", "properties": {"diameter": {"type": "number"}}},
     )
@@ -73,7 +73,7 @@ def test_search_with_io_filters(service):
         keywords="segment", io_out="LabelImageRef", limit=20, cursor=None
     )
     assert len(result["results"]) == 1
-    assert result["results"][0]["id"] == "cellpose.segment"
+    assert result["results"][0]["id"] == "cellpose.models.CellposeModel.eval"
 
     # Filter that should return nothing
     result = service.search_functions(
@@ -107,7 +107,7 @@ def test_search_results_include_io_summaries(service):
     assert "outputs" in fn["io"]
 
     # Check input structure
-    assert fn["io"]["inputs"][0]["name"] == "image"
+    assert fn["io"]["inputs"][0]["name"] == "x"
     assert fn["io"]["inputs"][0]["type"] == "BioImageRef"
 
     # Check output structure
@@ -140,7 +140,7 @@ def test_search_with_standalone_io_filter(service):
     result = service.search_functions(io_out="LabelImageRef", limit=20)
     assert "results" in result
     assert len(result["results"]) == 1
-    assert result["results"][0]["id"] == "cellpose.segment"
+    assert result["results"][0]["id"] == "cellpose.models.CellposeModel.eval"
     assert result["results"][0]["score"] == 0.0
 
     # Search by tags only

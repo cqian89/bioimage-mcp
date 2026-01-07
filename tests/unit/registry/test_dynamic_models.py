@@ -119,10 +119,10 @@ class TestFunctionMetadata:
     def test_function_metadata_validates_io_pattern(self):
         """FunctionMetadata should accept valid IOPattern."""
         metadata = FunctionMetadata(
-            name="segment",
+            name="eval",
             module="cellpose.models",
-            qualified_name="cellpose.models.segment",
-            fn_id="cellpose.segment",
+            qualified_name="cellpose.models.CellposeModel.eval",
+            fn_id="cellpose.models.CellposeModel.eval",
             source_adapter="cellpose",
             io_pattern=IOPattern.IMAGE_TO_LABELS,
         )

@@ -16,7 +16,7 @@ from bioimage_mcp_cellpose.entrypoint import process_execute_request
 def test_dynamic_dispatch_segment():
     request = {
         "command": "execute",
-        "fn_id": "cellpose.segment",
+        "fn_id": "cellpose.models.CellposeModel.eval",
         "inputs": {},
         "params": {},
         "work_dir": "/tmp/work_segment",
@@ -28,7 +28,8 @@ def test_dynamic_dispatch_segment():
         "outputs": {"labels": {"path": "foo", "type": "LabelImageRef", "format": "OME-TIFF"}},
     }
     with patch.dict(
-        "bioimage_mcp_cellpose.entrypoint.FUNCTION_HANDLERS", {"cellpose.segment": mock_handle}
+        "bioimage_mcp_cellpose.entrypoint.FUNCTION_HANDLERS",
+        {"cellpose.models.CellposeModel.eval": mock_handle},
     ):
         response = process_execute_request(request)
         assert response["ok"] is True
@@ -38,7 +39,7 @@ def test_dynamic_dispatch_segment():
 def test_dynamic_dispatch_eval():
     request = {
         "command": "execute",
-        "fn_id": "cellpose.eval",
+        "fn_id": "cellpose.models.CellposeModel.eval",
         "inputs": {},
         "params": {},
         "work_dir": "/tmp/work_eval",
@@ -50,7 +51,8 @@ def test_dynamic_dispatch_eval():
         "outputs": {"labels": {"path": "foo", "type": "LabelImageRef", "format": "OME-TIFF"}},
     }
     with patch.dict(
-        "bioimage_mcp_cellpose.entrypoint.FUNCTION_HANDLERS", {"cellpose.eval": mock_handle}
+        "bioimage_mcp_cellpose.entrypoint.FUNCTION_HANDLERS",
+        {"cellpose.models.CellposeModel.eval": mock_handle},
     ):
         response = process_execute_request(request)
         assert response["ok"] is True
@@ -60,7 +62,7 @@ def test_dynamic_dispatch_eval():
 def test_dynamic_dispatch_train_seg():
     request = {
         "command": "execute",
-        "fn_id": "cellpose.train_seg",
+        "fn_id": "cellpose.train.train_seg",
         "inputs": {},
         "params": {},
         "work_dir": "/tmp/work_train",
@@ -73,7 +75,8 @@ def test_dynamic_dispatch_train_seg():
         "error": {"message": "not implemented"},
     }
     with patch.dict(
-        "bioimage_mcp_cellpose.entrypoint.FUNCTION_HANDLERS", {"cellpose.train_seg": mock_handle}
+        "bioimage_mcp_cellpose.entrypoint.FUNCTION_HANDLERS",
+        {"cellpose.train.train_seg": mock_handle},
     ):
         response = process_execute_request(request)
         assert response["ok"] is False
@@ -99,7 +102,7 @@ def test_meta_describe_eval():
     request = {
         "command": "execute",
         "fn_id": "meta.describe",
-        "params": {"target_fn": "cellpose.eval"},
+        "params": {"target_fn": "cellpose.models.CellposeModel.eval"},
         "work_dir": "/tmp/work_meta",
         "ordinal": 1,
     }

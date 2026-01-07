@@ -17,15 +17,15 @@ def test_session_step_minimal():
         session_id="session-123",
         step_id="step-456",
         ordinal=1,
-        fn_id="cellpose.segment",
-        inputs={"image": "ref-1"},
+        fn_id="cellpose.models.CellposeModel.eval",
+        inputs={"x": "ref-1"},
         params={"diameter": 30},
         status="running",
     )
     assert step.session_id == "session-123"
     assert step.step_id == "step-456"
     assert step.ordinal == 1
-    assert step.fn_id == "cellpose.segment"
+    assert step.fn_id == "cellpose.models.CellposeModel.eval"
     assert step.status == "running"
     assert step.canonical is True
 

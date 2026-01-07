@@ -67,20 +67,27 @@ class TestMetaDescribeRequestContract:
         """Test that a valid request passes validation."""
         request = {
             "fn_id": "meta.describe",
-            "params": {"target_fn": "cellpose.segment"},
+            "params": {"target_fn": "cellpose.models.CellposeModel.eval"},
         }
         validated = MetaDescribeRequest(**request)
         assert validated.fn_id == "meta.describe"
-        assert validated.params["target_fn"] == "cellpose.segment"
+        assert validated.params["target_fn"] == "cellpose.models.CellposeModel.eval"
 
     def test_request_requires_fn_id_meta_describe(self) -> None:
         """Test that fn_id must be 'meta.describe'."""
         request = {
-            "fn_id": "other.function",
-            "params": {"target_fn": "cellpose.segment"},
+            "fn_id": "meta.describe",
+            "params": {"target_fn": "cellpose.models.CellposeModel.eval"},
         }
         with pytest.raises(ValueError, match="fn_id must be 'meta.describe'"):
-            MetaDescribeRequest(**request)
+            # This is tricky because the model_validator checks fn_id == "meta.describe"
+            # but we want to test what happens if it's NOT that.
+            # The original test passed "other.function" which is correct for testing failure.
+            request_fail = {
+                "fn_id": "other.function",
+                "params": {"target_fn": "cellpose.models.CellposeModel.eval"},
+            }
+            MetaDescribeRequest(**request_fail)
 
     def test_request_requires_target_fn_param(self) -> None:
         """Test that params.target_fn is required."""

@@ -29,6 +29,7 @@ def run_train_seg(
     inputs: dict[str, Any],
     params: dict[str, Any],
     work_dir: Path,
+    model: Any | None = None,
 ) -> dict[str, Any]:
     """Train or fine-tune a Cellpose model.
 
@@ -83,8 +84,9 @@ def run_train_seg(
     channels = params.get("channels", [0, 0])
     gpu = params.get("gpu", torch.cuda.is_available())
 
-    # Initialize model
-    model = CellposeModel(model_type=model_type, gpu=gpu)
+    # Initialize model if not provided
+    if model is None:
+        model = CellposeModel(model_type=model_type, gpu=gpu)
 
     # Train
     train_data = [img]

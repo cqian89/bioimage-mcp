@@ -78,13 +78,13 @@ def cellpose_entrypoint():
 
 
 def test_train_seg_params_schema_has_required_fields(cellpose_entrypoint) -> None:
-    """T028: Test that cellpose.train_seg schema includes expected parameters."""
+    """T028: Test that cellpose.train.train_seg schema includes expected parameters."""
     ep = cellpose_entrypoint
 
-    # This should fail initially because handle_meta_describe doesn't support cellpose.train_seg yet
+    # This should fail initially because handle_meta_describe doesn't support cellpose.train.train_seg yet
     # or _introspect_cellpose_train is not implemented.
 
-    params = {"target_fn": "cellpose.train_seg"}
+    params = {"target_fn": "cellpose.train.train_seg"}
     response = ep.handle_meta_describe(params)
 
     assert response["ok"] is True, f"handle_meta_describe failed: {response.get('error')}"
@@ -101,13 +101,13 @@ def test_train_seg_params_schema_has_required_fields(cellpose_entrypoint) -> Non
 
 
 def test_train_seg_inputs_schema(cellpose_entrypoint) -> None:
-    """T028: Test that cellpose.train_seg schema includes required inputs."""
+    """T028: Test that cellpose.train.train_seg schema includes required inputs."""
     ep = cellpose_entrypoint
 
     # Assuming we might add input schema to meta.describe result
     # or checking if the implementation expects these inputs.
 
-    params = {"target_fn": "cellpose.train_seg"}
+    params = {"target_fn": "cellpose.train.train_seg"}
     response = ep.handle_meta_describe(params)
 
     assert response["ok"] is True

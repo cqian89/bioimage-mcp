@@ -92,9 +92,9 @@ class TestCellposeE2E:
                 {
                     "steps": [
                         {
-                            "fn_id": "cellpose.segment",
+                            "fn_id": "cellpose.models.CellposeModel.eval",
                             "inputs": {
-                                "image": {
+                                "x": {
                                     "type": "BioImageRef",
                                     "format": "OME-TIFF",
                                     "uri": f"file://{sample_image}",
@@ -138,7 +138,7 @@ class TestCellposeE2E:
                 {
                     "steps": [
                         {
-                            "fn_id": "cellpose.segment",
+                            "fn_id": "cellpose.models.CellposeModel.eval",
                             "inputs": {},
                             "params": {},
                         }
@@ -188,7 +188,11 @@ class TestCellposeE2E:
 
         with ExecutionService(config) as svc:
             result = svc.run_workflow(
-                {"steps": [{"fn_id": "cellpose.segment", "inputs": {}, "params": {}}]},
+                {
+                    "steps": [
+                        {"fn_id": "cellpose.models.CellposeModel.eval", "inputs": {}, "params": {}}
+                    ]
+                },
                 skip_validation=True,
             )
 
@@ -219,7 +223,11 @@ class TestCellposeE2E:
         store = ArtifactStore(config)
         with ExecutionService(config, artifact_store=store) as svc:
             result = svc.run_workflow(
-                {"steps": [{"fn_id": "cellpose.segment", "inputs": {}, "params": {}}]},
+                {
+                    "steps": [
+                        {"fn_id": "cellpose.models.CellposeModel.eval", "inputs": {}, "params": {}}
+                    ]
+                },
                 skip_validation=True,
             )
             status = svc.get_run_status(result["run_id"])

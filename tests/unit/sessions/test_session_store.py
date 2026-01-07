@@ -195,7 +195,7 @@ class TestSessionStoreCRUD:
         assert replaced == first
         assert store.get_active_functions(session_id) == first
 
-        later = ["cellpose.segment"]
+        later = ["cellpose.models.CellposeModel.eval"]
         store.replace_active_functions(session_id, later)
         assert store.get_active_functions(session_id) == later
 

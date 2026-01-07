@@ -136,8 +136,8 @@ def test_flim_phasor_e2e(tmp_path: Path) -> None:
     # workflow2 = {
     #     "steps": [
     #         {
-    #             "fn_id": "cellpose.segment",
-    #             "inputs": {"image": seg_input},
+    #             "fn_id": "cellpose.models.CellposeModel.eval",
+    #             "inputs": {"x": seg_input},
     #             "params": {"model_type": "cyto3", "diameter": 30.0},
     #         }
     #     ]

@@ -21,9 +21,9 @@ class TestWorkflowValidation:
         workflow_spec = {
             "steps": [
                 {
-                    "fn_id": "cellpose.segment",
+                    "fn_id": "cellpose.models.CellposeModel.eval",
                     "inputs": {
-                        "image": {
+                        "x": {
                             "type": "BioImageRef",
                             "format": "OME-TIFF",
                         }
@@ -34,8 +34,8 @@ class TestWorkflowValidation:
         }
 
         function_ports = {
-            "cellpose.segment": {
-                "inputs": [{"name": "image", "artifact_type": "BioImageRef", "required": True}],
+            "cellpose.models.CellposeModel.eval": {
+                "inputs": [{"name": "x", "artifact_type": "BioImageRef", "required": True}],
                 "outputs": [
                     {"name": "labels", "artifact_type": "LabelImageRef", "format": "OME-TIFF"}
                 ],
@@ -50,9 +50,9 @@ class TestWorkflowValidation:
         workflow_spec = {
             "steps": [
                 {
-                    "fn_id": "cellpose.segment",
+                    "fn_id": "cellpose.models.CellposeModel.eval",
                     "inputs": {
-                        "image": {
+                        "x": {
                             "type": "LogRef",  # Wrong type!
                             "format": "text",
                         }
@@ -63,17 +63,15 @@ class TestWorkflowValidation:
         }
 
         function_ports = {
-            "cellpose.segment": {
-                "inputs": [{"name": "image", "artifact_type": "BioImageRef", "required": True}],
+            "cellpose.models.CellposeModel.eval": {
+                "inputs": [{"name": "x", "artifact_type": "BioImageRef", "required": True}],
                 "outputs": [],
             }
         }
 
         errors = validate_workflow_compatibility(workflow_spec, function_ports)
         assert len(errors) > 0, "Should have validation errors"
-        assert any(err.port_name == "image" for err in errors), (
-            "Error should reference the 'image' port"
-        )
+        assert any(err.port_name == "x" for err in errors), "Error should reference the 'x' port"
 
     @pytest.mark.xfail(reason="Required input validation not yet implemented in v0.1")
     def test_missing_required_input_fails(self) -> None:
@@ -81,7 +79,7 @@ class TestWorkflowValidation:
         workflow_spec = {
             "steps": [
                 {
-                    "fn_id": "cellpose.segment",
+                    "fn_id": "cellpose.models.CellposeModel.eval",
                     "inputs": {},  # Missing required 'image' input
                     "params": {},
                 }
@@ -89,16 +87,16 @@ class TestWorkflowValidation:
         }
 
         function_ports = {
-            "cellpose.segment": {
-                "inputs": [{"name": "image", "artifact_type": "BioImageRef", "required": True}],
+            "cellpose.models.CellposeModel.eval": {
+                "inputs": [{"name": "x", "artifact_type": "BioImageRef", "required": True}],
                 "outputs": [],
             }
         }
 
         errors = validate_workflow_compatibility(workflow_spec, function_ports)
         assert len(errors) > 0, "Should have validation errors for missing input"
-        assert any("image" in err.message or err.port_name == "image" for err in errors), (
-            "Error should reference the missing 'image' input"
+        assert any("x" in err.message or err.port_name == "x" for err in errors), (
+            "Error should reference the missing 'x' input"
         )
 
     @pytest.mark.xfail(reason="Unknown fn_id validation not yet implemented in v0.1")
@@ -124,17 +122,17 @@ class TestWorkflowValidation:
         workflow_spec = {
             "steps": [
                 {
-                    "fn_id": "cellpose.segment",
-                    "inputs": {"image": {"type": "BioImageRef"}},
+                    "fn_id": "cellpose.models.CellposeModel.eval",
+                    "inputs": {"x": {"type": "BioImageRef"}},
                     "params": {},
                 }
             ]
         }
 
         function_ports = {
-            "cellpose.segment": {
+            "cellpose.models.CellposeModel.eval": {
                 "inputs": [
-                    {"name": "image", "artifact_type": "BioImageRef", "required": True},
+                    {"name": "x", "artifact_type": "BioImageRef", "required": True},
                     {"name": "mask", "artifact_type": "LabelImageRef", "required": False},
                 ],
                 "outputs": [],
@@ -157,9 +155,9 @@ class TestWorkflowValidation:
         workflow_spec = {
             "steps": [
                 {
-                    "fn_id": "cellpose.segment",
+                    "fn_id": "cellpose.models.CellposeModel.eval",
                     "inputs": {
-                        "image": {"type": "LogRef"}  # Wrong type
+                        "x": {"type": "LogRef"}  # Wrong type
                     },
                     "params": {},
                 }
@@ -167,8 +165,8 @@ class TestWorkflowValidation:
         }
 
         function_ports = {
-            "cellpose.segment": {
-                "inputs": [{"name": "image", "artifact_type": "BioImageRef", "required": True}],
+            "cellpose.models.CellposeModel.eval": {
+                "inputs": [{"name": "x", "artifact_type": "BioImageRef", "required": True}],
                 "outputs": [],
             }
         }

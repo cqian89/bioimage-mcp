@@ -1,8 +1,8 @@
 """Contract tests for cellpose discovery and meta.describe response format.
 
 Includes:
-- T014a: cellpose.segment meta.describe response format
-- T049: describe of CellposeModel.eval asserting ObjectRef input port
+- T014a: cellpose.models.CellposeModel.eval meta.describe response format
+- T049: describe of cellpose.models.CellposeModel.eval asserting ObjectRef input port
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ from bioimage_mcp.storage.sqlite import init_schema
 
 
 class CellposeMetaDescribeResponse(BaseModel):
-    """Expected schema for cellpose.segment meta.describe response."""
+    """Expected schema for cellpose.models.CellposeModel.eval meta.describe response."""
 
     ok: bool
     result: dict[str, Any] | None = None
@@ -44,7 +44,7 @@ class CellposeMetaDescribeResponse(BaseModel):
 
 
 class TestCellposeMetaDescribeContract:
-    """Contract tests for cellpose.segment meta.describe response (T014a)."""
+    """Contract tests for cellpose.models.CellposeModel.eval meta.describe response (T014a)."""
 
     def test_success_response_has_required_fields(self) -> None:
         """Test that success response includes ok, result, and tool_version."""
@@ -86,7 +86,7 @@ class TestCellposeMetaDescribeContract:
 
 
 class TestCellposeDescribeObjectRef:
-    """T049: Contract tests for describe of CellposeModel.eval with ObjectRef."""
+    """T049: Contract tests for describe of cellpose.models.CellposeModel.eval with ObjectRef."""
 
     @pytest.fixture
     def discovery_service(self):
@@ -114,7 +114,7 @@ class TestCellposeDescribeObjectRef:
         outputs = [{"name": "labels", "artifact_type": "LabelImageRef"}]
 
         service.upsert_function(
-            fn_id="cellpose.CellposeModel.eval",
+            fn_id="cellpose.models.CellposeModel.eval",
             tool_id="tools.cellpose",
             name="Evaluate Cellpose Model",
             description="Run evaluation on a pre-initialized CellposeModel.",
@@ -143,8 +143,8 @@ class TestCellposeDescribeObjectRef:
         conn.close()
 
     def test_describe_cellpose_model_eval_has_objectref_input(self, discovery_service):
-        """T049: Test that cellpose.CellposeModel.eval has ObjectRef input port."""
-        described = discovery_service.describe_function(fn_id="cellpose.CellposeModel.eval")
+        """T049: Test that cellpose.models.CellposeModel.eval has ObjectRef input port."""
+        described = discovery_service.describe_function(fn_id="cellpose.models.CellposeModel.eval")
 
         assert "inputs" in described
         assert "model" in described["inputs"]
@@ -154,7 +154,7 @@ class TestCellposeDescribeObjectRef:
 
     def test_describe_objectref_not_in_params_schema(self, discovery_service):
         """T049: Test that ObjectRef and other artifact ports are NOT in params_schema."""
-        described = discovery_service.describe_function(fn_id="cellpose.CellposeModel.eval")
+        described = discovery_service.describe_function(fn_id="cellpose.models.CellposeModel.eval")
 
         assert "params_schema" in described
         properties = described["params_schema"].get("properties", {})

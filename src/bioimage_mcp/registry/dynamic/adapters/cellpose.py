@@ -124,15 +124,15 @@ class CellposeAdapter:
                         continue
 
                     for func_name in funcs_to_discover:
-                        fn_id = f"cellpose.{func_name}"
+                        fn_id = f"cellpose.models.CellposeModel.{func_name}"
                         if fn_id in seen_fn_ids:
                             continue
 
                         if hasattr(CellposeModel, func_name):
                             func = getattr(CellposeModel, func_name)
-                            # Primary discovery (cellpose.eval)
+                            # Primary discovery (cellpose.models.CellposeModel.eval)
                             meta = self._introspect_and_format(
-                                func, "cellpose.models", fn_id, func_name
+                                func, "cellpose.models.CellposeModel", fn_id, func_name
                             )
                             all_metadata.append(meta)
                             seen_fn_ids.add(fn_id)
@@ -143,7 +143,7 @@ class CellposeAdapter:
                         continue
 
                     for func_name in funcs_to_discover:
-                        fn_id = f"cellpose.{func_name}"
+                        fn_id = f"cellpose.train.{func_name}"
                         if fn_id in seen_fn_ids:
                             continue
 

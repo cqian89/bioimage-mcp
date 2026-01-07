@@ -85,9 +85,9 @@ class TestUnsupportedFormats:
                 {
                     "steps": [
                         {
-                            "fn_id": "cellpose.segment",
+                            "fn_id": "cellpose.models.CellposeModel.eval",
                             "inputs": {
-                                "image": {
+                                "x": {
                                     "type": "BioImageRef",
                                     "format": "OME-Zarr",  # Unsupported in v0.1
                                     "uri": "file:///path/to/image.zarr",
@@ -124,9 +124,9 @@ class TestUnsupportedFormats:
                 {
                     "steps": [
                         {
-                            "fn_id": "cellpose.segment",
+                            "fn_id": "cellpose.models.CellposeModel.eval",
                             "inputs": {
-                                "image": {
+                                "x": {
                                     "type": "BioImageRef",
                                     "format": "OME-Zarr",
                                     "uri": "file:///path/to/image.zarr",
@@ -172,9 +172,9 @@ class TestUnsupportedFormats:
                 {
                     "steps": [
                         {
-                            "fn_id": "cellpose.segment",
+                            "fn_id": "cellpose.models.CellposeModel.eval",
                             "inputs": {
-                                "image": {
+                                "x": {
                                     "type": "BioImageRef",
                                     "format": "zarr",  # lowercase
                                     "uri": "file:///path/to/image.zarr",
@@ -210,9 +210,9 @@ class TestUnsupportedFormats:
                 {
                     "steps": [
                         {
-                            "fn_id": "cellpose.segment",
+                            "fn_id": "cellpose.models.CellposeModel.eval",
                             "inputs": {
-                                "image": {
+                                "x": {
                                     "type": "BioImageRef",
                                     "format": "OME-TIFF",  # Supported!
                                     "uri": "file:///path/to/image.ome.tiff",
@@ -248,9 +248,9 @@ class TestUnsupportedFormats:
                 {
                     "steps": [
                         {
-                            "fn_id": "cellpose.segment",
+                            "fn_id": "cellpose.models.CellposeModel.eval",
                             "inputs": {
-                                "image": {
+                                "x": {
                                     "type": "BioImageRef",
                                     "format": "TIFF",
                                     "uri": "file:///path/to/image.tiff",

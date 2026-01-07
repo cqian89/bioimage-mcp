@@ -51,16 +51,16 @@ class TestWorkflowRecordContract:
             "workflow_spec": {
                 "steps": [
                     {
-                        "fn_id": "cellpose.segment",
-                        "inputs": {"image": {"type": "BioImageRef"}},
+                        "fn_id": "cellpose.models.CellposeModel.eval",
+                        "inputs": {"x": {"type": "BioImageRef"}},
                         "params": {"diameter": 30.0},
                     }
                 ]
             },
-            "inputs": {"image": {"ref_id": "img-001", "type": "BioImageRef"}},
+            "inputs": {"x": {"ref_id": "img-001", "type": "BioImageRef"}},
             "params": {"diameter": 30.0},
             "outputs": {"labels": {"ref_id": "lbl-001", "type": "LabelImageRef"}},
-            "provenance": {"fn_id": "cellpose.segment"},
+            "provenance": {"fn_id": "cellpose.models.CellposeModel.eval"},
         }
 
         validated = WorkflowRecordSchema(**record)
@@ -156,7 +156,11 @@ class TestWorkflowRecordContract:
             "schema_version": "0.1",
             "run_id": "run-abc123",
             "created_at": "2024-01-01T00:00:00Z",
-            "workflow_spec": {"steps": [{"fn_id": "cellpose.segment", "inputs": {}, "params": {}}]},
+            "workflow_spec": {
+                "steps": [
+                    {"fn_id": "cellpose.models.CellposeModel.eval", "inputs": {}, "params": {}}
+                ]
+            },
             "inputs": {},
             "params": {},
             "outputs": {},
@@ -200,15 +204,15 @@ class TestWorkflowRecordContract:
             "schema_version": "0.1",
             "run_id": "run-abc123",
             "created_at": "2024-01-01T00:00:00Z",
-            "workflow_spec": {"steps": [{"fn_id": "cellpose.segment"}]},
+            "workflow_spec": {"steps": [{"fn_id": "cellpose.models.CellposeModel.eval"}]},
             "inputs": {},
             "params": {},
             "outputs": {},
             "provenance": {
-                "fn_id": "cellpose.segment",
+                "fn_id": "cellpose.models.CellposeModel.eval",
                 "tool_version": "4.0.1",
             },
         }
 
         validated = WorkflowRecordSchema(**record)
-        assert validated.provenance["fn_id"] == "cellpose.segment"
+        assert validated.provenance["fn_id"] == "cellpose.models.CellposeModel.eval"

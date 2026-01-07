@@ -107,7 +107,7 @@ We focus on APIs with explicit signatures as listed in the Gap Analysis table.
 **Given** a user has a session, **When** they call a tool to load/instantiate `CellposeModel` (returning an `ObjectRef`), **And** they call `eval` using that `ObjectRef` as the `self` input, **Then** the model is not re-loaded from disk, significantly reducing execution time.
 
 ### User Story 2: Training and Segmenting (Priority: P2)
-**Given** a set of training images and labels, **When** the user instantiates a network (via `CellposeModel.__init__`) to get an `ObjectRef`, **And** they call `cellpose.train.train_seg(net=ObjectRef, ...)`, **Then** it returns a `NativeOutputRef` (path to `.pth` weights) and a `TableRef` (training losses). **When** the user then instantiates a `CellposeModel` using that weights path as the `pretrained_model` parameter, **Then** they get a new `ObjectRef` that can be used for segmentation.
+**Given** a set of training images and labels, **When** the user instantiates a network (via `CellposeModel`) to get an `ObjectRef`, **And** they call `cellpose.train.train_seg(net=ObjectRef, ...)`, **Then** it returns a `NativeOutputRef` (path to `.pth` weights) and a `TableRef` (training losses). **When** the user then instantiates a `CellposeModel` using that weights path as the `pretrained_model` parameter, **Then** they get a new `ObjectRef` that can be used for segmentation.
 
 ## Generalization to Other ML Libraries
 The `ObjectRef` and Class-Based Execution patterns are designed to be library-agnostic:
@@ -197,7 +197,7 @@ dynamic_sources:
     functions: [average_precision]
 
 function_overlays:
-  "cellpose.models.CellposeModel.__init__":
+  "cellpose.models.CellposeModel":
     hints:
       outputs:
         self: { artifact_type: ObjectRef }
