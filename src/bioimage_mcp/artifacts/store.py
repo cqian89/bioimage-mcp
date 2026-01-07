@@ -36,6 +36,44 @@ def _is_within(path: Path, root: Path) -> bool:
         return False
 
 
+def _get_compound_suffix(path: Path, format: str) -> str:
+    """Extract the full file extension, including compound extensions like .ome.tiff.
+
+    Handles:
+    - Simple extensions: .tif, .png, .csv
+    - Compound extensions: .ome.tiff, .ome.tif, .ome.zarr
+    - Format-based inference when path has no suffix
+    """
+    name = path.name.lower()
+
+    # Check for compound OME extensions first
+    if name.endswith(".ome.tiff"):
+        return ".ome.tiff"
+    if name.endswith(".ome.tif"):
+        return ".ome.tif"
+    if name.endswith(".ome.zarr"):
+        return ".ome.zarr"
+    if name.endswith(".zarr"):
+        return ".zarr"
+
+    # Fall back to simple suffix
+    if path.suffix:
+        return path.suffix
+
+    # Infer from format if no extension
+    fmt_lower = format.lower()
+    if "ome-zarr" in fmt_lower or "zarr" in fmt_lower:
+        return ".zarr"
+    if "ome-tiff" in fmt_lower:
+        return ".ome.tiff"
+    if "tiff" in fmt_lower or "tif" in fmt_lower:
+        return ".tif"
+    if "png" in fmt_lower:
+        return ".png"
+
+    return ""
+
+
 def _guess_mime_type(artifact_type: str, fmt: str) -> str:
     """Guess MIME type from artifact type and format.
 
@@ -155,8 +193,8 @@ class ArtifactStore:
     def _objects_dir(self) -> Path:
         return self._config.artifact_store_root / "objects"
 
-    def _artifact_path(self, ref_id: str) -> Path:
-        return self._objects_dir() / ref_id
+    def _artifact_path(self, ref_id: str, suffix: str = "") -> Path:
+        return self._objects_dir() / f"{ref_id}{suffix}"
 
     def import_file(
         self,
@@ -176,7 +214,8 @@ class ArtifactStore:
             assert_path_allowed("read", src, self._config)
 
         ref_id = uuid.uuid4().hex
-        dest = self._artifact_path(ref_id)
+        suffix = _get_compound_suffix(src, format)
+        dest = self._artifact_path(ref_id, suffix)
         dest.parent.mkdir(parents=True, exist_ok=True)
 
         try:
@@ -255,7 +294,8 @@ class ArtifactStore:
         assert_path_allowed("read", src, self._config)
 
         ref_id = uuid.uuid4().hex
-        dest = self._artifact_path(ref_id)
+        suffix = _get_compound_suffix(src, format)
+        dest = self._artifact_path(ref_id, suffix)
         dest.parent.mkdir(parents=True, exist_ok=True)
 
         try:
@@ -530,7 +570,7 @@ class ArtifactStore:
 
     def write_log(self, content: str) -> ArtifactRef:
         ref_id = uuid.uuid4().hex
-        dest = self._artifact_path(ref_id)
+        dest = self._artifact_path(ref_id, ".log")
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(content)
 
@@ -574,7 +614,16 @@ class ArtifactStore:
             ArtifactRef with type=NativeOutputRef
         """
         ref_id = uuid.uuid4().hex
-        dest = self._artifact_path(ref_id)
+
+        # Determine extension from format
+        suffix = ".bin"
+        fmt_lower = format.lower()
+        if "json" in fmt_lower:
+            suffix = ".json"
+        elif "npy" in fmt_lower:
+            suffix = ".npy"
+
+        dest = self._artifact_path(ref_id, suffix)
         dest.parent.mkdir(parents=True, exist_ok=True)
 
         # Handle different content types

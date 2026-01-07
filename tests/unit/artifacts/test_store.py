@@ -108,3 +108,108 @@ def test_import_directory_zarr_sets_storage_type_zarr_temp(tmp_path: Path) -> No
 
         loaded = store.get(ref.ref_id)
         assert loaded.storage_type == "zarr-temp"
+
+
+def test_import_file_preserves_extension(tmp_path: Path) -> None:
+    """Artifacts imported from files should have the file extension in their path."""
+    artifact_root = tmp_path / "artifacts"
+    data_root = tmp_path / "data"
+    data_root.mkdir()
+
+    config = Config(
+        artifact_store_root=artifact_root,
+        tool_manifest_roots=[],
+        fs_allowlist_read=[data_root],
+        fs_allowlist_write=[artifact_root],
+    )
+
+    # Create a .tif file
+    src = data_root / "test.tif"
+    src.write_bytes(b"fake tiff data")
+
+    with ArtifactStore(config) as store:
+        ref = store.import_file(src, artifact_type="BioImageRef", format="TIFF")
+
+        # The artifact path should end with .tif
+        artifact_path = Path(ref.uri.replace("file://", ""))
+        assert artifact_path.suffix == ".tif"
+        assert artifact_path.name == f"{ref.ref_id}.tif"
+
+
+def test_import_file_preserves_compound_extension(tmp_path: Path) -> None:
+    """Compound extensions like .ome.tiff should be preserved."""
+    artifact_root = tmp_path / "artifacts"
+    data_root = tmp_path / "data"
+    data_root.mkdir()
+
+    config = Config(
+        artifact_store_root=artifact_root,
+        tool_manifest_roots=[],
+        fs_allowlist_read=[data_root],
+        fs_allowlist_write=[artifact_root],
+    )
+
+    src = data_root / "test.ome.tiff"
+    src.write_bytes(b"fake ome-tiff data")
+
+    with ArtifactStore(config) as store:
+        ref = store.import_file(src, artifact_type="BioImageRef", format="OME-TIFF")
+
+        artifact_path = Path(ref.uri.replace("file://", ""))
+        assert artifact_path.name.endswith(".ome.tiff")
+
+
+def test_import_directory_preserves_zarr_extension(tmp_path: Path) -> None:
+    """Directory artifacts like .zarr should preserve the extension."""
+    artifact_root = tmp_path / "artifacts"
+    data_root = tmp_path / "data"
+    data_root.mkdir()
+
+    config = Config(
+        artifact_store_root=artifact_root,
+        tool_manifest_roots=[],
+        fs_allowlist_read=[data_root],
+        fs_allowlist_write=[artifact_root],
+    )
+
+    zarr_dir = data_root / "test.ome.zarr"
+    zarr_dir.mkdir()
+    (zarr_dir / ".zattrs").write_text("{}")
+
+    with ArtifactStore(config) as store:
+        ref = store.import_directory(zarr_dir, artifact_type="BioImageRef", format="OME-ZARR")
+
+        artifact_path = Path(ref.uri.replace("file://", ""))
+        assert artifact_path.name.endswith(".ome.zarr")
+
+
+def test_write_log_adds_extension(tmp_path: Path) -> None:
+    """Log artifacts should have .log extension."""
+    artifact_root = tmp_path / "artifacts"
+    config = Config(
+        artifact_store_root=artifact_root,
+        tool_manifest_roots=[],
+        fs_allowlist_write=[artifact_root],
+    )
+
+    with ArtifactStore(config) as store:
+        ref = store.write_log("test log content")
+
+        artifact_path = Path(ref.uri.replace("file://", ""))
+        assert artifact_path.suffix == ".log"
+
+
+def test_write_native_output_json_adds_extension(tmp_path: Path) -> None:
+    """JSON native outputs should have .json extension."""
+    artifact_root = tmp_path / "artifacts"
+    config = Config(
+        artifact_store_root=artifact_root,
+        tool_manifest_roots=[],
+        fs_allowlist_write=[artifact_root],
+    )
+
+    with ArtifactStore(config) as store:
+        ref = store.write_native_output({"key": "value"}, format="workflow-record-json")
+
+        artifact_path = Path(ref.uri.replace("file://", ""))
+        assert artifact_path.suffix == ".json"
