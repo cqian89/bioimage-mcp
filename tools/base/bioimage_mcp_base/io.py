@@ -205,7 +205,12 @@ def export(*, inputs: dict, params: dict, work_dir: Path) -> dict:
     Supports OME-TIFF (default) and OME-Zarr.
     """
     image_ref = inputs.get("image") or {}
-    source_ref_id = image_ref.get("ref_id")
+
+    # Handle both string (ref_id or URI) and dict inputs
+    if isinstance(image_ref, str):
+        source_ref_id = None  # Can't extract ref_id from plain string
+    else:
+        source_ref_id = image_ref.get("ref_id")
 
     fmt = params.get("format", "OME-TIFF")
     if fmt == "OME-TIFF":

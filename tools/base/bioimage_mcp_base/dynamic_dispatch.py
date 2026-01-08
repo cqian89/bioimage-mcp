@@ -73,24 +73,41 @@ def _convert_outputs_to_refs(outputs: list[Any]) -> dict[str, dict[str, Any]]:
     if not outputs:
         return {"outputs": {}}
 
-    # For single output, use "output" key
-    # TODO: Handle multiple outputs with proper naming
-    if len(outputs) == 1:
-        output_ref = outputs[0]
-        # If it's an object with to_ref method, call it
-        if hasattr(output_ref, "to_ref"):
-            output_ref = output_ref.to_ref()
-        return {"outputs": {"output": output_ref}}
-
-    # Multiple outputs - use indexed names or adapter-specific names
     output_dict = {}
+    used_names = set()
+
     for i, artifact in enumerate(outputs):
-        key = f"output_{i}" if i > 0 else "output"
         # If it's an object with to_ref method, call it
         if hasattr(artifact, "to_ref"):
-            output_dict[key] = artifact.to_ref()
-        else:
-            output_dict[key] = artifact
+            artifact = artifact.to_ref()
+
+        # Try to get semantic name from output
+        name = None
+
+        # 1. Check metadata for explicit output_name
+        if isinstance(artifact, dict):
+            metadata = artifact.get("metadata", {})
+            if isinstance(metadata, dict):
+                name = metadata.get("output_name")
+
+        # 2. Extract from path if available (e.g., "phasor_from_signal-mean.ome.tiff" -> "mean")
+        if not name and isinstance(artifact, dict):
+            path = artifact.get("path", "")
+            if path:
+                import re
+
+                # Match pattern like "funcname-semanticname.ext"
+                # Handle both .tiff and .ome.tiff by allowing multiple dots in extension
+                match = re.search(r"-([a-zA-Z][a-zA-Z0-9_]*)\.[a-z.]+$", path)
+                if match:
+                    name = match.group(1)
+
+        # 3. Fall back to indexed naming
+        if not name or name in used_names:
+            name = f"output_{i}" if i > 0 else "output"
+
+        used_names.add(name)
+        output_dict[name] = artifact
 
     return {"outputs": output_dict}
 

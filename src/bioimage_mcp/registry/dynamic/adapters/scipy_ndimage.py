@@ -9,7 +9,7 @@ import inspect
 import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 import numpy as np
 
@@ -138,7 +138,7 @@ class ScipyNdimageAdapter(BaseAdapter):
                 raise ValueError(f"Unsupported URI scheme: {parsed.scheme}")
 
             # Remove leading slash on Windows if path starts with drive letter
-            path = parsed.path
+            path = unquote(parsed.path)
             if path.startswith("/") and len(path) > 2 and path[2] == ":":
                 path = path[1:]
         else:

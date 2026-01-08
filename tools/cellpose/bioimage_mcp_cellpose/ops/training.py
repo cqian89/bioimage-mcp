@@ -7,22 +7,12 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
-from urllib.parse import unquote
 
 import numpy as np
 import pandas as pd
 from bioio import BioImage
 
-
-def _uri_to_path(uri: str) -> Path:
-    """Convert a file:// URI to a Path."""
-    if uri.startswith("file://"):
-        # Handle Windows paths that may have extra slash: file:///C:/...
-        path_str = uri[7:]  # Remove file://
-        if len(path_str) > 2 and path_str[0] == "/" and path_str[2] == ":":
-            path_str = path_str[1:]  # Remove leading / for Windows paths
-        return Path(unquote(path_str))
-    return Path(uri)
+from .utils import _coerce_param, _uri_to_path
 
 
 def run_train_seg(
@@ -41,6 +31,8 @@ def run_train_seg(
     Returns:
         Dict with output paths for weights and losses
     """
+    import shutil
+
     import torch
     from cellpose.models import CellposeModel
 
@@ -63,10 +55,12 @@ def run_train_seg(
         raise FileNotFoundError(f"Input mask not found: {mask_path}")
 
     # Load data
+    print(f"Loading image from {image_path}")
     bio_img = BioImage(image_path)
     img_data = bio_img.data
     img_data = img_data.compute() if hasattr(img_data, "compute") else img_data
 
+    print(f"Loading mask from {mask_path}")
     bio_mask = BioImage(mask_path)
     mask_data = bio_mask.data
     mask_data = mask_data.compute() if hasattr(mask_data, "compute") else mask_data
@@ -75,28 +69,34 @@ def run_train_seg(
     img = np.squeeze(img_data)
     mask = np.squeeze(mask_data)
 
-    # Params
+    # Params with coercion
     model_type = params.get("model_type", "cyto3")
-    n_epochs = params.get("n_epochs", 10)
-    learning_rate = params.get("learning_rate", 0.1)
-    weight_decay = params.get("weight_decay", 0.0001)
-    batch_size = params.get("batch_size", 8)
+    n_epochs = _coerce_param(params.get("n_epochs", 10), int, "n_epochs")
+    learning_rate = _coerce_param(params.get("learning_rate", 0.1), float, "learning_rate")
+    weight_decay = _coerce_param(params.get("weight_decay", 0.0001), float, "weight_decay")
+    batch_size = _coerce_param(params.get("batch_size", 8), int, "batch_size")
     channels = params.get("channels", [0, 0])
-    gpu = params.get("gpu", torch.cuda.is_available())
+    gpu = _coerce_param(params.get("gpu", torch.cuda.is_available()), bool, "gpu")
+    model_name = params.get("model_name", "finetuned_model")
+    user_save_path_str = params.get("save_path")
 
     # Initialize model if not provided
     if model is None:
+        print(f"Initializing Cellpose model: {model_type} (GPU={gpu})")
         model = CellposeModel(model_type=model_type, gpu=gpu)
 
     # Train
     train_data = [img]
     train_labels = [mask]
 
-    # Use work_dir for saving
-    save_path = work_dir / "models"
-    save_path.mkdir(parents=True, exist_ok=True)
+    # Use work_dir for saving (Internal Provenance)
+    internal_save_path = work_dir / "models"
+    internal_save_path.mkdir(parents=True, exist_ok=True)
 
     from cellpose import train
+
+    print(f"Starting training for {n_epochs} epochs...")
+    print(f"Internal save path: {internal_save_path}, Model name: {model_name}")
 
     # Use train_seg directly for better compatibility
     results = train.train_seg(
@@ -108,8 +108,8 @@ def run_train_seg(
         learning_rate=learning_rate,
         weight_decay=weight_decay,
         batch_size=batch_size,
-        save_path=str(save_path),
-        model_name="finetuned_model",
+        save_path=str(internal_save_path),
+        model_name=model_name,
         min_train_masks=1,
     )
 
@@ -121,21 +121,49 @@ def run_train_seg(
         model_weights_path = results
         train_losses = [0.0] * n_epochs
 
-    # If model_weights_path is None, find it in save_path
+    # If model_weights_path is None, find it in internal_save_path
     if not model_weights_path:
-        weights_files = sorted(list(save_path.glob("finetuned_model_*")))
+        weights_files = sorted(list(internal_save_path.glob(f"{model_name}_*")))
         if weights_files:
             model_weights_path = str(weights_files[-1])
         else:
             # Fallback
-            model_weights_path = str(save_path / "finetuned_model")
+            model_weights_path = str(internal_save_path / model_name)
+
+    print(f"Training complete. Weights saved to: {model_weights_path}")
 
     # For losses, use the real losses if available
     losses_path = work_dir / "training_losses.csv"
     losses_df = pd.DataFrame({"epoch": list(range(1, len(train_losses) + 1)), "loss": train_losses})
     losses_df.to_csv(losses_path, index=False)
+    print(f"Losses saved to: {losses_path}")
 
-    return {
+    # Option C: Copy to user-specified path if provided
+    user_copy_info = {}
+    if user_save_path_str:
+        user_save_path = Path(user_save_path_str)
+
+        # Determine if it's a directory or a specific file path
+        # If it has an extension, assume it's a file path
+        if user_save_path.suffix:
+            weights_dest = user_save_path
+            target_dir = user_save_path.parent
+        else:
+            target_dir = user_save_path
+            weights_dest = target_dir / Path(model_weights_path).name
+
+        target_dir.mkdir(parents=True, exist_ok=True)
+
+        print(f"Copying model to user path: {weights_dest}")
+        shutil.copy2(model_weights_path, weights_dest)
+
+        losses_dest = target_dir / "training_losses.csv"
+        print(f"Copying losses to user path: {losses_dest}")
+        shutil.copy2(losses_path, losses_dest)
+
+        user_copy_info["user_copy_path"] = str(weights_dest)
+
+    output = {
         "weights": {
             "type": "NativeOutputRef",
             "format": "cellpose-model",
@@ -147,3 +175,8 @@ def run_train_seg(
             "path": str(losses_path),
         },
     }
+
+    if user_copy_info:
+        output["weights"].update(user_copy_info)
+
+    return output

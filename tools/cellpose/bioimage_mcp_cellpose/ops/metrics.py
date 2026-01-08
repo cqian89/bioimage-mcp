@@ -38,8 +38,8 @@ def run_average_precision(
     Returns:
         Dict with results TableRef containing AP values
     """
-    from cellpose import metrics
     from bioio import BioImage
+    from cellpose import metrics
 
     # Load predicted masks
     pred_ref = inputs.get("masks_pred", {})

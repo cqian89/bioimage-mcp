@@ -8,20 +8,10 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
-from urllib.parse import unquote
 
 import numpy as np
 
-
-def _uri_to_path(uri: str) -> Path:
-    """Convert a file:// URI to a Path."""
-    if uri.startswith("file://"):
-        # Handle Windows paths that may have extra slash: file:///C:/...
-        path_str = uri[7:]  # Remove file://
-        if len(path_str) > 2 and path_str[0] == "/" and path_str[2] == ":":
-            path_str = path_str[1:]  # Remove leading / for Windows paths
-        return Path(unquote(path_str))
-    return Path(uri)
+from .utils import _coerce_param, _uri_to_path
 
 
 def run_denoise(
@@ -83,11 +73,11 @@ def run_denoise(
     # Squeeze singleton dimensions for cellpose
     img = np.squeeze(img_data)
 
-    # Extract parameters with defaults
-    diameter = params.get("diameter")
+    # Extract parameters with defaults and coercion
+    diameter = _coerce_param(params.get("diameter"), float, "diameter")
     channels = params.get("channels")
-    normalize = params.get("normalize", True)
-    tile = params.get("tile", True)
+    normalize = _coerce_param(params.get("normalize", True), bool, "normalize")
+    tile = _coerce_param(params.get("tile", True), bool, "tile")
 
     # Handle diameter=0 or None as "auto-estimate"
     if diameter is None or diameter == 0:
@@ -96,7 +86,7 @@ def run_denoise(
     # Initialize model if not provided
     if model is None:
         model_type = params.get("model_type", "denoise_cyto3")
-        gpu = params.get("gpu", False)
+        gpu = _coerce_param(params.get("gpu", False), bool, "gpu")
         model = DenoiseModel(model_type=model_type, gpu=gpu)
 
     # Run denoising
@@ -130,7 +120,7 @@ def run_denoise(
         dim_order = "CZYX"
     else:
         # Fallback to standard 5D
-        dim_order = "TCZYX"[-denoised.ndim:]
+        dim_order = "TCZYX"[-denoised.ndim :]
 
     OmeTiffWriter.save(denoised, str(denoised_path), dim_order=dim_order)
 

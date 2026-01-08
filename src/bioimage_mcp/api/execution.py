@@ -614,6 +614,28 @@ class ExecutionService:
         target_env = self._get_target_env(fn_id)
         fn_ports = _get_function_ports(self._config, [fn_id]).get(fn_id, {})
 
+        # Pre-process inputs: convert plain ref_id strings to resolved artifact dicts
+        for input_name, input_ref in inputs.items():
+            if isinstance(input_ref, str) and not input_ref.startswith(("file://", "mem://", "/")):
+                # Treat as ref_id string - resolve to full artifact
+                ref_id = input_ref
+                mem_ref = self._memory_store.get(ref_id)
+                if mem_ref:
+                    resolved = mem_ref.model_dump()
+                    # Handle _simulated_path for mem:// artifacts
+                    simulated_path = (
+                        mem_ref.metadata.get("_simulated_path") if mem_ref.metadata else None
+                    )
+                    if simulated_path:
+                        resolved["uri"] = f"file://{simulated_path}"
+                    inputs[input_name] = resolved
+                else:
+                    try:
+                        ref = self._artifact_store.get(ref_id)
+                        inputs[input_name] = ref.model_dump()
+                    except KeyError:
+                        pass  # Let it fail later with better error message
+
         for input_name, input_ref in inputs.items():
             if not isinstance(input_ref, dict):
                 continue

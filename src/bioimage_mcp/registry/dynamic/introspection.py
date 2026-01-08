@@ -235,12 +235,17 @@ class Introspector:
             return "number"
         elif annotation is bool or annotation == "bool":
             return "boolean"
+        elif annotation in (list, tuple) or annotation in ("list", "tuple"):
+            return "array"
 
         # Handle string annotations (forward references)
         if isinstance(annotation, str):
             lower_annotation = annotation.lower()
             if "int" in lower_annotation and "point" not in lower_annotation:
                 return "integer"
+            # Check for list/tuple BEFORE str (since "list of str" contains both)
+            elif "list" in lower_annotation or "tuple" in lower_annotation:
+                return "array"
             elif "str" in lower_annotation:
                 return "string"
             elif "float" in lower_annotation:
@@ -274,6 +279,10 @@ class Introspector:
                 return "integer"
             if isinstance(default_value, float):
                 return "number"
+
+            # Handle list/tuple default values
+            if isinstance(default_value, (list, tuple)):
+                return "array"
 
         # Default to string for unknown/complex types
         return "string"

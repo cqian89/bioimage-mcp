@@ -318,7 +318,11 @@ def inspect(*, inputs: dict[str, Any], params: dict[str, Any], work_dir: Path) -
     # Get path from params or from BioImageRef input
     image_ref = inputs.get("image")
     if image_ref:
-        uri = image_ref.get("uri", "")
+        if isinstance(image_ref, str):
+            uri = image_ref
+        else:
+            uri = image_ref.get("uri", "")
+
         if uri.startswith("file://"):
             path = uri[7:]
         else:
@@ -393,7 +397,11 @@ def slice_image(
         raise ValueError("Missing required parameter: slices")
 
     # Load image via BioImage
-    uri = image_ref.get("uri", "")
+    if isinstance(image_ref, str):
+        uri = image_ref
+    else:
+        uri = image_ref.get("uri", "")
+
     if uri.startswith("file://"):
         path = uri[7:]
     else:
@@ -484,7 +492,7 @@ def slice_image(
         "metadata": {
             "shape": list(data.shape),
             "dtype": str(data.dtype),
-            "source_ref_id": image_ref.get("ref_id"),
+            "source_ref_id": None if isinstance(image_ref, str) else image_ref.get("ref_id"),
         },
     }
 
@@ -652,7 +660,7 @@ def get_supported_formats(
     }
 
 
-def _infer_export_format(artifact: dict[str, Any], requested_path: str | None = None) -> str:
+def _infer_export_format(artifact: dict[str, Any] | str, requested_path: str | None = None) -> str:
     """Infer export format from artifact type and metadata."""
     if requested_path:
         path_obj = Path(requested_path)
@@ -667,6 +675,9 @@ def _infer_export_format(artifact: dict[str, Any], requested_path: str | None = 
             return "PNG"
         if ext == ".npy":
             return "NPY"
+
+    if isinstance(artifact, str):
+        return "OME-TIFF"
 
     metadata = artifact.get("metadata", {})
     # Large images (>4GB) -> OME-Zarr
@@ -796,18 +807,34 @@ def export(*, inputs: dict[str, Any], params: dict[str, Any], work_dir: Path) ->
         ext = ext_map.get(dest_format, ".bin")
         dest_path = work_dir / f"exported{ext}"
 
-    uri = artifact.get("uri")
+    # Handle both string (URI/path) and dict inputs
+    if isinstance(artifact, str):
+        uri = artifact
+        source_ref_id = None
+        artifact_type = "BioImageRef"
+    else:
+        uri = artifact.get("uri")
+        source_ref_id = artifact.get("ref_id")
+        artifact_type = artifact.get("type", "BioImageRef")
+
     if not uri:
         raise ValueError("Artifact missing URI")
-    src_path = uri_to_path(uri)
-    data = load_native_image(src_path, format_hint=artifact.get("format"))
+
+    src_path = uri_to_path(str(uri))
+    data = load_native_image(
+        src_path, format_hint=None if isinstance(artifact, str) else artifact.get("format")
+    )
 
     if dest_format == "PNG":
         _export_png(data, dest_path)
     elif dest_format == "OME-TIFF":
         _export_ome_tiff(data, dest_path)
     elif dest_format == "OME-ZARR":
-        dims = artifact.get("metadata", {}).get("dims") or artifact.get("dims")
+        dims = (
+            None
+            if isinstance(artifact, str)
+            else (artifact.get("metadata", {}).get("dims") or artifact.get("dims"))
+        )
         _export_ome_zarr(data, dest_path, dims=dims)
     elif dest_format == "NPY":
         np.save(dest_path, data)
@@ -817,11 +844,11 @@ def export(*, inputs: dict[str, Any], params: dict[str, Any], work_dir: Path) ->
     return {
         "outputs": {
             "output": {
-                "type": artifact.get("type", "BioImageRef"),
+                "type": artifact_type,
                 "format": dest_format,
                 "path": str(dest_path),
                 "uri": f"file://{dest_path}",
-                "metadata": {"source_ref_id": artifact.get("ref_id")},
+                "metadata": {"source_ref_id": source_ref_id},
             },
         }
     }

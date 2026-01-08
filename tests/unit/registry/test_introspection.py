@@ -59,6 +59,15 @@ def gaussian_filter_numpy_style(
     return image
 
 
+def func_with_array_param(
+    data: "ndarray",
+    properties: tuple = ("label", "bbox"),
+    columns: list = ["a", "b"],
+) -> dict:
+    """Function with array-type parameters."""
+    return {}
+
+
 class TestIntrospector:
     """Test cases for Introspector function signature analysis."""
 
@@ -220,3 +229,27 @@ class TestIntrospector:
         assert param_truncate.type == "number"
         # This should also FAIL
         assert "Truncate the filter at this many standard deviations" in param_truncate.description
+
+    def test_introspect_array_default_parameters(self):
+        """Introspector should detect array type for list/tuple default values."""
+        introspector = Introspector()
+
+        metadata = introspector.introspect(
+            func_with_array_param,
+            source_adapter="test-adapter",
+        )
+
+        # Check properties (tuple default)
+        assert "properties" in metadata.parameters
+        param_properties = metadata.parameters["properties"]
+        assert param_properties.type == "array"
+        assert param_properties.default == [
+            "label",
+            "bbox",
+        ]  # _make_json_serializable converts to list
+
+        # Check columns (list default)
+        assert "columns" in metadata.parameters
+        param_columns = metadata.parameters["columns"]
+        assert param_columns.type == "array"
+        assert param_columns.default == ["a", "b"]

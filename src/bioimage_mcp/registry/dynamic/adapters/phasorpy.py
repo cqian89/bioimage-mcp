@@ -12,7 +12,7 @@ import logging
 import tempfile
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 import numpy as np
 
@@ -204,7 +204,7 @@ class PhasorPyAdapter:
         elif uri:
             # Parse URI and get file path
             parsed = urlparse(str(uri))
-            path = parsed.path
+            path = unquote(parsed.path)
             if path.startswith("/") and len(path) > 2 and path[2] == ":":
                 path = path[1:]
         else:
@@ -307,6 +307,7 @@ class PhasorPyAdapter:
             "shape": list(array.shape),
             "ndim": array.ndim,
             "dtype": str(array.dtype),
+            "output_name": name.split("-")[-1] if "-" in name else name,
         }
         if extra_metadata:
             metadata.update(extra_metadata)

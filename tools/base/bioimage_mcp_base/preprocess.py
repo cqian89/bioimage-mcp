@@ -9,7 +9,7 @@ from bioimage_mcp_base.utils import load_image, save_zarr, uri_to_path
 
 def normalize_intensity(*, inputs: dict, params: dict, work_dir: Path) -> Path:
     image_ref = inputs.get("image") or {}
-    uri = image_ref.get("uri")
+    uri = image_ref if isinstance(image_ref, str) else image_ref.get("uri")
     if not uri:
         raise ValueError("Input 'image' must include uri")
 
@@ -17,7 +17,6 @@ def normalize_intensity(*, inputs: dict, params: dict, work_dir: Path) -> Path:
     pmax = float(params.get("pmax", 99.8))
     clip = bool(params.get("clip", True))
 
-    image_ref.get("format")
     data = load_image(uri_to_path(str(uri))).astype("float32")
     vmin, vmax = np.percentile(data, (pmin, pmax))
     scaled = (data - vmin) / (vmax - vmin) if vmax != vmin else data
@@ -26,8 +25,8 @@ def normalize_intensity(*, inputs: dict, params: dict, work_dir: Path) -> Path:
     return save_zarr(scaled, work_dir, "normalized.ome.zarr")
 
 
-def _load_image_with_axes(image_ref: dict) -> tuple[np.ndarray, str]:
-    uri = image_ref.get("uri")
+def _load_image_with_axes(image_ref: dict | str) -> tuple[np.ndarray, str]:
+    uri = image_ref if isinstance(image_ref, str) else image_ref.get("uri")
     if not uri:
         raise ValueError("Input 'image' must include uri")
 
@@ -35,13 +34,17 @@ def _load_image_with_axes(image_ref: dict) -> tuple[np.ndarray, str]:
     if not path.exists():
         raise FileNotFoundError(f"Input image not found: {path}")
 
-    fmt = (image_ref.get("format") or "").lower()
+    if isinstance(image_ref, str):
+        fmt = ""
+    else:
+        fmt = (image_ref.get("format") or "").lower()
+
     if "zarr" in fmt or path.suffix.lower() == ".zarr":
         raise ValueError(
             "OME-Zarr format is not supported. Convert to OME-TIFF first (base.export_ome_tiff)."
         )
     if fmt and "tiff" not in fmt:
-        raise ValueError(f"Unsupported input format: {image_ref.get('format')}")
+        raise ValueError(f"Unsupported input format: {fmt}")
     if not fmt and path.suffix.lower() not in {".tif", ".tiff"}:
         raise ValueError("Input must be an OME-TIFF (.tif/.tiff) file")
 
@@ -54,7 +57,12 @@ def _load_image_with_axes(image_ref: dict) -> tuple[np.ndarray, str]:
     data = img.data
     if hasattr(data, "compute"):
         data = data.compute()
-    axes = (image_ref.get("metadata") or {}).get("axes", "")
+
+    if isinstance(image_ref, str):
+        axes = ""
+    else:
+        axes = (image_ref.get("metadata") or {}).get("axes", "")
+
     if not axes:
         axes = getattr(img, "axes", "") or getattr(getattr(img, "dims", None), "order", "")
 

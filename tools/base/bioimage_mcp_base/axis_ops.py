@@ -105,13 +105,12 @@ def _write_ome_tiff(array: np.ndarray, work_dir: Path, name: str, axes: str) -> 
 def relabel_axes(inputs: dict, params: dict, work_dir: Path) -> dict:
     validated = RelabelAxesParams.model_validate(params)
     image_ref = inputs.get("image") or {}
-    uri = image_ref.get("uri")
+    uri = image_ref if isinstance(image_ref, str) else image_ref.get("uri")
     if not uri:
         raise ValueError("Error in base.relabel_axes: Input 'image' must include uri")
 
-    image_ref.get("format")
     data = load_image(uri_to_path(str(uri)))
-    metadata = image_ref.get("metadata") or {}
+    metadata = {} if isinstance(image_ref, str) else (image_ref.get("metadata") or {})
     axes = str(metadata.get("axes") or "")
 
     shape = metadata.get("shape")
@@ -167,13 +166,12 @@ def relabel_axes(inputs: dict, params: dict, work_dir: Path) -> dict:
 def squeeze(inputs: dict, params: dict, work_dir: Path) -> dict:
     validated = SqueezeParams.model_validate(params)
     image_ref = inputs.get("image") or {}
-    uri = image_ref.get("uri")
+    uri = image_ref if isinstance(image_ref, str) else image_ref.get("uri")
     if not uri:
         raise ValueError("Error in base.squeeze: Input 'image' must include uri")
 
-    image_ref.get("format")
     data = load_image(uri_to_path(str(uri)))
-    metadata = image_ref.get("metadata") or {}
+    metadata = {} if isinstance(image_ref, str) else (image_ref.get("metadata") or {})
     axes = str(metadata.get("axes") or "")
 
     axis = validated.axis
@@ -221,13 +219,12 @@ def squeeze(inputs: dict, params: dict, work_dir: Path) -> dict:
 def expand_dims(inputs: dict, params: dict, work_dir: Path) -> dict:
     validated = ExpandDimsParams.model_validate(params)
     image_ref = inputs.get("image") or {}
-    uri = image_ref.get("uri")
+    uri = image_ref if isinstance(image_ref, str) else image_ref.get("uri")
     if not uri:
         raise ValueError("Error in base.expand_dims: Input 'image' must include uri")
 
-    image_ref.get("format")
     data = load_image(uri_to_path(str(uri)))
-    metadata = image_ref.get("metadata") or {}
+    metadata = {} if isinstance(image_ref, str) else (image_ref.get("metadata") or {})
     axes = str(metadata.get("axes") or "")
 
     if validated.new_axis_name in axes:
@@ -270,13 +267,12 @@ def expand_dims(inputs: dict, params: dict, work_dir: Path) -> dict:
 def moveaxis(inputs: dict, params: dict, work_dir: Path) -> dict:
     validated = MoveAxisParams.model_validate(params)
     image_ref = inputs.get("image") or {}
-    uri = image_ref.get("uri")
+    uri = image_ref if isinstance(image_ref, str) else image_ref.get("uri")
     if not uri:
         raise ValueError("Error in base.moveaxis: Input 'image' must include uri")
 
-    image_ref.get("format")
     data = load_image(uri_to_path(str(uri)))
-    metadata = image_ref.get("metadata") or {}
+    metadata = {} if isinstance(image_ref, str) else (image_ref.get("metadata") or {})
     axes = str(metadata.get("axes") or "")
 
     try:
@@ -315,14 +311,45 @@ def moveaxis(inputs: dict, params: dict, work_dir: Path) -> dict:
 def swap_axes(inputs: dict, params: dict, work_dir: Path) -> dict:
     validated = SwapAxesParams.model_validate(params)
     image_ref = inputs.get("image") or {}
-    uri = image_ref.get("uri")
+    uri = image_ref if isinstance(image_ref, str) else image_ref.get("uri")
     if not uri:
         raise ValueError("Error in base.swap_axes: Input 'image' must include uri")
 
-    image_ref.get("format")
     data = load_image(uri_to_path(str(uri)))
-    metadata = image_ref.get("metadata") or {}
+    metadata = {} if isinstance(image_ref, str) else (image_ref.get("metadata") or {})
     axes = str(metadata.get("axes") or "")
+
+    try:
+        axis1_idx = _resolve_axis_index(validated.axis1, axes, data.ndim)
+    except ValueError as exc:
+        raise ValueError(f"Error in base.swap_axes: {exc}") from exc
+    try:
+        axis2_idx = _resolve_axis_index(validated.axis2, axes, data.ndim)
+    except ValueError as exc:
+        raise ValueError(f"Error in base.swap_axes: {exc}") from exc
+
+    swapped = np.swapaxes(data, axis1_idx, axis2_idx)
+    new_axes = _swap_axis_names(axes, axis1_idx, axis2_idx)
+
+    out_path = _write_ome_tiff(swapped, work_dir, "swapped.ome.tiff", new_axes)
+    output_metadata = {"axes": new_axes}
+    physical_pixel_sizes = _extract_physical_pixel_sizes(metadata)
+    if physical_pixel_sizes is not None:
+        output_metadata["physical_pixel_sizes"] = _order_physical_pixel_sizes(
+            new_axes,
+            physical_pixel_sizes,
+        )
+
+    return {
+        "outputs": {
+            "output": {
+                "type": "BioImageRef",
+                "format": "OME-TIFF",
+                "path": str(out_path),
+                "metadata": output_metadata,
+            }
+        }
+    }
 
     try:
         axis1_idx = _resolve_axis_index(validated.axis1, axes, data.ndim)

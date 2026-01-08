@@ -10,7 +10,7 @@ import inspect
 import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 import numpy as np
 
@@ -213,7 +213,7 @@ class SkimageAdapter(BaseAdapter):
         if uri:
             # Parse URI and get file path
             parsed = urlparse(uri)
-            path = parsed.path
+            path = unquote(parsed.path)
             if path.startswith("/") and len(path) > 2 and path[2] == ":":
                 path = path[1:]
         else:

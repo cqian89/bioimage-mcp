@@ -37,7 +37,7 @@ def _assert_read_allowed(path: Path) -> None:
 
 def flip(*, inputs: dict, params: dict, work_dir: Path) -> Path:
     image_ref = inputs.get("image") or {}
-    uri = image_ref.get("uri")
+    uri = image_ref if isinstance(image_ref, str) else image_ref.get("uri")
     if not uri:
         raise ValueError("Input 'image' must include uri")
 
@@ -45,7 +45,6 @@ def flip(*, inputs: dict, params: dict, work_dir: Path) -> Path:
     if axis is None:
         raise ValueError("'axis' is required")
 
-    image_ref.get("format")
     data = load_image(uri_to_path(str(uri)))
     idx = resolve_axis(axis, data.ndim)
     flipped = np.flip(data, axis=idx)
@@ -54,7 +53,7 @@ def flip(*, inputs: dict, params: dict, work_dir: Path) -> Path:
 
 def crop(*, inputs: dict, params: dict, work_dir: Path) -> Path:
     image_ref = inputs.get("image") or {}
-    uri = image_ref.get("uri")
+    uri = image_ref if isinstance(image_ref, str) else image_ref.get("uri")
     if not uri:
         raise ValueError("Input 'image' must include uri")
 
@@ -63,7 +62,6 @@ def crop(*, inputs: dict, params: dict, work_dir: Path) -> Path:
     if start is None or stop is None:
         raise ValueError("'start' and 'stop' are required")
 
-    image_ref.get("format")
     data = load_image(uri_to_path(str(uri)))
     if len(start) != data.ndim or len(stop) != data.ndim:
         raise ValueError("'start' and 'stop' must match image dimensions")
@@ -75,7 +73,7 @@ def crop(*, inputs: dict, params: dict, work_dir: Path) -> Path:
 
 def pad(*, inputs: dict, params: dict, work_dir: Path) -> Path:
     image_ref = inputs.get("image") or {}
-    uri = image_ref.get("uri")
+    uri = image_ref if isinstance(image_ref, str) else image_ref.get("uri")
     if not uri:
         raise ValueError("Input 'image' must include uri")
 
@@ -86,7 +84,6 @@ def pad(*, inputs: dict, params: dict, work_dir: Path) -> Path:
     mode = params.get("mode", "constant")
     constant_values = params.get("constant_values", 0)
 
-    image_ref.get("format")
     data = load_image(uri_to_path(str(uri)))
     padded = np.pad(data, pad_width=pad_width, mode=mode, constant_values=constant_values)
     return save_zarr(padded, work_dir, "padded.ome.zarr")
@@ -94,14 +91,13 @@ def pad(*, inputs: dict, params: dict, work_dir: Path) -> Path:
 
 def project_sum(*, inputs: dict, params: dict, work_dir: Path) -> Path:
     image_ref = inputs.get("image") or {}
-    uri = image_ref.get("uri")
+    uri = image_ref if isinstance(image_ref, str) else image_ref.get("uri")
     if not uri:
         raise ValueError("Input 'image' must include uri")
 
     axis = params.get("axis", 0)
     path = uri_to_path(str(uri))
     _assert_read_allowed(path)
-    image_ref.get("format")
     data = load_image(path)
     idx = resolve_axis(axis, data.ndim)
     projected = np.sum(data, axis=idx)
@@ -110,12 +106,11 @@ def project_sum(*, inputs: dict, params: dict, work_dir: Path) -> Path:
 
 def project_max(*, inputs: dict, params: dict, work_dir: Path) -> Path:
     image_ref = inputs.get("image") or {}
-    uri = image_ref.get("uri")
+    uri = image_ref if isinstance(image_ref, str) else image_ref.get("uri")
     if not uri:
         raise ValueError("Input 'image' must include uri")
 
     axis = params.get("axis", 0)
-    image_ref.get("format")
     data = load_image(uri_to_path(str(uri)))
     idx = resolve_axis(axis, data.ndim)
     projected = np.max(data, axis=idx)

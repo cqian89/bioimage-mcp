@@ -8,20 +8,10 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
-from urllib.parse import unquote
 
 import numpy as np
 
-
-def _uri_to_path(uri: str) -> Path:
-    """Convert a file:// URI to a Path."""
-    if uri.startswith("file://"):
-        # Handle Windows paths that may have extra slash: file:///C:/...
-        path_str = uri[7:]  # Remove file://
-        if len(path_str) > 2 and path_str[0] == "/" and path_str[2] == ":":
-            path_str = path_str[1:]  # Remove leading / for Windows paths
-        return Path(unquote(path_str))
-    return Path(uri)
+from .utils import _coerce_param, _uri_to_path
 
 
 def run_segment(
@@ -85,13 +75,16 @@ def run_segment(
     # Cellpose expects (Y, X) or (Z, Y, X) or (C, Y, X) or (Z, C, Y, X)
     img = np.squeeze(img_data)
 
-    # Extract parameters with defaults
-    model_type = params.get("model_type", "cyto3")
-    diameter = params.get("diameter", 30.0)
-    flow_threshold = params.get("flow_threshold", 0.4)
-    cellprob_threshold = params.get("cellprob_threshold", 0.0)
-    do_3d = params.get("do_3D", False)
-    channels = params.get("channels", [0, 0])
+    # Extract and coerce parameters with type safety
+    model_type = params.get("model_type", "cyto3")  # string is fine
+    diameter = _coerce_param(params.get("diameter", 30.0), float, "diameter")
+    flow_threshold = _coerce_param(params.get("flow_threshold", 0.4), float, "flow_threshold")
+    cellprob_threshold = _coerce_param(
+        params.get("cellprob_threshold", 0.0), float, "cellprob_threshold"
+    )
+    do_3d = _coerce_param(params.get("do_3D", False), bool, "do_3D")
+    channels = params.get("channels", [0, 0])  # array handling is separate
+    min_size = _coerce_param(params.get("min_size", 15), int, "min_size")
 
     # Handle diameter=0 or None as "auto-estimate"
     if diameter is None or diameter == 0:
@@ -111,6 +104,7 @@ def run_segment(
         cellprob_threshold=cellprob_threshold,
         do_3D=do_3d,
         channels=channels,
+        min_size=min_size,
     )
 
     # Handle different return signatures

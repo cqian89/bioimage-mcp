@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from urllib.parse import unquote
 
 import numpy as np
 from bioio import BioImage
@@ -20,7 +21,7 @@ def uri_to_path(uri: str) -> Path:
         path_str = uri[7:]
         if len(path_str) > 2 and path_str[0] == "/" and path_str[2] == ":":
             path_str = path_str[1:]
-        return Path(path_str)
+        return Path(unquote(path_str))
     return Path(uri)
 
 
