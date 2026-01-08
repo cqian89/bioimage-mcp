@@ -7,6 +7,22 @@ import pytest
 SYNTHETIC_IMAGE = Path("datasets/synthetic/test.tif")
 
 
+def assert_valid_artifact_ref(ref: dict, name: str = "output"):
+    """Assert ref is a valid artifact reference.
+
+    Per Constitution III: All I/O via typed, file-backed artifact references (URI + metadata).
+    """
+    assert isinstance(ref, dict), f"{name} is not a dict: {type(ref)}"
+    assert "ref_id" in ref, f"Missing 'ref_id' in {name}: {ref}"
+    assert isinstance(ref["ref_id"], str) and ref["ref_id"].strip(), (
+        f"ref_id must be a non-empty string in {name}: {ref.get('ref_id')}"
+    )
+    assert "uri" in ref, f"Missing 'uri' in {name}: {ref}"
+    assert isinstance(ref["uri"], str) and ref["uri"].strip(), (
+        f"uri must be a non-empty string in {name}: {ref.get('uri')}"
+    )
+
+
 @pytest.fixture
 def cellpose_image():
     """Provide test image for Cellpose."""
@@ -51,11 +67,15 @@ async def test_cellpose_pipeline(live_server, cellpose_image):
     )
     assert load_result is not None
 
-    # Extract output reference
-    if isinstance(load_result, dict) and "outputs" in load_result:
-        img_ref = load_result["outputs"].get("img") or load_result["outputs"].get("image")
-    else:
-        img_ref = load_result
+    # Validate and extract load output
+    assert isinstance(load_result, dict) and "outputs" in load_result, (
+        f"Expected dict with 'outputs', got {type(load_result)}: {load_result}"
+    )
+    img_ref = load_result["outputs"].get("img") or load_result["outputs"].get("image")
+    assert img_ref, (
+        f"Could not find 'img' or 'image' in load outputs: {load_result['outputs'].keys()}"
+    )
+    assert_valid_artifact_ref(img_ref, "load output")
 
     # Step 4: Sum projection (Z axis)
     sum_result = await live_server.call_tool(
@@ -68,11 +88,15 @@ async def test_cellpose_pipeline(live_server, cellpose_image):
     )
     assert sum_result is not None
 
-    # Extract summed reference
-    if isinstance(sum_result, dict) and "outputs" in sum_result:
-        summed_ref = sum_result["outputs"].get("img") or sum_result["outputs"].get("image")
-    else:
-        summed_ref = sum_result
+    # Validate and extract sum output
+    assert isinstance(sum_result, dict) and "outputs" in sum_result, (
+        f"Expected dict with 'outputs', got {type(sum_result)}: {sum_result}"
+    )
+    summed_ref = sum_result["outputs"].get("img") or sum_result["outputs"].get("image")
+    assert summed_ref, (
+        f"Could not find 'img' or 'image' in sum outputs: {sum_result['outputs'].keys()}"
+    )
+    assert_valid_artifact_ref(summed_ref, "sum output")
 
     # Step 5: Export to OME-TIFF
     export_result = await live_server.call_tool(
@@ -85,11 +109,15 @@ async def test_cellpose_pipeline(live_server, cellpose_image):
     )
     assert export_result is not None
 
-    # Extract exported reference
-    if isinstance(export_result, dict) and "outputs" in export_result:
-        exported_ref = export_result["outputs"].get("img") or export_result["outputs"].get("path")
-    else:
-        exported_ref = export_result
+    # Validate and extract export output
+    assert isinstance(export_result, dict) and "outputs" in export_result, (
+        f"Expected dict with 'outputs', got {type(export_result)}: {export_result}"
+    )
+    exported_ref = export_result["outputs"].get("img") or export_result["outputs"].get("path")
+    assert exported_ref, (
+        f"Could not find 'img' or 'path' in export outputs: {export_result['outputs'].keys()}"
+    )
+    assert_valid_artifact_ref(exported_ref, "export output")
 
     # Step 6: Cellpose segmentation
     segment_result = await live_server.call_tool(
@@ -103,9 +131,12 @@ async def test_cellpose_pipeline(live_server, cellpose_image):
     assert segment_result is not None
 
     # Validate output contains artifact reference
-    if isinstance(segment_result, dict) and "outputs" in segment_result:
-        outputs = segment_result["outputs"]
-        # Check for ref_id in any output
-        for key, value in outputs.items():
-            if isinstance(value, dict) and "ref_id" in value:
-                assert value["ref_id"], f"Empty ref_id in {key}"
+    assert isinstance(segment_result, dict) and "outputs" in segment_result, (
+        f"Expected dict with 'outputs', got {type(segment_result)}: {segment_result}"
+    )
+    outputs = segment_result["outputs"]
+    assert outputs, f"Segment result outputs is empty: {segment_result}"
+
+    # Check for ref_id in all outputs
+    for key, value in outputs.items():
+        assert_valid_artifact_ref(value, f"segment output '{key}'")

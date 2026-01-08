@@ -221,3 +221,6 @@ datasets/*/outputs/
 test.tif
 test_out.tif
 test_out2.tif
+
+# Smoke test logs
+.bioimage-mcp/smoke_logs/

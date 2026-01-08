@@ -61,10 +61,10 @@ pytest tests/smoke/ -v -m "not requires_env"
 
 ### Recording Mode
 
-Captures verbose interaction logs for debugging.
+Captures verbose interaction logs for debugging. Note that log recording is **disabled by default** to minimize disk usage and keep CI environments clean.
 
 ```bash
-# Run with full logging
+# Run with full logging (opt-in)
 pytest tests/smoke/ -v --smoke-record
 
 # Logs are saved to .bioimage-mcp/smoke_logs/
@@ -133,7 +133,12 @@ tests/smoke/test_flim_phasor_live.py::test_flim_phasor_workflow FAILED [100%]
 
 ## Interaction Logs
 
-After each test run, interaction logs are saved to `.bioimage-mcp/smoke_logs/`.
+Interaction logs are saved to `.bioimage-mcp/smoke_logs/` **only when the `--smoke-record` flag is enabled**.
+
+This is an opt-in feature to:
+1. Prevent unnecessary disk usage during standard test runs.
+2. Avoid cluttering CI runner environments by default.
+3. Provide targeted debugging data only when requested.
 
 ### Log Structure
 

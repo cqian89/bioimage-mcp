@@ -1,5 +1,6 @@
 import datetime
 import subprocess
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -21,6 +22,7 @@ class SmokeConfig:
     scenario_timeout_s: float = 300.0  # Max seconds per scenario
     log_dir: Path = field(default_factory=lambda: Path(".bioimage-mcp/smoke_logs"))
     minimal_mode: bool = True  # True for CI, False for full suite
+    session_start_time: float = field(default_factory=time.time)
 
 
 def _env_available(env_name: str) -> bool:
@@ -46,12 +48,29 @@ def pytest_addoption(parser):
         default=False,
         help="Enable recording mode for smoke tests",
     )
+    parser.addoption(
+        "--smoke-full",
+        action="store_true",
+        default=False,
+        help="Run full smoke test suite instead of minimal",
+    )
 
 
 @pytest.fixture(scope="session")
 def smoke_record(request):
     """Check if recording mode is enabled."""
     return request.config.getoption("--smoke-record")
+
+
+@pytest.fixture(scope="session")
+def smoke_config(request):
+    """Global smoke test configuration fixture."""
+    config = SmokeConfig()
+    if request.config.getoption("--smoke-full", default=False):
+        config.minimal_mode = False
+    # Store on session for hook access
+    request.session._smoke_config = config
+    return config
 
 
 @pytest.fixture(scope="session")
@@ -96,16 +115,35 @@ def interaction_logger(request, log_dir, smoke_record):
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
 def pytest_runtest_makereport(item, call):
-    """Store test result for use in fixtures."""
+    """Store test result for use in fixtures and enforce scenario timeout."""
     outcome = yield
     rep = outcome.get_result()
     setattr(item, f"rep_{rep.when}", rep)
 
+    # Enforce scenario timeout (T015)
+    if rep.when == "call":
+        config = getattr(item.session, "_smoke_config", None)
+        if config and rep.duration > config.scenario_timeout_s:
+            rep.outcome = "failed"
+            timeout_msg = (
+                f"Scenario timeout exceeded: {rep.duration:.2f}s > {config.scenario_timeout_s}s"
+            )
+            if rep.longrepr:
+                rep.longrepr = f"{rep.longrepr}\n{timeout_msg}"
+            else:
+                rep.longrepr = timeout_msg
 
-@pytest.fixture(scope="session")
-def smoke_config():
-    """Global smoke test configuration fixture."""
-    return SmokeConfig()
+
+@pytest.hookimpl(tryfirst=True)
+def pytest_runtest_setup(item):
+    """Enforce suite-level time budget (T012)."""
+    config = getattr(item.session, "_smoke_config", None)
+    if config and config.minimal_mode:
+        elapsed = time.time() - config.session_start_time
+        if elapsed > config.minimal_suite_budget_s:
+            pytest.exit(
+                f"Minimal suite budget exceeded: {elapsed:.1f}s > {config.minimal_suite_budget_s}s"
+            )
 
 
 @pytest.fixture(autouse=True)
