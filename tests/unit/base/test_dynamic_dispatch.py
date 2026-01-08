@@ -211,3 +211,48 @@ class TestDynamicDispatch:
         assert "output" in result["outputs"]
         assert isinstance(result["outputs"]["output"], dict)
         assert result["outputs"]["output"]["type"] == "BioImageRef"
+
+    def test_dispatch_filters_metadata_inputs(self, tmp_path):
+        """dispatch_dynamic should filter out metadata keys like 'reason' from inputs."""
+        # Arrange: Create inputs with a 'reason' field and other non-artifact strings
+        inputs = {
+            "image": {
+                "type": "BioImageRef",
+                "format": "OME-Zarr",
+                "uri": "file:///tmp/test_image.ome.zarr",
+            },
+            "reason": "Compute phasor coordinates from sample FLIM signal",
+            "description": "Some other metadata that should be ignored",
+            "_metadata": {"something": "else"},
+            "potential_ref_id": "art_123456789",
+        }
+        params = {}
+        work_dir = tmp_path
+
+        mock_adapter = Mock()
+        mock_adapter.execute.return_value = []
+
+        # Act: Dispatch with mocked adapter
+        with patch(
+            "bioimage_mcp_base.dynamic_dispatch.get_adapter_for_fn_id",
+            return_value=mock_adapter,
+        ):
+            dispatch_dynamic(
+                fn_id="skimage.filters.gaussian",
+                inputs=inputs,
+                params=params,
+                work_dir=work_dir,
+            )
+
+        # Assert: Adapter should ONLY receive "image" and "potential_ref_id"
+        # "reason", "description", and "_metadata" should be filtered out
+        call_args = mock_adapter.execute.call_args
+        inputs_arg = call_args[1]["inputs"]
+
+        # inputs_arg is a list of (name, value) tuples
+        input_names = [name for name, _ in inputs_arg]
+        assert "image" in input_names
+        assert "potential_ref_id" in input_names
+        assert "reason" not in input_names
+        assert "description" not in input_names
+        assert "_metadata" not in input_names

@@ -307,15 +307,25 @@ class CellposeAdapter:
             if isinstance(inputs[0], tuple):
                 # Handle list of (name, artifact) tuples
                 for name, artifact in inputs:
+                    # Skip if artifact is a plain string that looks like metadata (not a ref_id) (T140)
+                    if isinstance(artifact, str) and (" " in artifact or len(artifact) > 64):
+                        continue
                     input_dict[name] = (
                         artifact.model_dump() if hasattr(artifact, "model_dump") else artifact
                     )
             else:
                 # Fallback for simple list of artifacts - assume first is 'image'
-                artifact = inputs[0]
-                input_dict["image"] = (
-                    artifact.model_dump() if hasattr(artifact, "model_dump") else artifact
-                )
+                # Filter out metadata entries (T140)
+                filtered_inputs = [
+                    art
+                    for art in inputs
+                    if not (isinstance(art, str) and (" " in art or len(art) > 64))
+                ]
+                if filtered_inputs:
+                    artifact = filtered_inputs[0]
+                    input_dict["image"] = (
+                        artifact.model_dump() if hasattr(artifact, "model_dump") else artifact
+                    )
 
         # Ensure work_dir is a Path and exists
         if work_dir is None:

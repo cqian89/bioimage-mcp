@@ -43,6 +43,10 @@ def get_adapter_for_fn_id(fn_id: str) -> Any:
     return ADAPTER_REGISTRY[prefix]
 
 
+# Reserved metadata keys that should never be treated as artifact inputs
+METADATA_KEYS = {"reason", "_metadata", "_reason", "description"}
+
+
 def _convert_inputs_to_artifacts(inputs: dict[str, Any]) -> list[Any]:
     """Convert input dict references to artifact objects.
 
@@ -53,12 +57,38 @@ def _convert_inputs_to_artifacts(inputs: dict[str, Any]) -> list[Any]:
         List of (name, artifact) pairs for adapter consumption.
 
     Note:
-        For now, this is a pass-through that returns the input dict entries.
-        Full artifact resolution will be implemented when artifact store is available.
+        Filters out metadata keys like "reason" that are not artifact references.
+        An artifact reference is a dict with ref_id, uri, path, or type keys.
     """
-    # TODO: Convert dict refs to actual Artifact objects when artifact store is integrated
-    # For now, adapters are expected to handle dict refs directly
-    return list(inputs.items())
+    result = []
+    for name, value in inputs.items():
+        # Skip reserved metadata keys
+        if name in METADATA_KEYS:
+            continue
+
+        # Skip non-artifact values (plain strings that aren't valid artifact refs)
+        if isinstance(value, str):
+            # Plain strings should be artifact ref_ids - but "reason" descriptions
+            # are also strings. We can identify real ref_ids by pattern:
+            # - hex strings (UUID-like)
+            # - file:// or mem:// URIs
+            # If it looks like a sentence/description, skip it
+            if " " in value or len(value) > 64:
+                # Likely a description, not a ref_id
+                continue
+            # Otherwise treat as potential ref_id string
+        elif isinstance(value, dict):
+            # Validate it looks like an artifact reference
+            if not any(k in value for k in ("ref_id", "uri", "path", "type")):
+                # Not an artifact reference, skip
+                continue
+        else:
+            # Other types (None, list, etc.) - skip
+            continue
+
+        result.append((name, value))
+
+    return result
 
 
 def _convert_outputs_to_refs(outputs: list[Any]) -> dict[str, dict[str, Any]]:

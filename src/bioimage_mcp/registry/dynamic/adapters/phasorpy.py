@@ -379,6 +379,9 @@ class PhasorPyAdapter:
 
             # Load image data for all artifact inputs
             for name, artifact in input_items:
+                # Skip if artifact is a plain string that looks like metadata (not a ref_id)
+                if isinstance(artifact, str) and (" " in artifact or len(artifact) > 64):
+                    continue
                 bound_args[name] = self._load_image(artifact)
 
             # Add other parameters

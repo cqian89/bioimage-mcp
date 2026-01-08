@@ -415,6 +415,10 @@ class SkimageAdapter(BaseAdapter):
         kwargs: dict[str, Any] = {}
         param_names = set(inspect.signature(func).parameters.keys())
         for name, artifact in self._normalize_inputs(inputs):
+            # Skip if artifact is a plain string that looks like metadata (not a ref_id)
+            if isinstance(artifact, str) and (" " in artifact or len(artifact) > 64):
+                continue
+
             # Resolve dimension requirements from hints (T048)
             req = None
             if hints:
@@ -459,6 +463,9 @@ class SkimageAdapter(BaseAdapter):
         else:
             axes = ""
             for _, artifact in self._normalize_inputs(inputs):
+                # Skip metadata
+                if isinstance(artifact, str) and (" " in artifact or len(artifact) > 64):
+                    continue
                 axes = self._extract_axes(artifact)
                 if axes:
                     break

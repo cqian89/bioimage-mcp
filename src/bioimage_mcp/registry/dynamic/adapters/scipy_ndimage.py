@@ -211,6 +211,12 @@ class ScipyNdimageAdapter(BaseAdapter):
         # Load input images
         args = []
         normalized_inputs = self._normalize_inputs(inputs)
+        # Filter out metadata entries
+        normalized_inputs = [
+            art
+            for art in normalized_inputs
+            if not (isinstance(art, str) and (" " in art or len(art) > 64))
+        ]
         if normalized_inputs:
             # Load the first input as numpy array
             image_data = self._load_image(normalized_inputs[0])

@@ -139,8 +139,14 @@ class XarrayAdapterForRegistry(BaseAdapter):
 
         # Normalize inputs and get the first one as primary image
         normalized_inputs = self._normalize_inputs(inputs)
+        # Filter out metadata entries
+        normalized_inputs = [
+            (name, art)
+            for name, art in normalized_inputs
+            if not (isinstance(art, str) and (" " in art or len(art) > 64))
+        ]
         if not normalized_inputs:
-            raise ValueError(f"No inputs provided for {fn_id}")
+            raise ValueError(f"No valid artifact inputs provided for {fn_id}")
 
         _, primary_artifact = normalized_inputs[0]
         img = self._load_image(primary_artifact)
