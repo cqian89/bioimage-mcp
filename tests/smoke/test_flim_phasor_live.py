@@ -1,7 +1,8 @@
 """FLIM phasor workflow smoke test."""
 
-import pytest
 from pathlib import Path
+
+import pytest
 
 FLIM_DATASET = Path("datasets/FLUTE_FLIM_data_tif")
 FLIM_IMAGE = FLIM_DATASET / "hMSC control.tif"

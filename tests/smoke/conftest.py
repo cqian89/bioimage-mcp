@@ -1,3 +1,4 @@
+import datetime
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -5,6 +6,7 @@ from pathlib import Path
 import pytest
 import pytest_asyncio
 
+from tests.smoke.utils.interaction_logger import InteractionLog, InteractionLogger
 from tests.smoke.utils.mcp_client import TestMCPClient
 
 pytest_plugins = ["pytest_asyncio"]
@@ -34,6 +36,70 @@ def _env_available(env_name: str) -> bool:
         return result.returncode == 0
     except Exception:
         return False
+
+
+def pytest_addoption(parser):
+    """Add smoke test specific options."""
+    parser.addoption(
+        "--smoke-record",
+        action="store_true",
+        default=False,
+        help="Enable recording mode for smoke tests",
+    )
+
+
+@pytest.fixture(scope="session")
+def smoke_record(request):
+    """Check if recording mode is enabled."""
+    return request.config.getoption("--smoke-record")
+
+
+@pytest.fixture(scope="session")
+def log_dir(smoke_config, smoke_record):
+    """Create log directory if recording is enabled."""
+    if smoke_record:
+        smoke_config.log_dir.mkdir(parents=True, exist_ok=True)
+    return smoke_config.log_dir
+
+
+@pytest.fixture
+def interaction_logger(request, log_dir, smoke_record):
+    """Per-test interaction logger that saves on completion."""
+    logger = InteractionLogger()
+    yield logger
+
+    if smoke_record:
+        # Create InteractionLog
+        test_name = request.node.name
+        timestamp = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d_%H%M%S")
+        log = InteractionLog(
+            test_run_id=f"smoke_{timestamp}",
+            scenario=test_name,
+            started_at=datetime.datetime.now(datetime.UTC).isoformat(),
+            status="passed"
+            if not getattr(request.node, "rep_call", None) or request.node.rep_call.passed
+            else "failed",
+            interactions=logger.interactions,
+        )
+
+        # Error summary population on failure (T023)
+        if not (getattr(request.node, "rep_call", None) and request.node.rep_call.passed):
+            log.error_summary = (
+                str(request.node.rep_call.longrepr)
+                if getattr(request.node, "rep_call", None)
+                else "Unknown error"
+            )
+
+        log_path = log_dir / f"{test_name}_{timestamp}.json"
+        logger.save_log(log, log_path)
+
+
+@pytest.hookimpl(tryfirst=True, hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    """Store test result for use in fixtures."""
+    outcome = yield
+    rep = outcome.get_result()
+    setattr(item, f"rep_{rep.when}", rep)
 
 
 @pytest.fixture(scope="session")

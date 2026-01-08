@@ -1,7 +1,8 @@
-import pytest
 import asyncio
-from unittest.mock import AsyncMock, patch, MagicMock
 from contextlib import AsyncExitStack
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 # These imports are expected to fail until the implementation is created
 from tests.smoke.utils.mcp_client import SmokeTestError, TestMCPClient
@@ -76,7 +77,7 @@ async def test_mcp_client_stop_cleans_up():
 
 @pytest.mark.asyncio
 async def test_mcp_client_cleanup_on_exception():
-    """Test cleanup happens even if exception occurs using context manager style or explicit stop."""
+    """Test cleanup happens on exception."""
     client = TestMCPClient()
     client._exit_stack = AsyncMock(spec=AsyncExitStack)
 

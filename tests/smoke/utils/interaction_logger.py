@@ -1,7 +1,8 @@
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -27,20 +28,33 @@ class InteractionLog(BaseModel):
     error_summary: str | None = None
 
 
+MAX_LOG_SIZE_BYTES = 10 * 1024 * 1024  # 10MB
+
+
 class InteractionLogger:
-    def __init__(self, test_run_id: str, scenario: str, max_payload_bytes: int = 10000):
+    def __init__(
+        self,
+        test_run_id: str = "pending",
+        scenario: str = "pending",
+        max_payload_bytes: int = 10000,
+    ):
         self.max_payload_bytes = max_payload_bytes
         self.log = InteractionLog(
             test_run_id=test_run_id,
             scenario=scenario,
-            started_at=datetime.now(timezone.utc).isoformat(),
+            started_at=datetime.now(UTC).isoformat(),
         )
+
+    @property
+    def interactions(self) -> list[Interaction]:
+        """Return list of interactions."""
+        return self.log.interactions
 
     def log_request(self, tool: str, params: dict) -> str:
         """Log request, return correlation ID (index as string)."""
         correlation_id = str(len(self.log.interactions))
         interaction = Interaction(
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             direction="request",
             tool=tool,
             params=self._truncate(params),
@@ -61,7 +75,7 @@ class InteractionLogger:
             pass
 
         interaction = Interaction(
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             direction="response",
             tool=tool,
             result=self._truncate(result),
@@ -86,9 +100,26 @@ class InteractionLogger:
 
     def save(self, path: Path):
         """Save log to JSON file."""
-        if not self.log.completed_at:
-            self.log.completed_at = datetime.now(timezone.utc).isoformat()
+        self.save_log(self.log, path)
+
+    def save_log(self, log: InteractionLog, path: Path):
+        """Save log with size bounding."""
+        import json
+
+        if not log.completed_at:
+            log.completed_at = datetime.now(UTC).isoformat()
+
+        data = log.model_dump(mode="json")
+        serialized = json.dumps(data, indent=2)
+
+        # Truncate if too large
+        if len(serialized.encode()) > MAX_LOG_SIZE_BYTES:
+            # Truncate interactions from the middle
+            while len(serialized.encode()) > MAX_LOG_SIZE_BYTES and len(data["interactions"]) > 2:
+                mid = len(data["interactions"]) // 2
+                data["interactions"].pop(mid)
+                data["_truncated_interactions"] = True
+                serialized = json.dumps(data, indent=2)
 
         path.parent.mkdir(parents=True, exist_ok=True)
-        with open(path, "w") as f:
-            f.write(self.log.model_dump_json(indent=2))
+        path.write_text(serialized)

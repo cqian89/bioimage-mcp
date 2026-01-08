@@ -1,7 +1,5 @@
 import json
-from pathlib import Path
-import pytest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 # These imports will fail until the implementation is created in the next task
 # This is expected for the TDD red phase.
@@ -15,7 +13,7 @@ from tests.smoke.utils.interaction_logger import (
 def test_interaction_model_request_validation():
     """Test Interaction model for request direction"""
     interaction = Interaction(
-        timestamp=datetime.now(timezone.utc).isoformat(),
+        timestamp=datetime.now(UTC).isoformat(),
         direction="request",
         tool="run",
         params={"fn_id": "base.gaussian_blur", "inputs": {}},
@@ -29,7 +27,7 @@ def test_interaction_model_request_validation():
 def test_interaction_model_response_validation():
     """Test Interaction model for response direction"""
     interaction = Interaction(
-        timestamp=datetime.now(timezone.utc).isoformat(),
+        timestamp=datetime.now(UTC).isoformat(),
         direction="response",
         tool="run",
         result={"artifact_id": "art-123"},
@@ -43,7 +41,7 @@ def test_interaction_model_response_validation():
 
 def test_interaction_log_model_creation():
     """Test InteractionLog model with required fields"""
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     log = InteractionLog(
         test_run_id="smoke_2026-01-08_143022",
         scenario="flim_phasor",
@@ -59,7 +57,7 @@ def test_interaction_log_model_defaults():
     log = InteractionLog(
         test_run_id="test",
         scenario="test",
-        started_at=datetime.now(timezone.utc).isoformat(),
+        started_at=datetime.now(UTC).isoformat(),
     )
     assert log.status == "running"
     assert log.interactions == []

@@ -1,6 +1,7 @@
 import asyncio
 import json
 from contextlib import AsyncExitStack
+
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
@@ -19,6 +20,11 @@ class TestMCPClient:
     def __init__(self):
         self._exit_stack = AsyncExitStack()
         self.session: ClientSession | None = None
+        self._stderr_buffer: list[str] = []
+
+    def get_stderr(self) -> str:
+        """Return captured stderr."""
+        return "\n".join(self._stderr_buffer)
 
     async def start(self):
         """Start server subprocess and initialize session.
