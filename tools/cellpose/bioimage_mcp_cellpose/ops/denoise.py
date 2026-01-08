@@ -115,16 +115,22 @@ def run_denoise(
     # Write OME-TIFF
     from bioio.writers import OmeTiffWriter
 
-    # Determine dim order based on array shape
+    # Squeeze singleton trailing dimensions
+    # Cellpose DenoiseModel.eval() returns [H, W, C] format with C=1 for grayscale inputs,
+    # which causes dimension mismatches downstream. Squeeze these to get expected shapes.
+    while denoised.ndim > 2 and denoised.shape[-1] == 1:
+        denoised = denoised[..., 0]
+
+    # Determine dim order based on squeezed array shape
     if denoised.ndim == 2:
         dim_order = "YX"
     elif denoised.ndim == 3:
-        dim_order = "ZYX"  # Cellpose usually returns ZYX or CYX; bioio expects one
+        dim_order = "ZYX"
     elif denoised.ndim == 4:
         dim_order = "CZYX"
     else:
         # Fallback to standard 5D
-        dim_order = "TCZYX"[-denoised.ndim :]
+        dim_order = "TCZYX"[-denoised.ndim:]
 
     OmeTiffWriter.save(denoised, str(denoised_path), dim_order=dim_order)
 
