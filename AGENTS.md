@@ -178,7 +178,54 @@ def test_cellpose_segmentation():
 @pytest.mark.requires_env("bioimage-mcp-cellpose")
 def test_with_cellpose():
     ...
+
+## Smoke Tests
+
+The smoke test suite validates live server functionality against real MCP interactions.
+
+### Running Smoke Tests
+
+```bash
+# Run minimal smoke tests (for CI)
+pytest tests/smoke/ -m smoke_minimal -v
+
+# Run full smoke tests (includes optional environments)
+pytest tests/smoke/ -v
+
+# Run with recording mode for debugging
+pytest tests/smoke/ --smoke-record -v
+
+# View interaction logs
+ls .bioimage-mcp/smoke_logs/
 ```
+
+### Test Markers
+
+- `smoke_minimal`: Fast tests for CI (base environment only)
+- `smoke_full`: Complete tests (may require optional tool environments)
+- `requires_env("env-name")`: Tests requiring specific conda environments
+
+### Smoke Test Structure
+
+```text
+tests/smoke/
+├── conftest.py                     # Fixtures (live_server, sample_image, etc.)
+├── test_smoke_basic.py             # Basic discovery and run tests
+├── test_flim_phasor_live.py        # FLIM phasor workflow
+├── test_cellpose_pipeline_live.py  # Cellpose segmentation pipeline
+├── test_smoke_recording.py         # Recording mode tests
+└── utils/
+    ├── mcp_client.py               # TestMCPClient wrapper
+    └── interaction_logger.py       # Interaction logging utilities
+```
+
+### Recording Mode
+
+When `--smoke-record` is enabled, interaction logs are saved to `.bioimage-mcp/smoke_logs/`. Each log contains:
+- Test metadata (name, timestamps, status)
+- Full request/response sequence
+- Server stderr (if captured)
+- Error summary on failure
 
 ## Tool Pack Development
 
@@ -357,6 +404,7 @@ python scripts/validate_pipeline.py
 - Python 3.13 (core server; tool envs may differ) + MCP Python SDK (`mcp>=1.25.0`), `pydantic>=2.0`, `bioio`, `fastmcp` (016-mcp-interface-redesign)
 - Python 3.13 (core server; tool envs may differ) + MCP Python SDK (`mcp`), `pydantic`, `bioio`, `torch`, `cellpose` (017-cellpose-api)
 - Local filesystem artifact store (pickle for objects) + SQLite index (017-cellpose-api)
+- Interaction logs stored as JSON artifacts in `tests/smoke/logs/` or `.bioimage-mcp/smoke_logs/` (018-live-server-smoke-tests)
 
 ## Recent Changes
 - 004-interactive-tool-calling: Added Python 3.13 (core server; tool envs may differ)
