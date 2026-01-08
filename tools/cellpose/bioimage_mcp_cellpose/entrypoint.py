@@ -17,7 +17,10 @@ import traceback
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    import numpy as np
 
 # Add parent directory to path so bioimage_mcp_cellpose can be imported
 BASE_DIR = Path(__file__).resolve().parent
@@ -47,8 +50,14 @@ def _get_cellpose_version() -> str:
     try:
         import cellpose
 
-        return cellpose.__version__
-    except ImportError:
+        # Try module attribute first (older versions)
+        if hasattr(cellpose, "__version__"):
+            return cellpose.__version__
+        # Fallback: use importlib.metadata (Python 3.8+)
+        from importlib.metadata import version
+
+        return version("cellpose")
+    except Exception:
         return "unknown"
 
 
@@ -194,6 +203,23 @@ def _convert_memory_inputs_to_files(inputs: dict[str, Any], work_dir: Path) -> d
     return converted_inputs
 
 
+def _infer_json_type(value: Any) -> str:
+    """Infer JSON Schema type from a Python value."""
+    if isinstance(value, bool):
+        return "boolean"
+    if isinstance(value, int):
+        return "integer"
+    if isinstance(value, float):
+        return "number"
+    if isinstance(value, str):
+        return "string"
+    if isinstance(value, (list, tuple)):
+        return "array"
+    if isinstance(value, dict):
+        return "object"
+    return "string"  # Default fallback
+
+
 def _introspect_cellpose_fn(target_fn: str) -> dict[str, Any]:
     """Introspect Cellpose function to get parameter schema."""
     from bioimage_mcp_cellpose.descriptions import SEGMENT_DESCRIPTIONS
@@ -290,9 +316,13 @@ def _introspect_cellpose_fn(target_fn: str) -> dict[str, Any]:
                 default = default.item()
             if default is not None:
                 prop["default"] = default
+                prop["type"] = _infer_json_type(default)
+            else:
+                # None default - infer type from annotation if possible
+                prop["type"] = "string"
         else:
-            # Don't make everything required for now to be safe
-            pass
+            # Required parameter with no default
+            prop["type"] = "string"
 
         schema["properties"][name] = prop
 

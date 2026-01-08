@@ -539,8 +539,16 @@ class DiscoveryService:
                                 params_schema=params_schema,
                                 introspection_source=introspection_source,
                             )
-                except Exception:
-                    pass
+                except Exception as exc:
+                    import logging
+
+                    logger = logging.getLogger(__name__)
+                    logger.warning(
+                        "meta.describe call failed for %s: %s",
+                        fn_id,
+                        exc,
+                    )
+                    # Continue with manifest schema as fallback
 
         # Contract T036: params_schema contains NO artifact port keys
         if params_schema and "properties" in params_schema:

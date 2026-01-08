@@ -56,7 +56,37 @@ functions:
         required: true
     params_schema:
       type: object
-      properties: {}
+      properties:
+        n_epochs:
+          type: integer
+          default: 100
+          description: "Number of training epochs"
+        learning_rate:
+          type: number
+          default: 0.1
+          description: "Learning rate for training"
+        batch_size:
+          type: integer
+          default: 8
+          description: "Batch size for training"
+        weight_decay:
+          type: number
+          default: 0.00001
+          description: "L2 regularization weight"
+        save_path:
+          type: string
+          description: "Directory to save trained model weights"
+        model_name:
+          type: string
+          description: "Name for the trained model file"
+        save_every:
+          type: integer
+          default: 100
+          description: "Save checkpoint every N epochs"
+        normalize:
+          type: boolean
+          default: true
+          description: "Normalize image intensities"
 
   - fn_id: cellpose.models.CellposeModel
     tool_id: tools.cellpose
