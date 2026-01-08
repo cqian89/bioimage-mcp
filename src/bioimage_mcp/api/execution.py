@@ -971,6 +971,20 @@ class ExecutionService:
                     )
 
                 ref_data = ref.model_dump()
+
+                # Check if path is outside work_dir (user-specified export path)
+                # If so, override URI to point to user's original file location (T020)
+                try:
+                    p_resolved = p.resolve()
+                    work_dir_resolved = work_dir.resolve()
+                    is_user_specified_path = not p_resolved.is_relative_to(work_dir_resolved)
+                except ValueError:
+                    is_user_specified_path = True  # Different drives on Windows
+
+                if is_user_specified_path:
+                    # User explicitly exported to this path - return their path in URI
+                    ref_data["uri"] = p_resolved.as_uri()
+
                 outputs_payload[name] = ref_data
                 record_artifact_dimensions(run.provenance, f"output.{name}", ref_data)
 
