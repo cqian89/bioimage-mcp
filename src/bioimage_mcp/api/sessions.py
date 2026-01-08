@@ -194,12 +194,15 @@ class SessionService:
             store_ref = self.artifact_store.import_file(
                 out_path, artifact_type="TableRef", format="workflow-record-json"
             )
+            # Override URI to point to user-provided path for better UX
+            workflow_ref_data = store_ref.model_dump(mode="json")
+            workflow_ref_data["uri"] = out_path.absolute().as_uri()
+            workflow_ref = ArtifactRef(**workflow_ref_data)
         else:
             store_ref = self.artifact_store.write_native_output(
                 record.model_dump(mode="json"), format="workflow-record-json"
             )
-
-        workflow_ref = ArtifactRef(**store_ref.model_dump(mode="json"))
+            workflow_ref = ArtifactRef(**store_ref.model_dump(mode="json"))
 
         return SessionExportResponse(session_id=session_id, workflow_ref=workflow_ref)
 

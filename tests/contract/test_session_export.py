@@ -170,6 +170,47 @@ def test_session_export_provenance(session_service):
     assert prov["lock_hash"] == "sha256:123"
 
 
+def test_session_export_with_dest_path(session_service, tmp_path):
+    """Specifically test session_export with a valid dest_path."""
+    service, session_manager, _ = session_service
+
+    # Mock canonical steps
+    step = MagicMock(
+        ordinal=0,
+        fn_id="f1",
+        inputs={},
+        outputs={},
+        status="success",
+        params={},
+        log_ref_id=None,
+        started_at="2024-01-01T00:00:00Z",
+        ended_at="2024-01-01T00:00:01Z",
+    )
+    session_manager.store.list_step_attempts.return_value = [step]
+    session_manager.get_function_provenance.return_value = {
+        "tool_pack_id": "test-pack",
+        "tool_pack_version": "1.0.0",
+        "lock_hash": "abc",
+    }
+
+    dest_path = tmp_path / "custom_export.json"
+    req = SessionExportRequest(session_id="sess-123", dest_path=str(dest_path))
+    resp = service.export_session(req)
+
+    assert resp.session_id == "sess-123"
+    # The URI should match the provided dest_path
+    assert resp.workflow_ref.uri == f"file://{dest_path}"
+
+    assert dest_path.exists()
+
+    import json
+
+    with open(dest_path) as f:
+        record = json.load(f)
+    assert record["session_id"] == "sess-123"
+    assert len(record["steps"]) == 1
+
+
 def test_session_export_dest_path_allowlist(session_service, tmp_path):
     """T117: dest_path outside allowed roots should be DENIED."""
     service, _, _ = session_service
