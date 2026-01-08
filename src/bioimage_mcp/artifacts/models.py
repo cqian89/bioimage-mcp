@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -35,14 +35,14 @@ class ArtifactRef(BaseModel):
     ref_id: str
     type: str
     uri: str
-    format: str
+    format: str | None = None
     storage_type: str = "file"
     """Storage backing: 'file', 'zarr-temp', or 'memory'"""
-    mime_type: str
-    size_bytes: int
+    mime_type: str | None = None
+    size_bytes: int | None = None
     checksums: list[ArtifactChecksum] = Field(default_factory=list)
     created_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
-    metadata: dict = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
     # Schema version for artifact format versioning
     # Used to track changes in artifact format over time
@@ -52,6 +52,9 @@ class ArtifactRef(BaseModel):
     ndim: int | None = None
     dims: list[str] | None = None
     physical_pixel_sizes: dict | None = None
+    dtype: str | None = None
+    shape: list[int] | None = None
+    python_class: str | None = None
 
     @model_validator(mode="after")
     def validate_memory_artifact(self) -> ArtifactRef:

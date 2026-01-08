@@ -6,6 +6,8 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field
 
+from bioimage_mcp.artifacts.models import ArtifactChecksum, ArtifactRef
+
 AxisName = Annotated[str, Field(pattern="^[A-Z]$")]
 ArtifactType = Literal[
     "BioImageRef",
@@ -273,32 +275,6 @@ class ArtifactTypeEnum(str, Enum):
     MODEL = "ModelRef"
     LOG = "LogRef"
     NATIVE_OUTPUT = "NativeOutputRef"
-
-
-class ArtifactChecksum(BaseModel):
-    """Integrity verification."""
-
-    algorithm: str
-    value: str
-
-
-class ArtifactRef(BaseModel):
-    """Reference to a stored artifact with bounded metadata."""
-
-    ref_id: str
-    type: str  # Use string for flexibility with existing code
-    uri: str
-    mime_type: str | None = None
-    format: str | None = None
-    size_bytes: int | None = None
-    dims: list[str] | None = None
-    ndim: int | None = None
-    dtype: str | None = None
-    shape: list[int] | None = None
-    checksums: list[ArtifactChecksum] = Field(default_factory=list)
-    created_at: str | None = None
-    python_class: str | None = None
-    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class ErrorDetail(BaseModel):

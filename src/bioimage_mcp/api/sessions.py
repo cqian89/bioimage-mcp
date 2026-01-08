@@ -13,7 +13,6 @@ from typing import Any, cast
 from bioimage_mcp.api.discovery import DiscoveryService
 from bioimage_mcp.api.execution import ExecutionService
 from bioimage_mcp.api.schemas import (
-    ArtifactRef,
     ErrorDetail,
     ExternalInput,
     InputSource,
@@ -26,6 +25,7 @@ from bioimage_mcp.api.schemas import (
     WorkflowRecord,
     WorkflowStep,
 )
+from bioimage_mcp.artifacts.models import ArtifactRef
 from bioimage_mcp.artifacts.store import ArtifactStore
 from bioimage_mcp.config.schema import Config
 from bioimage_mcp.sessions.manager import SessionManager
@@ -195,14 +195,12 @@ class SessionService:
                 out_path, artifact_type="TableRef", format="workflow-record-json"
             )
             # Override URI to point to user-provided path for better UX
-            workflow_ref_data = store_ref.model_dump(mode="json")
-            workflow_ref_data["uri"] = out_path.absolute().as_uri()
-            workflow_ref = ArtifactRef(**workflow_ref_data)
+            workflow_ref = store_ref.model_copy(update={"uri": out_path.absolute().as_uri()})
         else:
             store_ref = self.artifact_store.write_native_output(
                 record.model_dump(mode="json"), format="workflow-record-json"
             )
-            workflow_ref = ArtifactRef(**store_ref.model_dump(mode="json"))
+            workflow_ref = store_ref
 
         return SessionExportResponse(session_id=session_id, workflow_ref=workflow_ref)
 
