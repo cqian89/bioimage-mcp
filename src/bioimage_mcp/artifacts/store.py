@@ -203,6 +203,7 @@ class ArtifactStore:
         artifact_type: str,
         format: str,
         metadata_override: dict | None = None,
+        session_id: str | None = None,
     ) -> ArtifactRef:
         src = src.expanduser().absolute()
 
@@ -227,7 +228,8 @@ class ArtifactStore:
             log_ref_id = None
             try:
                 log_ref_id = self.write_log(
-                    f"Disk full while importing artifact from {src} to {dest}: {exc}"
+                    f"Disk full while importing artifact from {src} to {dest}: {exc}",
+                    session_id=session_id,
                 ).ref_id
             except Exception:  # noqa: BLE001
                 log_ref_id = None
@@ -287,10 +289,12 @@ class ArtifactStore:
             dims=dims,
             physical_pixel_sizes=physical_pixel_sizes,
         )
-        self._persist(ref)
+        self._persist(ref, session_id=session_id)
         return ref
 
-    def import_directory(self, src: Path, *, artifact_type: str, format: str) -> ArtifactRef:
+    def import_directory(
+        self, src: Path, *, artifact_type: str, format: str, session_id: str | None = None
+    ) -> ArtifactRef:
         assert_path_allowed("read", src, self._config)
 
         ref_id = uuid.uuid4().hex
@@ -307,7 +311,8 @@ class ArtifactStore:
             log_ref_id = None
             try:
                 log_ref_id = self.write_log(
-                    f"Disk full while importing directory artifact from {src} to {dest}: {exc}"
+                    f"Disk full while importing directory artifact from {src} to {dest}: {exc}",
+                    session_id=session_id,
                 ).ref_id
             except Exception:  # noqa: BLE001
                 log_ref_id = None
@@ -356,10 +361,10 @@ class ArtifactStore:
             dims=dims,
             physical_pixel_sizes=physical_pixel_sizes,
         )
-        self._persist(ref)
+        self._persist(ref, session_id=session_id)
         return ref
 
-    def _persist(self, ref: ArtifactRef) -> None:
+    def _persist(self, ref: ArtifactRef, session_id: str | None = None) -> None:
         self._conn.execute(
             """
             INSERT INTO artifacts(
@@ -372,9 +377,10 @@ class ArtifactStore:
                 size_bytes,
                 checksums_json,
                 metadata_json,
-                created_at
+                created_at,
+                session_id
             )
-            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 ref.ref_id,
@@ -387,6 +393,7 @@ class ArtifactStore:
                 json.dumps([c.model_dump() for c in ref.checksums]),
                 json.dumps(ref.metadata),
                 ref.created_at,
+                session_id,
             ),
         )
         self._conn.commit()
@@ -568,7 +575,7 @@ class ArtifactStore:
 
         return dest_path
 
-    def write_log(self, content: str) -> ArtifactRef:
+    def write_log(self, content: str, session_id: str | None = None) -> ArtifactRef:
         ref_id = uuid.uuid4().hex
         dest = self._artifact_path(ref_id, ".log")
         dest.parent.mkdir(parents=True, exist_ok=True)
@@ -589,7 +596,7 @@ class ArtifactStore:
             created_at=ArtifactRef.now(),
             metadata={},
         )
-        self._persist(ref)
+        self._persist(ref, session_id=session_id)
         return ref
 
     def write_native_output(
@@ -598,6 +605,7 @@ class ArtifactStore:
         *,
         format: str,
         metadata: dict | None = None,
+        session_id: str | None = None,
     ) -> ArtifactRef:
         """Write a native output artifact (NativeOutputRef).
 
@@ -656,7 +664,7 @@ class ArtifactStore:
             created_at=ArtifactRef.now(),
             metadata=metadata or {},
         )
-        self._persist(ref)
+        self._persist(ref, session_id=session_id)
         return ref
 
 

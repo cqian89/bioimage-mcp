@@ -34,14 +34,29 @@ def _build_parser() -> argparse.ArgumentParser:
     storage_status = storage_subparsers.add_parser(
         "status", help="Show storage usage and quota status"
     )
+    storage_status.add_argument("--json", action="store_true", help="Output machine-readable JSON")
+    storage_status.add_argument(
+        "-v", "--verbose", action="store_true", help="Show detailed breakdown"
+    )
     storage_status.set_defaults(_handler=_handle_storage_status)
 
     storage_prune = storage_subparsers.add_parser(
         "prune", help="Cleanup expired sessions and orphan files"
     )
-    storage_prune.add_argument("--days", type=int, help="Override retention days")
     storage_prune.add_argument(
-        "--force", action="store_true", help="Execute deletion without confirmation"
+        "--older-than", "--days", type=int, dest="days", help="Override retention days"
+    )
+    storage_prune.add_argument(
+        "--dry-run", "-n", action="store_true", help="Show what would be deleted"
+    )
+    storage_prune.add_argument(
+        "--force", "-f", action="store_true", help="Execute deletion without confirmation"
+    )
+    storage_prune.add_argument(
+        "--include-orphans", action="store_true", default=True, help="Also delete orphaned files"
+    )
+    storage_prune.add_argument(
+        "--no-orphans", action="store_false", dest="include_orphans", help="Skip orphaned files"
     )
     storage_prune.set_defaults(_handler=_handle_storage_prune)
 
@@ -93,13 +108,74 @@ def _handle_serve(args: argparse.Namespace) -> int:
 
 
 def _handle_storage_status(args: argparse.Namespace) -> int:
-    print("Storage status: Not implemented")
-    return 0
+    from bioimage_mcp.config.loader import load_config
+    from bioimage_mcp.storage.service import StorageService
+    from bioimage_mcp.storage.sqlite import connect
+
+    config = load_config()
+    conn = connect(config)
+    try:
+        service = StorageService(config, conn)
+        status = service.get_status()
+
+        if args.json:
+            print(status.model_dump_json(indent=2))
+        else:
+            print("=== Storage Usage ===")
+            print(f"Total Capacity: {status.total_bytes / (1024**3):.2f} GB")
+            print(
+                f"Used:           {status.used_bytes / (1024**3):.2f} GB ({status.usage_percent:.1f}%)"
+            )
+            print(f"Orphan Files:   {status.orphan_bytes / (1024**2):.2f} MB")
+            print("\nBy State:")
+            for state, info in status.by_state.items():
+                print(
+                    f"  {state:10}: {info.session_count} sessions, {info.artifact_count} artifacts, {info.total_bytes / (1024**2):.2f} MB"
+                )
+
+        # Exit codes: 0=normal, 1=warning threshold, 2=critical threshold
+        if status.usage_percent >= config.storage.critical_threshold * 100:
+            return 2
+        if status.usage_percent >= config.storage.warning_threshold * 100:
+            return 1
+        return 0
+    finally:
+        conn.close()
 
 
 def _handle_storage_prune(args: argparse.Namespace) -> int:
-    print(f"Storage prune (days={args.days}, force={args.force}): Not implemented")
-    return 0
+    from bioimage_mcp.config.loader import load_config
+    from bioimage_mcp.storage.service import StorageService
+    from bioimage_mcp.storage.sqlite import connect
+
+    config = load_config()
+    conn = connect(config)
+    try:
+        service = StorageService(config, conn)
+
+        result = service.prune(
+            dry_run=args.dry_run, include_orphans=args.include_orphans, older_than_days=args.days
+        )
+
+        if args.dry_run:
+            print("=== Prune Result (DRY RUN) ===")
+        else:
+            print("=== Prune Result ===")
+
+        print(f"Sessions Deleted:     {result.sessions_deleted}")
+        print(f"Artifacts Deleted:    {result.artifacts_deleted}")
+        print(f"Bytes Reclaimed:      {result.bytes_reclaimed / (1024**2):.2f} MB")
+        print(f"Orphan Files Deleted: {result.orphan_files_deleted}")
+
+        if result.errors:
+            print("\nErrors:")
+            for err in result.errors:
+                print(f"  - {err}")
+            return 1  # Partial failure
+
+        return 0
+    finally:
+        conn.close()
 
 
 def _handle_storage_pin(args: argparse.Namespace) -> int:

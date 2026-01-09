@@ -48,6 +48,16 @@ def init_schema(conn: sqlite3.Connection) -> None:
             introspection_source TEXT
         );
 
+        CREATE TABLE IF NOT EXISTS sessions (
+            session_id TEXT PRIMARY KEY,
+            created_at TEXT NOT NULL,
+            last_activity_at TEXT NOT NULL,
+            completed_at TEXT,
+            is_pinned INTEGER NOT NULL DEFAULT 0,
+            status TEXT NOT NULL,
+            connection_hint TEXT
+        );
+
         CREATE TABLE IF NOT EXISTS artifacts (
             ref_id TEXT PRIMARY KEY,
             type TEXT NOT NULL,
@@ -61,8 +71,6 @@ def init_schema(conn: sqlite3.Connection) -> None:
             created_at TEXT NOT NULL,
             session_id TEXT REFERENCES sessions(session_id)
         );
-
-        CREATE INDEX IF NOT EXISTS idx_artifacts_session_id ON artifacts(session_id);
 
         CREATE TABLE IF NOT EXISTS runs (
             run_id TEXT PRIMARY KEY,
@@ -95,16 +103,6 @@ def init_schema(conn: sqlite3.Connection) -> None:
             introspection_source TEXT NOT NULL,
             introspected_at TEXT NOT NULL,
             PRIMARY KEY (tool_id, fn_id)
-        );
-
-        CREATE TABLE IF NOT EXISTS sessions (
-            session_id TEXT PRIMARY KEY,
-            created_at TEXT NOT NULL,
-            last_activity_at TEXT NOT NULL,
-            completed_at TEXT,
-            is_pinned INTEGER NOT NULL DEFAULT 0,
-            status TEXT NOT NULL,
-            connection_hint TEXT
         );
 
         CREATE TABLE IF NOT EXISTS session_steps (
@@ -154,15 +152,7 @@ def migrate_schema(conn: sqlite3.Connection) -> None:
         conn.execute(
             "ALTER TABLE artifacts ADD COLUMN session_id TEXT REFERENCES sessions(session_id)"
         )
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_artifacts_session_id ON artifacts(session_id)")
-
-    # Migration: backfill session_id for existing artifacts (T007)
-    # Since we don't have a direct link in old schema, we might leave them as NULL
-    # or try to infer if possible. For now, leaving as NULL is fine as per T007
-    # being "backfill logic" which could just be ensuring the column exists.
-    # Actually, if we have session_steps, we might be able to find run_id -> artifacts.
-    # But artifacts don't have run_id either in the old schema.
-    # So NULL is the safest backfill for now unless we have more info.
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_artifacts_session_id ON artifacts(session_id)")
 
     # Migration: mark old sessions as completed (T007)
     conn.execute(

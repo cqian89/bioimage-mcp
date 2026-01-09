@@ -192,13 +192,16 @@ class SessionService:
             out_path.parent.mkdir(parents=True, exist_ok=True)
             out_path.write_text(record.model_dump_json(indent=2))
             store_ref = self.artifact_store.import_file(
-                out_path, artifact_type="TableRef", format="workflow-record-json"
+                out_path,
+                artifact_type="TableRef",
+                format="workflow-record-json",
+                session_id=session_id,
             )
             # Override URI to point to user-provided path for better UX
             workflow_ref = store_ref.model_copy(update={"uri": out_path.absolute().as_uri()})
         else:
             store_ref = self.artifact_store.write_native_output(
-                record.model_dump(mode="json"), format="workflow-record-json"
+                record.model_dump(mode="json"), format="workflow-record-json", session_id=session_id
             )
             workflow_ref = store_ref
 

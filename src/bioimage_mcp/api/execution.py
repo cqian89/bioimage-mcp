@@ -584,7 +584,7 @@ class ExecutionService:
                     input_metadata[name] = {}
 
         # Create the run early so we can use its ID to isolate outputs (FR-009).
-        log_ref = self._artifact_store.write_log("workflow started")
+        log_ref = self._artifact_store.write_log("workflow started", session_id=session_id)
         run = self._run_store.create_run(
             workflow_spec=spec,
             inputs=inputs,
@@ -774,6 +774,7 @@ class ExecutionService:
                             Path(materialized_path),
                             artifact_type=artifact.type,
                             format=negotiated_format,
+                            session_id=session_id,
                         )
 
                         # Record handoff
@@ -853,7 +854,7 @@ class ExecutionService:
             else:
                 log_text = warning_prefix
 
-        log_ref = self._artifact_store.write_log(log_text or str(response))
+        log_ref = self._artifact_store.write_log(log_text or str(response), session_id=session_id)
         run.log_ref_id = log_ref.ref_id
         self._run_store.set_log_ref(run.run_id, log_ref.ref_id)
 
@@ -984,12 +985,16 @@ class ExecutionService:
 
                 if p.is_dir():
                     ref = self._artifact_store.import_directory(
-                        p, artifact_type=out_type, format=fmt
+                        p, artifact_type=out_type, format=fmt, session_id=session_id
                     )
                 else:
                     # Pass tool metadata as override to preserve native dimensions (T048)
                     ref = self._artifact_store.import_file(
-                        p, artifact_type=out_type, format=fmt, metadata_override=tool_metadata
+                        p,
+                        artifact_type=out_type,
+                        format=fmt,
+                        metadata_override=tool_metadata,
+                        session_id=session_id,
                     )
 
                 ref_data = ref.model_dump()
@@ -1063,6 +1068,7 @@ class ExecutionService:
             workflow_record,
             format="workflow-record-json",
             metadata={"run_id": run.run_id},
+            session_id=session_id,
         )
         outputs_payload["workflow_record"] = workflow_record_ref.model_dump()
         self._run_store.set_native_output_ref(run.run_id, workflow_record_ref.ref_id)
