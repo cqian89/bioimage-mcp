@@ -9,6 +9,7 @@ isolated conda environments (e.g., Cellpose, StarDist, PhasorPy, Fiji).
 - **Stable Discovery API**: Paginated `list/search/describe` to avoid context bloat.
 - **Dynamic Permissions**: Support for `inherit` mode (zero-config file access via MCP Roots) and interactive overwrite protection.
 - **Artifact-Based I/O**: File-backed references (OME-TIFF/OME-Zarr) instead of large payloads.
+- **Storage & Quota Management**: Configurable retention policies and quotas to keep your workspace tidy.
 - **Isolated Execution**: Tools run in dedicated environments to prevent dependency hell.
 - **Reproducible Workflows**: Automatic recording and replay of analysis steps.
 
@@ -132,6 +133,23 @@ Machine-readable output:
 ```bash
 bioimage-mcp doctor --json
 ```
+
+## Storage Management
+
+`bioimage-mcp` includes built-in tools for managing the artifact store.
+
+```bash
+# Check current usage
+bioimage-mcp storage status
+
+# List sessions by size
+bioimage-mcp storage list --sort size
+
+# Cleanup expired data
+bioimage-mcp storage prune
+```
+
+See the [Storage & Artifact Management Quickstart](specs/019-artifact-management/quickstart.md) for more details.
 
 ### The 8 checks
 

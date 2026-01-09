@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import fcntl
 import logging
+import shutil
 import sqlite3
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -292,7 +294,7 @@ class StorageService:
         )
 
     def find_orphans(self) -> list[OrphanFile]:
-        """Identify files in storage root not tracked in database.
+        """Identify files or directories in storage root not tracked in database.
         - Scans artifact_store_root/objects/
         - Compares against artifacts.uri
         """
@@ -301,16 +303,28 @@ class StorageService:
             return []
 
         # Get all tracked URIs
-        tracked_uris = {row["uri"] for row in self.conn.execute("SELECT uri FROM artifacts")}
+        tracked_paths = set()
+        for row in self.conn.execute("SELECT uri FROM artifacts"):
+            uri = row["uri"]
+            if uri.startswith("file://"):
+                # Handle both file:///path and file:/path (some systems)
+                path_str = uri[7:] if uri.startswith("file://") else uri[5:]
+                tracked_paths.add(Path(path_str).absolute())
 
         orphans = []
-        for file_path in obj_dir.rglob("*"):
-            if file_path.is_file():
-                # We expect URIs to be file://<abs_path>
-                # ArtifactStore.save uses file:// + str(path.absolute())
-                uri = f"file://{file_path.absolute()}"
-                if uri not in tracked_uris:
-                    orphans.append(OrphanFile(path=file_path, size_bytes=file_path.stat().st_size))
+        for path in obj_dir.iterdir():
+            abs_path = path.absolute()
+            if abs_path.name == ".prune.lock":
+                continue
+
+            if abs_path not in tracked_paths:
+                size_bytes = 0
+                if path.is_file():
+                    size_bytes = path.stat().st_size
+                elif path.is_dir():
+                    size_bytes = sum(f.stat().st_size for f in path.rglob("*") if f.is_file())
+
+                orphans.append(OrphanFile(path=path, size_bytes=size_bytes))
 
         return orphans
 
@@ -319,10 +333,19 @@ class StorageService:
         deleted_count = 0
         for orphan in orphans:
             try:
-                orphan.path.unlink()
+                if orphan.path.exists():
+                    if orphan.path.is_dir():
+                        shutil.rmtree(orphan.path)
+                    else:
+                        orphan.path.unlink()
+                    logger.info("DELETION: type=orphan path=%s", orphan.path)
+                deleted_count += 1
+            except FileNotFoundError:
+                # Idempotent: already gone
+                logger.warning("DELETION_SKIP: orphan already deleted: %s", orphan.path)
                 deleted_count += 1
             except Exception as e:
-                logger.error("Failed to delete orphan file %s: %s", orphan.path, e)
+                logger.error("DELETION_FAILED: orphan=%s error=%s", orphan.path, e)
         return deleted_count
 
     def prune(
@@ -336,6 +359,42 @@ class StorageService:
         - Deletes files first, then DB records
         - Returns PruneResult
         """
+        # Concurrent safety: use file-based lock
+        if not self.root.exists():
+            self.root.mkdir(parents=True, exist_ok=True)
+
+        lock_file = self.root / ".prune.lock"
+        try:
+            with open(lock_file, "w") as f:
+                try:
+                    fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                except BlockingIOError:
+                    logger.warning("Prune already in progress (could not acquire lock)")
+                    return PruneResult(
+                        sessions_deleted=0,
+                        artifacts_deleted=0,
+                        bytes_reclaimed=0,
+                        orphan_files_deleted=0,
+                        errors=["Prune already in progress (concurrent lock held)"],
+                    )
+
+                return self._do_prune(dry_run, include_orphans, older_than_days)
+        except Exception as e:
+            logger.error("Prune failed with error: %s", e)
+            return PruneResult(
+                sessions_deleted=0,
+                artifacts_deleted=0,
+                bytes_reclaimed=0,
+                orphan_files_deleted=0,
+                errors=[f"Internal error during prune: {e}"],
+            )
+
+    def _do_prune(
+        self,
+        dry_run: bool = False,
+        include_orphans: bool = True,
+        older_than_days: int | None = None,
+    ) -> PruneResult:
         sessions_to_delete = []
         now = datetime.now(UTC)
 
@@ -351,7 +410,7 @@ class StorageService:
                 s_row = self.conn.execute(
                     "SELECT completed_at FROM sessions WHERE session_id = ?", (sid,)
                 ).fetchone()
-                if s_row["completed_at"]:
+                if s_row and s_row["completed_at"]:
                     comp_at = datetime.fromisoformat(s_row["completed_at"])
                     if comp_at.tzinfo is None:
                         comp_at = comp_at.replace(tzinfo=UTC)
@@ -382,10 +441,28 @@ class StorageService:
                     if not dry_run:
                         try:
                             if path.exists():
-                                path.unlink()
+                                if path.is_dir():
+                                    shutil.rmtree(path)
+                                else:
+                                    path.unlink()
+                                logger.info(
+                                    "DELETION: type=artifact id=%s session=%s path=%s",
+                                    art["ref_id"],
+                                    sid,
+                                    path,
+                                )
+                            art_deleted += 1
+                            bytes_rec += art["size_bytes"]
+                        except FileNotFoundError:
+                            logger.warning(
+                                "DELETION_SKIP: file already deleted: %s (artifact: %s)",
+                                path,
+                                art["ref_id"],
+                            )
                             art_deleted += 1
                             bytes_rec += art["size_bytes"]
                         except Exception as e:
+                            logger.error("DELETION_FAILED: artifact=%s error=%s", art["ref_id"], e)
                             res.errors.append(f"Failed to delete artifact {art['ref_id']}: {e}")
                     else:
                         art_deleted += 1
@@ -403,7 +480,9 @@ class StorageService:
                     res.sessions_deleted += 1
                     res.artifacts_deleted += art_deleted
                     res.bytes_reclaimed += bytes_rec
+                    logger.info("DELETION: type=session id=%s", sid)
                 except Exception as e:
+                    logger.error("DELETION_FAILED: session=%s error=%s", sid, e)
                     res.errors.append(f"Failed to delete session {sid} from DB: {e}")
             else:
                 res.sessions_deleted += 1
@@ -412,10 +491,12 @@ class StorageService:
 
         if include_orphans:
             orphans = self.find_orphans()
-            res.orphan_files_deleted = len(orphans)
             if not dry_run:
                 deleted = self.delete_orphans(orphans)
-                # We already counted them as to be deleted, but if we want to be precise:
-                # res.orphan_files_deleted = deleted
+                res.orphan_files_deleted = deleted
+            else:
+                res.orphan_files_deleted = len(orphans)
+
+        return res
 
         return res

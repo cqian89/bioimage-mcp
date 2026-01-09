@@ -66,6 +66,12 @@ python -m bioimage_mcp serve
 # Run doctor/readiness checks
 python -m bioimage_mcp doctor
 
+# Manage artifact storage and quotas
+python -m bioimage_mcp storage status
+python -m bioimage_mcp storage list --state expired
+python -m bioimage_mcp storage prune --dry-run
+python -m bioimage_mcp storage pin <session_id>
+
 # Validate pipeline (sample workflow)
 python scripts/validate_pipeline.py
 ```
