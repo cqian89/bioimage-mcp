@@ -24,12 +24,12 @@ XARRAY_DATAARRAY_CLASS: dict[str, dict[str, Any]] = {
     "DataArray": {
         "category": "constructor",
         "signature_type": SignatureType.CONSTRUCTOR,
-        "summary": "Instantiate a DataArray from BioImageRef and return ObjectRef for method chaining",
+        "summary": "Instantiate DataArray from BioImageRef, return ObjectRef",
         "tags": ["initialization", "xarray"],
         "inputs": [{"name": "image", "type": "BioImageRef", "required": True}],
         "outputs": [{"name": "da", "type": "ObjectRef"}],
         "params": {},
-        "bioimage_use": "Load image once for multiple sequential operations without re-serialization",
+        "bioimage_use": "Load image once for multiple sequential operations",
     },
 }
 
@@ -155,9 +155,22 @@ XARRAY_UFUNC_ALLOWLIST: dict[str, dict[str, Any]] = {
     "subtract": {"category": "arithmetic", "arity": 2, "summary": "Element-wise subtraction"},
     "multiply": {"category": "arithmetic", "arity": 2, "summary": "Element-wise multiplication"},
     "divide": {"category": "arithmetic", "arity": 2, "summary": "Element-wise division"},
+    "true_divide": {
+        "category": "arithmetic",
+        "arity": 2,
+        "summary": "Element-wise division (alias)",
+    },
+    "floor_divide": {
+        "category": "arithmetic",
+        "arity": 2,
+        "summary": "Element-wise floor division",
+    },
+    "remainder": {"category": "arithmetic", "arity": 2, "summary": "Element-wise remainder"},
+    "mod": {"category": "arithmetic", "arity": 2, "summary": "Element-wise modulo"},
     "power": {"category": "arithmetic", "arity": 2, "summary": "Element-wise power"},
     # Unary Math
     "negative": {"category": "unary", "arity": 1, "summary": "Numerical negative"},
+    "positive": {"category": "unary", "arity": 1, "summary": "Numerical positive"},
     "absolute": {"category": "unary", "arity": 1, "summary": "Absolute value"},
     "abs": {"category": "unary", "arity": 1, "summary": "Absolute value (alias)"},
     "sqrt": {"category": "unary", "arity": 1, "summary": "Square root"},
@@ -166,8 +179,10 @@ XARRAY_UFUNC_ALLOWLIST: dict[str, dict[str, Any]] = {
     "sign": {"category": "unary", "arity": 1, "summary": "Sign of elements"},
     # Exponential / Logarithmic
     "exp": {"category": "exp_log", "arity": 1, "summary": "Exponential (e^x)"},
+    "expm1": {"category": "exp_log", "arity": 1, "summary": "exp(x) - 1"},
     "exp2": {"category": "exp_log", "arity": 1, "summary": "2^x"},
     "log": {"category": "exp_log", "arity": 1, "summary": "Natural logarithm"},
+    "log1p": {"category": "exp_log", "arity": 1, "summary": "log(1 + x)"},
     "log2": {"category": "exp_log", "arity": 1, "summary": "Base-2 logarithm"},
     "log10": {"category": "exp_log", "arity": 1, "summary": "Base-10 logarithm"},
     # Trigonometric
@@ -175,7 +190,10 @@ XARRAY_UFUNC_ALLOWLIST: dict[str, dict[str, Any]] = {
     "cos": {"category": "trig", "arity": 1, "summary": "Cosine"},
     "tan": {"category": "trig", "arity": 1, "summary": "Tangent"},
     "arcsin": {"category": "trig", "arity": 1, "summary": "Inverse sine"},
+    "arccos": {"category": "trig", "arity": 1, "summary": "Inverse cosine"},
+    "arctan": {"category": "trig", "arity": 1, "summary": "Inverse tangent"},
     "arctan2": {"category": "trig", "arity": 2, "summary": "Two-argument arctangent"},
+    "hypot": {"category": "trig", "arity": 2, "summary": "Hypotenuse (sqrt(x1^2 + x2^2))"},
     "sinh": {"category": "trig", "arity": 1, "summary": "Hyperbolic sine"},
     "cosh": {"category": "trig", "arity": 1, "summary": "Hyperbolic cosine"},
     "tanh": {"category": "trig", "arity": 1, "summary": "Hyperbolic tangent"},

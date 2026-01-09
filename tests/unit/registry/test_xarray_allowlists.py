@@ -1,12 +1,11 @@
-import pytest
 from bioimage_mcp.registry.dynamic.xarray_allowlists import (
-    XarrayFunctionType,
-    SignatureType,
+    XARRAY_DATAARRAY_ALLOWLIST,
     XARRAY_DATAARRAY_CLASS,
+    XARRAY_DENYLIST,
     XARRAY_TOPLEVEL_ALLOWLIST,
     XARRAY_UFUNC_ALLOWLIST,
-    XARRAY_DATAARRAY_ALLOWLIST,
-    XARRAY_DENYLIST,
+    SignatureType,
+    XarrayFunctionType,
     is_allowed_method,
 )
 
@@ -39,7 +38,7 @@ def test_toplevel_allowlist():
 
 
 def test_ufunc_allowlist():
-    assert len(XARRAY_UFUNC_ALLOWLIST) == 50
+    assert len(XARRAY_UFUNC_ALLOWLIST) == 60
     assert "add" in XARRAY_UFUNC_ALLOWLIST
     assert "sqrt" in XARRAY_UFUNC_ALLOWLIST
 
