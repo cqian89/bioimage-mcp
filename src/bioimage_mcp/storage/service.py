@@ -10,6 +10,7 @@ from bioimage_mcp.sessions.models import Session
 from bioimage_mcp.storage.models import (
     OrphanFile,
     PruneResult,
+    QuotaCheckResult,
     SessionStorageInfo,
     StorageStatus,
 )
@@ -144,6 +145,63 @@ class StorageService:
             "SELECT SUM(size_bytes) FROM artifacts WHERE session_id = ?", (session_id,)
         ).fetchone()
         return row[0] or 0
+
+    def check_quota(self) -> QuotaCheckResult:
+        """Pre-run quota validation used by ExecutionService before starting runs.
+        Returns: QuotaCheckResult with allowed: bool, usage_percent: float, message: str
+        """
+        # 1. Total bytes used by artifacts
+        row = self.conn.execute("SELECT SUM(size_bytes) FROM artifacts").fetchone()
+        artifact_bytes = row[0] or 0
+
+        # 2. Orphans (Note: scanning directory can be slow, but needed for accuracy)
+        orphans = self.find_orphans()
+        orphan_bytes = sum(o.size_bytes for o in orphans)
+
+        used_bytes = artifact_bytes + orphan_bytes
+        total_capacity = self.storage_config.quota_bytes
+        usage_percent = (used_bytes / total_capacity * 100) if total_capacity > 0 else 0.0
+
+        quota_gb = total_capacity / (1024**3)
+
+        if usage_percent >= self.storage_config.critical_threshold * 100:
+            return QuotaCheckResult(
+                allowed=False,
+                usage_percent=usage_percent,
+                used_bytes=used_bytes,
+                message=(
+                    f"CRITICAL: Storage quota exceeded ({usage_percent:.1f}% of {quota_gb:.1f}GB used). "
+                    "Run 'bioimage-mcp storage prune' to reclaim space."
+                ),
+            )
+
+        if usage_percent >= self.storage_config.warning_threshold * 100:
+            return QuotaCheckResult(
+                allowed=True,
+                usage_percent=usage_percent,
+                used_bytes=used_bytes,
+                message=f"WARNING: Storage quota usage high ({usage_percent:.1f}% of {quota_gb:.1f}GB used).",
+            )
+
+        return QuotaCheckResult(
+            allowed=True,
+            usage_percent=usage_percent,
+            used_bytes=used_bytes,
+            message=f"Storage usage below warning threshold ({usage_percent:.1f}% used).",
+        )
+
+        if usage_percent >= self.storage_config.warning_threshold * 100:
+            return QuotaCheckResult(
+                allowed=True,
+                usage_percent=usage_percent,
+                message=f"WARNING: Storage quota usage high ({usage_percent:.1f}% of {quota_gb:.1f}GB used).",
+            )
+
+        return QuotaCheckResult(
+            allowed=True,
+            usage_percent=usage_percent,
+            message=f"Storage usage below warning threshold ({usage_percent:.1f}% used).",
+        )
 
     def find_orphans(self) -> list[OrphanFile]:
         """Identify files in storage root not tracked in database.

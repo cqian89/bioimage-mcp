@@ -21,6 +21,7 @@ from bioimage_mcp.runs.store import RunStore
 from bioimage_mcp.runtimes.executor import execute_tool
 from bioimage_mcp.runtimes.persistent import PersistentWorkerManager
 from bioimage_mcp.runtimes.protocol import validate_workflow_compatibility
+from bioimage_mcp.storage.service import StorageService
 
 logger = logging.getLogger(__name__)
 
@@ -340,6 +341,7 @@ class ExecutionService:
             session_timeout_seconds=config.session_timeout_seconds,
             manifest_roots=config.tool_manifest_roots,
         )
+        self._storage_service = StorageService(config, self._artifact_store._conn)
         self._io_bridge = IOBridge(artifact_store_path=config.artifact_store_root)
 
     @property
@@ -499,6 +501,40 @@ class ExecutionService:
         session_id: str = "default-session",
         dry_run: bool = False,
     ) -> dict:
+        # 1. Quota Check (T042-T045)
+        quota_result = self._storage_service.check_quota()
+        if not quota_result.allowed:
+            error_payload = {
+                "code": "QUOTA_EXCEEDED",
+                "message": quota_result.message,
+                "details": {
+                    "used_bytes": quota_result.used_bytes,
+                    "quota_bytes": self._config.storage.quota_bytes,
+                    "usage_percent": quota_result.usage_percent,
+                    "suggestion": "Run 'bioimage-mcp storage prune' to reclaim space",
+                },
+            }
+            logger.error("Run blocked: %s", quota_result.message)
+            return {
+                "session_id": session_id,
+                "run_id": "none",
+                "status": "failed",
+                "id": "unknown",
+                "error": error_payload,
+            }
+
+            logger.error("Run blocked: %s", quota_result.message)
+            return {
+                "session_id": session_id,
+                "run_id": "none",
+                "status": "failed",
+                "id": "unknown",
+                "error": error_payload,
+            }
+
+        if quota_result.usage_percent >= self._config.storage.warning_threshold * 100:
+            logger.warning(quota_result.message)
+
         # Apply redirects (SC-001)
         spec, core_warnings = _apply_legacy_redirects(spec)
 

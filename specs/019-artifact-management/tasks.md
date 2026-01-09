@@ -77,28 +77,28 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T018 [P] [US1] Write unit test for StorageService.get_status() in tests/unit/storage/test_service.py
-- [ ] T019 [P] [US1] Write unit test for StorageService.get_session_size() in tests/unit/storage/test_service.py
-- [ ] T020 [P] [US1] Write unit test for StorageService.prune() dry_run mode in tests/unit/storage/test_service.py
-- [ ] T021 [P] [US1] Write unit test for StorageService.prune() actual deletion in tests/unit/storage/test_service.py
-- [ ] T022 [P] [US1] Write unit test for StorageService.find_orphans() in tests/unit/storage/test_service.py
-- [ ] T023 [P] [US1] Write unit test for StorageService.delete_orphans() in tests/unit/storage/test_service.py
-- [ ] T024 [P] [US1] Write integration test for `storage status` CLI in tests/integration/test_storage_cli.py
-- [ ] T025 [P] [US1] Write integration test for `storage prune` CLI in tests/integration/test_storage_cli.py
+- [X] T018 [P] [US1] Write unit test for StorageService.get_status() in tests/unit/storage/test_service.py
+- [X] T019 [P] [US1] Write unit test for StorageService.get_session_size() in tests/unit/storage/test_service.py
+- [X] T020 [P] [US1] Write unit test for StorageService.prune() dry_run mode in tests/unit/storage/test_service.py
+- [X] T021 [P] [US1] Write unit test for StorageService.prune() actual deletion in tests/unit/storage/test_service.py
+- [X] T022 [P] [US1] Write unit test for StorageService.find_orphans() in tests/unit/storage/test_service.py
+- [X] T023 [P] [US1] Write unit test for StorageService.delete_orphans() in tests/unit/storage/test_service.py
+- [X] T024 [P] [US1] Write integration test for `storage status` CLI in tests/integration/test_storage_cli.py
+- [X] T025 [P] [US1] Write integration test for `storage prune` CLI in tests/integration/test_storage_cli.py
 
 ### Implementation for User Story 1
 
-- [ ] T026 [US1] Implement StorageService.get_status() in src/bioimage_mcp/storage/service.py
-- [ ] T027 [US1] Implement StorageService.get_session_size() in src/bioimage_mcp/storage/service.py
-- [ ] T028 [US1] Implement StorageService.find_orphans() in src/bioimage_mcp/storage/service.py
-- [ ] T029 [US1] Implement StorageService.delete_orphans() in src/bioimage_mcp/storage/service.py
-- [ ] T030 [US1] Implement StorageService.prune() with dry_run support in src/bioimage_mcp/storage/service.py
-- [ ] T031 [US1] Implement `storage status` CLI command handler in src/bioimage_mcp/cli.py
-- [ ] T032 [US1] Implement `storage prune` CLI command handler in src/bioimage_mcp/cli.py
-- [ ] T033 [US1] Add --json, --verbose flags to status command in src/bioimage_mcp/cli.py
-- [ ] T034 [US1] Add --dry-run, --force, --older-than, --include-orphans flags to prune command in src/bioimage_mcp/cli.py
-- [ ] T035 [US1] Implement human-readable output formatting for status command in src/bioimage_mcp/cli.py
-- [ ] T036 [US1] Implement human-readable output formatting for prune command in src/bioimage_mcp/cli.py
+- [X] T026 [US1] Implement StorageService.get_status() in src/bioimage_mcp/storage/service.py
+- [X] T027 [US1] Implement StorageService.get_session_size() in src/bioimage_mcp/storage/service.py
+- [X] T028 [US1] Implement StorageService.find_orphans() in src/bioimage_mcp/storage/service.py
+- [X] T029 [US1] Implement StorageService.delete_orphans() in src/bioimage_mcp/storage/service.py
+- [X] T030 [US1] Implement StorageService.prune() with dry_run support in src/bioimage_mcp/storage/service.py
+- [X] T031 [US1] Implement `storage status` CLI command handler in src/bioimage_mcp/cli.py
+- [X] T032 [US1] Implement `storage prune` CLI command handler in src/bioimage_mcp/cli.py
+- [X] T033 [US1] Add --json, --verbose flags to status command in src/bioimage_mcp/cli.py
+- [X] T034 [US1] Add --dry-run, --force, --older-than, --include-orphans flags to prune command in src/bioimage_mcp/cli.py
+- [X] T035 [US1] Implement human-readable output formatting for status command in src/bioimage_mcp/cli.py
+- [X] T036 [US1] Implement human-readable output formatting for prune command in src/bioimage_mcp/cli.py
 
 **Checkpoint**: User Story 1 complete - developers can check status and prune expired sessions
 
@@ -116,20 +116,20 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T037 [P] [US2] Write unit test for StorageService.check_quota() below warning in tests/unit/storage/test_quota.py
-- [ ] T038 [P] [US2] Write unit test for StorageService.check_quota() at warning threshold in tests/unit/storage/test_quota.py
-- [ ] T039 [P] [US2] Write unit test for StorageService.check_quota() at critical threshold in tests/unit/storage/test_quota.py
-- [ ] T040 [P] [US2] Write unit test for quota enforcement blocking run in tests/unit/storage/test_quota.py
-- [ ] T041 [P] [US2] Write integration test for quota enforcement in tests/integration/test_storage_quota.py
-- [ ] T091 [P] [US2] Write integration test for structured error payload when quota exceeded in tests/integration/test_storage_quota.py
+- [X] T037 [P] [US2] Write unit test for StorageService.check_quota() below warning in tests/unit/storage/test_quota.py
+- [X] T038 [P] [US2] Write unit test for StorageService.check_quota() at warning threshold in tests/unit/storage/test_quota.py
+- [X] T039 [P] [US2] Write unit test for StorageService.check_quota() at critical threshold in tests/unit/storage/test_quota.py
+- [X] T040 [P] [US2] Write unit test for quota enforcement blocking run in tests/unit/storage/test_quota.py
+- [X] T041 [P] [US2] Write integration test for quota enforcement in tests/integration/test_storage_quota.py
+- [X] T091 [P] [US2] Write integration test for structured error payload when quota exceeded in tests/integration/test_storage_quota.py
 
 ### Implementation for User Story 2
 
-- [ ] T042 [US2] Implement StorageService.check_quota() in src/bioimage_mcp/storage/service.py
-- [ ] T043 [US2] Integrate quota check into ExecutionService pre-run in src/bioimage_mcp/api/execution.py
-- [ ] T044 [US2] Add warning log when storage exceeds warning threshold in src/bioimage_mcp/storage/service.py
-- [ ] T045 [US2] Add blocking error when storage exceeds critical threshold in src/bioimage_mcp/storage/service.py
-- [ ] T046 [US2] Implement clear error message directing users to cleanup in src/bioimage_mcp/storage/service.py
+- [X] T042 [US2] Implement StorageService.check_quota() in src/bioimage_mcp/storage/service.py
+- [X] T043 [US2] Integrate quota check into ExecutionService pre-run in src/bioimage_mcp/api/execution.py
+- [X] T044 [US2] Add warning log when storage exceeds warning threshold in src/bioimage_mcp/storage/service.py
+- [X] T045 [US2] Add blocking error when storage exceeds critical threshold in src/bioimage_mcp/storage/service.py
+- [X] T046 [US2] Implement clear error message directing users to cleanup in src/bioimage_mcp/storage/service.py
 
 **Checkpoint**: User Story 2 complete - CI environments protected by quota enforcement
 
@@ -199,12 +199,12 @@
 
 **Purpose**: Complete session lifecycle management to support retention policies
 
-- [ ] T066 Write unit test for StorageService.complete_session() in tests/unit/storage/test_service.py
-- [ ] T067 Implement StorageService.complete_session() in src/bioimage_mcp/storage/service.py
-- [ ] T068 Integrate session completion stamping into session lifecycle management in src/bioimage_mcp/sessions/manager.py
-- [ ] T069 Add session status tracking (active → completed → expired) logic in src/bioimage_mcp/storage/service.py
-- [ ] T070 Write unit test for session completion classification using idle timeout in tests/unit/storage/test_service.py
-- [ ] T071 Implement session completion classification using idle timeout in src/bioimage_mcp/storage/service.py
+- [X] T066 Write unit test for StorageService.complete_session() in tests/unit/storage/test_service.py
+- [X] T067 Implement StorageService.complete_session() in src/bioimage_mcp/storage/service.py
+- [X] T068 Integrate session completion stamping into session lifecycle management in src/bioimage_mcp/sessions/manager.py
+- [X] T069 Add session status tracking (active → completed → expired) logic in src/bioimage_mcp/storage/service.py
+- [X] T070 Write unit test for session completion classification using idle timeout in tests/unit/storage/test_service.py
+- [X] T071 Implement session completion classification using idle timeout in src/bioimage_mcp/storage/service.py
 
 ---
 

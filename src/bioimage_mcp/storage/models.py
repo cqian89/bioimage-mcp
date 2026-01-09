@@ -47,4 +47,5 @@ class PruneResult(BaseModel):
 class QuotaCheckResult(BaseModel):
     allowed: bool
     usage_percent: float
+    used_bytes: int
     message: str
