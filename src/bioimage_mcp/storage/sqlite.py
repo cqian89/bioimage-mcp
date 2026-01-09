@@ -163,3 +163,13 @@ def migrate_schema(conn: sqlite3.Connection) -> None:
     # Actually, if we have session_steps, we might be able to find run_id -> artifacts.
     # But artifacts don't have run_id either in the old schema.
     # So NULL is the safest backfill for now unless we have more info.
+
+    # Migration: mark old sessions as completed (T007)
+    conn.execute(
+        """
+        UPDATE sessions
+        SET completed_at = last_activity_at, status = 'completed'
+        WHERE completed_at IS NULL
+        AND datetime(last_activity_at) < datetime('now', '-24 hours')
+        """
+    )
