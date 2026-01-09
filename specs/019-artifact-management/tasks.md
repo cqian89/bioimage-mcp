@@ -19,8 +19,8 @@
 
 **Purpose**: Validate project structure and dependencies exist
 
-- [ ] T001 Verify project structure matches plan.md layout in src/bioimage_mcp/
-- [ ] T002 [P] Verify test directory structure exists in tests/unit/storage/, tests/contract/, tests/integration/
+- [X] T001 Verify project structure matches plan.md layout in src/bioimage_mcp/
+- [X] T002 [P] Verify test directory structure exists in tests/unit/storage/, tests/contract/, tests/integration/
 
 ---
 
@@ -32,33 +32,33 @@
 
 ### 2.1 Schema Migration
 
-- [ ] T003 [P] Write contract test for sessions table migration in tests/contract/test_storage_schema.py
-- [ ] T004 [P] Write contract test for artifacts table migration (add session_id FK + index; assert size_bytes already exists) in tests/contract/test_storage_schema.py
-- [ ] T005 Implement sessions table migration (completed_at, is_pinned columns) in src/bioimage_mcp/storage/sqlite.py
-- [ ] T006 Implement artifacts table migration (add session_id FK + index) in src/bioimage_mcp/storage/sqlite.py
-- [ ] T007 Implement migration backfill logic for existing data in src/bioimage_mcp/storage/sqlite.py
+- [X] T003 [P] Write contract test for sessions table migration in tests/contract/test_storage_schema.py
+- [X] T004 [P] Write contract test for artifacts table migration (add session_id FK + index; assert size_bytes already exists) in tests/contract/test_storage_schema.py
+- [X] T005 Implement sessions table migration (completed_at, is_pinned columns) in src/bioimage_mcp/storage/sqlite.py
+- [X] T006 Implement artifacts table migration (add session_id FK + index) in src/bioimage_mcp/storage/sqlite.py
+- [X] T007 Implement migration backfill logic for existing data in src/bioimage_mcp/storage/sqlite.py
 
 ### 2.2 Configuration Model
 
-- [ ] T008 [P] Write unit test for StorageSettings validation in tests/unit/storage/test_config.py
-- [ ] T009 Implement StorageSettings Pydantic model in src/bioimage_mcp/config/schema.py
+- [X] T008 [P] Write unit test for StorageSettings validation in tests/unit/storage/test_config.py
+- [X] T009 Implement StorageSettings Pydantic model in src/bioimage_mcp/config/schema.py
 
 ### 2.3 Runtime Models
 
-- [ ] T010 [P] Write unit tests for StorageStatus model in tests/unit/storage/test_models.py
-- [ ] T011 [P] Write unit tests for SessionSummary model in tests/unit/storage/test_models.py
-- [ ] T012 [P] Write unit tests for PruneResult model in tests/unit/storage/test_models.py
-- [ ] T013 [P] Write unit tests for QuotaCheckResult model in tests/unit/storage/test_models.py
-- [ ] T014 [P] Write unit tests for OrphanFile model in tests/unit/storage/test_models.py
-- [ ] T015 Implement StorageStatus, SessionSummary, PruneResult, QuotaCheckResult, OrphanFile models in src/bioimage_mcp/storage/models.py
+- [X] T010 [P] Write unit tests for StorageStatus model in tests/unit/storage/test_models.py
+- [X] T011 [P] Write unit tests for SessionSummary model in tests/unit/storage/test_models.py
+- [X] T012 [P] Write unit tests for PruneResult model in tests/unit/storage/test_models.py
+- [X] T013 [P] Write unit tests for QuotaCheckResult model in tests/unit/storage/test_models.py
+- [X] T014 [P] Write unit tests for OrphanFile model in tests/unit/storage/test_models.py
+- [X] T015 Implement StorageStatus, SessionSummary, PruneResult, QuotaCheckResult, OrphanFile models in src/bioimage_mcp/storage/models.py
 
 ### 2.4 Service Skeleton
 
-- [ ] T016 Create StorageService class skeleton with __init__ in src/bioimage_mcp/storage/service.py
+- [X] T016 Create StorageService class skeleton with __init__ in src/bioimage_mcp/storage/service.py
 
 ### 2.5 CLI Subparser Structure
 
-- [ ] T017 Add `storage` subparser with status/prune/pin/list stubs to src/bioimage_mcp/cli.py
+- [X] T017 Add `storage` subparser with status/prune/pin/list stubs to src/bioimage_mcp/cli.py
 
 **Checkpoint**: Foundation ready - schema migrated, models defined, service skeleton created
 

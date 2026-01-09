@@ -1,13 +1,20 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import TYPE_CHECKING, Callable
 
 from bioimage_mcp.config.schema import Config
 from bioimage_mcp.registry.loader import load_manifests
 from bioimage_mcp.sessions.models import Session
 from bioimage_mcp.sessions.store import SessionStore
+
+if TYPE_CHECKING:
+    from bioimage_mcp.storage.service import StorageService
+
+logger = logging.getLogger(__name__)
 
 
 class SessionManager:
@@ -16,6 +23,11 @@ class SessionManager:
     def __init__(self, store: SessionStore, config: Config) -> None:
         self.store = store
         self.config = config
+        self._on_session_complete: list[Callable[[str], None]] = []
+
+    def register_on_session_complete(self, callback: Callable[[str], None]) -> None:
+        """Register a callback to be called when a session is completed."""
+        self._on_session_complete.append(callback)
 
     def check_expiry(self, session_id: str) -> None:
         """Check if session is expired and update status if so."""
@@ -60,6 +72,16 @@ class SessionManager:
         """Get a session by ID."""
         session = self.store.get_session(session_id)
         self._validate_session_expiry(session)
+        return session
+
+    def complete_session(self, session_id: str) -> Session:
+        """Mark a session as completed (T068)."""
+        session = self.store.complete_session(session_id)
+        for callback in self._on_session_complete:
+            try:
+                callback(session_id)
+            except Exception as e:
+                logger.error("Error in on_session_complete callback for %s: %s", session_id, e)
         return session
 
     def get_function_provenance(self, fn_id: str) -> dict[str, str]:

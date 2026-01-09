@@ -23,8 +23,21 @@ def test_interactive_call_tool_success_flow(tmp_path: Path, monkeypatch) -> None
 import json
 import sys
 
-req = json.loads(sys.stdin.read() or '{}')
+# 1. Send ready handshake (T021/spec012 requirement)
+print(json.dumps({"command": "ready", "version": "0.1.0"}), flush=True)
+
+# 2. Wait for execute request
+line = sys.stdin.readline()
+if not line:
+    sys.exit(0)
+
+req = json.loads(line)
+ordinal = req.get('ordinal', 0)
+
+# 3. Send response
 resp = {
+  'command': 'execute_result',
+  'ordinal': ordinal,
   'ok': True,
   'outputs': {
     'output': {
@@ -36,7 +49,15 @@ resp = {
   },
   'log': 'ran interactive ok'
 }
-print(json.dumps(resp))
+print(json.dumps(resp), flush=True)
+
+# 4. Wait for second execute request (for the second call in test)
+line = sys.stdin.readline()
+if line:
+    req = json.loads(line)
+    ordinal = req.get('ordinal', 0)
+    resp['ordinal'] = ordinal
+    print(json.dumps(resp), flush=True)
 """.lstrip()
     )
 

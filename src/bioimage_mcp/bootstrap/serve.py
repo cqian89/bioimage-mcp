@@ -11,6 +11,7 @@ from bioimage_mcp.registry.loader import load_manifests
 from bioimage_mcp.runs.store import RunStore
 from bioimage_mcp.sessions.manager import SessionManager
 from bioimage_mcp.sessions.store import SessionStore
+from bioimage_mcp.storage.service import StorageService
 from bioimage_mcp.storage.sqlite import connect
 
 
@@ -68,6 +69,11 @@ def serve(*, stdio: bool) -> int:
     run_store = RunStore(config, conn=conn)
     session_store = SessionStore(config)
     session_manager = SessionManager(session_store, config)
+
+    # Integrate StorageService for lifecycle management (T068)
+    storage_service = StorageService(config, conn)
+    session_manager.register_on_session_complete(storage_service.complete_session)
+
     execution = ExecutionService(config, artifact_store=artifact_store, run_store=run_store)
     interactive = InteractiveExecutionService(session_manager, execution, discovery=service)
     artifacts = ArtifactsService(artifact_store)

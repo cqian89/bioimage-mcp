@@ -168,3 +168,20 @@ class TestSessionManager:
 
         # 4. Update activity explicitly
         manager.update_activity("sess-real")
+
+    def test_complete_session_calls_callbacks(self, mock_config):
+        """Test complete_session updates store and calls registered callbacks."""
+        store = Mock(spec=SessionStore)
+        session_id = "sess-1"
+        expected_session = Session(session_id=session_id, status="completed")
+        store.complete_session.return_value = expected_session
+
+        manager = SessionManager(store, mock_config)
+        callback = Mock()
+        manager.register_on_session_complete(callback)
+
+        result = manager.complete_session(session_id)
+
+        store.complete_session.assert_called_once_with(session_id)
+        callback.assert_called_once_with(session_id)
+        assert result == expected_session

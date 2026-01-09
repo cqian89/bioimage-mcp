@@ -223,6 +223,15 @@ class InteractiveExecutionService:
             "workflow_ref": response.workflow_ref.model_dump(),
         }
 
+    def complete_session(self, session_id: str) -> dict[str, Any]:
+        """Mark a session as completed (T068)."""
+        session = self.session_manager.complete_session(session_id)
+        return {
+            "session_id": session.session_id,
+            "status": session.status,
+            "completed_at": session.completed_at,
+        }
+
     def replay_session(
         self,
         workflow_ref: dict[str, Any] | Any,

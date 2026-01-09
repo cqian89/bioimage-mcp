@@ -261,3 +261,13 @@ class SessionStore:
                 "UPDATE sessions SET status = ? WHERE session_id = ?",
                 (status, session_id),
             )
+
+    def complete_session(self, session_id: str) -> Session:
+        """Mark a session as completed (T067)."""
+        now = datetime.now(UTC).isoformat()
+        with self.conn:
+            self.conn.execute(
+                "UPDATE sessions SET completed_at = ?, status = ? WHERE session_id = ?",
+                (now, "completed", session_id),
+            )
+        return self.get_session(session_id)
