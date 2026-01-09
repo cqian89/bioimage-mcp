@@ -12,6 +12,7 @@ from bioimage_mcp.storage.models import (
     PruneResult,
     QuotaCheckResult,
     SessionStorageInfo,
+    SessionSummary,
     StorageStatus,
 )
 
@@ -181,6 +182,70 @@ class StorageService:
             "SELECT SUM(size_bytes) FROM artifacts WHERE session_id = ?", (session_id,)
         ).fetchone()
         return row[0] or 0
+
+    def list_sessions(
+        self, state: str | None = None, limit: int | None = 50, sort_by: str = "age"
+    ) -> list[SessionSummary]:
+        """List sessions with associated storage information.
+        - Filter by state if provided (active, completed, expired, pinned)
+        - Includes artifact count and total size per session
+        - Returns: A list of SessionSummary models
+        """
+        # Query all sessions and their artifact stats
+        query = """
+            SELECT s.session_id, s.status as db_status, s.is_pinned, s.created_at, s.completed_at,
+                   COUNT(a.ref_id) as art_count, SUM(a.size_bytes) as art_bytes
+            FROM sessions s
+            LEFT JOIN artifacts a ON s.session_id = a.session_id
+            GROUP BY s.session_id
+        """
+
+        summaries = []
+        now = datetime.now(UTC)
+
+        for row in self.conn.execute(query):
+            session_id = row["session_id"]
+            current_state = self.get_session_state(session_id)
+
+            if state and current_state != state:
+                continue
+
+            created_at = datetime.fromisoformat(row["created_at"])
+            if created_at.tzinfo is None:
+                created_at = created_at.replace(tzinfo=UTC)
+
+            age_seconds = int((now - created_at).total_seconds())
+
+            comp_at = None
+            if row["completed_at"]:
+                comp_at = datetime.fromisoformat(row["completed_at"])
+                if comp_at.tzinfo is None:
+                    comp_at = comp_at.replace(tzinfo=UTC)
+
+            summaries.append(
+                SessionSummary(
+                    session_id=session_id,
+                    status=current_state,
+                    is_pinned=bool(row["is_pinned"]),
+                    created_at=created_at,
+                    completed_at=comp_at,
+                    artifact_count=row["art_count"],
+                    total_bytes=row["art_bytes"] or 0,
+                    age_seconds=age_seconds,
+                )
+            )
+
+        # Sort
+        if sort_by == "size":
+            summaries.sort(key=lambda s: s.total_bytes, reverse=True)
+        elif sort_by == "name":
+            summaries.sort(key=lambda s: s.session_id)
+        else:  # age (default) - newest first (smallest age_seconds)
+            summaries.sort(key=lambda s: s.age_seconds)
+
+        if limit is not None:
+            return summaries[:limit]
+        return summaries
 
     def check_quota(self) -> QuotaCheckResult:
         """Pre-run quota validation used by ExecutionService before starting runs.

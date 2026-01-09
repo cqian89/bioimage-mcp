@@ -61,3 +61,27 @@ def test_cli_storage_prune(config_file, monkeypatch):
     assert result.returncode == 0
     assert "Prune Result" in result.stdout
     assert "DRY RUN" in result.stdout
+
+
+def test_cli_storage_list(config_file, monkeypatch):
+    """T060: Integration test for `storage list` CLI"""
+    monkeypatch.setenv("BIOIMAGE_MCP_CONFIG", str(config_file))
+
+    # Test default listing
+    result = run_cli(["storage", "list"])
+    assert result.returncode == 0
+    assert "Sessions" in result.stdout
+    assert "SESSION ID" in result.stdout
+
+    # Test JSON output
+    result = run_cli(["storage", "list", "--json"])
+    assert result.returncode == 0
+    # Should be a JSON list
+    import json
+
+    data = json.loads(result.stdout)
+    assert isinstance(data, list)
+
+    # Test filtering and sorting flags
+    result = run_cli(["storage", "list", "--state", "active", "--limit", "5", "--sort", "size"])
+    assert result.returncode == 0

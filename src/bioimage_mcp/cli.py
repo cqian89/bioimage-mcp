@@ -72,7 +72,14 @@ def _build_parser() -> argparse.ArgumentParser:
     storage_list = storage_subparsers.add_parser(
         "list", help="List sessions and their storage impact"
     )
+    storage_list.add_argument(
+        "--state", choices=["active", "completed", "expired", "pinned"], help="Filter by state"
+    )
     storage_list.add_argument("--limit", type=int, default=20, help="Max sessions to list")
+    storage_list.add_argument(
+        "--sort", choices=["age", "size", "name"], default="age", help="Sort criteria"
+    )
+    storage_list.add_argument("--json", action="store_true", help="Output machine-readable JSON")
     storage_list.set_defaults(_handler=_handle_storage_list)
 
     return parser
@@ -212,8 +219,60 @@ def _handle_storage_pin(args: argparse.Namespace) -> int:
 
 
 def _handle_storage_list(args: argparse.Namespace) -> int:
-    print(f"Storage list (limit={args.limit}): Not implemented")
-    return 0
+    from bioimage_mcp.config.loader import load_config
+    from bioimage_mcp.storage.service import StorageService
+    from bioimage_mcp.storage.sqlite import connect
+
+    config = load_config()
+    conn = connect(config)
+
+    def format_size(bytes_val: int) -> str:
+        for unit in ["B", "KB", "MB", "GB", "TB"]:
+            if bytes_val < 1024:
+                return f"{bytes_val:.1f} {unit}"
+            bytes_val /= 1024
+        return f"{bytes_val:.1f} PB"
+
+    def format_age(seconds: int) -> str:
+        if seconds < 60:
+            return f"{seconds}s"
+        minutes = seconds // 60
+        if minutes < 60:
+            return f"{minutes}m"
+        hours = minutes // 60
+        if hours < 24:
+            return f"{hours}h {minutes % 60}m"
+        days = hours // 24
+        if days < 7:
+            return f"{days}d {hours % 24}h"
+        return f"{days}d"
+
+    try:
+        service = StorageService(config, conn)
+        # Fetch all matching to get total count for the header
+        all_summaries = service.list_sessions(state=args.state, limit=None, sort_by=args.sort)
+        total_matching = len(all_summaries)
+        summaries = all_summaries[: args.limit]
+
+        if args.json:
+            print(json.dumps([s.model_dump(mode="json") for s in summaries], indent=2))
+        else:
+            print(f"Sessions (showing {len(summaries)} of {total_matching})")
+            print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+            print(f"{'SESSION ID':20} {'STATE':10} {'SIZE':10} {'AGE':10} {'ARTIFACTS'}")
+
+            for s in summaries:
+                pin = " [📌]" if s.is_pinned else ""
+                sid_display = f"{s.session_id}{pin}"
+                size_str = format_size(s.total_bytes)
+                age_str = format_age(s.age_seconds)
+                print(
+                    f"{sid_display:20} {s.status:10} {size_str:10} {age_str:10} {s.artifact_count}"
+                )
+
+        return 0
+    finally:
+        conn.close()
 
 
 def main(argv: list[str] | None = None) -> int:

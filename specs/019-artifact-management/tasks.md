@@ -148,19 +148,19 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T047 [P] [US3] Write unit test for StorageService.pin_session() in tests/unit/storage/test_service.py
-- [ ] T048 [P] [US3] Write unit test for StorageService.unpin_session() in tests/unit/storage/test_service.py
-- [ ] T049 [P] [US3] Write unit test for prune skipping pinned sessions in tests/unit/storage/test_service.py
-- [ ] T050 [P] [US3] Write integration test for `storage pin` CLI in tests/integration/test_storage_cli.py
+- [X] T047 [P] [US3] Write unit test for StorageService.pin_session() in tests/unit/storage/test_service.py
+- [X] T048 [P] [US3] Write unit test for StorageService.unpin_session() in tests/unit/storage/test_service.py
+- [X] T049 [P] [US3] Write unit test for prune skipping pinned sessions in tests/unit/storage/test_service.py
+- [X] T050 [P] [US3] Write integration test for `storage pin` CLI in tests/integration/test_storage_cli.py
 
 ### Implementation for User Story 3
 
-- [ ] T051 [US3] Implement StorageService.pin_session() in src/bioimage_mcp/storage/service.py
-- [ ] T052 [US3] Implement StorageService.unpin_session() in src/bioimage_mcp/storage/service.py
-- [ ] T053 [US3] Update StorageService.prune() to skip pinned sessions in src/bioimage_mcp/storage/service.py
-- [ ] T054 [US3] Implement `storage pin` CLI command handler in src/bioimage_mcp/cli.py
-- [ ] T055 [US3] Add --unpin flag to pin command in src/bioimage_mcp/cli.py
-- [ ] T056 [US3] Implement human-readable output for pin command in src/bioimage_mcp/cli.py
+- [X] T051 [US3] Implement StorageService.pin_session() in src/bioimage_mcp/storage/service.py
+- [X] T052 [US3] Implement StorageService.unpin_session() in src/bioimage_mcp/storage/service.py
+- [X] T053 [US3] Update StorageService.prune() to skip pinned sessions in src/bioimage_mcp/storage/service.py
+- [X] T054 [US3] Implement `storage pin` CLI command handler in src/bioimage_mcp/cli.py
+- [X] T055 [US3] Add --unpin flag to pin command in src/bioimage_mcp/cli.py
+- [X] T056 [US3] Implement human-readable output for pin command in src/bioimage_mcp/cli.py
 
 **Checkpoint**: User Story 3 complete - users can protect important sessions from cleanup
 
@@ -174,22 +174,22 @@
 1. Run `bioimage-mcp storage list` and verify output shows session status, age, size, artifact count
 2. Filter by state with `--state expired` and verify only expired sessions shown
 
-### Tests for User Story 4 ⚠️
+### Tests for User Story 4 ✅
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T057 [P] [US4] Write unit test for StorageService.list_sessions() default behavior in tests/unit/storage/test_service.py
-- [ ] T058 [P] [US4] Write unit test for StorageService.list_sessions() with state filter in tests/unit/storage/test_service.py
-- [ ] T059 [P] [US4] Write unit test for StorageService.list_sessions() with sort options in tests/unit/storage/test_service.py
-- [ ] T060 [P] [US4] Write integration test for `storage list` CLI in tests/integration/test_storage_cli.py
+- [X] T057 [P] [US4] Write unit test for StorageService.list_sessions() default behavior in tests/unit/storage/test_service.py
+- [X] T058 [P] [US4] Write unit test for StorageService.list_sessions() with state filter in tests/unit/storage/test_service.py
+- [X] T059 [P] [US4] Write unit test for StorageService.list_sessions() with sort options in tests/unit/storage/test_service.py
+- [X] T060 [P] [US4] Write integration test for `storage list` CLI in tests/integration/test_storage_cli.py
 
 ### Implementation for User Story 4
 
-- [ ] T061 [US4] Implement StorageService.list_sessions() in src/bioimage_mcp/storage/service.py
-- [ ] T062 [US4] Implement `storage list` CLI command handler in src/bioimage_mcp/cli.py
-- [ ] T063 [US4] Add --state, --limit, --sort, --json flags to list command in src/bioimage_mcp/cli.py
-- [ ] T064 [US4] Implement human-readable table output for list command in src/bioimage_mcp/cli.py
-- [ ] T065 [US4] Add pinned indicator (📌) to list output in src/bioimage_mcp/cli.py
+- [X] T061 [US4] Implement StorageService.list_sessions() in src/bioimage_mcp/storage/service.py
+- [X] T062 [US4] Implement `storage list` CLI command handler in src/bioimage_mcp/cli.py
+- [X] T063 [US4] Add --state, --limit, --sort, --json flags to list command in src/bioimage_mcp/cli.py
+- [X] T064 [US4] Implement human-readable table output for list command in src/bioimage_mcp/cli.py
+- [X] T065 [US4] Add pinned indicator (📌) to list output in src/bioimage_mcp/cli.py
 
 **Checkpoint**: User Story 4 complete - users can browse and understand storage usage
 
