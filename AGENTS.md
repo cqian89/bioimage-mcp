@@ -72,6 +72,10 @@ python -m bioimage_mcp storage list --state expired
 python -m bioimage_mcp storage prune --dry-run
 python -m bioimage_mcp storage pin <session_id>
 
+# List sessions with more options
+python -m bioimage_mcp storage list --sort size --limit 50
+python -m bioimage_mcp storage list --state pinned
+
 # Validate pipeline (sample workflow)
 python scripts/validate_pipeline.py
 ```

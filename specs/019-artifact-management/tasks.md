@@ -214,33 +214,33 @@
 
 ### Edge Cases & Error Handling
 
-- [ ] T072 [P] Write test for prune during active session (must not delete) in tests/unit/storage/test_service.py
-- [ ] T073 [P] Write test for idempotent cleanup (file already deleted) in tests/unit/storage/test_service.py
-- [ ] T074 [P] Write test for directory-based artifacts (OME-Zarr) in tests/unit/storage/test_service.py
-- [ ] T075 [P] Write test for missing file with index entry in tests/unit/storage/test_service.py
-- [ ] T076 [P] Write test for quota check on empty store in tests/unit/storage/test_quota.py
-- [ ] T088 [P] Write unit test for concurrent prune safety (locking prevents overlap) in tests/unit/storage/test_service.py
-- [ ] T089 [P] Write unit test for interrupted prune convergence (rerun completes without corruption) in tests/unit/storage/test_service.py
-- [ ] T077 Implement concurrent operation safety (locking) in src/bioimage_mcp/storage/service.py
-- [ ] T090 Implement interrupted cleanup strategy (reconciliation / transactional boundaries) in src/bioimage_mcp/storage/service.py
-- [ ] T078 Implement idempotent file deletion handling in src/bioimage_mcp/storage/service.py
-- [ ] T079 Implement recursive directory deletion for Zarr artifacts in src/bioimage_mcp/storage/service.py
-- [ ] T080 Implement stale index entry cleanup in src/bioimage_mcp/storage/service.py
+- [X] T072 [P] Write test for prune during active session (must not delete) in tests/unit/storage/test_service.py
+- [X] T073 [P] Write test for idempotent cleanup (file already deleted) in tests/unit/storage/test_service.py
+- [X] T074 [P] Write test for directory-based artifacts (OME-Zarr) in tests/unit/storage/test_service.py
+- [X] T075 [P] Write test for missing file with index entry in tests/unit/storage/test_service.py
+- [X] T076 [P] Write test for quota check on empty store in tests/unit/storage/test_quota.py
+- [X] T088 [P] Write unit test for concurrent prune safety (locking prevents overlap) in tests/unit/storage/test_service.py
+- [X] T089 [P] Write unit test for interrupted prune convergence (rerun completes without corruption) in tests/unit/storage/test_service.py
+- [X] T077 Implement concurrent operation safety (locking) in src/bioimage_mcp/storage/service.py
+- [X] T090 Implement interrupted cleanup strategy (reconciliation / transactional boundaries) in src/bioimage_mcp/storage/service.py
+- [X] T078 Implement idempotent file deletion handling in src/bioimage_mcp/storage/service.py
+- [X] T079 Implement recursive directory deletion for Zarr artifacts in src/bioimage_mcp/storage/service.py
+- [X] T080 Implement stale index entry cleanup in src/bioimage_mcp/storage/service.py
 
 ### Documentation & Validation
 
-- [ ] T081 [P] Verify quickstart.md examples work end-to-end
-- [ ] T082 [P] Update AGENTS.md with storage CLI documentation
-- [ ] T083 [P] Add storage management section to project README
+- [X] T081 [P] Verify quickstart.md examples work end-to-end
+- [X] T082 [P] Update AGENTS.md with storage CLI documentation
+- [X] T083 [P] Add storage management section to project README
 
 ### Performance & Exit Codes
 
-- [ ] T084 Verify status command responds in <1s for typical stores
-- [ ] T085 Verify prune of 100 sessions completes in <30s
-- [ ] T092 Verify quota check overhead meets SC-2 (document environment + result)
-- [ ] T093 Verify `bytes_reclaimed` matches `storage status` total delta (SC-5)
-- [ ] T086 Implement correct exit codes per CLI contract in src/bioimage_mcp/cli.py
-- [ ] T087 Add structured logging for all deletion events in src/bioimage_mcp/storage/service.py
+- [X] T084 Verify status command responds in <1s for typical stores
+- [X] T085 Verify prune of 100 sessions completes in <30s
+- [X] T092 Verify quota check overhead meets SC-2 (document environment + result)
+- [X] T093 Verify `bytes_reclaimed` matches `storage status` total delta (SC-5)
+- [X] T086 Implement correct exit codes per CLI contract in src/bioimage_mcp/cli.py
+- [X] T087 Add structured logging for all deletion events in src/bioimage_mcp/storage/service.py
 
 ---
 
