@@ -28,6 +28,37 @@ def _build_parser() -> argparse.ArgumentParser:
     serve.add_argument("--stdio", action="store_true", help="Use stdio transport")
     serve.set_defaults(_handler=_handle_serve)
 
+    storage = subparsers.add_parser("storage", help="Manage artifact storage and quotas")
+    storage_subparsers = storage.add_subparsers(dest="storage_command", required=True)
+
+    storage_status = storage_subparsers.add_parser(
+        "status", help="Show storage usage and quota status"
+    )
+    storage_status.set_defaults(_handler=_handle_storage_status)
+
+    storage_prune = storage_subparsers.add_parser(
+        "prune", help="Cleanup expired sessions and orphan files"
+    )
+    storage_prune.add_argument("--days", type=int, help="Override retention days")
+    storage_prune.add_argument(
+        "--force", action="store_true", help="Execute deletion without confirmation"
+    )
+    storage_prune.set_defaults(_handler=_handle_storage_prune)
+
+    storage_pin = storage_subparsers.add_parser("pin", help="Pin a session to prevent auto-cleanup")
+    storage_pin.add_argument("session_id", help="Session ID to pin")
+    storage_pin.set_defaults(_handler=_handle_storage_pin)
+
+    storage_unpin = storage_subparsers.add_parser("unpin", help="Unpin a session")
+    storage_unpin.add_argument("session_id", help="Session ID to unpin")
+    storage_unpin.set_defaults(_handler=_handle_storage_unpin)
+
+    storage_list = storage_subparsers.add_parser(
+        "list", help="List sessions and their storage impact"
+    )
+    storage_list.add_argument("--limit", type=int, default=20, help="Max sessions to list")
+    storage_list.set_defaults(_handler=_handle_storage_list)
+
     return parser
 
 
@@ -59,6 +90,31 @@ def _handle_serve(args: argparse.Namespace) -> int:
     from bioimage_mcp.bootstrap.serve import serve
 
     return serve(stdio=args.stdio)
+
+
+def _handle_storage_status(args: argparse.Namespace) -> int:
+    print("Storage status: Not implemented")
+    return 0
+
+
+def _handle_storage_prune(args: argparse.Namespace) -> int:
+    print(f"Storage prune (days={args.days}, force={args.force}): Not implemented")
+    return 0
+
+
+def _handle_storage_pin(args: argparse.Namespace) -> int:
+    print(f"Storage pin (session_id={args.session_id}): Not implemented")
+    return 0
+
+
+def _handle_storage_unpin(args: argparse.Namespace) -> int:
+    print(f"Storage unpin (session_id={args.session_id}): Not implemented")
+    return 0
+
+
+def _handle_storage_list(args: argparse.Namespace) -> int:
+    print(f"Storage list (limit={args.limit}): Not implemented")
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:

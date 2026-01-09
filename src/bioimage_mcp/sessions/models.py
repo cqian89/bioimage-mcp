@@ -12,7 +12,9 @@ class Session(BaseModel):
     session_id: str
     created_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
     last_activity_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
-    status: Literal["active", "expired", "exported"] = "active"
+    completed_at: str | None = None
+    is_pinned: bool = False
+    status: Literal["active", "expired", "exported", "completed", "pinned"] = "active"
     connection_hint: str | None = None
 
     @classmethod

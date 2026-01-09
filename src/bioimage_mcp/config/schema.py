@@ -43,6 +43,22 @@ class AgentGuidance(BaseModel):
     warn_unactivated: bool = True
 
 
+class StorageSettings(BaseModel):
+    """Configuration for artifact storage and retention."""
+
+    quota_bytes: int = Field(default=53687091200)  # 50GB default
+    warning_threshold: float = Field(default=0.80)  # 80% usage
+    critical_threshold: float = Field(default=0.95)  # 95% usage
+    retention_days: int = Field(default=7)  # Keep completed sessions
+    auto_cleanup_enabled: bool = Field(default=False)  # Enable periodic pruning
+
+    @model_validator(mode="after")
+    def validate_thresholds(self) -> StorageSettings:
+        if self.critical_threshold <= self.warning_threshold:
+            raise ValueError("critical_threshold must be greater than warning_threshold")
+        return self
+
+
 class Config(BaseModel):
     config_version: str = "0.0"
 
@@ -56,6 +72,7 @@ class Config(BaseModel):
 
     permissions: PermissionSettings = Field(default_factory=PermissionSettings)
     agent_guidance: AgentGuidance = Field(default_factory=AgentGuidance)
+    storage: StorageSettings = Field(default_factory=StorageSettings)
 
     default_pagination_limit: int = 20
     max_pagination_limit: int = 200
