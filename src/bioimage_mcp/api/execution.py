@@ -523,15 +523,6 @@ class ExecutionService:
                 "error": error_payload,
             }
 
-            logger.error("Run blocked: %s", quota_result.message)
-            return {
-                "session_id": session_id,
-                "run_id": "none",
-                "status": "failed",
-                "id": "unknown",
-                "error": error_payload,
-            }
-
         if quota_result.usage_percent >= self._config.storage.warning_threshold * 100:
             logger.warning(quota_result.message)
 

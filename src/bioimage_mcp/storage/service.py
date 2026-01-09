@@ -45,6 +45,42 @@ class StorageService:
 
         return Session(**dict(row))
 
+    def pin_session(self, session_id: str) -> Session:
+        """Mark a session as pinned to prevent it from being pruned.
+        - Sets is_pinned = 1
+        - Returns: Updated Session model
+        - Raises: KeyError if session_id not found
+        """
+        cursor = self.conn.execute(
+            "UPDATE sessions SET is_pinned = 1 WHERE session_id = ?", (session_id,)
+        )
+        if cursor.rowcount == 0:
+            raise KeyError(f"Session {session_id} not found")
+        self.conn.commit()
+
+        row = self.conn.execute(
+            "SELECT * FROM sessions WHERE session_id = ?", (session_id,)
+        ).fetchone()
+        return Session(**dict(row))
+
+    def unpin_session(self, session_id: str) -> Session:
+        """Remove the pin from a session, allowing it to be pruned if expired.
+        - Sets is_pinned = 0
+        - Returns: Updated Session model
+        - Raises: KeyError if session_id not found
+        """
+        cursor = self.conn.execute(
+            "UPDATE sessions SET is_pinned = 0 WHERE session_id = ?", (session_id,)
+        )
+        if cursor.rowcount == 0:
+            raise KeyError(f"Session {session_id} not found")
+        self.conn.commit()
+
+        row = self.conn.execute(
+            "SELECT * FROM sessions WHERE session_id = ?", (session_id,)
+        ).fetchone()
+        return Session(**dict(row))
+
     def get_session_state(self, session_id: str) -> str:
         """Determine the current state of a session based on activity and retention.
 
@@ -187,19 +223,6 @@ class StorageService:
             allowed=True,
             usage_percent=usage_percent,
             used_bytes=used_bytes,
-            message=f"Storage usage below warning threshold ({usage_percent:.1f}% used).",
-        )
-
-        if usage_percent >= self.storage_config.warning_threshold * 100:
-            return QuotaCheckResult(
-                allowed=True,
-                usage_percent=usage_percent,
-                message=f"WARNING: Storage quota usage high ({usage_percent:.1f}% of {quota_gb:.1f}GB used).",
-            )
-
-        return QuotaCheckResult(
-            allowed=True,
-            usage_percent=usage_percent,
             message=f"Storage usage below warning threshold ({usage_percent:.1f}% used).",
         )
 

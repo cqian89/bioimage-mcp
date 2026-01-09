@@ -60,13 +60,14 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     storage_prune.set_defaults(_handler=_handle_storage_prune)
 
-    storage_pin = storage_subparsers.add_parser("pin", help="Pin a session to prevent auto-cleanup")
+    storage_pin = storage_subparsers.add_parser(
+        "pin", help="Pin or unpin a session to prevent auto-cleanup"
+    )
     storage_pin.add_argument("session_id", help="Session ID to pin")
+    storage_pin.add_argument(
+        "--unpin", action="store_true", help="Unpin the session instead of pinning"
+    )
     storage_pin.set_defaults(_handler=_handle_storage_pin)
-
-    storage_unpin = storage_subparsers.add_parser("unpin", help="Unpin a session")
-    storage_unpin.add_argument("session_id", help="Session ID to unpin")
-    storage_unpin.set_defaults(_handler=_handle_storage_unpin)
 
     storage_list = storage_subparsers.add_parser(
         "list", help="List sessions and their storage impact"
@@ -179,13 +180,35 @@ def _handle_storage_prune(args: argparse.Namespace) -> int:
 
 
 def _handle_storage_pin(args: argparse.Namespace) -> int:
-    print(f"Storage pin (session_id={args.session_id}): Not implemented")
-    return 0
+    from bioimage_mcp.config.loader import load_config
+    from bioimage_mcp.storage.service import StorageService
+    from bioimage_mcp.storage.sqlite import connect
 
+    config = load_config()
+    conn = connect(config)
+    try:
+        service = StorageService(config, conn)
+        try:
+            if args.unpin:
+                session = service.unpin_session(args.session_id)
+                print(f"✓ Session {session.session_id} is now unpinned (available for cleanup)")
+            else:
+                session = service.pin_session(args.session_id)
+                print(f"✓ Session {session.session_id} is now pinned (protected from cleanup)")
 
-def _handle_storage_unpin(args: argparse.Namespace) -> int:
-    print(f"Storage unpin (session_id={args.session_id}): Not implemented")
-    return 0
+            # Show impact
+            artifact_count = service.conn.execute(
+                "SELECT COUNT(*) FROM artifacts WHERE session_id = ?", (session.session_id,)
+            ).fetchone()[0]
+            total_bytes = service.get_session_size(session.session_id)
+            print(f"  - {artifact_count} artifacts, {total_bytes / (1024**3):.1f} GB total")
+
+            return 0
+        except KeyError:
+            print(f"ERROR: Session {args.session_id} not found", file=sys.stderr)
+            return 1
+    finally:
+        conn.close()
 
 
 def _handle_storage_list(args: argparse.Namespace) -> int:

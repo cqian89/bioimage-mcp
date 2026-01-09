@@ -64,5 +64,7 @@ def test_prune_result():
 
 
 def test_quota_check_result():
-    result = QuotaCheckResult(allowed=True, usage_percent=85.0, message="Usage at 85%")
+    result = QuotaCheckResult(
+        allowed=True, usage_percent=85.0, used_bytes=850, message="Usage at 85%"
+    )
     assert result.allowed is True

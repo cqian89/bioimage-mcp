@@ -11,7 +11,7 @@ from bioimage_mcp.sessions.manager import SessionManager
 
 
 def test_mcp_tool_count():
-    """The MCP surface should expose exactly 8 tools."""
+    """The MCP surface should expose exactly 9 tools."""
     import asyncio
 
     # Setup mocks
@@ -43,9 +43,10 @@ def test_mcp_tool_count():
         "artifact_info",
         "session_export",
         "session_replay",
+        "session_complete",
     }
 
     print(f"Current tool names: {tool_names}")
 
-    assert len(tool_names) == 8, f"Expected 8 tools, got {len(tool_names)}: {tool_names}"
+    assert len(tool_names) == 9, f"Expected 9 tools, got {len(tool_names)}: {tool_names}"
     assert set(tool_names) == expected_tools
