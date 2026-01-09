@@ -45,26 +45,13 @@ def run_segment(
     if not image_path.exists():
         raise FileNotFoundError(f"Input image not found: {image_path}")
 
-    # Check format - fail fast for unsupported formats
-    input_format = image_ref.get("format", "").lower()
-    if "zarr" in input_format:
-        raise ValueError(
-            f"OME-Zarr format is not supported in v0.1. "
-            f"Please convert to OME-TIFF first. Got format: {image_ref.get('format')}"
-        )
+    # Transparently convert OME-Zarr to OME-TIFF if needed (fixes critical abstraction bug)
+    from .utils import _ensure_ome_tiff_compatible
+
+    image_path, reader = _ensure_ome_tiff_compatible(image_path, image_ref, work_dir)
 
     # Load image (T025)
     from bioio import BioImage
-
-    # Robust reader selection for OME-TIFF (especially extensionless artifacts)
-    reader = None
-    if input_format == "ome-tiff":
-        try:
-            import bioio_ome_tiff
-
-            reader = bioio_ome_tiff.Reader
-        except ImportError:
-            pass
 
     bio_img = BioImage(image_path, reader=reader)
     img_data = bio_img.data

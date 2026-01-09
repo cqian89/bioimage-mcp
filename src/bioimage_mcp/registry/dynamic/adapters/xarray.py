@@ -165,8 +165,8 @@ class XarrayAdapterForRegistry(BaseAdapter):
     ) -> list[dict]:
         """Save output DataArray with native dimensions (T018).
 
-        Uses OME-TIFF if dimensions are compatible (ends in YX),
-        otherwise falls back to OME-Zarr for native dimension support.
+        Prefers OME-TIFF for maximum downstream compatibility (e.g., with Cellpose).
+        Falls back to OME-Zarr only if OME-TIFF save fails.
         """
         if work_dir is None:
             work_dir = Path(tempfile.gettempdir())
@@ -197,23 +197,35 @@ class XarrayAdapterForRegistry(BaseAdapter):
         if data.dtype == np.uint64 or data.dtype == np.int64:
             data = data.astype(np.float32)
 
-        # Determine if OME-TIFF is compatible.
-        # In this codebase, OME-TIFF writing/reading is only reliable for 5D TCZYX.
-        is_ome_tiff_compatible = dim_order == "TCZYX" and data.ndim == 5
+        # Prefer OME-TIFF for maximum downstream compatibility
+        # Expand to 5D if needed for OmeTiffWriter
+        ome_tiff_success = False
+        ext = ".ome.tiff"
+        fmt = "OME-TIFF"
+        out_path = work_dir / f"output_{method_name}{ext}"
 
-        if is_ome_tiff_compatible:
-            ext = ".ome.tiff"
-            fmt = "OME-TIFF"
-            out_path = work_dir / f"output_{method_name}{ext}"
-            try:
-                from bioio.writers import OmeTiffWriter
+        try:
+            from bioio.writers import OmeTiffWriter
 
-                OmeTiffWriter.save(data, str(out_path), dim_order=dim_order)
-            except Exception:
-                # Fallback to OME-Zarr if OME-TIFF save fails
-                is_ome_tiff_compatible = False
+            # OmeTiffWriter requires 5D TCZYX
+            save_data = data
+            save_dim_order = dim_order
 
-        if not is_ome_tiff_compatible:
+            # Expand to 5D for OmeTiffWriter
+            while save_data.ndim < 5:
+                save_data = np.expand_dims(save_data, axis=0)
+
+            # Build 5D dim order: prepend missing dimensions from TCZYX
+            missing_dims = "TCZYX"[: 5 - len(dim_order)]
+            save_dim_order = missing_dims + dim_order
+
+            OmeTiffWriter.save(save_data, str(out_path), dim_order=save_dim_order)
+            ome_tiff_success = True
+        except Exception:
+            # Fallback to OME-Zarr if OME-TIFF save fails
+            ome_tiff_success = False
+
+        if not ome_tiff_success:
             ext = ".ome.zarr"
             fmt = "OME-Zarr"
             out_path = work_dir / f"output_{method_name}{ext}"
