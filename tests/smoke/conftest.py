@@ -5,12 +5,16 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import pytest
-import pytest_asyncio
 
 from tests.smoke.utils.interaction_logger import InteractionLog, InteractionLogger
 from tests.smoke.utils.mcp_client import TestMCPClient
 
-pytest_plugins = ["pytest_asyncio"]
+
+@pytest.fixture(scope="session")
+def anyio_backend():
+    """Use AnyIO's asyncio backend for smoke tests."""
+
+    return "asyncio"
 
 
 @dataclass
@@ -82,15 +86,22 @@ def log_dir(smoke_config, smoke_record):
 
 
 @pytest.fixture
-def interaction_logger(request, log_dir, smoke_record):
+def interaction_logger(request, log_dir, smoke_record, live_server):
     """Per-test interaction logger that saves on completion."""
     logger = InteractionLogger()
     yield logger
 
     if smoke_record:
-        # Create InteractionLog
         test_name = request.node.name
         timestamp = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d_%H%M%S")
+
+        # Get server stderr from live_server
+        server_stderr = None
+        if hasattr(live_server, "get_stderr"):
+            stderr_content = live_server.get_stderr()
+            if stderr_content:
+                server_stderr = stderr_content
+
         log = InteractionLog(
             test_run_id=f"smoke_{timestamp}",
             scenario=test_name,
@@ -99,6 +110,7 @@ def interaction_logger(request, log_dir, smoke_record):
             if not getattr(request.node, "rep_call", None) or request.node.rep_call.passed
             else "failed",
             interactions=logger.interactions,
+            server_stderr=server_stderr,
         )
 
         # Error summary population on failure (T023)
@@ -156,10 +168,10 @@ def check_required_env(request):
             pytest.skip(f"Required environment not available: {env_name}")
 
 
-@pytest_asyncio.fixture(scope="session")
+@pytest.fixture(scope="session")
 async def live_server(smoke_config):
     """Session-scoped fixture: one server for all smoke tests."""
-    client = TestMCPClient()
+    client = TestMCPClient(call_timeout_s=smoke_config.scenario_timeout_s)
     await client.start_with_timeout(smoke_config.startup_timeout_s)
     yield client
     await client.stop()

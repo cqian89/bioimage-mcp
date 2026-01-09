@@ -33,7 +33,7 @@ def cellpose_image():
 
 @pytest.mark.smoke_full
 @pytest.mark.requires_env("bioimage-mcp-cellpose")
-@pytest.mark.asyncio
+@pytest.mark.anyio
 @pytest.mark.timeout(300)
 async def test_cellpose_pipeline(live_server, cellpose_image):
     """Test Cellpose segmentation pipeline.
@@ -71,10 +71,12 @@ async def test_cellpose_pipeline(live_server, cellpose_image):
     assert isinstance(load_result, dict) and "outputs" in load_result, (
         f"Expected dict with 'outputs', got {type(load_result)}: {load_result}"
     )
-    img_ref = load_result["outputs"].get("img") or load_result["outputs"].get("image")
-    assert img_ref, (
-        f"Could not find 'img' or 'image' in load outputs: {load_result['outputs'].keys()}"
+    img_ref = (
+        load_result["outputs"].get("image")
+        or load_result["outputs"].get("img")
+        or load_result["outputs"].get("output")
     )
+    assert img_ref, f"Could not find image output in load outputs: {load_result['outputs'].keys()}"
     assert_valid_artifact_ref(img_ref, "load output")
 
     # Step 4: Sum projection (Z axis)
@@ -82,7 +84,7 @@ async def test_cellpose_pipeline(live_server, cellpose_image):
         "run",
         {
             "fn_id": "base.xarray.sum",
-            "inputs": {"img": img_ref},
+            "inputs": {"image": img_ref},
             "params": {"dim": "Z"},
         },
     )
@@ -92,10 +94,12 @@ async def test_cellpose_pipeline(live_server, cellpose_image):
     assert isinstance(sum_result, dict) and "outputs" in sum_result, (
         f"Expected dict with 'outputs', got {type(sum_result)}: {sum_result}"
     )
-    summed_ref = sum_result["outputs"].get("img") or sum_result["outputs"].get("image")
-    assert summed_ref, (
-        f"Could not find 'img' or 'image' in sum outputs: {sum_result['outputs'].keys()}"
+    summed_ref = (
+        sum_result["outputs"].get("output")
+        or sum_result["outputs"].get("image")
+        or sum_result["outputs"].get("img")
     )
+    assert summed_ref, f"Could not find output image in sum outputs: {sum_result['outputs'].keys()}"
     assert_valid_artifact_ref(summed_ref, "sum output")
 
     # Step 5: Export to OME-TIFF
@@ -103,8 +107,8 @@ async def test_cellpose_pipeline(live_server, cellpose_image):
         "run",
         {
             "fn_id": "base.io.bioimage.export",
-            "inputs": {"img": summed_ref},
-            "params": {"format": "ome-tiff"},
+            "inputs": {"image": summed_ref},
+            "params": {"format": "OME-TIFF"},
         },
     )
     assert export_result is not None
@@ -113,19 +117,44 @@ async def test_cellpose_pipeline(live_server, cellpose_image):
     assert isinstance(export_result, dict) and "outputs" in export_result, (
         f"Expected dict with 'outputs', got {type(export_result)}: {export_result}"
     )
-    exported_ref = export_result["outputs"].get("img") or export_result["outputs"].get("path")
+    exported_ref = (
+        export_result["outputs"].get("output")
+        or export_result["outputs"].get("image")
+        or export_result["outputs"].get("img")
+        or export_result["outputs"].get("path")
+    )
     assert exported_ref, (
-        f"Could not find 'img' or 'path' in export outputs: {export_result['outputs'].keys()}"
+        f"Could not find output artifact in export outputs: {export_result['outputs'].keys()}"
     )
     assert_valid_artifact_ref(exported_ref, "export output")
 
-    # Step 6: Cellpose segmentation
+    # Step 6: Initialize Cellpose model
+    model_init_result = await live_server.call_tool(
+        "run",
+        {
+            "fn_id": "cellpose.models.CellposeModel",
+            "inputs": {},
+            "params": {"model_type": "cyto3", "gpu": False},
+        },
+    )
+    assert model_init_result is not None
+
+    assert isinstance(model_init_result, dict) and "outputs" in model_init_result, (
+        f"Expected dict with 'outputs', got {type(model_init_result)}: {model_init_result}"
+    )
+    model_ref = model_init_result["outputs"].get("model")
+    assert model_ref, (
+        f"Could not find 'model' in model init outputs: {model_init_result['outputs'].keys()}"
+    )
+    assert_valid_artifact_ref(model_ref, "cellpose model")
+
+    # Step 7: Cellpose segmentation
     segment_result = await live_server.call_tool(
         "run",
         {
             "fn_id": "cellpose.models.CellposeModel.eval",
-            "inputs": {"img": exported_ref},
-            "params": {"model_type": "cyto"},
+            "inputs": {"model": model_ref, "x": exported_ref},
+            "params": {"diameter": 0},
         },
     )
     assert segment_result is not None

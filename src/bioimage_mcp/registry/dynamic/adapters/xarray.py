@@ -177,12 +177,29 @@ class XarrayAdapterForRegistry(BaseAdapter):
         data = result_da.values
         dim_order = "".join(result_da.dims)
 
+        # Ensure we can always persist BioImageRef outputs.
+        # Some reductions can yield scalar/1D results (e.g., sum over X on a YX image),
+        # but our image artifact writers require at least 2D.
+        if data.ndim == 0:
+            data = np.array([[data]])
+            dim_order = "YX"
+        elif data.ndim == 1:
+            if dim_order == "Y":
+                data = data[:, np.newaxis]
+                dim_order = "YX"
+            elif dim_order == "X":
+                data = data[np.newaxis, :]
+                dim_order = "YX"
+            else:
+                data = data[..., np.newaxis]
+                dim_order = f"{dim_order}X"
+
         if data.dtype == np.uint64 or data.dtype == np.int64:
             data = data.astype(np.float32)
 
-        # Determine if OME-TIFF is compatible
-        # OmeTiffWriter requires 2-5D and must end in YX (or YXS)
-        is_ome_tiff_compatible = dim_order.endswith("YX") and 2 <= data.ndim <= 5
+        # Determine if OME-TIFF is compatible.
+        # In this codebase, OME-TIFF writing/reading is only reliable for 5D TCZYX.
+        is_ome_tiff_compatible = dim_order == "TCZYX" and data.ndim == 5
 
         if is_ome_tiff_compatible:
             ext = ".ome.tiff"

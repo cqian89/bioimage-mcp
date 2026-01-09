@@ -291,6 +291,9 @@ def load(*, inputs: dict[str, Any], params: dict[str, Any], work_dir: Path) -> d
             "Z": img.physical_pixel_sizes.Z,
         },
         "metadata": {
+            "axes": native_dims,
+            "ndim": len(native_dims),
+            "dims": list(native_dims),
             "shape": native_shape,
             "dtype": str(img.reader.data.dtype),
             "channel_names": list(img.channel_names) if img.channel_names else None,

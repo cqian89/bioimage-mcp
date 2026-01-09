@@ -15,15 +15,24 @@ def assert_valid_artifact_ref(ref: dict):
 
 
 @pytest.mark.smoke_minimal
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_smoke_discovery(live_server):
     """Test MCP list() returns summaries and describe() returns schemas."""
     # Test list() returns items and counts (Constitution I: paginated with counts)
     list_result = await live_server.call_tool("list", {"include_counts": True})
     assert "items" in list_result, f"list() missing 'items': {list_result}"
-    assert "total" in list_result or "by_type" in list_result, (
-        f"list() missing counts for non-leaf nodes: {list_result}"
-    )
+    items = list_result["items"]
+    assert isinstance(items, list), f"items must be a list: {type(items)}"
+
+    # Validate counts for non-leaf nodes (Constitution I)
+    non_leaf_items = [item for item in items if item.get("has_children")]
+    for item in non_leaf_items:
+        children = item.get("children", {})
+        assert isinstance(children, dict), f"children field must be a dict: {item}"
+        assert "total" in children and children["total"] > 0, (
+            f"Non-leaf item missing counts (total > 0): {item}"
+        )
+        assert "by_type" in children, f"Non-leaf item missing by_type counts: {item}"
 
     # Test describe() for a known function (Constitution I: Full schemas)
     describe_result = await live_server.call_tool("describe", {"fn_id": "base.io.bioimage.load"})
@@ -35,7 +44,7 @@ async def test_smoke_discovery(live_server):
 
 
 @pytest.mark.smoke_minimal
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_smoke_basic_run(live_server, sample_image):
     """Test basic run workflow: load image, squeeze."""
     # Load image
@@ -73,8 +82,10 @@ async def test_smoke_basic_run(live_server, sample_image):
     assert squeeze_result.get("status") == "success", f"Squeeze run failed: {squeeze_result}"
     assert "outputs" in squeeze_result, f"Squeeze run result missing 'outputs': {squeeze_result}"
 
-    squeezed_img_ref = squeeze_result["outputs"].get("image") or squeeze_result["outputs"].get(
-        "img"
+    squeezed_img_ref = (
+        squeeze_result["outputs"].get("output")
+        or squeeze_result["outputs"].get("image")
+        or squeeze_result["outputs"].get("img")
     )
     assert squeezed_img_ref is not None, (
         f"Failed to get squeezed image reference from outputs: {squeeze_result['outputs']}"

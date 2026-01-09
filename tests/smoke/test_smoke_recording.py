@@ -6,7 +6,7 @@ import pytest
 
 
 @pytest.mark.smoke_minimal
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_recording_mode_creates_log(live_server, smoke_record, log_dir, interaction_logger):
     """Test that recording mode creates interaction logs."""
     if not smoke_record:

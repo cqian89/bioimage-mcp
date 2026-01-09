@@ -187,3 +187,27 @@ def test_xarray_adapter_handles_reduced_y_dimension(tmp_path):
     assert outputs[0]["metadata"]["axes"] == "TCZX"
     # Shape should be [1, 2, 3, 5] (Y is removed)
     assert outputs[0]["metadata"]["shape"] == [1, 2, 3, 5]
+
+
+def test_xarray_save_output_expands_1d_to_2d(tmp_path):
+    """Ensure xarray adapter can persist 1D results.
+
+    Some reductions yield 1D arrays, but BioImageRef outputs must be written as
+    files. The adapter expands singleton spatial dimensions so the output is at
+    least 2D.
+    """
+    if "xarray" not in ADAPTER_REGISTRY:
+        pytest.skip("Xarray adapter not registered")
+
+    adapter = ADAPTER_REGISTRY["xarray"]
+
+    import xarray as xr
+
+    result_da = xr.DataArray(np.ones((10,), dtype=np.uint8), dims=("Y",))
+    outputs = adapter._save_output(result_da, method_name="sum", work_dir=tmp_path)
+
+    assert len(outputs) == 1
+    assert outputs[0]["type"] == "BioImageRef"
+    assert Path(outputs[0]["path"]).exists()
+    assert outputs[0]["metadata"]["axes"] == "YX"
+    assert outputs[0]["metadata"]["shape"] == [10, 1]

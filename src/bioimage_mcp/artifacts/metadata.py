@@ -244,9 +244,32 @@ def _extract_metadata_tifffile(path: Path) -> dict | None:
                 "file_size_bytes": path.stat().st_size,
             }
 
-            # If it is OME, try to get physical pixel sizes and channel names
-            # to satisfy contract tests
+            # If it is OME, try to get pixel sizes, channel names, and singleton dims.
+            # tifffile collapses singleton axes in series.shape/series.axes, but for
+            # artifact consistency we preserve the full OME Pixels sizes.
             if ome_xml:
+                sizes: dict[str, int] = {}
+                for dim in ("T", "C", "Z", "Y", "X"):
+                    match = re.search(f'Size{dim}="(\\d+)"', ome_xml)
+                    if match:
+                        try:
+                            sizes[dim] = int(match.group(1))
+                        except ValueError:
+                            pass
+
+                if sizes:
+                    # Prefer OME XML sizes, but fall back to the series shape if needed.
+                    t = sizes.get("T", 1)
+                    c = sizes.get("C", 1)
+                    z = sizes.get("Z", 1)
+                    y = sizes.get("Y", shape[-2] if len(shape) >= 2 else 1)
+                    x = sizes.get("X", shape[-1] if len(shape) >= 1 else 1)
+
+                    meta["axes"] = "TCZYX"
+                    meta["ndim"] = 5
+                    meta["dims"] = list("TCZYX")
+                    meta["shape"] = [t, c, z, y, x]
+
                 pps = {}
                 for dim in ("X", "Y", "Z"):
                     match = re.search(f'PhysicalSize{dim}="([^"]+)"', ome_xml)

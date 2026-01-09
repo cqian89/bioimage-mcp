@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 FIXTURE_CZI = (
@@ -121,3 +122,24 @@ def test_extract_metadata_graceful_fallback_minimal(tmp_path, monkeypatch):
     # which returns minimal fields (even if empty)
     assert meta.get("axes") == ""
     assert meta.get("shape") == []
+
+
+def test_extract_metadata_tifffile_preserves_ome_singletons(tmp_path):
+    """OME-TIFFs with singleton axes should report full TCZYX sizes.
+
+    tifffile collapses singleton dimensions (e.g., reports YX for a TCZYX image with
+    singleton T/C/Z). For artifact consistency we preserve the full 5D shape.
+    """
+    from bioio.writers import OmeTiffWriter
+
+    from bioimage_mcp.artifacts.metadata import extract_image_metadata
+
+    path = tmp_path / "singletons.tif"
+    data = np.ones((1, 1, 1, 2, 2), dtype=np.uint16)
+    OmeTiffWriter.save(data, str(path), dim_order="TCZYX")
+
+    meta = extract_image_metadata(path)
+    assert meta is not None
+    assert meta["axes"] == "TCZYX"
+    assert meta["ndim"] == 5
+    assert meta["shape"] == [1, 1, 1, 2, 2]

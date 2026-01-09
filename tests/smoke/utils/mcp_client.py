@@ -1,18 +1,17 @@
 import asyncio
 import json
-import subprocess
+import tempfile
+import time
 from contextlib import AsyncExitStack
 
-import anyio
-import mcp.types as types
 from mcp import ClientSession
-from mcp.shared.message import SessionMessage
+from mcp.client.stdio import StdioServerParameters, stdio_client
+
+from tests.smoke.utils.interaction_logger import InteractionLogger
 
 
 class SmokeTestError(Exception):
     """Exception raised for smoke test failures with diagnostic context."""
-
-    pass
 
 
 class TestMCPClient:
@@ -20,112 +19,41 @@ class TestMCPClient:
 
     __test__ = False
 
-    def __init__(self):
+    def __init__(
+        self,
+        logger: InteractionLogger | None = None,
+        *,
+        call_timeout_s: float | None = 60.0,
+    ):
         self._exit_stack = AsyncExitStack()
         self.session: ClientSession | None = None
-        self._stderr_buffer: list[str] = []
-        self._process: asyncio.subprocess.Process | None = None
-        self._tasks: list[asyncio.Task] = []
+        self._logger = logger
+        self._call_timeout_s = call_timeout_s
+        self._stderr_file = tempfile.TemporaryFile(mode="w+", encoding="utf-8")
+        self._exit_stack.callback(self._stderr_file.close)
 
     def get_stderr(self) -> str:
-        """Return captured stderr."""
-        return "\n".join(self._stderr_buffer)
-
-    async def _read_stderr(self):
-        """Task to read stderr from the subprocess."""
-        if not self._process or not self._process.stderr:
-            return
+        """Return captured server stderr."""
 
         try:
-            while True:
-                line = await self._process.stderr.readline()
-                if not line:
-                    break
-                line_str = line.decode().strip()
-                if line_str:
-                    self._stderr_buffer.append(line_str)
-        except (asyncio.CancelledError, Exception):
-            pass
+            self._stderr_file.flush()
+            self._stderr_file.seek(0)
+            return self._stderr_file.read()
+        except Exception:
+            return ""
 
     async def start(self):
-        """Start server subprocess and initialize session.
+        """Start server subprocess and initialize MCP session."""
 
-        Uses: python -m bioimage_mcp serve --stdio
-        """
-        # Start the process with all streams piped for capture.
-        # We use asyncio.create_subprocess_exec directly to have access to the stderr pipe.
-        self._process = await asyncio.create_subprocess_exec(
-            "python",
-            "-m",
-            "bioimage_mcp",
-            "serve",
-            "--stdio",
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+        server = StdioServerParameters(
+            command="python",
+            args=["-m", "bioimage_mcp", "serve", "--stdio"],
         )
 
-        # Set up memory streams for MCP ClientSession.
-        # ClientSession expects JSONRPCMessage wrapped in SessionMessage on the read stream.
-        # We use buffered streams (capacity 100) to avoid deadlocks during the
-        # initialization handshake.
-        read_stream_writer, read_stream = anyio.create_memory_object_stream(100)
-        write_stream, write_stream_reader = anyio.create_memory_object_stream(100)
+        read_stream, write_stream = await self._exit_stack.enter_async_context(
+            stdio_client(server, errlog=self._stderr_file)
+        )
 
-        # Ensure streams are closed when exit stack is closed.
-        self._exit_stack.push_async_callback(read_stream.aclose)
-        self._exit_stack.push_async_callback(write_stream.aclose)
-        self._exit_stack.push_async_callback(read_stream_writer.aclose)
-        self._exit_stack.push_async_callback(write_stream_reader.aclose)
-
-        # Task to read stdout and feed read_stream
-        async def stdout_reader():
-            if not self._process or not self._process.stdout:
-                return
-            try:
-                async with read_stream_writer:
-                    while True:
-                        line = await self._process.stdout.readline()
-                        if not line:
-                            break
-                        line_str = line.decode().strip()
-                        if not line_str:
-                            continue
-                        try:
-                            message = types.JSONRPCMessage.model_validate_json(line_str)
-                            await read_stream_writer.send(SessionMessage(message))
-                        except Exception as e:
-                            # Forward exception to session for error handling if parsing fails.
-                            # The MCP ClientSession will handle these as transport errors.
-                            await read_stream_writer.send(e)
-            except (asyncio.CancelledError, anyio.ClosedResourceError):
-                pass
-
-        # Task to read write_stream and feed stdin
-        async def stdin_writer():
-            if not self._process or not self._process.stdin:
-                return
-            try:
-                async with write_stream_reader:
-                    async for session_message in write_stream_reader:
-                        json_str = session_message.message.model_dump_json(
-                            by_alias=True, exclude_none=True
-                        )
-                        self._process.stdin.write((json_str + "\n").encode())
-                        await self._process.stdin.drain()
-            except (
-                asyncio.CancelledError,
-                anyio.ClosedResourceError,
-                ConnectionResetError,
-            ):
-                pass
-
-        # Start background tasks
-        self._tasks.append(asyncio.create_task(self._read_stderr()))
-        self._tasks.append(asyncio.create_task(stdout_reader()))
-        self._tasks.append(asyncio.create_task(stdin_writer()))
-
-        # Initialize session
         self.session = ClientSession(read_stream, write_stream)
         await self._exit_stack.enter_async_context(self.session)
         await self.session.initialize()
@@ -133,91 +61,111 @@ class TestMCPClient:
     async def start_with_timeout(self, timeout: float = 30.0):
         """Start server with timeout for initialization.
 
-        Raises asyncio.TimeoutError if server fails to start within timeout.
+        Raises:
+            asyncio.TimeoutError: If server fails to start within timeout.
         """
+
         async with asyncio.timeout(timeout):
             await self.start()
 
     async def stop(self):
-        """Clean shutdown of session and subprocess."""
-        # 1. Close session and streams via exit stack
+        """Clean shutdown of MCP session and server subprocess."""
+
         await self._exit_stack.aclose()
         self.session = None
 
-        # 2. Cancel background tasks
-        for task in self._tasks:
-            task.cancel()
-        if self._tasks:
-            await asyncio.gather(*self._tasks, return_exceptions=True)
-        self._tasks.clear()
-
-        # 3. Terminate process
-        if self._process:
-            try:
-                self._process.terminate()
-                await asyncio.wait_for(self._process.wait(), timeout=2.0)
-            except (TimeoutError, ProcessLookupError, Exception):
-                try:
-                    self._process.kill()
-                except Exception:
-                    pass
-            self._process = None
-
     async def call_tool(self, tool: str, arguments: dict) -> dict:
-        """Call MCP tool and return result.
+        """Call MCP tool and return parsed JSON result."""
 
-        Raises RuntimeError if session not started.
-        """
         if self.session is None:
             raise RuntimeError("Session not started. Call start() first.")
-        result = await self.session.call_tool(tool, arguments=arguments)
 
-        # Parse result content
+        correlation_id = None
+        start_time = None
+        if self._logger:
+            correlation_id = self._logger.log_request(tool, arguments)
+            start_time = time.perf_counter()
+
+        try:
+            if self._call_timeout_s is None:
+                result = await self.session.call_tool(tool, arguments=arguments)
+            else:
+                async with asyncio.timeout(self._call_timeout_s):
+                    result = await self.session.call_tool(tool, arguments=arguments)
+        except Exception as e:
+            if self._logger and correlation_id is not None and start_time is not None:
+                duration_ms = (time.perf_counter() - start_time) * 1000
+                self._logger.log_response(correlation_id, {"error": str(e)}, duration_ms)
+            raise
+
+        parsed: dict = {}
         if hasattr(result, "content") and result.content and len(result.content) > 0:
             content = result.content[0]
             if hasattr(content, "text"):
                 try:
-                    return json.loads(content.text)
+                    parsed = json.loads(content.text)
                 except (json.JSONDecodeError, TypeError):
-                    return {"text": content.text}
+                    parsed = {"text": content.text}
+        elif isinstance(result, dict):
+            parsed = result
 
-        # Fallback for when the result is already a dict (e.g. in tests)
-        if isinstance(result, dict):
-            return result
+        if self._logger and correlation_id is not None and start_time is not None:
+            duration_ms = (time.perf_counter() - start_time) * 1000
+            self._logger.log_response(correlation_id, parsed, duration_ms)
 
-        return {}
+        return parsed
 
     async def call_tool_checked(self, tool: str, arguments: dict) -> dict:
-        """Call MCP tool and raise SmokeTestError on failure."""
+        """Call MCP tool and raise SmokeTestError on tool failure."""
+
         if self.session is None:
             raise RuntimeError("Session not started. Call start() first.")
-        result = await self.session.call_tool(tool, arguments=arguments)
 
-        # Check for error
-        is_error = False
-        if hasattr(result, "isError"):
-            is_error = result.isError
-        elif isinstance(result, dict) and result.get("isError"):
-            is_error = True
+        correlation_id = None
+        start_time = None
+        if self._logger:
+            correlation_id = self._logger.log_request(tool, arguments)
+            start_time = time.perf_counter()
 
-        if is_error:
-            error_msg = "Unknown error"
-            if hasattr(result, "content"):
-                error_msg = str(result.content)
-            elif isinstance(result, dict) and "content" in result:
-                error_msg = str(result["content"])
-            raise SmokeTestError(f"Tool '{tool}' failed: {error_msg}")
+        try:
+            if self._call_timeout_s is None:
+                result = await self.session.call_tool(tool, arguments=arguments)
+            else:
+                async with asyncio.timeout(self._call_timeout_s):
+                    result = await self.session.call_tool(tool, arguments=arguments)
 
-        # Parse result
-        if hasattr(result, "content") and result.content and len(result.content) > 0:
-            content = result.content[0]
-            if hasattr(content, "text"):
-                try:
-                    return json.loads(content.text)
-                except (json.JSONDecodeError, TypeError):
-                    return {"text": content.text}
+            is_error = False
+            if hasattr(result, "isError"):
+                is_error = result.isError
+            elif isinstance(result, dict) and result.get("isError"):
+                is_error = True
 
-        if isinstance(result, dict):
-            return result
+            if is_error:
+                error_msg = "Unknown error"
+                if hasattr(result, "content"):
+                    error_msg = str(result.content)
+                elif isinstance(result, dict) and "content" in result:
+                    error_msg = str(result["content"])
+                raise SmokeTestError(f"Tool '{tool}' failed: {error_msg}")
 
-        return {}
+            parsed: dict = {}
+            if hasattr(result, "content") and result.content and len(result.content) > 0:
+                content = result.content[0]
+                if hasattr(content, "text"):
+                    try:
+                        parsed = json.loads(content.text)
+                    except (json.JSONDecodeError, TypeError):
+                        parsed = {"text": content.text}
+            elif isinstance(result, dict):
+                parsed = result
+
+            if self._logger and correlation_id and start_time:
+                duration_ms = (time.perf_counter() - start_time) * 1000
+                self._logger.log_response(correlation_id, parsed, duration_ms)
+
+            return parsed
+        except Exception as e:
+            if self._logger and correlation_id and start_time:
+                duration_ms = (time.perf_counter() - start_time) * 1000
+                self._logger.log_response(correlation_id, {"error": str(e)}, duration_ms)
+            raise

@@ -86,7 +86,7 @@ pytest tests/smoke/test_flim_phasor_live.py -v
 **What it tests**:
 1. `list()` - Server returns environments
 2. `describe()` - Fetch phasor function schema
-3. `run(base.io.bioimage.read)` - Load FLIM image
+3. `run(base.io.bioimage.load)` - Load FLIM image
 4. `run(base.xarray.rename)` - Relabel axes for phasor
 5. `run(base.phasorpy.phasor.phasor_from_signal)` - Compute phasors
 
@@ -99,7 +99,7 @@ pytest tests/smoke/test_cellpose_pipeline_live.py -v
 ```
 
 **What it tests**:
-1. `run(base.io.bioimage.read)` - Load image
+1. `run(base.io.bioimage.load)` - Load image
 2. `run(base.xarray.sum)` - Z projection
 3. `run(base.io.bioimage.export)` - Convert to OME-TIFF
 4. `run(cellpose.models.CellposeModel.eval)` - Segment cells
@@ -125,7 +125,7 @@ tests/smoke/test_cellpose_pipeline_live.py::test_cellpose_pipeline SKIPPED [50%]
 
 ```
 tests/smoke/test_flim_phasor_live.py::test_flim_phasor_workflow FAILED [100%]
-  SmokeTestError: Tool 'run' failed: ValidationError for fn_id=base.io.bioimage.read
+  SmokeTestError: Tool 'run' failed: ValidationError for fn_id=base.io.bioimage.load
   Interaction log saved: .bioimage-mcp/smoke_logs/smoke_2026-01-08_143022.json
 ```
 
