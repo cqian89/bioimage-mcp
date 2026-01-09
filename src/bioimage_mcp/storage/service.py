@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-import fcntl
 import logging
 import shutil
 import sqlite3
+import sys
+from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -22,6 +23,59 @@ if TYPE_CHECKING:
     from bioimage_mcp.config.schema import Config
 
 logger = logging.getLogger(__name__)
+
+
+@contextmanager
+def _acquire_lock(lock_path: Path, blocking: bool = False):
+    """Cross-platform file locking for prune operations.
+
+    Uses fcntl on Unix and msvcrt on Windows.
+
+    Args:
+        lock_path: Path to the lock file
+        blocking: If False, raises BlockingIOError if lock can't be acquired
+
+    Yields:
+        The open file handle
+    """
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    f = open(lock_path, "w")
+    try:
+        if sys.platform == "win32":
+            import msvcrt
+
+            try:
+                msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK if not blocking else msvcrt.LK_LOCK, 1)
+            except OSError as e:
+                raise BlockingIOError("Could not acquire lock") from e
+        else:
+            import fcntl
+
+            flags = fcntl.LOCK_EX
+            if not blocking:
+                flags |= fcntl.LOCK_NB
+            try:
+                fcntl.flock(f, flags)
+            except OSError as e:
+                raise BlockingIOError("Could not acquire lock") from e
+        yield f
+    finally:
+        try:
+            if sys.platform == "win32":
+                import msvcrt
+
+                try:
+                    msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
+                except OSError:
+                    pass  # Best effort unlock
+            else:
+                import fcntl
+
+                fcntl.flock(f, fcntl.LOCK_UN)
+        except (OSError, ValueError):
+            pass  # Already closed or never locked
+        finally:
+            f.close()
 
 
 class StorageService:
@@ -168,6 +222,20 @@ class StorageService:
             info.artifact_count += row["art_count"]
             info.total_bytes += row["art_bytes"] or 0
 
+        # Query for artifacts with NULL session_id (legacy/global)
+        legacy_row = self.conn.execute(
+            "SELECT COUNT(ref_id), SUM(size_bytes) FROM artifacts WHERE session_id IS NULL"
+        ).fetchone()
+        legacy_count = legacy_row[0] or 0
+        legacy_bytes = legacy_row[1] or 0
+
+        if legacy_count > 0:
+            by_state["legacy"] = SessionStorageInfo(
+                session_count=0,  # No sessions associated
+                artifact_count=legacy_count,
+                total_bytes=legacy_bytes,
+            )
+
         return StorageStatus(
             total_bytes=total_capacity,
             used_bytes=used_bytes,
@@ -273,7 +341,8 @@ class StorageService:
                 usage_percent=usage_percent,
                 used_bytes=used_bytes,
                 message=(
-                    f"CRITICAL: Storage quota exceeded ({usage_percent:.1f}% of {quota_gb:.1f}GB used). "
+                    f"CRITICAL: Storage quota exceeded "
+                    f"({usage_percent:.1f}% of {quota_gb:.1f}GB used). "
                     "Run 'bioimage-mcp storage prune' to reclaim space."
                 ),
             )
@@ -283,7 +352,10 @@ class StorageService:
                 allowed=True,
                 usage_percent=usage_percent,
                 used_bytes=used_bytes,
-                message=f"WARNING: Storage quota usage high ({usage_percent:.1f}% of {quota_gb:.1f}GB used).",
+                message=(
+                    f"WARNING: Storage quota usage high "
+                    f"({usage_percent:.1f}% of {quota_gb:.1f}GB used)."
+                ),
             )
 
         return QuotaCheckResult(
@@ -359,26 +431,22 @@ class StorageService:
         - Deletes files first, then DB records
         - Returns PruneResult
         """
-        # Concurrent safety: use file-based lock
         if not self.root.exists():
             self.root.mkdir(parents=True, exist_ok=True)
 
         lock_file = self.root / ".prune.lock"
         try:
-            with open(lock_file, "w") as f:
-                try:
-                    fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                except BlockingIOError:
-                    logger.warning("Prune already in progress (could not acquire lock)")
-                    return PruneResult(
-                        sessions_deleted=0,
-                        artifacts_deleted=0,
-                        bytes_reclaimed=0,
-                        orphan_files_deleted=0,
-                        errors=["Prune already in progress (concurrent lock held)"],
-                    )
-
+            with _acquire_lock(lock_file, blocking=False):
                 return self._do_prune(dry_run, include_orphans, older_than_days)
+        except BlockingIOError:
+            logger.warning("Prune already in progress (could not acquire lock)")
+            return PruneResult(
+                sessions_deleted=0,
+                artifacts_deleted=0,
+                bytes_reclaimed=0,
+                orphan_files_deleted=0,
+                errors=["Prune already in progress (concurrent lock held)"],
+            )
         except Exception as e:
             logger.error("Prune failed with error: %s", e)
             return PruneResult(
@@ -496,7 +564,5 @@ class StorageService:
                 res.orphan_files_deleted = deleted
             else:
                 res.orphan_files_deleted = len(orphans)
-
-        return res
 
         return res

@@ -119,6 +119,17 @@ class InteractiveExecutionService:
                 "outputs": {},
             }
 
+        # Handle quota exceeded or other immediate failures where run_id is "none"
+        if result["status"] == "failed" and result.get("run_id") == "none":
+            return {
+                "session_id": session_id,
+                "step_id": step_id,
+                "status": "failed",
+                "error": result.get("error"),
+                "isError": True,
+                "outputs": {},
+            }
+
         hints = result.get("hints")
 
         # Record end time

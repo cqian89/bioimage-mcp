@@ -208,24 +208,6 @@ def create_server(
         return interactive.export_session(session_id, dest_path=dest_path)
 
     @mcp.tool()
-    def session_complete(
-        session_id: str | None = None,
-        ctx: Context | None = None,
-    ) -> dict[str, Any]:
-        """Mark a session as completed.
-
-        A completed session becomes read-only and is preserved for the retention period.
-        If session_id is not provided, uses the current MCP connection's session ID.
-        """
-        if not session_id and ctx and ctx.session:
-            session_id = get_session_identifier(ctx)
-
-        if not session_id:
-            raise ValueError("session_id must be provided or available in context")
-
-        return interactive.complete_session(session_id)
-
-    @mcp.tool()
     def session_replay(
         workflow_ref: dict[str, Any],
         inputs: dict[str, str],

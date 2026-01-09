@@ -49,3 +49,12 @@ def test_cli_storage_prune_args():
     assert args.storage_command == "prune"
     assert args.days == 5
     assert args.force is True
+
+
+def test_cli_storage_list_args():
+    parser = _build_parser()
+    args = parser.parse_args(["storage", "list"])
+    assert args.command == "storage"
+    assert args.storage_command == "list"
+    assert args.limit == 50
+    assert args.sort == "age"

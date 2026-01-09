@@ -58,6 +58,7 @@ def _build_parser() -> argparse.ArgumentParser:
     storage_prune.add_argument(
         "--no-orphans", action="store_false", dest="include_orphans", help="Skip orphaned files"
     )
+    storage_prune.add_argument("--json", action="store_true", help="Output machine-readable JSON")
     storage_prune.set_defaults(_handler=_handle_storage_prune)
 
     storage_pin = storage_subparsers.add_parser(
@@ -69,13 +70,19 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     storage_pin.set_defaults(_handler=_handle_storage_pin)
 
+    storage_unpin = storage_subparsers.add_parser(
+        "unpin", help="Remove protection pin from a session"
+    )
+    storage_unpin.add_argument("session_id", help="Session ID to unpin")
+    storage_unpin.set_defaults(_handler=_handle_storage_unpin)
+
     storage_list = storage_subparsers.add_parser(
         "list", help="List sessions and their storage impact"
     )
     storage_list.add_argument(
         "--state", choices=["active", "completed", "expired", "pinned"], help="Filter by state"
     )
-    storage_list.add_argument("--limit", type=int, default=20, help="Max sessions to list")
+    storage_list.add_argument("--limit", type=int, default=50, help="Max sessions to list")
     storage_list.add_argument(
         "--sort", choices=["age", "size", "name"], default="age", help="Sort criteria"
     )
@@ -131,14 +138,15 @@ def _handle_storage_status(args: argparse.Namespace) -> int:
         else:
             print("=== Storage Usage ===")
             print(f"Total Capacity: {status.total_bytes / (1024**3):.2f} GB")
-            print(
-                f"Used:           {status.used_bytes / (1024**3):.2f} GB ({status.usage_percent:.1f}%)"
-            )
+            used_gb = status.used_bytes / (1024**3)
+            print(f"Used:           {used_gb:.2f} GB ({status.usage_percent:.1f}%)")
             print(f"Orphan Files:   {status.orphan_bytes / (1024**2):.2f} MB")
             print("\nBy State:")
             for state, info in status.by_state.items():
+                total_mb = info.total_bytes / (1024**2)
                 print(
-                    f"  {state:10}: {info.session_count} sessions, {info.artifact_count} artifacts, {info.total_bytes / (1024**2):.2f} MB"
+                    f"  {state:10}: {info.session_count} sessions, "
+                    f"{info.artifact_count} artifacts, {total_mb:.2f} MB"
                 )
 
         # Exit codes: 0=normal, 1=warning threshold, 2=critical threshold
@@ -161,25 +169,48 @@ def _handle_storage_prune(args: argparse.Namespace) -> int:
     try:
         service = StorageService(config, conn)
 
+        # Confirmation logic
+        if not args.dry_run and not args.force:
+            # Show what will be deleted first (preview)
+            dry_result = service.prune(
+                dry_run=True, include_orphans=args.include_orphans, older_than_days=args.days
+            )
+            if dry_result.sessions_deleted == 0 and dry_result.orphan_files_deleted == 0:
+                print("Nothing to prune.")
+                return 0
+
+            print(
+                f"Will delete {dry_result.sessions_deleted} sessions, "
+                f"{dry_result.orphan_files_deleted} orphan files"
+            )
+            print(f"Will reclaim {dry_result.bytes_reclaimed / (1024**2):.2f} MB")
+            confirm = input("Proceed? [y/N]: ").strip().lower()
+            if confirm != "y":
+                print("Aborted.")
+                return 0
+
         result = service.prune(
             dry_run=args.dry_run, include_orphans=args.include_orphans, older_than_days=args.days
         )
 
-        if args.dry_run:
-            print("=== Prune Result (DRY RUN) ===")
+        if args.json:
+            print(result.model_dump_json(indent=2))
         else:
-            print("=== Prune Result ===")
+            if args.dry_run:
+                print("=== Prune Result (DRY RUN) ===")
+            else:
+                print("=== Prune Result ===")
 
-        print(f"Sessions Deleted:     {result.sessions_deleted}")
-        print(f"Artifacts Deleted:    {result.artifacts_deleted}")
-        print(f"Bytes Reclaimed:      {result.bytes_reclaimed / (1024**2):.2f} MB")
-        print(f"Orphan Files Deleted: {result.orphan_files_deleted}")
+            print(f"Sessions Deleted:     {result.sessions_deleted}")
+            print(f"Artifacts Deleted:    {result.artifacts_deleted}")
+            print(f"Bytes Reclaimed:      {result.bytes_reclaimed / (1024**2):.2f} MB")
+            print(f"Orphan Files Deleted: {result.orphan_files_deleted}")
 
-        if result.errors:
-            print("\nErrors:")
-            for err in result.errors:
-                print(f"  - {err}")
-            return 1  # Partial failure
+            if result.errors:
+                print("\nErrors:")
+                for err in result.errors:
+                    print(f"  - {err}")
+                return 1  # Partial failure
 
         return 0
     finally:
@@ -210,6 +241,31 @@ def _handle_storage_pin(args: argparse.Namespace) -> int:
             total_bytes = service.get_session_size(session.session_id)
             print(f"  - {artifact_count} artifacts, {total_bytes / (1024**3):.1f} GB total")
 
+            return 0
+        except KeyError:
+            print(f"ERROR: Session {args.session_id} not found", file=sys.stderr)
+            return 1
+    finally:
+        conn.close()
+
+
+def _handle_storage_unpin(args: argparse.Namespace) -> int:
+    from bioimage_mcp.config.loader import load_config
+    from bioimage_mcp.storage.service import StorageService
+    from bioimage_mcp.storage.sqlite import connect
+
+    config = load_config()
+    conn = connect(config)
+    try:
+        service = StorageService(config, conn)
+        try:
+            session = service.unpin_session(args.session_id)
+            print(f"✓ Session {session.session_id} is now unpinned (available for cleanup)")
+            artifact_count = service.conn.execute(
+                "SELECT COUNT(*) FROM artifacts WHERE session_id = ?", (session.session_id,)
+            ).fetchone()[0]
+            total_bytes = service.get_session_size(session.session_id)
+            print(f"  - {artifact_count} artifacts, {total_bytes / (1024**3):.1f} GB total")
             return 0
         except KeyError:
             print(f"ERROR: Session {args.session_id} not found", file=sys.stderr)

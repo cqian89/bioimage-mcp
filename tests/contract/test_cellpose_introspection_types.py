@@ -17,25 +17,64 @@ import pytest
 # Add tools path for direct import testing
 TOOLS_PATH = Path(__file__).parent.parent.parent / "tools" / "cellpose"
 
-# Clear any cached bioimage_mcp_cellpose imports to ensure fresh import
-for mod_name in list(sys.modules.keys()):
-    if "bioimage_mcp_cellpose" in mod_name:
-        del sys.modules[mod_name]
 
-# Ensure tools path is at the front
-if str(TOOLS_PATH) in sys.path:
-    sys.path.remove(str(TOOLS_PATH))
-sys.path.insert(0, str(TOOLS_PATH))
+@pytest.fixture(scope="module", autouse=True)
+def clean_cellpose_imports():
+    """Isolate cellpose imports for this test module.
+
+    Saves original sys.path and sys.modules state, clears cellpose-related
+    modules to ensure fresh introspection, and restores state on teardown.
+    """
+    # Save original state
+    original_path = list(sys.path)
+    # Save only the modules we might touch to avoid huge copy if possible,
+    # but a shallow copy of the dict is generally fast enough.
+    original_modules = sys.modules.copy()
+
+    # Clear any cached bioimage_mcp_cellpose imports to ensure fresh import
+    for mod_name in list(sys.modules.keys()):
+        if "bioimage_mcp_cellpose" in mod_name:
+            del sys.modules[mod_name]
+
+    # Ensure tools path is at the front
+    if str(TOOLS_PATH) in sys.path:
+        sys.path.remove(str(TOOLS_PATH))
+    sys.path.insert(0, str(TOOLS_PATH))
+
+    # Verify package is importable
+    pytest.importorskip("bioimage_mcp_cellpose")
+
+    yield
+
+    # Restore sys.path
+    sys.path[:] = original_path
+
+    # Restore sys.modules
+    # 1. Remove modules that were added during the test
+    for mod_name in list(sys.modules.keys()):
+        if "bioimage_mcp_cellpose" in mod_name and mod_name not in original_modules:
+            del sys.modules[mod_name]
+
+    # 2. Restore modules that were removed or changed
+    for mod_name, mod_obj in original_modules.items():
+        if "bioimage_mcp_cellpose" in mod_name:
+            sys.modules[mod_name] = mod_obj
 
 
 def _is_fallback_schema(schema: dict) -> bool:
     """Check if the schema is the hardcoded fallback (cellpose not importable)."""
     props = schema.get("properties", {})
-    # The fallback has n_epochs default=10, real cellpose has 2000
+    # The train_seg fallback has n_epochs default=10, real cellpose has 2000
     n_epochs = props.get("n_epochs", {})
-    return n_epochs.get("default") == 10
+    if n_epochs.get("default") == 10:
+        return True
+    # The eval fallback only has 'diameter' as a property (minimal fallback)
+    if set(props.keys()) == {"diameter"}:
+        return True
+    return False
 
 
+@pytest.mark.usefixtures("clean_cellpose_imports")
 class TestInferJsonType:
     """Tests for the _infer_json_type helper function."""
 
@@ -76,6 +115,7 @@ class TestInferJsonType:
         assert infer_json_type((0, 0)) == "array"
 
 
+@pytest.mark.usefixtures("clean_cellpose_imports")
 class TestTrainSegIntrospection:
     """Tests for cellpose.train.train_seg parameter introspection."""
 
@@ -144,6 +184,7 @@ class TestTrainSegIntrospection:
         assert properties["normalize"].get("type") == "boolean"
 
 
+@pytest.mark.usefixtures("clean_cellpose_imports")
 class TestCellposeModelEvalIntrospection:
     """Tests for cellpose.models.CellposeModel.eval parameter introspection."""
 
@@ -191,6 +232,7 @@ class TestCellposeModelEvalIntrospection:
         assert properties["flow_threshold"].get("default") == 0.4
 
 
+@pytest.mark.usefixtures("clean_cellpose_imports")
 class TestDescriptionsUpdated:
     """Tests verifying training descriptions are included."""
 

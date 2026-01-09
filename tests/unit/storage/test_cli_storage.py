@@ -65,7 +65,9 @@ def test_storage_prune_exit_codes_T086(mock_storage_service, mock_load_config, m
         orphan_files_deleted=0,
         errors=[],
     )
-    args = argparse.Namespace(dry_run=False, include_orphans=True, days=None)
+    args = argparse.Namespace(
+        dry_run=False, include_orphans=True, days=None, force=True, json=False
+    )
     assert _handle_storage_prune(args) == 0
 
     # Test Partial Failure (1)

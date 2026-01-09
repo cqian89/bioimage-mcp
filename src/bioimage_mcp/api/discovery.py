@@ -558,6 +558,7 @@ class DiscoveryService:
             artifact_types = set(ARTIFACT_TYPES.keys())
 
             filtered_properties = {}
+
             for k, v in properties.items():
                 # Filter by name
                 if k in port_names:
