@@ -48,8 +48,93 @@ class XarrayAdapterForRegistry(BaseAdapter):
         self.core = XarrayAdapter()
 
     def discover(self, module_config: dict[str, Any]) -> list[FunctionMetadata]:
-        """Xarray functions are currently defined statically in manifest."""
-        return []
+        """Dynamically discover xarray functions from the new allowlists."""
+        from bioimage_mcp.registry.dynamic.xarray_allowlists import (
+            XARRAY_DATAARRAY_ALLOWLIST,
+            XARRAY_DATAARRAY_CLASS,
+            XARRAY_TOPLEVEL_ALLOWLIST,
+            XARRAY_UFUNC_ALLOWLIST,
+        )
+
+        discovery: list[FunctionMetadata] = []
+
+        # 1. Constructor: base.xarray.DataArray
+        for name, info in XARRAY_DATAARRAY_CLASS.items():
+            tags = set(info.get("tags", []))
+            if "category" in info:
+                tags.add(info["category"])
+
+            discovery.append(
+                FunctionMetadata(
+                    name=name,
+                    module="xarray",
+                    qualified_name=f"xarray.{name}",
+                    fn_id=f"base.xarray.{name}",
+                    source_adapter="xarray",
+                    description=info.get("summary", ""),
+                    tags=list(tags),
+                    io_pattern=IOPattern.GENERIC,
+                )
+            )
+
+        # 2. Top-level functions: base.xarray.<name>
+        for name, info in XARRAY_TOPLEVEL_ALLOWLIST.items():
+            tags = set(info.get("tags", []))
+            if "category" in info:
+                tags.add(info["category"])
+
+            discovery.append(
+                FunctionMetadata(
+                    name=name,
+                    module="xarray",
+                    qualified_name=f"xarray.{name}",
+                    fn_id=f"base.xarray.{name}",
+                    source_adapter="xarray",
+                    description=info.get("summary", ""),
+                    tags=list(tags),
+                    io_pattern=IOPattern.IMAGE_TO_IMAGE,
+                )
+            )
+
+        # 3. Ufuncs: base.xarray.ufuncs.<name>
+        for name, info in XARRAY_UFUNC_ALLOWLIST.items():
+            tags = set(info.get("tags", []))
+            if "category" in info:
+                tags.add(info["category"])
+
+            discovery.append(
+                FunctionMetadata(
+                    name=name,
+                    module="xarray",
+                    qualified_name=f"xarray.{name}",
+                    fn_id=f"base.xarray.ufuncs.{name}",
+                    source_adapter="xarray",
+                    description=info.get("summary", ""),
+                    tags=list(tags),
+                    io_pattern=IOPattern.IMAGE_TO_IMAGE,
+                )
+            )
+
+        # 4. DataArray methods: base.xarray.DataArray.<name>
+        for name, info in XARRAY_DATAARRAY_ALLOWLIST.items():
+            tags = set(info.get("tags", []))
+            if "category" in info:
+                tags.add(info["category"])
+
+            discovery.append(
+                FunctionMetadata(
+                    name=name,
+                    module="xarray.DataArray",
+                    qualified_name=f"xarray.DataArray.{name}",
+                    fn_id=f"base.xarray.DataArray.{name}",
+                    source_adapter="xarray",
+                    description=info.get("summary", ""),
+                    tags=list(tags),
+                    io_pattern=IOPattern.IMAGE_TO_IMAGE,
+                )
+            )
+
+        return discovery
 
     def resolve_io_pattern(self, func_name: str, signature: Any) -> IOPattern:
         """Most xarray operations we expose are image-to-image."""
