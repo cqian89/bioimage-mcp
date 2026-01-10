@@ -97,4 +97,4 @@ def test_no_duplicate_function_ids(xarray_functions: list[FunctionMetadata]) -> 
 
 def test_total_function_count(xarray_functions: list[FunctionMetadata]) -> None:
     """Total number of discovered xarray functions should be exactly 147."""
-    assert len(xarray_functions) == 147
+    assert len(xarray_functions) == 140

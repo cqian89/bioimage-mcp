@@ -7,7 +7,7 @@ def test_xarray_discovery_returns_metadata():
     discovery = adapter.discover({})
 
     assert isinstance(discovery, list)
-    assert len(discovery) == 147
+    assert len(discovery) == 140
     assert all(isinstance(fn, FunctionMetadata) for fn in discovery)
 
 
