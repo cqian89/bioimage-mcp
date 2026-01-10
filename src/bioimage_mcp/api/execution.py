@@ -594,16 +594,30 @@ class ExecutionService:
         )
 
         # Record input dimensions in provenance (T028a)
-        for name, inp in inputs.items():
-            if isinstance(inp, dict) and "ref_id" in inp:
+        def _record_input_dims(name: str, val: Any, idx: int | None = None):
+            suffix = f"[{idx}]" if idx is not None else ""
+            key = f"input.{name}{suffix}"
+            if isinstance(val, list):
+                for i, item in enumerate(val):
+                    _record_input_dims(name, item, i)
+                return
+
+            ref_id = None
+            if isinstance(val, dict) and "ref_id" in val:
+                ref_id = val["ref_id"]
+            elif isinstance(val, str) and not val.startswith(("file://", "mem://", "/")):
+                ref_id = val
+
+            if ref_id:
                 try:
                     # Resolve from memory store first
-                    ref = self._memory_store.get(inp["ref_id"]) or self._artifact_store.get(
-                        inp["ref_id"]
-                    )
-                    record_artifact_dimensions(run.provenance, f"input.{name}", ref.model_dump())
+                    ref = self._memory_store.get(ref_id) or self._artifact_store.get(ref_id)
+                    record_artifact_dimensions(run.provenance, key, ref.model_dump())
                 except KeyError:
                     pass
+
+        for name, inp in inputs.items():
+            _record_input_dims(name, inp)
 
         work_dir = self._config.artifact_store_root / "work" / "runs" / run.run_id
         work_dir.mkdir(parents=True, exist_ok=True)
@@ -614,96 +628,106 @@ class ExecutionService:
         target_env = self._get_target_env(fn_id)
         fn_ports = _get_function_ports(self._config, [fn_id]).get(fn_id, {})
 
-        # Pre-process inputs: convert plain ref_id strings to resolved artifact dicts
-        for input_name, input_ref in inputs.items():
-            if isinstance(input_ref, str) and not input_ref.startswith(("file://", "mem://", "/")):
+        # Pre-process inputs: convert plain ref_id strings or lists of ref_ids to resolved artifact dicts
+        def _resolve_input_ref(val: Any) -> Any:
+            if isinstance(val, str) and not val.startswith(("file://", "mem://", "/")):
                 # Treat as ref_id string - resolve to full artifact
-                ref_id = input_ref
-                mem_ref = self._memory_store.get(ref_id)
+                mem_ref = self._memory_store.get(val)
                 if mem_ref:
                     resolved = mem_ref.model_dump()
-                    # Handle _simulated_path for mem:// artifacts
                     simulated_path = (
                         mem_ref.metadata.get("_simulated_path") if mem_ref.metadata else None
                     )
                     if simulated_path:
                         resolved["uri"] = f"file://{simulated_path}"
-                    inputs[input_name] = resolved
+                    return resolved
                 else:
                     try:
-                        ref = self._artifact_store.get(ref_id)
-                        inputs[input_name] = ref.model_dump()
+                        ref = self._artifact_store.get(val)
+                        return ref.model_dump()
                     except KeyError:
-                        pass  # Let it fail later with better error message
+                        return val
+            elif isinstance(val, list):
+                return [_resolve_input_ref(item) for item in val]
+            return val
 
         for input_name, input_ref in inputs.items():
-            if not isinstance(input_ref, dict):
-                continue
-            if "ref_id" in input_ref:
-                ref_id = input_ref["ref_id"]
-                # Resolve from memory store first (mem://) (T016)
-                mem_ref = self._memory_store.get(ref_id)
+            inputs[input_name] = _resolve_input_ref(input_ref)
 
-                # Check for ObjectRef reconstruction (T046)
-                if not mem_ref and input_ref.get("type") == "ObjectRef":
-                    python_class = input_ref.get("python_class")
-                    metadata = input_ref.get("metadata") or {}
-                    init_params = metadata.get("init_params")
-                    if python_class and init_params is not None:
-                        logger.info("Reconstructing missing ObjectRef %s", ref_id)
-                        try:
-                            self.reconstruct_object(
-                                python_class=python_class,
-                                init_params=init_params,
-                                session_id=session_id,
-                                ref_id=ref_id,
-                            )
-                            # Refresh mem_ref after reconstruction
-                            mem_ref = self._memory_store.get(ref_id)
-                        except Exception as e:
-                            logger.error("Failed to reconstruct %s: %s", ref_id, e)
+        def _resolve_and_reconstruct(val: Any) -> Any:
+            if isinstance(val, list):
+                return [_resolve_and_reconstruct(item) for item in val]
+            if not isinstance(val, dict) or "ref_id" not in val:
+                return val
 
-                if mem_ref:
-                    resolved = mem_ref.model_dump()
-                    # Use simulated file path for tool input (T016 Fix)
-                    simulated_path = mem_ref.metadata.get("_simulated_path")
-                    if simulated_path:
-                        resolved["uri"] = f"file://{simulated_path}"
-                        logger.debug(
-                            "Resolving mem:// input: %s -> %s",
-                            mem_ref.uri,
-                            resolved["uri"],
-                        )
-                    resolved.update(input_ref)
-                    inputs[input_name] = resolved
-                    continue
+            ref_id = val["ref_id"]
+            mem_ref = self._memory_store.get(ref_id)
 
-                # Resolve from file store
-                if "uri" not in input_ref:
+            # Check for ObjectRef reconstruction (T046)
+            if not mem_ref and val.get("type") == "ObjectRef":
+                python_class = val.get("python_class")
+                metadata = val.get("metadata") or {}
+                init_params = metadata.get("init_params")
+                if python_class and init_params is not None:
+                    logger.info("Reconstructing missing ObjectRef %s", ref_id)
                     try:
-                        ref = self._artifact_store.get(ref_id)
-                    except KeyError:
-                        continue
+                        self.reconstruct_object(
+                            python_class=python_class,
+                            init_params=init_params,
+                            session_id=session_id,
+                            ref_id=ref_id,
+                        )
+                        # Refresh mem_ref after reconstruction
+                        mem_ref = self._memory_store.get(ref_id)
+                    except Exception as e:
+                        logger.error("Failed to reconstruct %s: %s", ref_id, e)
+
+            if mem_ref:
+                resolved = mem_ref.model_dump()
+                # Use simulated file path for tool input (T016 Fix)
+                simulated_path = mem_ref.metadata.get("_simulated_path")
+                if simulated_path:
+                    resolved["uri"] = f"file://{simulated_path}"
+                    logger.debug(
+                        "Resolving mem:// input: %s -> %s",
+                        mem_ref.uri,
+                        resolved["uri"],
+                    )
+                resolved.update(val)
+                return resolved
+
+            # Resolve from file store
+            if "uri" not in val:
+                try:
+                    ref = self._artifact_store.get(ref_id)
                     resolved = ref.model_dump()
-                    resolved.update(input_ref)
-                    inputs[input_name] = resolved
+                    resolved.update(val)
+                    return resolved
+                except KeyError:
+                    pass
+            return val
+
+        for input_name, input_ref in inputs.items():
+            inputs[input_name] = _resolve_and_reconstruct(input_ref)
 
         storage_requirements = _get_input_storage_requirements(self._config, fn_id)
         materialized_inputs: dict[str, str] = {}
         handoffs: list[dict] = []
 
-        for input_name, input_ref in inputs.items():
-            if not isinstance(input_ref, dict) or "ref_id" not in input_ref:
-                continue
+        def _process_handoff(input_name: str, val: Any) -> Any:
+            if isinstance(val, list):
+                return [_process_handoff(input_name, item) for item in val]
+            if not isinstance(val, dict) or "ref_id" not in val:
+                return val
 
-            ref_id = input_ref["ref_id"]
+            ref_id = val["ref_id"]
             try:
                 # Use the original artifact from store for handoff check
                 artifact = self._memory_store.get(ref_id) or self._artifact_store.get(ref_id)
                 if not artifact:
-                    continue
+                    return val
             except KeyError:
-                continue
+                return val
 
             source_env = _extract_env_from_uri(artifact.uri) or artifact.metadata.get(
                 "env_id", "unknown"
@@ -723,16 +747,15 @@ class ExecutionService:
 
             # Also check legacy zarr-temp materialization
             supported = storage_requirements.get(input_name, ["file"])
-            legacy_needs_mat = _needs_materialization(input_ref, supported)
+            legacy_needs_mat = _needs_materialization(val, supported)
 
             if legacy_needs_mat:
                 # Use compatibility helper for legacy zarr-temp materialization
                 # (facilitates mocking in tests)
-                materialized = _materialize_zarr_to_file(input_ref, work_dir, self._artifact_store)
+                materialized = _materialize_zarr_to_file(val, work_dir, self._artifact_store)
                 if materialized and materialized.get("ref_id") != ref_id:
-                    inputs[input_name] = materialized
                     materialized_inputs[input_name] = ref_id
-                    continue
+                    return materialized
 
             if needs_handoff or legacy_needs_mat:
                 negotiated_format = self._io_bridge.negotiate_format(artifact, target_format)
@@ -789,25 +812,19 @@ class ExecutionService:
                         # Update inputs
                         new_ref_data = new_ref.model_dump()
                         new_ref_data["materialized_from"] = ref_id
-                        inputs[input_name] = new_ref_data
                         materialized_inputs[input_name] = ref_id
-                        continue
+                        return new_ref_data
                     else:
-                        # Constitution III Compliance: Core MUST NOT import bioio for I/O.
-                        # Worker-delegated materialization is the ONLY path for cross-env handoff.
-                        # If worker materialization fails, the operation should fail cleanly.
-                        #
-                        # See: .specify/memory/constitution.md Constitution III
-                        #      (Artifact References Only)
-                        # See: specs/012-persistent-worker/plan.md for worker delegation design
                         logger.error(
                             "Worker materialization failed for %s. Core cannot perform I/O "
                             "(Constitution III). Operation will fail.",
                             ref_id,
                         )
-                        # Continue with original input - tool execution will likely fail,
-                        # which is correct behavior per Constitution III
-                        continue
+                        return val
+            return val
+
+        for input_name, input_ref in inputs.items():
+            inputs[input_name] = _process_handoff(input_name, input_ref)
 
         if materialized_inputs:
             run.provenance["materialized_inputs"] = materialized_inputs

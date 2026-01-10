@@ -109,29 +109,35 @@ def validate_workflow_compatibility(
                 expected_types = [str(raw_expected_type)] if raw_expected_type else []
                 expected_type_str = str(raw_expected_type or "")
 
-            actual_type = ""
+            actual_types = []
 
-            # Input can be an artifact ref or a reference to previous step output
-            if isinstance(input_value, dict):
-                actual_type = str(input_value.get("type", "") or "")
-            elif isinstance(input_value, str) and input_value in available_outputs:
-                actual_type = available_outputs[input_value]
+            # Input can be an artifact ref, a reference to previous step output,
+            # or a list of either (T048)
+            def _extract_types(val: Any) -> list[str]:
+                if isinstance(val, list):
+                    res = []
+                    for item in val:
+                        res.extend(_extract_types(item))
+                    return res
+                if isinstance(val, dict):
+                    t = val.get("type", "")
+                    return [str(t)] if t else []
+                if isinstance(val, str) and val in available_outputs:
+                    raw_avail = available_outputs[val]
+                    if isinstance(raw_avail, list):
+                        return [str(t) for t in raw_avail]
+                    return [str(raw_avail)] if raw_avail else []
+                return []
+
+            actual_types = _extract_types(input_value)
 
             # Check type compatibility
-            if expected_types and actual_type:
-                actual_types = actual_type if isinstance(actual_type, list) else [actual_type]
-                # Cast to string for comparison
-                actual_types = [str(t) for t in actual_types]
-
+            if expected_types and actual_types:
                 # Check if all possible actual types are covered by expected types
                 is_compatible = all(t in expected_types for t in actual_types)
 
                 if not is_compatible:
-                    actual_type_str = (
-                        " | ".join(actual_types)
-                        if isinstance(actual_type, list)
-                        else str(actual_type)
-                    )
+                    actual_type_str = " | ".join(sorted(set(actual_types)))
                     msg = (
                         f"Step {step_idx} input '{input_name}': "
                         f"expected {expected_type_str}, got {actual_type_str}"
