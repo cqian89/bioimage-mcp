@@ -22,10 +22,9 @@ OBJECT_CACHE: dict[str, Any] = {}
 def should_expand_to_5d(output_format: str, output_hints: DimensionRequirement | None) -> bool:
     """Decide if an output should be expanded to 5D TCZYX based on format and hints.
 
-    OME-TIFF always requires 5D in bioio.writers.
+    Note: OME-TIFF supports 2D-6D natively in bioio.writers. Expansion is only
+    performed if explicitly required by hints.
     """
-    if output_format.upper() == "OME-TIFF":
-        return True
     if output_hints and output_hints.min_ndim == 5:
         return True
     return False
@@ -319,6 +318,16 @@ class XarrayAdapterForRegistry(BaseAdapter):
                 if method_name in XARRAY_TOPLEVEL_ALLOWLIST:
                     return self._execute_toplevel_function(fn_id, inputs, params, work_dir)
 
+                # Fallback: if base.xarray.<method> isn't a top-level function,
+                # check if it's a DataArray method and normalize the fn_id
+                from bioimage_mcp.registry.dynamic.xarray_allowlists import (
+                    XARRAY_DATAARRAY_ALLOWLIST,
+                )
+
+                if method_name in XARRAY_DATAARRAY_ALLOWLIST:
+                    fn_id = f"base.xarray.DataArray.{method_name}"
+                    # Now fall through to the DataArray method handling below
+
         # Method call: base.xarray.DataArray.<name>
         if not fn_id.startswith("base.xarray.DataArray."):
             raise ValueError(f"Unknown or invalid xarray function ID: {fn_id}")
@@ -611,7 +620,6 @@ class XarrayAdapterForRegistry(BaseAdapter):
             data = data.astype(np.float32)
 
         # Prefer OME-TIFF for maximum downstream compatibility
-        # Expand to 5D if needed for OmeTiffWriter
         ome_tiff_success = False
         ext = ".ome.tiff"
         fmt = "OME-TIFF"
@@ -620,22 +628,14 @@ class XarrayAdapterForRegistry(BaseAdapter):
         try:
             from bioio.writers import OmeTiffWriter
 
-            # OME-TIFF only supports up to 5 dimensions and specific names
+            # OME-TIFF supports 2D-6D and specific names (TCZYXS)
             # If any dimension name is multi-character, it's definitely not OME-TIFF compatible
             if len(dims) > 5 or any(len(d) > 1 for d in dims):
                 raise ValueError("Incompatible with OME-TIFF")
 
-            # OmeTiffWriter requires 5D TCZYX
+            # Use native dimensions (2D-6D supported by OmeTiffWriter)
             save_data = data
             save_dim_order = "".join(dims)
-
-            # Expand to 5D for OmeTiffWriter
-            while save_data.ndim < 5:
-                save_data = np.expand_dims(save_data, axis=0)
-
-            # Build 5D dim order: prepend missing dimensions from TCZYX
-            missing_dims = "TCZYX"[: 5 - len(dims)]
-            save_dim_order = missing_dims + save_dim_order
 
             OmeTiffWriter.save(save_data, str(out_path), dim_order=save_dim_order)
             ome_tiff_success = True
