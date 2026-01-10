@@ -26,5 +26,8 @@ def test_squeeze_non_singleton_dimension_error(tmp_path):
     # Note: xarray.DataArray.squeeze(dim='Z') raises ValueError
     with pytest.raises(ValueError, match="cannot select a dimension to squeeze out"):
         adapter.execute(
-            fn_id="xarray.squeeze", inputs=[artifact], params={"dim": "Z"}, work_dir=tmp_path
+            fn_id="base.xarray.DataArray.squeeze",
+            inputs=[artifact],
+            params={"dim": "Z"},
+            work_dir=tmp_path,
         )

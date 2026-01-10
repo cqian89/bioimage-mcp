@@ -76,7 +76,7 @@ def test_axis_padding_standard_order_2d(tmp_path):
 
     assert len(outputs) == 1
     # The output should preserve native YX
-    assert outputs[0]["type"] == "ObjectRef"
+    assert outputs[0]["type"] == "BioImageRef"
     assert outputs[0]["metadata"]["dims"] == ["Y", "X"]
     assert outputs[0]["metadata"]["shape"] == [10, 10]
 
@@ -110,7 +110,7 @@ def test_axis_padding_standard_order_3d(tmp_path):
 
     assert len(outputs) == 1
     # The output should preserve native ZYX
-    assert outputs[0]["type"] == "ObjectRef"
+    assert outputs[0]["type"] == "BioImageRef"
     assert outputs[0]["metadata"]["dims"] == ["Z", "Y", "X"]
     assert outputs[0]["metadata"]["shape"] == [5, 10, 10]
 
