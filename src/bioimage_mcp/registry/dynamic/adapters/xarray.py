@@ -215,6 +215,19 @@ class XarrayAdapterForRegistry(BaseAdapter):
 
         return BioImage(str(path), reader=reader)
 
+    def _load_da(self, artifact: Artifact):
+        """Load DataArray from artifact (BioImageRef or ObjectRef)."""
+        # Handle ObjectRef input
+        uri = artifact.get("uri") if isinstance(artifact, dict) else getattr(artifact, "uri", None)
+        if uri and uri.startswith("obj://"):
+            if uri not in OBJECT_CACHE:
+                raise ValueError(f"Object with URI {uri} not found in memory cache")
+            return OBJECT_CACHE[uri]
+        else:
+            img = self._load_image(artifact)
+            # Get xarray data (native dimensions - T017)
+            return img.reader.xarray_data
+
     def execute(
         self,
         fn_id: str,
@@ -228,6 +241,13 @@ class XarrayAdapterForRegistry(BaseAdapter):
 
         if fn_id == "base.xarray.DataArray.to_bioimage":
             return self._execute_to_bioimage(inputs, params, work_dir)
+
+        if fn_id.startswith("base.xarray.ufuncs."):
+            return self._execute_ufunc(fn_id, inputs, params, work_dir)
+
+        # Check if it's a top-level function (not DataArray.method)
+        if fn_id.startswith("base.xarray.") and not fn_id.startswith("base.xarray.DataArray."):
+            return self._execute_toplevel_function(fn_id, inputs, params, work_dir)
 
         # fn_id is like "base.xarray.isel" or "base.xarray.DataArray.mean"
         parts = fn_id.split(".")
@@ -245,21 +265,14 @@ class XarrayAdapterForRegistry(BaseAdapter):
             raise ValueError(f"No valid artifact inputs provided for {fn_id}")
 
         _, primary_artifact = normalized_inputs[0]
+        da = self._load_da(primary_artifact)
 
-        # Handle ObjectRef input
+        # Handle ObjectRef input URI for return type determination
         uri = (
             primary_artifact.get("uri")
             if isinstance(primary_artifact, dict)
             else getattr(primary_artifact, "uri", None)
         )
-        if uri and uri.startswith("obj://"):
-            if uri not in OBJECT_CACHE:
-                raise ValueError(f"Object with URI {uri} not found in memory cache")
-            da = OBJECT_CACHE[uri]
-        else:
-            img = self._load_image(primary_artifact)
-            # Get xarray data (native dimensions - T017)
-            da = img.reader.xarray_data
 
         # Execute via core adapter
         result_da = self.core.execute(method_name, da, **params)
@@ -298,6 +311,87 @@ class XarrayAdapterForRegistry(BaseAdapter):
             ]
 
         # Save result (T018)
+        return self._save_output(result_da, method_name, work_dir)
+
+    def _execute_toplevel_function(
+        self,
+        fn_id: str,
+        inputs: list[Artifact],
+        params: dict[str, Any],
+        work_dir: Path | None = None,
+    ) -> list[dict]:
+        """Execute top-level xarray functions (concat, merge, etc.)."""
+        import xarray as xr
+
+        method_name = fn_id.split(".")[-1]
+
+        normalized = self._normalize_inputs(inputs)
+
+        # Collect all DataArrays
+        das = []
+        for name, art in normalized:
+            if isinstance(art, list):
+                # Handle inputs=[("images", [img1, img2])]
+                for item in art:
+                    das.append(self._load_da(item))
+            else:
+                # Handle inputs=[("image_0", img1), ("image_1", img2)]
+                das.append(self._load_da(art))
+
+        if not das:
+            raise ValueError(f"No input DataArrays found for {fn_id}")
+
+        func = getattr(xr, method_name)
+
+        # Most top-level combining functions take the list of objects as the first argument
+        if method_name in ["concat", "merge", "combine_by_coords", "combine_nested"]:
+            result_da = func(das, **params)
+        else:
+            # For other top-level functions, we might need different dispatch
+            # but for now we follow the pattern of passing all das
+            result_da = func(*das, **params)
+
+        return self._save_output(result_da, method_name, work_dir)
+
+    def _execute_ufunc(
+        self,
+        fn_id: str,
+        inputs: list[Artifact],
+        params: dict[str, Any],
+        work_dir: Path | None = None,
+    ) -> list[dict]:
+        """Execute universal functions (add, subtract, etc.)."""
+        import xarray as xr
+
+        method_name = fn_id.split(".")[-1]
+
+        normalized = self._normalize_inputs(inputs)
+        das = []
+        for name, art in normalized:
+            # ufuncs usually don't take lists of images in one argument
+            if isinstance(art, list):
+                for item in art:
+                    das.append(self._load_da(item))
+            else:
+                das.append(self._load_da(art))
+
+        if not das:
+            raise ValueError(f"No input DataArrays found for {fn_id}")
+
+        # Use xr.apply_ufunc with the corresponding numpy function
+        try:
+            # Try to find it in xarray first (some are there like xr.where)
+            if hasattr(xr, method_name):
+                func = getattr(xr, method_name)
+                result_da = func(*das, **params)
+            else:
+                # Fallback to numpy + apply_ufunc
+                # apply_ufunc handles xarray-specific logic like coordinates
+                func = getattr(np, method_name)
+                result_da = xr.apply_ufunc(func, *das, kwargs=params)
+        except AttributeError:
+            raise ValueError(f"Ufunc '{method_name}' not found in xarray or numpy")
+
         return self._save_output(result_da, method_name, work_dir)
 
     def _execute_dataarray_constructor(
