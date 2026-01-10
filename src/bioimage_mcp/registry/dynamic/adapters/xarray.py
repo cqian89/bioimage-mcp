@@ -329,7 +329,7 @@ class XarrayAdapterForRegistry(BaseAdapter):
 
         # Collect all DataArrays
         das = []
-        for name, art in normalized:
+        for _name, art in normalized:
             if isinstance(art, list):
                 # Handle inputs=[("images", [img1, img2])]
                 for item in art:
@@ -373,7 +373,7 @@ class XarrayAdapterForRegistry(BaseAdapter):
 
         normalized = self._normalize_inputs(inputs)
         das = []
-        for name, art in normalized:
+        for _name, art in normalized:
             # ufuncs usually don't take lists of images in one argument
             if isinstance(art, list):
                 for item in art:
@@ -395,8 +395,8 @@ class XarrayAdapterForRegistry(BaseAdapter):
                 # apply_ufunc handles xarray-specific logic like coordinates
                 func = getattr(np, method_name)
                 result_da = xr.apply_ufunc(func, *das, kwargs=params)
-        except AttributeError:
-            raise ValueError(f"Ufunc '{method_name}' not found in xarray or numpy")
+        except AttributeError as err:
+            raise ValueError(f"Ufunc '{method_name}' not found in xarray or numpy") from err
 
         return self._save_output(result_da, method_name, work_dir)
 

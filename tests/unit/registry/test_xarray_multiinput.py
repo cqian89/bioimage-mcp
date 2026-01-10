@@ -1,8 +1,9 @@
+from pathlib import Path
+
 import numpy as np
 import pytest
-import xarray as xr
-from pathlib import Path
 from bioio.writers import OmeTiffWriter
+
 from bioimage_mcp.registry.dynamic.adapters import ADAPTER_REGISTRY
 
 
