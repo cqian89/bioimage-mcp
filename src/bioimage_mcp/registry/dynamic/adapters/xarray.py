@@ -344,7 +344,13 @@ class XarrayAdapterForRegistry(BaseAdapter):
         func = getattr(xr, method_name)
 
         # Most top-level combining functions take the list of objects as the first argument
-        if method_name in ["concat", "merge", "combine_by_coords", "combine_nested"]:
+        if method_name == "merge":
+            # Fix: rename to unique names and convert back to DataArray
+            result_dataset = xr.merge(
+                [arr.rename(f"var_{i}") for i, arr in enumerate(das)], **params
+            )
+            result_da = result_dataset.to_array(dim="variable")
+        elif method_name in ["concat", "combine_by_coords", "combine_nested"]:
             result_da = func(das, **params)
         else:
             # For other top-level functions, we might need different dispatch
@@ -473,24 +479,24 @@ class XarrayAdapterForRegistry(BaseAdapter):
 
         # Native dimensions (T018)
         data = result_da.values
-        dim_order = "".join(result_da.dims)
+        dims = list(result_da.dims)
 
         # Ensure we can always persist BioImageRef outputs.
         # Some reductions can yield scalar/1D results (e.g., sum over X on a YX image),
         # but our image artifact writers require at least 2D.
         if data.ndim == 0:
             data = np.array([[data]])
-            dim_order = "YX"
+            dims = ["Y", "X"]
         elif data.ndim == 1:
-            if dim_order == "Y":
+            if dims == ["Y"]:
                 data = data[:, np.newaxis]
-                dim_order = "YX"
-            elif dim_order == "X":
+                dims = ["Y", "X"]
+            elif dims == ["X"]:
                 data = data[np.newaxis, :]
-                dim_order = "YX"
+                dims = ["Y", "X"]
             else:
                 data = data[..., np.newaxis]
-                dim_order = f"{dim_order}X"
+                dims = dims + ["X"]
 
         if data.dtype == np.uint64 or data.dtype == np.int64:
             data = data.astype(np.float32)
@@ -505,17 +511,22 @@ class XarrayAdapterForRegistry(BaseAdapter):
         try:
             from bioio.writers import OmeTiffWriter
 
+            # OME-TIFF only supports up to 5 dimensions and specific names
+            # If any dimension name is multi-character, it's definitely not OME-TIFF compatible
+            if len(dims) > 5 or any(len(d) > 1 for d in dims):
+                raise ValueError("Incompatible with OME-TIFF")
+
             # OmeTiffWriter requires 5D TCZYX
             save_data = data
-            save_dim_order = dim_order
+            save_dim_order = "".join(dims)
 
             # Expand to 5D for OmeTiffWriter
             while save_data.ndim < 5:
                 save_data = np.expand_dims(save_data, axis=0)
 
             # Build 5D dim order: prepend missing dimensions from TCZYX
-            missing_dims = "TCZYX"[: 5 - len(dim_order)]
-            save_dim_order = missing_dims + dim_order
+            missing_dims = "TCZYX"[: 5 - len(dims)]
+            save_dim_order = missing_dims + save_dim_order
 
             OmeTiffWriter.save(save_data, str(out_path), dim_order=save_dim_order)
             ome_tiff_success = True
@@ -527,14 +538,14 @@ class XarrayAdapterForRegistry(BaseAdapter):
             ext = ".ome.zarr"
             fmt = "OME-Zarr"
             out_path = work_dir / f"output_{method_name}{ext}"
-            save_native_ome_zarr(data, out_path, dim_order)
+            save_native_ome_zarr(data, out_path, dims)
 
         # Populate native dimension metadata
         metadata = {
-            "axes": dim_order,
+            "axes": "".join(dims) if all(len(d) == 1 for d in dims) else dims,
             "shape": list(data.shape),
             "ndim": data.ndim,
-            "dims": list(dim_order),
+            "dims": list(dims),
             "dtype": str(data.dtype),
         }
 
@@ -570,6 +581,8 @@ def save_native_ome_zarr(data: np.ndarray, path: Path | str, dims: str) -> None:
         dtype=data.dtype,
         axes_names=axes_names,
         axes_types=axes_types,
+        axes_units=[None] * data.ndim,
+        physical_pixel_size=[1.0] * data.ndim,
         zarr_format=2,
     )
     writer.write_full_volume(data)

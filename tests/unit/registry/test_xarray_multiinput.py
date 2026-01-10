@@ -33,10 +33,6 @@ def test_xarray_concat(adapter, tmp_path):
     img2 = create_test_image(img2_path, value=2)
 
     # Concatenate along T dimension
-    # inputs can be [("images", [img1, img2])] OR [("image_0", img1), ("image_1", img2)]
-    # The instruction says:
-    # inputs = [("images", [img_ref_1, img_ref_2, img_ref_3])]
-
     outputs = adapter.execute(
         fn_id="base.xarray.concat",
         inputs=[("images", [img1, img2])],
@@ -47,6 +43,28 @@ def test_xarray_concat(adapter, tmp_path):
     assert len(outputs) == 1
     assert outputs[0]["type"] == "BioImageRef"
     assert outputs[0]["metadata"]["shape"][0] == 2  # 1+1=2 along T
+
+
+def test_xarray_merge(adapter, tmp_path):
+    img1_path = tmp_path / "img1.ome.tiff"
+    img2_path = tmp_path / "img2.ome.tiff"
+
+    img1 = create_test_image(img1_path, value=1)
+    img2 = create_test_image(img2_path, value=2)
+
+    outputs = adapter.execute(
+        fn_id="base.xarray.merge",
+        inputs=[("images", [img1, img2])],
+        params={},
+        work_dir=tmp_path,
+    )
+
+    assert len(outputs) == 1
+    assert outputs[0]["type"] == "BioImageRef"
+    # Merging two 5D images with to_array(dim="variable") will add a 'variable' dim
+    # The result shape should have one more dimension at the beginning (variable=2)
+    assert outputs[0]["metadata"]["shape"][0] == 2
+    assert "variable" in outputs[0]["metadata"]["axes"]
 
 
 def test_xarray_ufunc_subtract(adapter, tmp_path):
@@ -64,7 +82,6 @@ def test_xarray_ufunc_subtract(adapter, tmp_path):
     )
 
     assert len(outputs) == 1
-    # We need to verify the content, but for now we check it ran and produced an output
     assert outputs[0]["type"] == "BioImageRef"
 
 
