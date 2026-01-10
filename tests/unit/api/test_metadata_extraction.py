@@ -140,6 +140,7 @@ def test_extract_metadata_tifffile_preserves_ome_singletons(tmp_path):
 
     meta = extract_image_metadata(path)
     assert meta is not None
-    assert meta["axes"] == "TCZYX"
-    assert meta["ndim"] == 5
-    assert meta["shape"] == [1, 1, 1, 2, 2]
+    # New policy: Preserve native dimensions as reported by tifffile (YX for singletons)
+    assert meta["axes"] == "YX"
+    assert meta["ndim"] == 2
+    assert meta["shape"] == [2, 2]

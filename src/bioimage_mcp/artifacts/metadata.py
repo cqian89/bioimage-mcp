@@ -265,10 +265,30 @@ def _extract_metadata_tifffile(path: Path) -> dict | None:
                     y = sizes.get("Y", shape[-2] if len(shape) >= 2 else 1)
                     x = sizes.get("X", shape[-1] if len(shape) >= 1 else 1)
 
-                    meta["axes"] = "TCZYX"
-                    meta["ndim"] = 5
-                    meta["dims"] = list("TCZYX")
-                    meta["shape"] = [t, c, z, y, x]
+                    full_sizes = {"T": t, "C": c, "Z": z, "Y": y, "X": x}
+                    new_axes = ""
+                    new_shape = []
+
+                    # Build axes string dynamically: include if size > 1 OR explicitly in the file axes
+                    # Preserve ordering from tifffile if available
+                    order = axes.upper() if axes else "TCZYX"
+                    for ax in order:
+                        if ax in full_sizes:
+                            val = full_sizes[ax]
+                            if val > 1 or (axes and ax in axes.upper()):
+                                if ax not in new_axes:
+                                    new_axes += ax
+                                    new_shape.append(val)
+
+                    # Fallback to YX if we have no axes but have data
+                    if not new_axes:
+                        new_axes = "YX"
+                        new_shape = [y, x]
+
+                    meta["axes"] = new_axes
+                    meta["ndim"] = len(new_axes)
+                    meta["dims"] = list(new_axes)
+                    meta["shape"] = new_shape
 
                 pps = {}
                 for dim in ("X", "Y", "Z"):

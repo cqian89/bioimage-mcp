@@ -60,12 +60,12 @@ def test_convert_memory_inputs_to_files_with_2d(tmp_path):
 
         entrypoint._convert_memory_inputs_to_files(inputs, tmp_path)
 
-        # Verify OmeTiffWriter.save was called with 5D data
+        # Verify OmeTiffWriter.save was called with 2D data
         assert mock_save.called
         args, _ = mock_save.call_args
         saved_data = args[0]
-        assert saved_data.ndim == 5
-        assert saved_data.shape == (1, 1, 1, 100, 100)
+        assert saved_data.ndim == 2
+        assert saved_data.shape == (100, 100)
 
 
 def test_handle_materialize_with_2d():
@@ -89,12 +89,12 @@ def test_handle_materialize_with_2d():
 
         entrypoint.handle_materialize(request)
 
-        # Verify OmeTiffWriter.save was called with 5D data
+        # Verify OmeTiffWriter.save was called with 2D data
         assert mock_save.called
         args, _ = mock_save.call_args
         saved_data = args[0]
-        assert saved_data.ndim == 5
-        assert saved_data.shape == (1, 1, 1, 100, 100)
+        assert saved_data.ndim == 2
+        assert saved_data.shape == (100, 100)
 
 
 def test_handle_materialize_ome_zarr_with_2d():

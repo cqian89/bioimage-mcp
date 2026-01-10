@@ -718,14 +718,15 @@ def _export_png(data: np.ndarray, path: Path):
     imageio.v3.imwrite(path, data)
 
 
-def _export_ome_tiff(data: np.ndarray, path: Path):
+def _export_ome_tiff(data: np.ndarray, path: Path, axes: str | None = None):
     """Export array to OME-TIFF."""
     from bioio.writers import OmeTiffWriter
 
-    # Ensure 5D
-    while data.ndim < 5:
-        data = data[np.newaxis, ...]
-    OmeTiffWriter.save(data, str(path), dim_order="TCZYX")
+    if axes is None:
+        ndim_map = {2: "YX", 3: "ZYX", 4: "CZYX", 5: "TCZYX"}
+        axes = ndim_map.get(data.ndim, "TCZYX"[-data.ndim :] if data.ndim <= 5 else "TCZYX")
+
+    OmeTiffWriter.save(data, str(path), dim_order=axes)
 
 
 def _export_ome_zarr(data: np.ndarray, path: Path, dims: list[str] | None = None):

@@ -218,8 +218,8 @@ def _convert_memory_inputs_to_files(inputs: dict[str, Any], work_dir: Path) -> d
 
             temp_id = uuid.uuid4().hex[:8]
             temp_path = work_dir / f"_mem_{key}_{temp_id}.ome.tif"
-            data_5d = _expand_to_5d(data)
-            OmeTiffWriter.save(data_5d, temp_path, dim_order="TCZYX")
+            dims_str = _infer_dims_from_shape(data.shape)
+            OmeTiffWriter.save(data, temp_path, dim_order=dims_str)
 
             # Replace with file URI
             converted_inputs[key] = {
@@ -351,8 +351,8 @@ def handle_materialize(request: dict[str, Any]) -> dict[str, Any]:
         if target_format == "OME-TIFF":
             from bioio.writers import OmeTiffWriter
 
-            data_5d = _expand_to_5d(data)
-            OmeTiffWriter.save(data_5d, dest_path, dim_order="TCZYX")
+            dims_str = _infer_dims_from_shape(data.shape)
+            OmeTiffWriter.save(data, dest_path, dim_order=dims_str)
         elif target_format == "OME-Zarr":
             from bioio_ome_zarr.writers import OMEZarrWriter
 

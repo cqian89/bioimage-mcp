@@ -167,7 +167,7 @@ def load_native_image_with_warnings(
     return data, warnings
 
 
-def save_zarr(data: np.ndarray, work_dir: Path, name: str) -> Path:
+def save_zarr(data: np.ndarray, work_dir: Path, name: str, axes: str | None = None) -> Path:
     """Save array as OME-Zarr."""
     try:
         from bioio_ome_zarr.writers import OMEZarrWriter
@@ -185,19 +185,23 @@ def save_zarr(data: np.ndarray, work_dir: Path, name: str) -> Path:
     if out_dir.exists():
         raise FileExistsError(out_dir)
 
-    # Ensure 5D for OMEZarrWriter
-    data_5d = data
-    while data_5d.ndim < 5:
-        data_5d = data_5d[np.newaxis, ...]
+    if axes is None:
+        ndim_map = {2: "YX", 3: "ZYX", 4: "CZYX", 5: "TCZYX"}
+        axes = ndim_map.get(data.ndim, "TCZYX"[-data.ndim :] if data.ndim <= 5 else "TCZYX")
 
-    full_shape = data_5d.shape
+    axis_type_map = {"t": "time", "c": "channel", "z": "space", "y": "space", "x": "space"}
+    axes_names = [d.lower() for d in axes]
+    axes_types = [axis_type_map.get(d, "space") for d in axes_names]
+
     writer = OMEZarrWriter(
         store=str(out_dir),
-        level_shapes=[full_shape],
-        dtype=data_5d.dtype,
+        level_shapes=[data.shape],
+        dtype=data.dtype,
+        axes_names=axes_names,
+        axes_types=axes_types,
         zarr_format=2,
     )
-    writer.write_full_volume(data_5d)
+    writer.write_full_volume(data)
     return out_dir
 
 
