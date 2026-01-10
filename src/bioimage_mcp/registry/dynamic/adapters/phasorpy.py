@@ -289,13 +289,10 @@ class PhasorPyAdapter:
             axes_map = {2: "YX", 3: "ZYX", 4: "CZYX", 5: "TCZYX"}
             axes = axes_map.get(array.ndim, "TCZYX"[-array.ndim :])
 
-        # Ensure array has same number of dimensions as axes
-        if array.ndim < len(axes):
-            for _ in range(len(axes) - array.ndim):
-                array = np.expand_dims(array, axis=0)
-        elif array.ndim > len(axes):
-            # This shouldn't happen with TCZYX usually, but if it does, we take the last ones
-            axes = "TCZYX"[-array.ndim :] if array.ndim <= 5 else "ABCDE"[: array.ndim]
+        # Ensure axes length matches array.ndim without padding the array
+        if array.ndim != len(axes):
+            # If dimensions don't match, adjust axes to match array's native dimensions
+            axes = "TCZYX"[-array.ndim :] if array.ndim <= 5 else "STCZYX"[: array.ndim]
 
         from bioio.writers import OmeTiffWriter
 
