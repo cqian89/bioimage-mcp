@@ -44,7 +44,7 @@ def test_ufunc_allowlist():
 
 
 def test_dataarray_method_allowlist():
-    assert len(XARRAY_DATAARRAY_ALLOWLIST) == 71
+    assert len(XARRAY_DATAARRAY_ALLOWLIST) == 64
     assert "mean" in XARRAY_DATAARRAY_ALLOWLIST
     assert "isel" in XARRAY_DATAARRAY_ALLOWLIST
     assert "to_bioimage" in XARRAY_DATAARRAY_ALLOWLIST

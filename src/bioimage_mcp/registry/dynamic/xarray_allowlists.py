@@ -403,39 +403,6 @@ XARRAY_DATAARRAY_ALLOWLIST: dict[str, dict[str, Any]] = {
         "summary": "Broadcast to match another array",
         "returns": "ObjectRef",
     },
-    # Window operations (return accessor objects - special handling)
-    "coarsen": {
-        "category": "window",
-        "returns_accessor": True,
-        "summary": "Block coarsening (downsampling)",
-    },
-    "rolling": {
-        "category": "window",
-        "returns_accessor": True,
-        "summary": "Rolling window operations",
-    },
-    "rolling_exp": {
-        "category": "window",
-        "returns_accessor": True,
-        "summary": "Exponentially weighted rolling",
-    },
-    "weighted": {"category": "window", "returns_accessor": True, "summary": "Weighted reductions"},
-    # GroupBy / Resample (return accessor objects - special handling)
-    "groupby": {
-        "category": "group",
-        "returns_accessor": True,
-        "summary": "Group by coordinate values",
-    },
-    "groupby_bins": {
-        "category": "group",
-        "returns_accessor": True,
-        "summary": "Group by coordinate bins",
-    },
-    "resample": {
-        "category": "group",
-        "returns_accessor": True,
-        "summary": "Resample time dimension",
-    },
     # Serialization (finalize ObjectRef back to artifact)
     "to_bioimage": {
         "category": "serialize",
