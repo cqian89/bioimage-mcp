@@ -83,7 +83,7 @@ async def test_cellpose_pipeline(live_server, cellpose_image):
     sum_result = await live_server.call_tool(
         "run",
         {
-            "fn_id": "base.xarray.sum",
+            "fn_id": "base.xarray.DataArray.sum",
             "inputs": {"image": img_ref},
             "params": {"dim": "Z"},
         },

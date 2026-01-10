@@ -73,7 +73,7 @@ async def test_smoke_basic_run(live_server, sample_image):
     squeeze_result = await live_server.call_tool(
         "run",
         {
-            "fn_id": "base.xarray.squeeze",
+            "fn_id": "base.xarray.DataArray.squeeze",
             "inputs": {"image": img_ref},
         },
     )

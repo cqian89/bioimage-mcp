@@ -77,7 +77,7 @@ async def test_flim_phasor_workflow(live_server, flim_image):
     transpose_result = await live_server.call_tool(
         "run",
         {
-            "fn_id": "base.xarray.transpose",
+            "fn_id": "base.xarray.DataArray.transpose",
             "inputs": {"image": img_ref},
             "params": {"dims": ["Y", "X", "Z"]},
         },
