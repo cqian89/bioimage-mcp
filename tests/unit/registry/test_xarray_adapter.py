@@ -35,17 +35,16 @@ def test_xarray_adapter_execution(tmp_path):
 
     # Try isel to select a slice
     outputs = adapter.execute(
-        fn_id="xarray.isel",
+        fn_id="base.xarray.DataArray.isel",
         inputs=[("image", input_artifact)],
         params={"X": slice(0, 5)},
         work_dir=tmp_path,
     )
 
     assert len(outputs) == 1
-    assert outputs[0]["type"] == "BioImageRef"
-    assert Path(outputs[0]["path"]).exists()
+    assert outputs[0]["type"] == "ObjectRef"
     assert outputs[0]["metadata"]["shape"][-1] == 5
-    assert outputs[0]["metadata"]["axes"] == "TCZYX"
+    assert outputs[0]["metadata"]["dims"] == ["T", "C", "Z", "Y", "X"]
 
 
 def test_axis_padding_standard_order_2d(tmp_path):
@@ -69,7 +68,7 @@ def test_axis_padding_standard_order_2d(tmp_path):
 
     # Squeeze to get 2D result (should drop T, C, Z)
     outputs = adapter.execute(
-        fn_id="xarray.squeeze",
+        fn_id="base.xarray.DataArray.squeeze",
         inputs=[("image", input_artifact)],
         params={},
         work_dir=tmp_path,
@@ -77,7 +76,8 @@ def test_axis_padding_standard_order_2d(tmp_path):
 
     assert len(outputs) == 1
     # The output should preserve native YX
-    assert outputs[0]["metadata"]["axes"] == "YX"
+    assert outputs[0]["type"] == "ObjectRef"
+    assert outputs[0]["metadata"]["dims"] == ["Y", "X"]
     assert outputs[0]["metadata"]["shape"] == [10, 10]
 
 
@@ -102,7 +102,7 @@ def test_axis_padding_standard_order_3d(tmp_path):
 
     # Squeeze to get 3D result (drops T and C, keeps Z)
     outputs = adapter.execute(
-        fn_id="xarray.squeeze",
+        fn_id="base.xarray.DataArray.squeeze",
         inputs=[("image", input_artifact)],
         params={},
         work_dir=tmp_path,
@@ -110,7 +110,8 @@ def test_axis_padding_standard_order_3d(tmp_path):
 
     assert len(outputs) == 1
     # The output should preserve native ZYX
-    assert outputs[0]["metadata"]["axes"] == "ZYX"
+    assert outputs[0]["type"] == "ObjectRef"
+    assert outputs[0]["metadata"]["dims"] == ["Z", "Y", "X"]
     assert outputs[0]["metadata"]["shape"] == [5, 10, 10]
 
 
@@ -176,7 +177,7 @@ def test_xarray_adapter_handles_reduced_y_dimension(tmp_path):
     # Use xarray.mean over Y dimension
     # This should result in dims (T, C, Z, X)
     outputs = adapter.execute(
-        fn_id="xarray.mean",
+        fn_id="base.xarray.DataArray.mean",
         inputs=[("image", input_artifact)],
         params={"dim": "Y"},
         work_dir=tmp_path,
@@ -184,7 +185,8 @@ def test_xarray_adapter_handles_reduced_y_dimension(tmp_path):
 
     assert len(outputs) == 1
     # The output should preserve native TCZX
-    assert outputs[0]["metadata"]["axes"] == "TCZX"
+    assert outputs[0]["type"] == "ObjectRef"
+    assert outputs[0]["metadata"]["dims"] == ["T", "C", "Z", "X"]
     # Shape should be [1, 2, 3, 5] (Y is removed)
     assert outputs[0]["metadata"]["shape"] == [1, 2, 3, 5]
 
