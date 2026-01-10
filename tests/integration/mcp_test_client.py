@@ -102,11 +102,15 @@ class MCPTestClient:
     def describe_function(self, fn_id: str) -> dict[str, Any]:
         return self._discovery.describe_function(fn_id)
 
-    def call_tool(self, fn_id: str, inputs: dict, params: dict) -> dict[str, Any]:
+    def call_tool(self, fn_id: str, inputs: dict, params: dict | None = None) -> dict[str, Any]:
         if self._active_fn_ids and fn_id not in self._active_fn_ids:
             raise ValueError(f"Function not activated: {fn_id}")
 
-        workflow = {"steps": [{"fn_id": fn_id, "inputs": inputs, "params": params}]}
+        step: dict[str, Any] = {"fn_id": fn_id, "inputs": inputs}
+        if params:
+            step["params"] = params
+
+        workflow = {"steps": [step]}
 
         if self._mock_executor:
             with _patch_execute_step(self._mock_executor.execute_step):

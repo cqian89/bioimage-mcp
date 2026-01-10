@@ -75,7 +75,7 @@ class AsyncMCPTestClient:
     def describe_function(self, fn_id: str) -> dict[str, Any]:
         return self._client.describe_function(fn_id)
 
-    def call_tool(self, fn_id: str, inputs: dict, params: dict) -> dict[str, Any]:
+    def call_tool(self, fn_id: str, inputs: dict, params: dict | None = None) -> dict[str, Any]:
         return self._client.call_tool(fn_id, inputs, params)
 
 

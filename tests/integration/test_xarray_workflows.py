@@ -87,7 +87,7 @@ def test_background_subtraction_workflow(mcp_test_client, create_test_image):
     bg = create_test_image((100, 100), "bg.ome.tif", content=bg_data)
 
     response = mcp_test_client.call_tool(
-        fn_id="base.xarray.ufuncs.subtract", inputs={"image": signal, "background": bg}, params={}
+        fn_id="base.xarray.ufuncs.subtract", inputs={"image": signal, "background": bg}
     )
 
     assert "outputs" in response
@@ -123,9 +123,7 @@ def test_max_projection_clip_workflow(mcp_test_client, create_test_image):
     img_ref = create_test_image((3, 64, 64), "stack.ome.tif", content=z_stack)
 
     # 1. Wrap in DataArray ObjectRef
-    res_da = mcp_test_client.call_tool(
-        fn_id="base.xarray.DataArray", inputs={"image": img_ref}, params={}
-    )
+    res_da = mcp_test_client.call_tool(fn_id="base.xarray.DataArray", inputs={"image": img_ref})
     da_ref = res_da["outputs"]["da"]
     assert da_ref["type"] == "ObjectRef"
 
@@ -148,7 +146,7 @@ def test_max_projection_clip_workflow(mcp_test_client, create_test_image):
 
     # 4. Convert back to BioImageRef
     res_final = mcp_test_client.call_tool(
-        fn_id="base.xarray.DataArray.to_bioimage", inputs={"image": clipped_ref}, params={}
+        fn_id="base.xarray.DataArray.to_bioimage", inputs={"image": clipped_ref}
     )
     final_output = res_final["outputs"]["output"]
     assert final_output["type"] == "BioImageRef"
@@ -179,9 +177,7 @@ def test_quantile_threshold_workflow(mcp_test_client, create_test_image):
     img_ref = create_test_image((100, 100), "gradient.ome.tif", content=data)
 
     # 1. Load as DataArray
-    res_da = mcp_test_client.call_tool(
-        fn_id="base.xarray.DataArray", inputs={"image": img_ref}, params={}
-    )
+    res_da = mcp_test_client.call_tool(fn_id="base.xarray.DataArray", inputs={"image": img_ref})
     da_ref = res_da["outputs"]["da"]
 
     # 2. Compute 0.9 quantile (should be 90.0)
@@ -193,13 +189,13 @@ def test_quantile_threshold_workflow(mcp_test_client, create_test_image):
 
     # 3. Greater than threshold
     res_mask = mcp_test_client.call_tool(
-        fn_id="base.xarray.ufuncs.greater", inputs={"x1": da_ref, "x2": q_ref}, params={}
+        fn_id="base.xarray.ufuncs.greater", inputs={"x1": da_ref, "x2": q_ref}
     )
     mask_ref = res_mask["outputs"]["output"]
 
     # 4. Convert to BioImageRef
     res_final = mcp_test_client.call_tool(
-        fn_id="base.xarray.DataArray.to_bioimage", inputs={"image": mask_ref}, params={}
+        fn_id="base.xarray.DataArray.to_bioimage", inputs={"image": mask_ref}
     )
     final_output = res_final["outputs"]["output"]
 
