@@ -49,6 +49,7 @@ class Port(BaseModel):
     description: str | None = None
     format: str | None = None
     required: bool = True
+    is_array: bool = False  # Indicates port accepts array of artifacts
 
     @model_validator(mode="after")
     def _validate_format_for_image_types(self) -> Port:

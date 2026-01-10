@@ -89,11 +89,21 @@ def _convert_inputs_to_artifacts(inputs: dict[str, Any]) -> list[Any]:
                 continue
         elif isinstance(value, list):
             # Validate it's a list of potential artifact references
-            if not all(
-                isinstance(v, dict) and any(k in v for k in ("ref_id", "uri", "path", "type"))
-                for v in value
-            ):
+            # Items can be dicts (full refs) OR strings (ref_ids/URIs)
+            valid_items = []
+            for v in value:
+                if isinstance(v, dict) and any(k in v for k in ("ref_id", "uri", "path", "type")):
+                    valid_items.append(v)
+                elif isinstance(v, str) and " " not in v and len(v) <= 64:
+                    # String ref_id or URI - convert to minimal dict
+                    valid_items.append({"ref_id": v})
+                else:
+                    # Invalid item, skip entire list
+                    valid_items = []
+                    break
+            if not valid_items:
                 continue
+            value = valid_items  # Use normalized list
         else:
             # Other types (None, etc.) - skip
             continue

@@ -80,8 +80,8 @@ def _map_io_pattern_to_ports(pattern: IOPattern) -> tuple[list[Port], list[Port]
         inputs = [Port(name="image", artifact_type="BioImageRef")]
         outputs = [Port(name="da", artifact_type="ObjectRef")]
     elif pattern == IOPattern.MULTI_INPUT:
-        # Multi-input pattern accepts a list of images or multiple image_N ports
-        inputs = [Port(name="image", artifact_type=["BioImageRef", "ObjectRef"])]
+        # Multi-input pattern accepts a list of images
+        inputs = [Port(name="images", artifact_type=["BioImageRef", "ObjectRef"], is_array=True)]
         outputs = [Port(name="output", artifact_type="BioImageRef")]
     elif pattern == IOPattern.BINARY:
         inputs = [

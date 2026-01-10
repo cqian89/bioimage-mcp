@@ -205,7 +205,7 @@ class XarrayAdapterForRegistry(BaseAdapter):
             if isinstance(item, tuple) and len(item) == 2:
                 name, artifact = item
             else:
-                name = "image" if idx == 0 else f"input_{idx}"
+                name = "images" if idx == 0 else f"input_{idx}"
                 artifact = item
             normalized.append((str(name), artifact))
         return normalized

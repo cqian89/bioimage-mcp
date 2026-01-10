@@ -256,3 +256,49 @@ class TestDynamicDispatch:
         assert "reason" not in input_names
         assert "description" not in input_names
         assert "_metadata" not in input_names
+
+
+def test_convert_inputs_handles_list_of_string_refids():
+    """Test that _convert_inputs_to_artifacts handles lists of string ref_ids (T031 fix)."""
+    from bioimage_mcp_base.dynamic_dispatch import _convert_inputs_to_artifacts
+
+    # Simulate what an AI agent might pass: a list of ref_id strings
+    inputs = {
+        "images": [
+            "f2716a7eb6a34249b7ee32fe1c0d3594",
+            "25ba938171034bb5abf6a440e0393935",
+        ]
+    }
+
+    result = _convert_inputs_to_artifacts(inputs)
+
+    # Should have one entry with name "images" and a list of normalized dicts
+    assert len(result) == 1
+    name, value = result[0]
+    assert name == "images"
+    assert isinstance(value, list)
+    assert len(value) == 2
+    # Each item should be normalized to a dict with ref_id
+    assert value[0] == {"ref_id": "f2716a7eb6a34249b7ee32fe1c0d3594"}
+    assert value[1] == {"ref_id": "25ba938171034bb5abf6a440e0393935"}
+
+
+def test_convert_inputs_handles_mixed_list():
+    """Test that _convert_inputs_to_artifacts handles lists with mixed dicts and strings."""
+    from bioimage_mcp_base.dynamic_dispatch import _convert_inputs_to_artifacts
+
+    inputs = {
+        "images": [
+            {"ref_id": "abc123", "uri": "file:///path/to/img1.tiff"},
+            "def456",  # String ref_id
+        ]
+    }
+
+    result = _convert_inputs_to_artifacts(inputs)
+
+    assert len(result) == 1
+    name, value = result[0]
+    assert name == "images"
+    assert len(value) == 2
+    assert value[0] == {"ref_id": "abc123", "uri": "file:///path/to/img1.tiff"}
+    assert value[1] == {"ref_id": "def456"}
