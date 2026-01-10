@@ -13,7 +13,11 @@ class XarrayAdapter:
 
     def execute(self, method_name: str, data: xr.DataArray, **kwargs) -> xr.DataArray:
         """Execute an allowed xarray method on the data."""
-        if not is_allowed_method(method_name):
+        # Use provided allowlist or fallback to legacy check
+        if self.allowlist is not None:
+            if method_name not in self.allowlist:
+                raise ValueError(f"Method '{method_name}' is not allowed in current allowlist")
+        elif not is_allowed_method(method_name):
             raise ValueError(f"Method '{method_name}' is not allowed")
 
         # Check if we have a specific handler in the adapter

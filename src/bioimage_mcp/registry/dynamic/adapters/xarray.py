@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import tempfile
+import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from urllib.parse import unquote, urlparse
@@ -13,6 +14,9 @@ if TYPE_CHECKING:
 from bioimage_mcp.artifacts.base import Artifact
 from bioimage_mcp.registry.dynamic.adapters import BaseAdapter
 from bioimage_mcp.registry.dynamic.models import FunctionMetadata, IOPattern
+
+# In-memory object cache for xarray DataArrays
+OBJECT_CACHE: dict[str, Any] = {}
 
 
 def should_expand_to_5d(output_format: str, output_hints: DimensionRequirement | None) -> bool:
@@ -44,8 +48,9 @@ class XarrayAdapterForRegistry(BaseAdapter):
 
     def __init__(self) -> None:
         from bioimage_mcp.registry.dynamic.xarray_adapter import XarrayAdapter
+        from bioimage_mcp.registry.dynamic.xarray_allowlists import XARRAY_DATAARRAY_ALLOWLIST
 
-        self.core = XarrayAdapter()
+        self.core = XarrayAdapter(allowlist=XARRAY_DATAARRAY_ALLOWLIST)
 
     def discover(self, module_config: dict[str, Any]) -> list[FunctionMetadata]:
         """Dynamically discover xarray functions from the new allowlists."""
@@ -218,7 +223,13 @@ class XarrayAdapterForRegistry(BaseAdapter):
         work_dir: Path | None = None,
     ) -> list[dict]:
         """Execute xarray function."""
-        # fn_id is like "xarray.rename"
+        if fn_id == "base.xarray.DataArray":
+            return self._execute_dataarray_constructor(inputs, params, work_dir)
+
+        if fn_id == "base.xarray.DataArray.to_bioimage":
+            return self._execute_to_bioimage(inputs, params, work_dir)
+
+        # fn_id is like "base.xarray.isel" or "base.xarray.DataArray.mean"
         parts = fn_id.split(".")
         method_name = parts[-1]
 
@@ -234,16 +245,124 @@ class XarrayAdapterForRegistry(BaseAdapter):
             raise ValueError(f"No valid artifact inputs provided for {fn_id}")
 
         _, primary_artifact = normalized_inputs[0]
-        img = self._load_image(primary_artifact)
 
-        # Get xarray data (native dimensions - T017)
-        da = img.reader.xarray_data
+        # Handle ObjectRef input
+        uri = (
+            primary_artifact.get("uri")
+            if isinstance(primary_artifact, dict)
+            else getattr(primary_artifact, "uri", None)
+        )
+        if uri and uri.startswith("obj://"):
+            if uri not in OBJECT_CACHE:
+                raise ValueError(f"Object with URI {uri} not found in memory cache")
+            da = OBJECT_CACHE[uri]
+        else:
+            img = self._load_image(primary_artifact)
+            # Get xarray data (native dimensions - T017)
+            da = img.reader.xarray_data
 
         # Execute via core adapter
         result_da = self.core.execute(method_name, da, **params)
 
+        # Determine if we should return an ObjectRef or BioImageRef.
+        # We return ObjectRef if:
+        # 1. The input was already an ObjectRef (implicit chaining)
+        # 2. OR the function ID specifically belongs to the DataArray chaining API
+        #    and the method is marked as returning ObjectRef.
+        from bioimage_mcp.registry.dynamic.xarray_allowlists import XARRAY_DATAARRAY_ALLOWLIST
+
+        method_info = XARRAY_DATAARRAY_ALLOWLIST.get(method_name)
+        input_is_object = uri and uri.startswith("obj://")
+        is_chaining_api = fn_id.startswith("base.xarray.DataArray.")
+
+        if (
+            (input_is_object or is_chaining_api)
+            and method_info
+            and method_info.get("returns") == "ObjectRef"
+        ):
+            artifact_id = str(uuid.uuid4())
+            new_uri = f"obj://default/xarray/{artifact_id}"
+            OBJECT_CACHE[new_uri] = result_da
+            return [
+                {
+                    "type": "ObjectRef",
+                    "python_class": "xarray.DataArray",
+                    "uri": new_uri,
+                    "storage_type": "memory",
+                    "metadata": {
+                        "shape": list(result_da.shape),
+                        "dims": list(result_da.dims),
+                        "dtype": str(result_da.dtype),
+                    },
+                }
+            ]
+
         # Save result (T018)
         return self._save_output(result_da, method_name, work_dir)
+
+    def _execute_dataarray_constructor(
+        self,
+        inputs: list[Artifact],
+        params: dict[str, Any],
+        work_dir: Path | None = None,
+    ) -> list[dict]:
+        """Execute base.xarray.DataArray constructor."""
+        normalized = self._normalize_inputs(inputs)
+        if not normalized:
+            raise ValueError("No input artifact provided for DataArray constructor")
+
+        _, artifact = normalized[0]
+        img = self._load_image(artifact)
+        da = img.reader.xarray_data
+
+        # Create unique URI: obj://session/env/uuid
+        # Placeholders used for session/env as required by 3-part schema
+        artifact_id = str(uuid.uuid4())
+        uri = f"obj://default/xarray/{artifact_id}"
+
+        OBJECT_CACHE[uri] = da
+
+        return [
+            {
+                "type": "ObjectRef",
+                "python_class": "xarray.DataArray",
+                "uri": uri,
+                "storage_type": "memory",
+                "metadata": {
+                    "shape": list(da.shape),
+                    "dims": list(da.dims),
+                    "dtype": str(da.dtype),
+                },
+            }
+        ]
+
+    def _execute_to_bioimage(
+        self,
+        inputs: list[Artifact],
+        params: dict[str, Any],
+        work_dir: Path | None = None,
+    ) -> list[dict]:
+        """Execute base.xarray.DataArray.to_bioimage serializer."""
+        normalized = self._normalize_inputs(inputs)
+        if not normalized:
+            raise ValueError("No input artifact provided for to_bioimage")
+
+        _, artifact = normalized[0]
+
+        # Handle both dict and object-like artifacts
+        if isinstance(artifact, dict):
+            uri = artifact.get("uri")
+        else:
+            uri = getattr(artifact, "uri", None)
+
+        if not uri or not uri.startswith("obj://"):
+            raise ValueError(f"Expected ObjectRef with obj:// URI, got {artifact}")
+
+        if uri not in OBJECT_CACHE:
+            raise ValueError(f"Object with URI {uri} not found in memory cache")
+
+        da = OBJECT_CACHE[uri]
+        return self._save_output(da, "to_bioimage", work_dir)
 
     def _save_output(
         self, result_da: Any, method_name: str, work_dir: Path | None = None
