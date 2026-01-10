@@ -54,6 +54,14 @@ dynamic_sources:
       - "_*"
       - "test_*"
 
+  - adapter: xarray
+    prefix: xarray
+    modules: []
+    include_patterns:
+      - "*"
+    exclude_patterns:
+      - "_*"
+
 functions:
   # xarray-based tools (Wrapper Consolidation)
   - fn_id: base.io.bioimage.load

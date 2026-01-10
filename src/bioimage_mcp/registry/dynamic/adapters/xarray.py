@@ -135,7 +135,7 @@ class XarrayAdapterForRegistry(BaseAdapter):
                     source_adapter="xarray",
                     description=info.get("summary", ""),
                     tags=list(tags),
-                    io_pattern=IOPattern.IMAGE_TO_IMAGE,
+                    io_pattern=IOPattern.OBJECTREF_CHAIN,
                 )
             )
 

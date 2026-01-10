@@ -73,6 +73,9 @@ def _map_io_pattern_to_ports(pattern: IOPattern) -> tuple[list[Port], list[Port]
             Port(name="real", artifact_type="BioImageRef"),
             Port(name="imag", artifact_type="BioImageRef"),
         ]
+    elif pattern == IOPattern.OBJECTREF_CHAIN:
+        inputs = [Port(name="input", artifact_type=["BioImageRef", "ObjectRef"])]
+        outputs = [Port(name="output", artifact_type="ObjectRef")]
     else:
         # Default/Generic: single input/output
         inputs = [Port(name="input", artifact_type="BioImageRef")]
