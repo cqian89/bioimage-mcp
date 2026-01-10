@@ -195,7 +195,7 @@ functions:
     input_mode: xarray
     inputs:
       - name: image
-        artifact_type: [BioImageRef, LabelImageRef]
+        artifact_type: [BioImageRef, LabelImageRef, ObjectRef]
         required: true
         description: Image or label artifact to export
     outputs:

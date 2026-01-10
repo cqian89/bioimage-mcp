@@ -820,13 +820,67 @@ def export(*, inputs: dict[str, Any], params: dict[str, Any], work_dir: Path) ->
         source_ref_id = artifact.get("ref_id")
         artifact_type = artifact.get("type", "BioImageRef")
 
+    # If exporting an ObjectRef, the result is now a file-backed BioImageRef
+    if artifact_type == "ObjectRef":
+        artifact_type = "BioImageRef"
+
     if not uri:
         raise ValueError("Artifact missing URI")
 
-    src_path = uri_to_path(str(uri))
-    data = load_native_image(
-        src_path, format_hint=None if isinstance(artifact, str) else artifact.get("format")
-    )
+    # Handle ObjectRef inputs (from xarray operations)
+    if str(uri).startswith("obj://"):
+        # Parse obj:// URI to extract artifact_id
+        # Format: obj://session_id/env_id/artifact_id
+        parts = str(uri)[6:].split("/")
+        if len(parts) >= 3:
+            artifact_id = parts[-1]  # Last part is artifact_id
+
+            # Try to load from object cache or memory artifacts
+            from bioimage_mcp_base.entrypoint import _MEMORY_ARTIFACTS, _OBJECT_CACHE
+
+            # Also try the xarray adapter's cache
+            try:
+                from bioimage_mcp.registry.dynamic.adapters.xarray import (
+                    OBJECT_CACHE as XARRAY_CACHE,
+                )
+            except ImportError:
+                XARRAY_CACHE = {}
+
+            obj = (
+                _OBJECT_CACHE.get(artifact_id)
+                or _MEMORY_ARTIFACTS.get(artifact_id)
+                or XARRAY_CACHE.get(artifact_id)
+            )
+            if obj is None:
+                # Also try full URI as key
+                obj = (
+                    _OBJECT_CACHE.get(str(uri))
+                    or _MEMORY_ARTIFACTS.get(str(uri))
+                    or XARRAY_CACHE.get(str(uri))
+                )
+
+            if obj is None:
+                raise ValueError(f"ObjectRef not found in memory: {uri}")
+
+            # Convert to numpy array
+            if hasattr(obj, "values"):  # xarray.DataArray
+                data = obj.values
+            elif isinstance(obj, np.ndarray):
+                data = obj
+            else:
+                raise ValueError(f"Cannot export object of type {type(obj).__name__}")
+        else:
+            raise ValueError(f"Invalid obj:// URI format: {uri}")
+    else:
+        # Original file-based logic
+        src_path = uri_to_path(str(uri))
+        data = load_native_image(
+            src_path, format_hint=None if isinstance(artifact, str) else artifact.get("format")
+        )
+
+    # Handle data types not supported by OME-TIFF (e.g. uint64 from sum)
+    if dest_format == "OME-TIFF" and (data.dtype == np.uint64 or data.dtype == np.int64):
+        data = data.astype(np.float32)
 
     if dest_format == "PNG":
         _export_png(data, dest_path)
