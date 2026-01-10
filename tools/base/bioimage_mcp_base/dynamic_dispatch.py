@@ -33,8 +33,13 @@ def get_adapter_for_fn_id(fn_id: str) -> Any:
             f"Invalid function ID format: '{fn_id}'. Expected format: 'prefix.module.function'"
         )
 
-    # Extract adapter prefix (first part before first dot)
-    prefix = fn_id.split(".", 1)[0]
+    # Extract adapter prefix
+    # Handle base.xarray.* namespace -> route to xarray adapter
+    if fn_id.startswith("base.xarray."):
+        prefix = "xarray"
+    else:
+        # Extract adapter prefix (first part before first dot)
+        prefix = fn_id.split(".", 1)[0]
 
     # Look up adapter in registry
     if prefix not in ADAPTER_REGISTRY:

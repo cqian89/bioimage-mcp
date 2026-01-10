@@ -236,6 +236,10 @@ class XarrayAdapterForRegistry(BaseAdapter):
         work_dir: Path | None = None,
     ) -> list[dict]:
         """Execute xarray function."""
+        # Normalize fn_id to always start with base.xarray. for internal logic
+        if fn_id.startswith("xarray."):
+            fn_id = "base." + fn_id
+
         if not fn_id.startswith("base.xarray."):
             raise ValueError(f"Unsupported xarray function ID: {fn_id}")
 
