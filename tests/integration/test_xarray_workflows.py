@@ -47,7 +47,7 @@ def test_tile_stitching_workflow(mcp_test_client, create_test_image):
     # Note: In our system, native 2D is often YX. ZYX is (1, 64, 64).
     # Concat along "X"
     response = mcp_test_client.call_tool(
-        fn_id="base.xarray.concat", inputs={"images": tiles}, params={"dim": "X"}
+        fn_id="base.xarray.concat", inputs={"image": tiles}, params={"dim": "X"}
     )
 
     assert "outputs" in response
@@ -87,7 +87,7 @@ def test_background_subtraction_workflow(mcp_test_client, create_test_image):
     bg = create_test_image((100, 100), "bg.ome.tif", content=bg_data)
 
     response = mcp_test_client.call_tool(
-        fn_id="base.xarray.ufuncs.subtract", inputs={"image": signal, "background": bg}
+        fn_id="base.xarray.ufuncs.subtract", inputs={"image": signal, "input_1": bg}
     )
 
     assert "outputs" in response
@@ -189,7 +189,7 @@ def test_quantile_threshold_workflow(mcp_test_client, create_test_image):
 
     # 3. Greater than threshold
     res_mask = mcp_test_client.call_tool(
-        fn_id="base.xarray.ufuncs.greater", inputs={"x1": da_ref, "x2": q_ref}
+        fn_id="base.xarray.ufuncs.greater", inputs={"image": da_ref, "input_1": q_ref}
     )
     mask_ref = res_mask["outputs"]["output"]
 

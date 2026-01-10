@@ -27,6 +27,10 @@ class IOPattern(str, Enum):
     FILE_TO_SIGNAL = "file_to_signal"
     TRAINING = "training"
     OBJECTREF_CHAIN = "objectref_chain"  # ObjectRef/BioImageRef in, ObjectRef out
+    CONSTRUCTOR = "constructor"  # BioImageRef in, ObjectRef (da) out
+    MULTI_INPUT = "multi_input"  # Multiple BioImageRef in, BioImageRef out
+    BINARY = "binary"  # Two BioImageRef in, BioImageRef out
+    OBJECT_TO_IMAGE = "object_to_image"  # ObjectRef/BioImageRef in, BioImageRef out
     GENERIC = "generic"
 
 

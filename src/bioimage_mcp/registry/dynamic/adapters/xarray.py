@@ -59,6 +59,7 @@ class XarrayAdapterForRegistry(BaseAdapter):
             XARRAY_DATAARRAY_CLASS,
             XARRAY_TOPLEVEL_ALLOWLIST,
             XARRAY_UFUNC_ALLOWLIST,
+            SignatureType,
         )
 
         discovery: list[FunctionMetadata] = []
@@ -89,7 +90,7 @@ class XarrayAdapterForRegistry(BaseAdapter):
                     description=info.get("summary", ""),
                     parameters=params,
                     tags=list(tags),
-                    io_pattern=IOPattern.GENERIC,
+                    io_pattern=IOPattern.CONSTRUCTOR,
                 )
             )
 
@@ -119,7 +120,9 @@ class XarrayAdapterForRegistry(BaseAdapter):
                     description=info.get("summary", ""),
                     parameters=params,
                     tags=list(tags),
-                    io_pattern=IOPattern.IMAGE_TO_IMAGE,
+                    io_pattern=IOPattern.MULTI_INPUT
+                    if info.get("signature_type") == SignatureType.MULTI_INPUT
+                    else IOPattern.IMAGE_TO_IMAGE,
                 )
             )
 
@@ -149,7 +152,9 @@ class XarrayAdapterForRegistry(BaseAdapter):
                     description=info.get("summary", ""),
                     parameters=params,
                     tags=list(tags),
-                    io_pattern=IOPattern.IMAGE_TO_IMAGE,
+                    io_pattern=IOPattern.BINARY
+                    if info.get("arity") == 2
+                    else IOPattern.IMAGE_TO_IMAGE,
                 )
             )
 
@@ -172,7 +177,7 @@ class XarrayAdapterForRegistry(BaseAdapter):
             io_pattern = (
                 IOPattern.OBJECTREF_CHAIN
                 if info.get("returns") == "ObjectRef"
-                else IOPattern.IMAGE_TO_IMAGE
+                else IOPattern.OBJECT_TO_IMAGE
             )
 
             discovery.append(
