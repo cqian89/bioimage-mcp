@@ -69,6 +69,16 @@ class XarrayAdapterForRegistry(BaseAdapter):
             if "category" in info:
                 tags.add(info["category"])
 
+            params = {}
+            if "params" in info:
+                from bioimage_mcp.registry.dynamic.models import ParameterSchema
+
+                for p_name, p_info in info["params"].items():
+                    if isinstance(p_info, str):
+                        params[p_name] = ParameterSchema(name=p_name, type=p_info)
+                    elif isinstance(p_info, dict):
+                        params[p_name] = ParameterSchema(name=p_name, **p_info)
+
             discovery.append(
                 FunctionMetadata(
                     name=name,
@@ -77,6 +87,7 @@ class XarrayAdapterForRegistry(BaseAdapter):
                     fn_id=f"base.xarray.{name}",
                     source_adapter="xarray",
                     description=info.get("summary", ""),
+                    parameters=params,
                     tags=list(tags),
                     io_pattern=IOPattern.GENERIC,
                 )
@@ -88,6 +99,16 @@ class XarrayAdapterForRegistry(BaseAdapter):
             if "category" in info:
                 tags.add(info["category"])
 
+            params = {}
+            if "params" in info:
+                from bioimage_mcp.registry.dynamic.models import ParameterSchema
+
+                for p_name, p_info in info["params"].items():
+                    if isinstance(p_info, str):
+                        params[p_name] = ParameterSchema(name=p_name, type=p_info)
+                    elif isinstance(p_info, dict):
+                        params[p_name] = ParameterSchema(name=p_name, **p_info)
+
             discovery.append(
                 FunctionMetadata(
                     name=name,
@@ -96,6 +117,7 @@ class XarrayAdapterForRegistry(BaseAdapter):
                     fn_id=f"base.xarray.{name}",
                     source_adapter="xarray",
                     description=info.get("summary", ""),
+                    parameters=params,
                     tags=list(tags),
                     io_pattern=IOPattern.IMAGE_TO_IMAGE,
                 )
@@ -107,6 +129,16 @@ class XarrayAdapterForRegistry(BaseAdapter):
             if "category" in info:
                 tags.add(info["category"])
 
+            params = {}
+            if "params" in info:
+                from bioimage_mcp.registry.dynamic.models import ParameterSchema
+
+                for p_name, p_info in info["params"].items():
+                    if isinstance(p_info, str):
+                        params[p_name] = ParameterSchema(name=p_name, type=p_info)
+                    elif isinstance(p_info, dict):
+                        params[p_name] = ParameterSchema(name=p_name, **p_info)
+
             discovery.append(
                 FunctionMetadata(
                     name=name,
@@ -115,6 +147,7 @@ class XarrayAdapterForRegistry(BaseAdapter):
                     fn_id=f"base.xarray.ufuncs.{name}",
                     source_adapter="xarray",
                     description=info.get("summary", ""),
+                    parameters=params,
                     tags=list(tags),
                     io_pattern=IOPattern.IMAGE_TO_IMAGE,
                 )
@@ -126,6 +159,22 @@ class XarrayAdapterForRegistry(BaseAdapter):
             if "category" in info:
                 tags.add(info["category"])
 
+            params = {}
+            if "params" in info:
+                from bioimage_mcp.registry.dynamic.models import ParameterSchema
+
+                for p_name, p_info in info["params"].items():
+                    if isinstance(p_info, str):
+                        params[p_name] = ParameterSchema(name=p_name, type=p_info)
+                    elif isinstance(p_info, dict):
+                        params[p_name] = ParameterSchema(name=p_name, **p_info)
+
+            io_pattern = (
+                IOPattern.OBJECTREF_CHAIN
+                if info.get("returns") == "ObjectRef"
+                else IOPattern.IMAGE_TO_IMAGE
+            )
+
             discovery.append(
                 FunctionMetadata(
                     name=name,
@@ -134,8 +183,9 @@ class XarrayAdapterForRegistry(BaseAdapter):
                     fn_id=f"base.xarray.DataArray.{name}",
                     source_adapter="xarray",
                     description=info.get("summary", ""),
+                    parameters=params,
                     tags=list(tags),
-                    io_pattern=IOPattern.OBJECTREF_CHAIN,
+                    io_pattern=io_pattern,
                 )
             )
 

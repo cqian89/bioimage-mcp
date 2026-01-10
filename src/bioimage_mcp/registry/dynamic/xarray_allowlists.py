@@ -238,26 +238,57 @@ XARRAY_DATAARRAY_ALLOWLIST: dict[str, dict[str, Any]] = {
     "rename": {
         "category": "axis",
         "summary": "Rename dimensions",
-        "returns": "ObjectRef",
+        "returns": "BioImageRef",
         "input_types": ["ObjectRef", "BioImageRef"],
+        "params": {
+            "mapping": {
+                "type": "object",
+                "additionalProperties": {"type": "string"},
+                "description": "Mapping from old dimension names to new names.",
+                "required": True,
+            }
+        },
     },
     "squeeze": {
         "category": "axis",
         "summary": "Remove singleton dimensions",
-        "returns": "ObjectRef",
+        "returns": "BioImageRef",
         "input_types": ["ObjectRef", "BioImageRef"],
+        "params": {
+            "dim": {
+                "type": "string",
+                "description": "Optional dimension name to squeeze.",
+                "required": False,
+            }
+        },
     },
     "expand_dims": {
         "category": "axis",
         "summary": "Add new dimension",
-        "returns": "ObjectRef",
+        "returns": "BioImageRef",
         "input_types": ["ObjectRef", "BioImageRef"],
+        "params": {
+            "dim": {"type": "string", "description": "Name for new dimension", "required": True},
+            "axis": {
+                "type": "integer",
+                "description": "Position to insert new dimension (0=first, -1=before last)",
+                "required": False,
+            },
+        },
     },
     "transpose": {
         "category": "axis",
         "summary": "Reorder dimensions",
-        "returns": "ObjectRef",
+        "returns": "BioImageRef",
         "input_types": ["ObjectRef", "BioImageRef"],
+        "params": {
+            "dims": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "New order of dimensions",
+                "required": True,
+            }
+        },
     },
     "stack": {
         "category": "axis",

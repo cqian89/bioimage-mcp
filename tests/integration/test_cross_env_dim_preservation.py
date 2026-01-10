@@ -39,15 +39,15 @@ def test_cross_env_dim_preservation(tmp_path):
     data_5d = np.random.randint(0, 255, (1, 1, 1, 128, 128), dtype=np.uint8)
     OmeTiffWriter.save(data_5d, str(img_path), dim_order="TCZYX")
 
-    store = ArtifactStore(config)
+    store = execution.artifact_store
     input_ref = store.import_file(img_path, artifact_type="BioImageRef", format="OME-TIFF")
 
-    # 2. Run base.xarray.squeeze to get a 2D memory artifact
-    # Note: base.xarray.squeeze returns a memory artifact
-    client.activate_functions(["base.xarray.squeeze", "base.skimage.filters.gaussian"])
+    # 2. Run base.xarray.DataArray.squeeze to get a 2D memory artifact
+    # Note: base.xarray.DataArray.squeeze returns a memory artifact
+    client.activate_functions(["base.xarray.DataArray.squeeze", "base.skimage.filters.gaussian"])
 
     res1 = client.call_tool(
-        "base.xarray.squeeze", inputs={"image": {"ref_id": input_ref.ref_id}}, params={}
+        "base.xarray.DataArray.squeeze", inputs={"image": {"ref_id": input_ref.ref_id}}, params={}
     )
     if res1["status"] != "success":
         log_id = res1.get("log_ref_id")

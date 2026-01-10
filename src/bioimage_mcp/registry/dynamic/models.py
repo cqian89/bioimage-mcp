@@ -39,6 +39,9 @@ class ParameterSchema(BaseModel):
     default: Any | None = None
     required: bool = True
     enum: list[Any] | None = None
+    additionalProperties: Any | None = None
+    examples: list[Any] | None = None
+    items: dict[str, Any] | None = None
 
 
 class FunctionMetadata(BaseModel):

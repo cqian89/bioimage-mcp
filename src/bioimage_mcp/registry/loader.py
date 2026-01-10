@@ -74,11 +74,11 @@ def _map_io_pattern_to_ports(pattern: IOPattern) -> tuple[list[Port], list[Port]
             Port(name="imag", artifact_type="BioImageRef"),
         ]
     elif pattern == IOPattern.OBJECTREF_CHAIN:
-        inputs = [Port(name="input", artifact_type=["BioImageRef", "ObjectRef"])]
+        inputs = [Port(name="image", artifact_type=["BioImageRef", "ObjectRef"])]
         outputs = [Port(name="output", artifact_type="ObjectRef")]
     else:
         # Default/Generic: single input/output
-        inputs = [Port(name="input", artifact_type="BioImageRef")]
+        inputs = [Port(name="image", artifact_type="BioImageRef")]
         outputs = [Port(name="output", artifact_type="BioImageRef")]
 
     return inputs, outputs
@@ -109,6 +109,12 @@ def _parameters_to_json_schema(params: dict[str, ParameterSchema]) -> dict:
             prop["enum"] = param_schema.enum
         if param_schema.default is not None:
             prop["default"] = param_schema.default
+        if param_schema.additionalProperties is not None:
+            prop["additionalProperties"] = param_schema.additionalProperties
+        if param_schema.examples is not None:
+            prop["examples"] = param_schema.examples
+        if param_schema.items is not None:
+            prop["items"] = param_schema.items
 
         properties[param_name] = prop
 

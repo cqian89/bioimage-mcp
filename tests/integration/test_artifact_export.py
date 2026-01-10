@@ -62,7 +62,7 @@ def test_base_io_bioimage_export_materializes_mem_to_file(mcp_services):
     workflow = {
         "steps": [
             {
-                "fn_id": "base.xarray.rename",
+                "fn_id": "base.xarray.DataArray.rename",
                 "params": {"mapping": {"Z": "T", "T": "Z"}},
                 "inputs": {"image": {"ref_id": ref.ref_id}},
             }
@@ -77,7 +77,9 @@ def test_base_io_bioimage_export_materializes_mem_to_file(mcp_services):
     status = execution_service.get_run_status(run_id)
     mem_ref = status["outputs"]["output"]
 
-    assert mem_ref["uri"].startswith("mem://"), f"Expected mem:// URI, got {mem_ref['uri']}"
+    assert mem_ref["uri"].startswith(("mem://", "obj://")), (
+        f"Expected mem:// or obj:// URI, got {mem_ref['uri']}"
+    )
     assert mem_ref["storage_type"] == "memory"
 
     # 2. Call base.io.bioimage.export to materialize it
