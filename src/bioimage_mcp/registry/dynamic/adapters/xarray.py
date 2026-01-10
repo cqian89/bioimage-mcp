@@ -236,17 +236,19 @@ class XarrayAdapterForRegistry(BaseAdapter):
         work_dir: Path | None = None,
     ) -> list[dict]:
         """Execute xarray function."""
-        if fn_id == "base.xarray.DataArray":
+        if fn_id in ["base.xarray.DataArray", "xarray.DataArray"]:
             return self._execute_dataarray_constructor(inputs, params, work_dir)
 
-        if fn_id == "base.xarray.DataArray.to_bioimage":
+        if fn_id in ["base.xarray.DataArray.to_bioimage", "xarray.DataArray.to_bioimage"]:
             return self._execute_to_bioimage(inputs, params, work_dir)
 
-        if fn_id.startswith("base.xarray.ufuncs."):
+        if fn_id.startswith("base.xarray.ufuncs.") or fn_id.startswith("xarray.ufuncs."):
             return self._execute_ufunc(fn_id, inputs, params, work_dir)
 
         # Check if it's a top-level function (not DataArray.method)
-        if fn_id.startswith("base.xarray.") and not fn_id.startswith("base.xarray.DataArray."):
+        if (fn_id.startswith("base.xarray.") or fn_id.startswith("xarray.")) and not (
+            fn_id.startswith("base.xarray.DataArray.") or fn_id.startswith("xarray.DataArray.")
+        ):
             return self._execute_toplevel_function(fn_id, inputs, params, work_dir)
 
         # fn_id is like "base.xarray.isel" or "base.xarray.DataArray.mean"
@@ -298,6 +300,7 @@ class XarrayAdapterForRegistry(BaseAdapter):
             OBJECT_CACHE[new_uri] = result_da
             return [
                 {
+                    "ref_id": artifact_id,
                     "type": "ObjectRef",
                     "python_class": "xarray.DataArray",
                     "uri": new_uri,
@@ -398,6 +401,42 @@ class XarrayAdapterForRegistry(BaseAdapter):
         except AttributeError as err:
             raise ValueError(f"Ufunc '{method_name}' not found in xarray or numpy") from err
 
+        # Determine if we should return an ObjectRef or BioImageRef.
+        # We return ObjectRef if ANY input was an ObjectRef
+        any_input_is_object = False
+        for _name, art in normalized:
+            if isinstance(art, list):
+                for item in art:
+                    uri = item.get("uri") if isinstance(item, dict) else getattr(item, "uri", None)
+                    if uri and uri.startswith("obj://"):
+                        any_input_is_object = True
+                        break
+            else:
+                uri = art.get("uri") if isinstance(art, dict) else getattr(art, "uri", None)
+                if uri and uri.startswith("obj://"):
+                    any_input_is_object = True
+            if any_input_is_object:
+                break
+
+        if any_input_is_object:
+            artifact_id = str(uuid.uuid4())
+            new_uri = f"obj://default/xarray/{artifact_id}"
+            OBJECT_CACHE[new_uri] = result_da
+            return [
+                {
+                    "ref_id": artifact_id,
+                    "type": "ObjectRef",
+                    "python_class": "xarray.DataArray",
+                    "uri": new_uri,
+                    "storage_type": "memory",
+                    "metadata": {
+                        "shape": list(result_da.shape),
+                        "dims": list(result_da.dims),
+                        "dtype": str(result_da.dtype),
+                    },
+                }
+            ]
+
         return self._save_output(result_da, method_name, work_dir)
 
     def _execute_dataarray_constructor(
@@ -415,8 +454,6 @@ class XarrayAdapterForRegistry(BaseAdapter):
         img = self._load_image(artifact)
         da = img.reader.xarray_data
 
-        # Create unique URI: obj://session/env/uuid
-        # Placeholders used for session/env as required by 3-part schema
         artifact_id = str(uuid.uuid4())
         uri = f"obj://default/xarray/{artifact_id}"
 
@@ -424,6 +461,7 @@ class XarrayAdapterForRegistry(BaseAdapter):
 
         return [
             {
+                "ref_id": artifact_id,
                 "type": "ObjectRef",
                 "python_class": "xarray.DataArray",
                 "uri": uri,
@@ -432,6 +470,7 @@ class XarrayAdapterForRegistry(BaseAdapter):
                     "shape": list(da.shape),
                     "dims": list(da.dims),
                     "dtype": str(da.dtype),
+                    "output_name": "da",
                 },
             }
         ]

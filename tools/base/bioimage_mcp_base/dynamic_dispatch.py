@@ -82,8 +82,15 @@ def _convert_inputs_to_artifacts(inputs: dict[str, Any]) -> list[Any]:
             if not any(k in value for k in ("ref_id", "uri", "path", "type")):
                 # Not an artifact reference, skip
                 continue
+        elif isinstance(value, list):
+            # Validate it's a list of potential artifact references
+            if not all(
+                isinstance(v, dict) and any(k in v for k in ("ref_id", "uri", "path", "type"))
+                for v in value
+            ):
+                continue
         else:
-            # Other types (None, list, etc.) - skip
+            # Other types (None, etc.) - skip
             continue
 
         result.append((name, value))
