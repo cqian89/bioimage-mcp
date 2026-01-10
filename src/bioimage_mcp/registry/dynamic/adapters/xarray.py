@@ -245,10 +245,11 @@ class XarrayAdapterForRegistry(BaseAdapter):
         if fn_id.startswith("base.xarray.ufuncs.") or fn_id.startswith("xarray.ufuncs."):
             return self._execute_ufunc(fn_id, inputs, params, work_dir)
 
-        # Check if it's a top-level function (not DataArray.method)
-        if (fn_id.startswith("base.xarray.") or fn_id.startswith("xarray.")) and not (
-            fn_id.startswith("base.xarray.DataArray.") or fn_id.startswith("xarray.DataArray.")
-        ):
+        # Check if it's a top-level function
+        from bioimage_mcp.registry.dynamic.xarray_allowlists import XARRAY_TOPLEVEL_ALLOWLIST
+
+        method_name = fn_id.split(".")[-1]
+        if method_name in XARRAY_TOPLEVEL_ALLOWLIST:
             return self._execute_toplevel_function(fn_id, inputs, params, work_dir)
 
         # fn_id is like "base.xarray.isel" or "base.xarray.DataArray.mean"
