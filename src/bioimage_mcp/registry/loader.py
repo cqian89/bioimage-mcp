@@ -83,6 +83,10 @@ def _map_io_pattern_to_ports(pattern: IOPattern) -> tuple[list[Port], list[Port]
         # Multi-input pattern accepts a list of images
         inputs = [Port(name="images", artifact_type=["BioImageRef", "ObjectRef"], is_array=True)]
         outputs = [Port(name="output", artifact_type="BioImageRef")]
+    elif pattern == IOPattern.MULTI_TABLE_INPUT:
+        # Multi-table input pattern for pandas merge/concat
+        inputs = [Port(name="tables", artifact_type=["TableRef", "ObjectRef"], is_array=True)]
+        outputs = [Port(name="output", artifact_type="ObjectRef")]
     elif pattern == IOPattern.BINARY:
         inputs = [
             Port(name="image", artifact_type=["BioImageRef", "ObjectRef"]),

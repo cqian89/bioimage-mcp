@@ -16,7 +16,7 @@ def test_pandas_merge_discovery() -> None:
     assert merge_fn.name == "merge"
     assert merge_fn.module == "pandas"
     assert "join" in merge_fn.tags
-    assert merge_fn.io_pattern == IOPattern.MULTI_INPUT
+    assert merge_fn.io_pattern == IOPattern.MULTI_TABLE_INPUT
 
     # Validate parameters
     params = merge_fn.parameters
@@ -39,7 +39,7 @@ def test_pandas_concat_discovery() -> None:
     assert concat_fn.name == "concat"
     assert concat_fn.module == "pandas"
     assert "combine" in concat_fn.tags
-    assert concat_fn.io_pattern == IOPattern.MULTI_INPUT
+    assert concat_fn.io_pattern == IOPattern.MULTI_TABLE_INPUT
 
     # Validate parameters
     params = concat_fn.parameters

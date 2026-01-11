@@ -29,6 +29,7 @@ class IOPattern(str, Enum):
     OBJECTREF_CHAIN = "objectref_chain"  # ObjectRef/BioImageRef in, ObjectRef out
     CONSTRUCTOR = "constructor"  # BioImageRef in, ObjectRef (da) out
     MULTI_INPUT = "multi_input"  # Multiple BioImageRef in, BioImageRef out
+    MULTI_TABLE_INPUT = "multi_table_input"  # Multiple TableRef/ObjectRef in, ObjectRef out
     BINARY = "binary"  # Two BioImageRef in, BioImageRef out
     OBJECT_TO_IMAGE = "object_to_image"  # ObjectRef/BioImageRef in, BioImageRef out
     GENERIC = "generic"

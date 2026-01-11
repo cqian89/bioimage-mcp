@@ -116,7 +116,7 @@ class PandasAdapterForRegistry(BaseAdapter):
                     description=info.get("summary", ""),
                     parameters=params,
                     tags=info.get("tags", []),
-                    io_pattern=IOPattern.MULTI_INPUT
+                    io_pattern=IOPattern.MULTI_TABLE_INPUT
                     if info.get("signature_type") == PandasSignatureType.MULTI_INPUT
                     else IOPattern.IMAGE_TO_IMAGE,
                 )
@@ -136,6 +136,18 @@ class PandasAdapterForRegistry(BaseAdapter):
     def resolve_io_pattern(self, func_name: str, signature: Any) -> IOPattern:
         return IOPattern.OBJECTREF_CHAIN
 
+    def _normalize_inputs(self, inputs: list[Artifact]) -> list[tuple[str, Artifact]]:
+        """Normalize inputs to (name, artifact) tuples."""
+        normalized: list[tuple[str, Artifact]] = []
+        for idx, item in enumerate(inputs):
+            if isinstance(item, tuple) and len(item) == 2:
+                name, artifact = item
+            else:
+                name = "tables" if idx == 0 else f"input_{idx}"
+                artifact = item
+            normalized.append((str(name), artifact))
+        return normalized
+
     def _load_table(self, artifact: Artifact) -> pd.DataFrame:
         """Load DataFrame from artifact (TableRef or ObjectRef)."""
         if isinstance(artifact, dict):
@@ -150,7 +162,10 @@ class PandasAdapterForRegistry(BaseAdapter):
                 raise ObjectNotFoundError(
                     f"ObjectRef with URI '{uri}' not found in cache",
                     details={
-                        "hint": "The object may have been evicted. Re-run the operation that created it."
+                        "hint": (
+                            "The object may have been evicted. "
+                            "Re-run the operation that created it."
+                        )
                     },
                 )
             return OBJECT_CACHE[uri]
@@ -275,7 +290,9 @@ class PandasAdapterForRegistry(BaseAdapter):
             raise ObjectNotFoundError(
                 f"ObjectRef with URI '{uri}' not found in cache",
                 details={
-                    "hint": "The object may have been evicted. Re-run the operation that created it."
+                    "hint": (
+                        "The object may have been evicted. Re-run the operation that created it."
+                    )
                 },
             )
 
@@ -294,7 +311,22 @@ class PandasAdapterForRegistry(BaseAdapter):
     ) -> list[dict]:
         method_name = fn_id.split(".")[-1]
 
-        dfs = [self._load_table(art) for art in inputs]
+        # Normalize inputs to handle both direct and dispatch patterns
+        normalized = self._normalize_inputs(inputs)
+
+        # Collect all DataFrames, handling nested lists
+        dfs = []
+        for _name, art in normalized:
+            if isinstance(art, list):
+                # Handle inputs=[("tables", [ref1, ref2])] from dynamic_dispatch
+                for item in art:
+                    dfs.append(self._load_table(item))
+            else:
+                # Handle inputs=[("table_0", ref1), ("table_1", ref2)]
+                dfs.append(self._load_table(art))
+
+        if not dfs:
+            raise ValueError(f"No input DataFrames found for {fn_id}")
 
         if method_name == "concat":
             result = self.core.concat(dfs, **params)
