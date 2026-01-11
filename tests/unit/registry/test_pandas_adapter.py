@@ -62,11 +62,9 @@ def test_pandas_adapter_object_ref_lookup(adapter):
     uri = "obj://pandas.DataFrame/uuid-1234"
     mock_cache[uri] = df
 
-    # We patch the OBJECT_CACHE in the registry adapter module
-    # The requirement says the registry adapter will be at:
-    # src/bioimage_mcp/registry/dynamic/adapters/pandas.py
+    # We patch the OBJECT_CACHE in the pandas_adapter module
     with patch(
-        "bioimage_mcp.registry.dynamic.adapters.pandas.OBJECT_CACHE", mock_cache, create=True
+        "bioimage_mcp.registry.dynamic.pandas_adapter.OBJECT_CACHE", mock_cache, create=True
     ):
         # We assume PandasAdapter.execute can take a URI and look it up
         result = adapter.execute("head", uri, n=1)

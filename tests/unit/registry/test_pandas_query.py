@@ -68,7 +68,7 @@ def test_query_audit_logging(adapter, sample_df, caplog):
 
     mock_cache = {"obj://df/1": sample_df}
     with patch(
-        "bioimage_mcp.registry.dynamic.adapters.pandas.OBJECT_CACHE", mock_cache, create=True
+        "bioimage_mcp.registry.dynamic.pandas_adapter.OBJECT_CACHE", mock_cache, create=True
     ):
         with caplog.at_level(logging.INFO):
             result = adapter.execute("query", "obj://df/1", expr="area > 200")

@@ -1,10 +1,9 @@
 import pandas as pd
 import pytest
 import logging
+from bioimage_mcp.registry.dynamic.object_cache import OBJECT_CACHE
 from bioimage_mcp.registry.dynamic.pandas_adapter import (
-    OBJECT_CACHE,
     ObjectNotFoundError,
-    MAX_CACHE_SIZE,
 )
 
 

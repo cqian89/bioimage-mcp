@@ -16,8 +16,8 @@ from bioimage_mcp.registry.dynamic.adapters import BaseAdapter
 from bioimage_mcp.registry.dynamic.models import FunctionMetadata, IOPattern, ParameterSchema
 
 # In-memory object cache for pandas DataFrames and GroupBy objects
-# We import it from the core adapter to share state if needed.
-from bioimage_mcp.registry.dynamic.pandas_adapter import OBJECT_CACHE, ObjectNotFoundError
+from bioimage_mcp.registry.dynamic.object_cache import OBJECT_CACHE
+from bioimage_mcp.registry.dynamic.pandas_adapter import ObjectNotFoundError
 
 
 class PandasAdapterForRegistry(BaseAdapter):

@@ -3,7 +3,7 @@ import pytest
 import tempfile
 from pathlib import Path
 from bioimage_mcp.registry.dynamic.adapters.pandas import PandasAdapterForRegistry
-from bioimage_mcp.registry.dynamic.pandas_adapter import OBJECT_CACHE
+from bioimage_mcp.registry.dynamic.object_cache import OBJECT_CACHE
 
 
 @pytest.fixture(autouse=True)

@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 
 from bioimage_mcp.errors import BioimageMcpError
+from bioimage_mcp.registry.dynamic.object_cache import OBJECT_CACHE
 
 # Import will be created in T006
 try:
@@ -23,92 +24,7 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-# Configuration for Object Cache
-MAX_CACHE_SIZE = 100  # Default max objects
-MAX_CACHE_MEMORY_BYTES = 1024 * 1024 * 1024  # 1GB
-
-
-class LRUCache(dict):
-    """Simple LRU cache for DataFrames."""
-
-    def __init__(self, max_size: int = MAX_CACHE_SIZE, max_memory: int = MAX_CACHE_MEMORY_BYTES):
-        super().__init__()
-        self.max_size = max_size
-        self.max_memory = max_memory
-        self.access_order = []
-        self.current_memory = 0
-        self.obj_memory = {}
-
-    def _get_memory_usage(self, value: Any) -> int:
-        """Estimate memory usage of an object."""
-        try:
-            if hasattr(value, "memory_usage"):
-                # DataFrame or Series
-                if hasattr(value, "sum"):
-                    return value.memory_usage(deep=True).sum()
-                return value.memory_usage(deep=True)
-            elif "groupby" in str(type(value)).lower():
-                # GroupBy object doesn't have memory_usage easily,
-                # but it references the original DF. We'll use a small constant
-                # or estimate based on the underlying object if possible.
-                return 1024 * 1024  # 1MB placeholder for GroupBy
-            return 1024 * 10  # 10KB placeholder
-        except Exception:
-            return 1024 * 10
-
-    def __getitem__(self, key):
-        if key in self:
-            if key in self.access_order:
-                self.access_order.remove(key)
-            self.access_order.append(key)
-        return super().__getitem__(key)
-
-    def __setitem__(self, key, value):
-        new_mem = self._get_memory_usage(value)
-
-        if key in self:
-            if key in self.access_order:
-                self.access_order.remove(key)
-            self.current_memory -= self.obj_memory.get(key, 0)
-
-        # Evict until we have space (by count or memory)
-        while self.access_order and (
-            len(self) >= self.max_size or (self.current_memory + new_mem > self.max_memory)
-        ):
-            evict_key = self.access_order.pop(0)
-            evict_mem = self.obj_memory.get(evict_key, 0)
-            logger.warning(
-                f"OBJECT_CACHE limit reached (count={len(self)}/{self.max_size}, "
-                f"mem={self.current_memory / 1e6:.1f}/{self.max_memory / 1e6:.1f}MB). "
-                f"Evicting LRU object: {evict_key}"
-            )
-            self.current_memory -= evict_mem
-            self.obj_memory.pop(evict_key, None)
-            if evict_key in self:
-                super().__delitem__(evict_key)
-
-        super().__setitem__(key, value)
-        self.access_order.append(key)
-        self.obj_memory[key] = new_mem
-        self.current_memory += new_mem
-
-    def __delitem__(self, key):
-        if key in self:
-            if key in self.access_order:
-                self.access_order.remove(key)
-            self.current_memory -= self.obj_memory.get(key, 0)
-            self.obj_memory.pop(key, None)
-        super().__delitem__(key)
-
-    def clear(self):
-        super().clear()
-        self.access_order.clear()
-        self.current_memory = 0
-        self.obj_memory.clear()
-
-
-# In-memory object cache for pandas DataFrames and GroupBy objects
-OBJECT_CACHE = LRUCache(MAX_CACHE_SIZE, MAX_CACHE_MEMORY_BYTES)
+# Configuration for Object Cache removed - now using unified object_cache.py
 
 
 class MethodNotAllowedError(BioimageMcpError):
@@ -152,23 +68,14 @@ class PandasAdapter:
         # Handle ObjectRef (URI string)
         if isinstance(data, str) and data.startswith("obj://"):
             ref_id = ref_id or data
-            # Check for shared cache in registry adapter (for tests)
-            # We import here to avoid circular dependencies
-            try:
-                import bioimage_mcp.registry.dynamic.adapters.pandas as reg
-
-                cache = getattr(reg, "OBJECT_CACHE", OBJECT_CACHE)
-            except (ImportError, ModuleNotFoundError):
-                cache = OBJECT_CACHE
-
-            if data not in cache:
+            if data not in OBJECT_CACHE:
                 raise ObjectNotFoundError(
                     f"ObjectRef with URI '{data}' not found in cache",
                     details={
                         "hint": "The object may have been evicted. Re-run the operation that created it."
                     },
                 )
-            data = cache[data]
+            data = OBJECT_CACHE[data]
 
         # Check denylist first
         if method_name in PANDAS_DENYLIST:
