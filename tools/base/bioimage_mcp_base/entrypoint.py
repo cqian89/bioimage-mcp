@@ -50,6 +50,7 @@ FN_MAP = {
     "base.io.bioimage.get_supported_formats": (io_ops.get_supported_formats, {}),
     "base.io.bioimage.export": (io_ops.export, {}),
     "base.io.table.load": (io_ops.table_load, {}),
+    "base.io.table.export": (io_ops.table_export, {}),
 }
 
 LEGACY_REDIRECTS = {}

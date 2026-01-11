@@ -185,22 +185,36 @@ class PandasAdapterForRegistry(BaseAdapter):
         work_dir: Path | None = None,
     ) -> list[dict]:
         """Execute pandas function."""
-        if not fn_id.startswith("base.pandas."):
+        # Normalize inputs - they may come as (name, value) tuples from dispatch
+        normalized_inputs = []
+        for inp in inputs:
+            if isinstance(inp, tuple) and len(inp) == 2:
+                normalized_inputs.append(inp[1])  # Extract value from (name, value) tuple
+            else:
+                normalized_inputs.append(inp)
+        inputs = normalized_inputs
+
+        # Handle both cases: adapter may be called directly with "base.pandas." prefix
+        # or via entrypoint which strips "base." first
+        if fn_id.startswith("base."):
+            fn_id = fn_id[5:]  # Strip "base." prefix
+
+        if not fn_id.startswith("pandas."):
             raise ValueError(f"Unsupported pandas function ID: {fn_id}")
 
-        if fn_id == "base.pandas.DataFrame":
+        if fn_id == "pandas.DataFrame":
             return self._execute_constructor(inputs, params)
 
-        if fn_id in ["base.pandas.DataFrame.to_table", "base.pandas.DataFrame.to_tableref"]:
+        if fn_id in ["pandas.DataFrame.to_table", "pandas.DataFrame.to_tableref"]:
             return self._execute_to_table(inputs, params, work_dir)
 
-        if fn_id.startswith("base.pandas.DataFrame."):
+        if fn_id.startswith("pandas.DataFrame."):
             return self._execute_dataframe_method(fn_id, inputs, params, work_dir)
 
-        if fn_id.startswith("base.pandas.GroupBy."):
+        if fn_id.startswith("pandas.GroupBy."):
             return self._execute_groupby_method(fn_id, inputs, params, work_dir)
 
-        if fn_id.startswith("base.pandas."):
+        if fn_id.startswith("pandas."):
             return self._execute_toplevel(fn_id, inputs, params, work_dir)
 
         raise ValueError(f"Unknown pandas function ID: {fn_id}")

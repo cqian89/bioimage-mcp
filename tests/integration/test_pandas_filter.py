@@ -75,8 +75,10 @@ def test_integration_pandas_query_invalid_workflow(tmp_path) -> None:
         "storage_type": "memory",
     }
 
-    # We expect ValueError because URI is not in cache (actually our implementation raises ValueError)
-    with pytest.raises(ValueError, match="not found in memory cache"):
+    from bioimage_mcp.registry.dynamic.pandas_adapter import ObjectNotFoundError
+
+    # We expect ObjectNotFoundError because URI is not in cache
+    with pytest.raises(ObjectNotFoundError, match="not found in cache"):
         adapter.execute(
             fn_id="base.pandas.DataFrame.query", inputs=[df_ref], params={"expr": "area > 100"}
         )
