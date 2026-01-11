@@ -23,6 +23,10 @@ if str(TOOLS_ROOT) not in sys.path:
 from datetime import UTC  # noqa: E402
 
 from bioimage_mcp_base.ops import io as io_ops  # noqa: E402
+from bioimage_mcp.registry.dynamic.object_cache import OBJECT_CACHE  # noqa: E402
+
+# Deprecated: use OBJECT_CACHE instead
+_OBJECT_CACHE = OBJECT_CACHE
 
 TOOL_VERSION = "0.2.0"
 TOOL_ENV_NAME = "bioimage-mcp-base"
@@ -35,7 +39,6 @@ DYNAMIC_FN_PREFIXES = ("base.", f"{TOOL_ENV_NAME}.")
 # Global memory store in worker process
 # artifact_id -> numpy array
 _MEMORY_ARTIFACTS: dict[str, Any] = {}
-_OBJECT_CACHE: dict[str, Any] = {}
 
 # Worker identity (set by initialization handshake or env vars)
 _SESSION_ID: str | None = None
@@ -428,8 +431,18 @@ def handle_evict(request: dict[str, Any]) -> dict[str, Any]:
             },
         }
 
+    evicted = False
     if artifact_id in _MEMORY_ARTIFACTS:
         del _MEMORY_ARTIFACTS[artifact_id]
+        evicted = True
+
+    # Also evict from object cache (try both ID and full URI)
+    if OBJECT_CACHE.evict(artifact_id):
+        evicted = True
+    if ref_id != artifact_id and OBJECT_CACHE.evict(ref_id):
+        evicted = True
+
+    if evicted:
         return {
             "command": "evict_result",
             "ok": True,
@@ -492,21 +505,16 @@ def handle_reconstruct(request: dict[str, Any]) -> dict[str, Any]:
         # Instantiate
         obj = cls(**init_params)
 
-        # Store in object cache (if we have one, otherwise use _MEMORY_ARTIFACTS)
-        # Note: base entrypoint currently uses _MEMORY_ARTIFACTS for everything.
-        # But we should probably have an _OBJECT_CACHE like cellpose.
-
-        # Let's ensure _OBJECT_CACHE exists
-        if "_OBJECT_CACHE" not in globals():
-            globals()["_OBJECT_CACHE"] = {}
-
+        # Store in unified object cache
         object_id = uuid.uuid4().hex
-        globals()["_OBJECT_CACHE"][object_id] = obj
+        OBJECT_CACHE.set(object_id, obj)
+
+        # Also store by full URI for compatibility
+        obj_uri = f"obj://{_SESSION_ID}/{_ENV_ID}/{object_id}"
+        OBJECT_CACHE.set(obj_uri, obj)
 
         # Also store in _MEMORY_ARTIFACTS for compatibility with _load_from_memory
         _MEMORY_ARTIFACTS[object_id] = obj
-
-        obj_uri = f"obj://{_SESSION_ID}/{_ENV_ID}/{object_id}"
 
         return {
             "command": "execute_result",
@@ -884,6 +892,7 @@ def main() -> int:
             elif request.get("command") == "shutdown":
                 # T073: Release memory artifacts before shutdown
                 _MEMORY_ARTIFACTS.clear()
+                OBJECT_CACHE.clear()
                 response = {
                     "command": "shutdown_ack",
                     "ok": True,
@@ -938,6 +947,7 @@ def main() -> int:
                     elif request.get("command") == "shutdown":
                         # T073: Release memory artifacts before shutdown
                         _MEMORY_ARTIFACTS.clear()
+                        OBJECT_CACHE.clear()
                         response = {
                             "command": "shutdown_ack",
                             "ok": True,
@@ -966,6 +976,7 @@ def main() -> int:
                         elif request.get("command") == "shutdown":
                             # T073: Release memory artifacts before shutdown
                             _MEMORY_ARTIFACTS.clear()
+                            OBJECT_CACHE.clear()
                             response = {
                                 "command": "shutdown_ack",
                                 "ok": True,

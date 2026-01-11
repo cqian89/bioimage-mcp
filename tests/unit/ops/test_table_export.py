@@ -84,10 +84,10 @@ def test_table_export_denied(table_ref, tmp_path, monkeypatch):
 
 def test_table_export_object_ref(sample_df, tmp_path, monkeypatch):
     # Mock object cache
-    from bioimage_mcp_base.entrypoint import _OBJECT_CACHE
+    from bioimage_mcp.registry.dynamic.object_cache import OBJECT_CACHE
 
     obj_id = "test_obj"
-    _OBJECT_CACHE[obj_id] = sample_df
+    OBJECT_CACHE[obj_id] = sample_df
 
     obj_ref = {
         "ref_id": obj_id,
@@ -109,5 +109,5 @@ def test_table_export_object_ref(sample_df, tmp_path, monkeypatch):
         df_loaded = pd.read_csv(dest_path)
         assert len(df_loaded) == len(sample_df)
     finally:
-        if obj_id in _OBJECT_CACHE:
-            del _OBJECT_CACHE[obj_id]
+        if obj_id in OBJECT_CACHE:
+            del OBJECT_CACHE[obj_id]

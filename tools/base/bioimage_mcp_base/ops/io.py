@@ -492,7 +492,8 @@ def table_export(
         parts = uri[6:].split("/")
         artifact_id = parts[-1]
 
-        from bioimage_mcp_base.entrypoint import _MEMORY_ARTIFACTS, _OBJECT_CACHE
+        from bioimage_mcp_base.entrypoint import _MEMORY_ARTIFACTS
+        from bioimage_mcp.registry.dynamic.object_cache import OBJECT_CACHE
 
         try:
             from bioimage_mcp.registry.dynamic.adapters.xarray import (
@@ -501,13 +502,13 @@ def table_export(
         except ImportError:
             XARRAY_CACHE = {}
 
-        obj = _OBJECT_CACHE.get(artifact_id)
+        obj = OBJECT_CACHE.get(artifact_id)
         if obj is None:
             obj = _MEMORY_ARTIFACTS.get(artifact_id)
         if obj is None:
             obj = XARRAY_CACHE.get(artifact_id)
         if obj is None:
-            obj = _OBJECT_CACHE.get(uri)
+            obj = OBJECT_CACHE.get(uri)
         if obj is None:
             obj = _MEMORY_ARTIFACTS.get(uri)
         if obj is None:
@@ -1086,7 +1087,8 @@ def export(*, inputs: dict[str, Any], params: dict[str, Any], work_dir: Path) ->
             artifact_id = parts[-1]  # Last part is artifact_id
 
             # Try to load from object cache or memory artifacts
-            from bioimage_mcp_base.entrypoint import _MEMORY_ARTIFACTS, _OBJECT_CACHE
+            from bioimage_mcp_base.entrypoint import _MEMORY_ARTIFACTS
+            from bioimage_mcp.registry.dynamic.object_cache import OBJECT_CACHE
 
             # Also try the xarray adapter's cache
             try:
@@ -1097,14 +1099,14 @@ def export(*, inputs: dict[str, Any], params: dict[str, Any], work_dir: Path) ->
                 XARRAY_CACHE = {}
 
             obj = (
-                _OBJECT_CACHE.get(artifact_id)
+                OBJECT_CACHE.get(artifact_id)
                 or _MEMORY_ARTIFACTS.get(artifact_id)
                 or XARRAY_CACHE.get(artifact_id)
             )
             if obj is None:
                 # Also try full URI as key
                 obj = (
-                    _OBJECT_CACHE.get(str(uri))
+                    OBJECT_CACHE.get(str(uri))
                     or _MEMORY_ARTIFACTS.get(str(uri))
                     or XARRAY_CACHE.get(str(uri))
                 )
