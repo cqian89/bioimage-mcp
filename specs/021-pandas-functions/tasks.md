@@ -25,8 +25,8 @@
 
 **Purpose**: Environment preparation and basic project structure
 
-- [ ] T001 Add `pandas` and `numexpr` to `envs/bioimage-mcp-base.yaml`
-- [ ] T002 Update `bioimage-mcp-base` conda environment with new dependencies
+- [X] T001 Add `pandas` and `numexpr` to `envs/bioimage-mcp-base.yaml`
+- [X] T002 Update `bioimage-mcp-base` conda environment with new dependencies
 
 ---
 
@@ -38,17 +38,17 @@
 
 ### Tests for Foundation (TDD - write first, must fail) ⚠️
 
-- [ ] T003 [P] Contract test for pandas allowlist/denylist + discovery count (≥50 allowed functions) in `tests/contract/test_pandas_allowlists.py` (also asserts denylisted methods are not discoverable)
-- [ ] T004 [P] Unit test for PandasAdapter core execution logic in `tests/unit/registry/test_pandas_adapter.py` (dispatch, ObjectRef lookup, denylisted method → structured error)
-- [ ] T005 [P] Contract test for TableRef/ObjectRef/GroupByRef schemas in `tests/contract/test_pandas_artifacts.py`
+- [X] T003 [P] Contract test for pandas allowlist/denylist + discovery count (≥50 allowed functions) in `tests/contract/test_pandas_allowlists.py` (also asserts denylisted methods are not discoverable)
+- [X] T004 [P] Unit test for PandasAdapter core execution logic in `tests/unit/registry/test_pandas_adapter.py` (dispatch, ObjectRef lookup, denylisted method → structured error)
+- [X] T005 [P] Contract test for TableRef/ObjectRef/GroupByRef schemas in `tests/contract/test_pandas_artifacts.py`
 
 ### Implementation for Foundation
 
-- [ ] T006 [P] Create `src/bioimage_mcp/registry/dynamic/pandas_allowlists.py` with categories: DATAFRAME_CLASS (optional TableRef→ObjectRef), DATAFRAME_METHODS (query accepts TableRef directly), GROUPBY_METHODS, TOPLEVEL_FUNCTIONS, and DENYLIST
-- [ ] T007 [P] Create `src/bioimage_mcp/registry/dynamic/pandas_adapter.py` with core execution logic (object cache, method dispatch)
-- [ ] T008 Create `src/bioimage_mcp/registry/dynamic/adapters/pandas.py` implementing BaseAdapter interface (depends on T006, T007)
-- [ ] T009 Register PandasAdapterForRegistry in `src/bioimage_mcp/registry/dynamic/adapters/__init__.py`
-- [ ] T010 Add `pandas` to `dynamic_sources` in `tools/base/manifest.yaml`
+- [X] T006 [P] Create `src/bioimage_mcp/registry/dynamic/pandas_allowlists.py` with categories: DATAFRAME_CLASS (optional TableRef→ObjectRef), DATAFRAME_METHODS (query accepts TableRef directly), GROUPBY_METHODS, TOPLEVEL_FUNCTIONS, and DENYLIST
+- [X] T007 [P] Create `src/bioimage_mcp/registry/dynamic/pandas_adapter.py` with core execution logic (object cache, method dispatch)
+- [X] T008 Create `src/bioimage_mcp/registry/dynamic/adapters/pandas.py` implementing BaseAdapter interface (depends on T006, T007)
+- [X] T009 Register PandasAdapterForRegistry in `src/bioimage_mcp/registry/dynamic/adapters/__init__.py`
+- [X] T010 Add `pandas` to `dynamic_sources` in `tools/base/manifest.yaml`
 
 **Checkpoint**: Foundation ready - pandas adapter registered, allowlists defined, user story implementation can begin
 
@@ -62,17 +62,17 @@
 
 ### Tests for User Story 1 (TDD - write first, must fail) ⚠️
 
-- [ ] T011 [P] [US1] Contract test for `base.io.table.load` schema in `tests/contract/test_table_io.py`
-- [ ] T012 [P] [US1] Unit test for table_load function in `tests/unit/ops/test_table_load.py` (CSV load, delimiter auto-detect incl comma/tab/semicolon, path allowlist validation with structured error shape + permission decision logging)
-- [ ] T013 [P] [US1] Integration test loading sample CSV in `tests/integration/test_table_load.py` (optionally asserts SC-001 load ≤5s for ~10MB input under a `slow` marker)
+- [X] T011 [P] [US1] Contract test for `base.io.table.load` schema in `tests/contract/test_table_io.py`
+- [X] T012 [P] [US1] Unit test for table_load function in `tests/unit/ops/test_table_load.py` (CSV load, delimiter auto-detect incl comma/tab/semicolon, path allowlist validation with structured error shape + permission decision logging)
+- [X] T013 [P] [US1] Integration test loading sample CSV in `tests/integration/test_table_load.py` (optionally asserts SC-001 load ≤5s for ~10MB input under a `slow` marker)
 
 ### Implementation for User Story 1
 
-- [ ] T014 [US1] Implement `table_load` function in `tools/base/bioimage_mcp_base/ops/io.py` (CSV/TSV delimited load with auto-delimiter detection incl comma/tab/semicolon; return structured errors on failure)
-- [ ] T015 [US1] Define `base.io.table.load` in `tools/base/manifest.yaml` functions section
-- [ ] T016 [US1] Add path validation against `filesystem.allowed_read` in table_load, emitting permission decision logs (allow/deny with path + reason) and structured errors on deny
-- [ ] T017 [US1] Add encoding parameter support (UTF-8, latin-1, cp1252) for table_load
-- [ ] T018 [US1] Add NA value specification parameter for table_load
+- [X] T014 [US1] Implement `table_load` function in `tools/base/bioimage_mcp_base/ops/io.py` (CSV/TSV delimited load with auto-delimiter detection incl comma/tab/semicolon; return structured errors on failure)
+- [X] T015 [US1] Define `base.io.table.load` in `tools/base/manifest.yaml` functions section
+- [X] T016 [US1] Add path validation against `filesystem.allowed_read` in table_load, emitting permission decision logs (allow/deny with path + reason) and structured errors on deny
+- [X] T017 [US1] Add encoding parameter support (UTF-8, latin-1, cp1252) for table_load
+- [X] T018 [US1] Add NA value specification parameter for table_load
 
 **Checkpoint**: User Story 1 complete - CSV/TSV files can be loaded as TableRef with metadata
 
@@ -86,17 +86,17 @@
 
 ### Tests for User Story 2 (TDD - write first, must fail) ⚠️
 
-- [ ] T019 [P] [US2] Contract test for `base.pandas.DataFrame.query` schema in `tests/contract/test_pandas_query.py`
-- [ ] T020 [P] [US2] Unit test for DataFrame.query execution in `tests/unit/registry/test_pandas_query.py` (single + compound filters, invalid syntax → structured error, audit logging fields, and `@var` local variable access blocked)
-- [ ] T021 [P] [US2] Integration test for filter workflow in `tests/integration/test_pandas_filter.py`
+- [X] T019 [P] [US2] Contract test for `base.pandas.DataFrame.query` schema in `tests/contract/test_pandas_query.py`
+- [X] T020 [P] [US2] Unit test for DataFrame.query execution in `tests/unit/registry/test_pandas_query.py` (single + compound filters, invalid syntax → structured error, audit logging fields, and `@var` local variable access blocked)
+- [X] T021 [P] [US2] Integration test for filter workflow in `tests/integration/test_pandas_filter.py`
 
 ### Implementation for User Story 2
 
-- [ ] T022 [US2] Implement `base.pandas.DataFrame` (TableRef → ObjectRef) as an optional convenience, and ensure `base.pandas.DataFrame.query` accepts TableRef directly via auto-coercion (reusing ObjectRef when provided)
-- [ ] T023 [US2] Implement `base.pandas.DataFrame.query` with expression execution in pandas_adapter.py
-- [ ] T024 [US2] Add audit logging for all query() expressions (expression, input ref_id, result row count)
-- [ ] T025 [US2] Block `@var` local variable access in query expressions for isolation
-- [ ] T026 [US2] Implement OBJECT_CACHE for in-memory DataFrame storage
+- [X] T022 [US2] Implement `base.pandas.DataFrame` (TableRef → ObjectRef) as an optional convenience, and ensure `base.pandas.DataFrame.query` accepts TableRef directly via auto-coercion (reusing ObjectRef when provided)
+- [X] T023 [US2] Implement `base.pandas.DataFrame.query` with expression execution in pandas_adapter.py
+- [X] T024 [US2] Add audit logging for all query() expressions (expression, input ref_id, result row count)
+- [X] T025 [US2] Block `@var` local variable access in query expressions for isolation
+- [X] T026 [US2] Implement OBJECT_CACHE for in-memory DataFrame storage
 
 **Checkpoint**: User Story 2 complete - DataFrames can be filtered using query() with full audit trail
 
@@ -110,16 +110,16 @@
 
 ### Tests for User Story 3 (TDD - write first, must fail) ⚠️
 
-- [ ] T027 [P] [US3] Contract test for `base.pandas.DataFrame.groupby` and `base.pandas.GroupBy.mean/agg` in `tests/contract/test_pandas_groupby.py`
-- [ ] T028 [P] [US3] Unit test for groupby and aggregation in `tests/unit/registry/test_pandas_groupby.py` (includes missing groupby column → structured error listing available columns)
-- [ ] T029 [P] [US3] Integration test for groupby workflow in `tests/integration/test_pandas_groupby.py`
+- [X] T027 [P] [US3] Contract test for `base.pandas.DataFrame.groupby` and `base.pandas.GroupBy.mean/agg` in `tests/contract/test_pandas_groupby.py`
+- [X] T028 [P] [US3] Unit test for groupby and aggregation in `tests/unit/registry/test_pandas_groupby.py` (includes missing groupby column → structured error listing available columns)
+- [X] T029 [P] [US3] Integration test for groupby workflow in `tests/integration/test_pandas_groupby.py`
 
 ### Implementation for User Story 3
 
-- [ ] T030 [US3] Implement `base.pandas.DataFrame.groupby` returning GroupByRef in pandas_adapter.py
-- [ ] T031 [US3] Implement `base.pandas.GroupBy.mean` accepting GroupByRef in pandas_adapter.py
-- [ ] T032 [US3] Implement `base.pandas.GroupBy.agg` with func list parameter in pandas_adapter.py
-- [ ] T033 [US3] Add GroupByRef to OBJECT_CACHE with grouped_by and groups_count metadata
+- [X] T030 [US3] Implement `base.pandas.DataFrame.groupby` returning GroupByRef in pandas_adapter.py
+- [X] T031 [US3] Implement `base.pandas.GroupBy.mean` accepting GroupByRef in pandas_adapter.py
+- [X] T032 [US3] Implement `base.pandas.GroupBy.agg` with func list parameter in pandas_adapter.py
+- [X] T033 [US3] Add GroupByRef to OBJECT_CACHE with grouped_by and groups_count metadata
 
 **Checkpoint**: User Story 3 complete - Data can be grouped and aggregated by condition
 
@@ -133,16 +133,16 @@
 
 ### Tests for User Story 4 (TDD - write first, must fail) ⚠️
 
-- [ ] T034 [P] [US4] Contract test for `base.io.table.export` schema in `tests/contract/test_table_export.py`
-- [ ] T035 [P] [US4] Unit test for table_export function in `tests/unit/ops/test_table_export.py` (CSV + TSV formats, float precision, structured error on invalid destination / denied write)
-- [ ] T036 [P] [US4] Integration test for export workflow in `tests/integration/test_table_export.py`
+- [X] T034 [P] [US4] Contract test for `base.io.table.export` schema in `tests/contract/test_table_export.py`
+- [X] T035 [P] [US4] Unit test for table_export function in `tests/unit/ops/test_table_export.py` (CSV + TSV formats, float precision, structured error on invalid destination / denied write)
+- [X] T036 [P] [US4] Integration test for export workflow in `tests/integration/test_table_export.py`
 
 ### Implementation for User Story 4
 
-- [ ] T037 [US4] Implement `table_export` function in `tools/base/bioimage_mcp_base/ops/io.py` (enforce `filesystem.allowed_write`, log allow/deny/ask decisions with path+reason, structured errors on deny/overwrite)
-- [ ] T038 [US4] Define `base.io.table.export` in `tools/base/manifest.yaml` functions section
-- [ ] T039 [US4] Add numeric precision preservation (15 significant digits) for float export
-- [ ] T040 [US4] Add delimiter parameter support (comma, tab) for table_export
+- [X] T037 [US4] Implement `table_export` function in `tools/base/bioimage_mcp_base/ops/io.py` (enforce `filesystem.allowed_write`, log allow/deny/ask decisions with path+reason, structured errors on deny/overwrite)
+- [X] T038 [US4] Define `base.io.table.export` in `tools/base/manifest.yaml` functions section
+- [X] T039 [US4] Add numeric precision preservation (15 significant digits) for float export
+- [X] T040 [US4] Add delimiter parameter support (comma, tab) for table_export
 
 **Checkpoint**: User Story 4 complete - Results can be exported to various formats
 
@@ -156,15 +156,15 @@
 
 ### Tests for User Story 5 (TDD - write first, must fail) ⚠️
 
-- [ ] T041 [P] [US5] Contract test for `base.pandas.merge` schema in `tests/contract/test_pandas_merge.py`
-- [ ] T042 [P] [US5] Unit test for merge function in `tests/unit/registry/test_pandas_merge.py` (inner, left, right, outer joins)
-- [ ] T043 [P] [US5] Integration test for merge workflow in `tests/integration/test_pandas_merge.py`
+- [X] T041 [P] [US5] Contract test for `base.pandas.merge` schema in `tests/contract/test_pandas_merge.py`
+- [X] T042 [P] [US5] Unit test for merge function in `tests/unit/registry/test_pandas_merge.py` (inner, left, right, outer joins)
+- [X] T043 [P] [US5] Integration test for merge workflow in `tests/integration/test_pandas_merge.py`
 
 ### Implementation for User Story 5
 
-- [ ] T044 [US5] Implement `base.pandas.merge` in pandas_adapter.py
-- [ ] T045 [US5] Implement `base.pandas.concat` for axis-based concatenation in pandas_adapter.py
-- [ ] T046 [US5] Add structured error handling for missing key columns with available column list and actionable hint
+- [X] T044 [US5] Implement `base.pandas.merge` in pandas_adapter.py
+- [X] T045 [US5] Implement `base.pandas.concat` for axis-based concatenation in pandas_adapter.py
+- [X] T046 [US5] Add structured error handling for missing key columns with available column list and actionable hint
 
 **Checkpoint**: User Story 5 complete - Tables can be merged by key columns
 
@@ -178,15 +178,15 @@
 
 ### Tests for User Story 6 (TDD - write first, must fail) ⚠️
 
-- [ ] T047 [P] [US6] Integration test for full chain: load → filter → groupby → mean → export in `tests/integration/test_pandas_pipeline.py` (optionally asserts SC-003 end-to-end ≤30s under a `slow` marker)
-- [ ] T048 [P] [US6] Unit test for ObjectRef chaining (10+ operations) in `tests/unit/registry/test_pandas_chaining.py`
+- [X] T047 [P] [US6] Integration test for full chain: load → filter → groupby → mean → export in `tests/integration/test_pandas_pipeline.py` (optionally asserts SC-003 end-to-end ≤30s under a `slow` marker)
+- [X] T048 [P] [US6] Unit test for ObjectRef chaining (10+ operations) in `tests/unit/registry/test_pandas_chaining.py`
 
 ### Implementation for User Story 6
 
-- [ ] T049 [US6] Implement `to_tableref` operation to materialize ObjectRef to TableRef in pandas_adapter.py
-- [ ] T050 [US6] Add LRU eviction with warning for OBJECT_CACHE when memory limit reached
-- [ ] T051 [US6] Add ObjectRef expiration structured error (code/message/details with hint) with re-run suggestion
-- [ ] T052 [US6] Verify ObjectRef chaining works for 10+ sequential operations
+- [X] T049 [US6] Implement `to_tableref` operation to materialize ObjectRef to TableRef in pandas_adapter.py
+- [X] T050 [US6] Add LRU eviction with warning for OBJECT_CACHE when memory limit reached
+- [X] T051 [US6] Add ObjectRef expiration structured error (code/message/details with hint) with re-run suggestion
+- [X] T052 [US6] Verify ObjectRef chaining works for 10+ sequential operations
 
 **Checkpoint**: User Story 6 complete - Complex workflows can be executed as chains
 
@@ -196,14 +196,14 @@
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T053 [P] Add additional DATAFRAME_METHODS to allowlist: `filter`, `head`, `tail`, `sample`, `fillna`, `dropna`, `replace`, `sort_values`, `reset_index`
-- [ ] T054 [P] Add additional GROUPBY_METHODS to allowlist: `sum`, `count`, `min`, `max`, `std`, `var`, `describe`
-- [ ] T055 [P] Implement restricted `apply()` with numpy function whitelist (log, sqrt, exp, abs) in pandas_adapter.py
-- [ ] T056 [P] Add large file warning (>100MB) for table_load
-- [ ] T057 [P] Add empty file handling (headers only → row_count=0)
-- [ ] T058 [P] Run quickstart.md validation with sample Cellpose measurement file
-- [ ] T059 Update environment lockfile with conda-lock for reproducibility
-- [ ] T060 Add performance validation: 100,000-row table filter in <2 seconds
+- [X] T053 [P] Add additional DATAFRAME_METHODS to allowlist: `filter`, `head`, `tail`, `sample`, `fillna`, `dropna`, `replace`, `sort_values`, `reset_index`
+- [X] T054 [P] Add additional GROUPBY_METHODS to allowlist: `sum`, `count`, `min`, `max`, `std`, `var`, `describe`
+- [X] T055 [P] Implement restricted `apply()` with numpy function whitelist (log, sqrt, exp, abs) in pandas_adapter.py
+- [X] T056 [P] Add large file warning (>100MB) for table_load
+- [X] T057 [P] Add empty file handling (headers only → row_count=0)
+- [X] T058 [P] Run quickstart.md validation with sample Cellpose measurement file
+- [X] T059 Update environment lockfile with conda-lock for reproducibility
+- [X] T060 Add performance validation: 100,000-row table filter in <2 seconds
 
 ---
 

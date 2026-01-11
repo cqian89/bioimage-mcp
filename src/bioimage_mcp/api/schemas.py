@@ -17,6 +17,7 @@ ArtifactType = Literal[
     "NativeOutputRef",
     "PlotRef",
     "ObjectRef",
+    "GroupByRef",
 ]
 StorageType = Literal["file", "zarr-temp"]
 
@@ -272,6 +273,7 @@ class ArtifactTypeEnum(str, Enum):
     TABLE = "TableRef"
     SCALAR = "ScalarRef"
     OBJECT = "ObjectRef"
+    GROUP_BY = "GroupByRef"
     MODEL = "ModelRef"
     LOG = "LogRef"
     NATIVE_OUTPUT = "NativeOutputRef"

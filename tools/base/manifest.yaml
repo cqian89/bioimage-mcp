@@ -62,6 +62,14 @@ dynamic_sources:
     exclude_patterns:
       - "_*"
 
+  - adapter: pandas
+    prefix: pandas
+    modules: []
+    include_patterns:
+      - "*"
+    exclude_patterns:
+      - "_*"
+
 functions:
   # xarray-based tools (Wrapper Consolidation)
   - fn_id: base.io.bioimage.load
@@ -212,6 +220,73 @@ functions:
         path:
           type: string
           description: Optional output path. If omitted, generated in work_dir.
+
+  - fn_id: base.io.table.load
+    tool_id: tools.base
+    name: Load tabular file
+    description: |
+      Load a CSV or TSV file into a TableRef artifact.
+      Auto-detects delimiter if not specified.
+      Validates path against filesystem.allowed_read.
+    tags: [table, io, load]
+    input_mode: path
+    inputs: []
+    outputs:
+      - name: table
+        artifact_type: TableRef
+        description: Loaded table artifact with metadata
+    params_schema:
+      type: object
+      required: [path]
+      properties:
+        path:
+          type: string
+          description: Absolute path to the table file
+        delimiter:
+          type: string
+          description: Column delimiter (auto-detect if omitted)
+        format:
+          type: string
+          description: Optional format hint (e.g., "CSV", "TSV")
+        encoding:
+          type: string
+          description: File encoding
+          default: utf-8
+        na_values:
+          type: array
+          items:
+            type: string
+          description: Additional values to treat as NA
+
+  - fn_id: base.io.table.export
+    tool_id: tools.base
+    name: Export table to file
+    description: |
+      Export a TableRef or ObjectRef to a delimited file (CSV/TSV).
+      Supports preservation of numeric precision (15 significant digits).
+      Validates dest_path against filesystem.allowed_write.
+    tags: [table, io, export]
+    input_mode: path
+    inputs:
+      - name: data
+        artifact_type: [TableRef, ObjectRef]
+        required: true
+        description: Table or memory object to export
+    outputs:
+      - name: table
+        artifact_type: TableRef
+        description: Exported table artifact
+    params_schema:
+      type: object
+      required: [dest_path]
+      properties:
+        dest_path:
+          type: string
+          description: Absolute path to the destination file
+        sep:
+          type: string
+          description: Column delimiter
+          default: ","
 
   # Required for on-demand schema enrichment
   - fn_id: meta.describe

@@ -88,7 +88,7 @@ def test_object_ref_uri_validation():
         ObjectRef(
             ref_id="o1",
             type="ObjectRef",
-            uri="obj://session/env",
+            uri="obj://session",
             format="pickle",
             python_class="MyClass",
             storage_type="memory",

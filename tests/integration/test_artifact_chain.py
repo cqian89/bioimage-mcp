@@ -6,8 +6,9 @@ functions. This is the critical test for the file extension fix.
 
 from __future__ import annotations
 
-import pytest
 from pathlib import Path
+
+import pytest
 
 # Mark all tests as integration tests
 pytestmark = pytest.mark.integration
@@ -28,8 +29,8 @@ class TestArtifactChain:
 
     def test_load_artifact_has_extension(self, test_image_path: Path, tmp_path: Path):
         """Loaded artifacts should have file extensions in their storage path."""
-        from bioimage_mcp.config.schema import Config
         from bioimage_mcp.artifacts.store import ArtifactStore
+        from bioimage_mcp.config.schema import Config
 
         config = Config(
             artifact_store_root=tmp_path / "artifacts",
@@ -56,8 +57,9 @@ class TestArtifactChain:
     def test_artifact_readable_by_bioimage(self, test_image_path: Path, tmp_path: Path):
         """Stored artifacts should be readable by BioImage without symlink workarounds."""
         from bioio import BioImage
-        from bioimage_mcp.config.schema import Config
+
         from bioimage_mcp.artifacts.store import ArtifactStore
+        from bioimage_mcp.config.schema import Config
 
         config = Config(
             artifact_store_root=tmp_path / "artifacts",
@@ -87,8 +89,9 @@ class TestArtifactChain:
     def test_full_artifact_chain(self, test_image_path: Path, tmp_path: Path):
         """Full chain: import -> read artifact -> verify data matches."""
         from bioio import BioImage
-        from bioimage_mcp.config.schema import Config
+
         from bioimage_mcp.artifacts.store import ArtifactStore
+        from bioimage_mcp.config.schema import Config
 
         config = Config(
             artifact_store_root=tmp_path / "artifacts",

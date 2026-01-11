@@ -22,6 +22,7 @@ ARTIFACT_TYPES = {
     "NativeOutputRef": "Tool-native output bundle (format is tool-dependent)",
     "PlotRef": "Visualization plots (PNG/SVG)",
     "ObjectRef": "Serialized Python object (e.g., ML model)",
+    "GroupByRef": "Result of pandas groupby operation",
 }
 
 
@@ -132,6 +133,8 @@ class ColumnMetadata(BaseModel):
 class TableMetadata(BaseModel):
     columns: list[ColumnMetadata]
     row_count: int
+    delimiter: str | None = None
+    schema_id: str | None = None
     source_fn_id: str | None = None
 
 
@@ -157,6 +160,10 @@ class TableRef(ArtifactRef):
     """Reference to a tabular data artifact."""
 
     type: Literal["TableRef"] = "TableRef"
+    columns: list[str]
+    row_count: int
+    delimiter: str = ","
+    schema_id: str | None = None
     metadata: TableMetadata
 
 
@@ -201,9 +208,22 @@ class ObjectRef(ArtifactRef):
             if self.storage_type != "memory":
                 raise ValueError("ObjectRef with obj:// URI must have storage_type='memory'")
             parts = self.uri[6:].split("/")
-            if len(parts) != 3 or any(not p for p in parts):
+            if not (2 <= len(parts) <= 3) or any(not p for p in parts):
                 raise ValueError("Invalid object URI format")
         elif self.storage_type == "memory":
             if not self.uri.startswith("obj://"):
                 raise ValueError("ObjectRef with storage_type='memory' must have an obj:// URI")
         return self
+
+
+class GroupByMetadata(BaseModel):
+    grouped_by: list[str]
+    groups_count: int
+    source_ref_id: str | None = None
+
+
+class GroupByRef(ObjectRef):
+    """Reference to a result of groupby operation (pandas GroupBy)."""
+
+    type: Literal["GroupByRef"] = "GroupByRef"
+    metadata: GroupByMetadata

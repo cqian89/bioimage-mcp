@@ -18,6 +18,8 @@ dependencies:
   - scipy
   - scikit-image
   - scyjava
+  - pandas
+  - numexpr
   - phasorpy
   - numpydoc
   - pydantic>=2.0

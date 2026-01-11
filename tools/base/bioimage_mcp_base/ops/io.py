@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import uuid
 from datetime import UTC, datetime
@@ -10,7 +11,10 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+import pandas as pd
 from bioimage_mcp_base.utils import load_native_image, uri_to_path
+
+logger = logging.getLogger(__name__)
 
 
 class PathNotAllowedError(Exception):
@@ -301,6 +305,251 @@ def load(*, inputs: dict[str, Any], params: dict[str, Any], work_dir: Path) -> d
     }
 
     return {"outputs": {"image": ref}}
+
+
+def table_load(*, inputs: dict[str, Any], params: dict[str, Any], work_dir: Path) -> dict[str, Any]:
+    """Load a tabular file (CSV/TSV) into a TableRef artifact.
+
+    Args:
+        inputs: Empty dict
+        params: {
+            "path": str,
+            "delimiter": str | None,
+            "encoding": str = "utf-8",
+            "na_values": list[str] | None
+        }
+        work_dir: Working directory
+
+    Returns:
+        {"outputs": {"table": TableRef}}
+
+    Raises:
+        PathNotAllowedError: If path outside allowed_read
+        FileNotFoundIOError: If file doesn't exist
+        ValidationFailedError: If pandas fails to load the file
+    """
+    path = params.get("path")
+    if not path:
+        raise ValueError("Missing required parameter: path")
+
+    if not isinstance(path, str):
+        raise ValueError(f"Parameter 'path' must be a string, got {type(path).__name__}")
+
+    # T016: Validate path and log permission decision
+    try:
+        resolved_path = validate_read_path(path)
+        logger.info(f"Permission ALLOWED for READ: {path}")
+    except PathNotAllowedError:
+        logger.info(f"Permission DENIED for READ: {path} (Reason: Path not in allowed_read list)")
+        raise
+
+    # Check file exists
+    if not resolved_path.exists():
+        raise FileNotFoundIOError(str(resolved_path))
+
+    # T056: Add large file warning (>100MB)
+    file_size = resolved_path.stat().st_size
+    if file_size > 100 * 1024 * 1024:
+        logger.warning(f"Loading large file ({file_size / 1024 / 1024:.1f}MB) - this may take time")
+
+    # T057: Add empty file handling (0-byte files)
+    if file_size == 0:
+        logger.warning(f"File {resolved_path} is empty (0 bytes)")
+        ref_id = uuid.uuid4().hex
+        return {
+            "outputs": {
+                "table": {
+                    "ref_id": ref_id,
+                    "type": "TableRef",
+                    "uri": f"file://{resolved_path}",
+                    "path": str(resolved_path),
+                    "format": "csv",
+                    "columns": [],
+                    "row_count": 0,
+                    "size_bytes": 0,
+                    "created_at": datetime.now(UTC).isoformat(),
+                }
+            }
+        }
+
+    delimiter = params.get("delimiter")
+
+    format_hint = params.get("format")
+    encoding = params.get("encoding", "utf-8")
+    na_values = params.get("na_values")
+
+    # T014: Auto-detect delimiter if not provided
+    if delimiter is None:
+        if format_hint and format_hint.upper() == "TSV":
+            delimiter = "\t"
+        elif format_hint and format_hint.upper() == "CSV":
+            delimiter = ","
+        else:
+            suffix = resolved_path.suffix.lower()
+            if suffix == ".csv":
+                delimiter = ","
+            elif suffix == ".tsv":
+                delimiter = "\t"
+            else:
+                # try comma, tab, semicolon as per T014
+                try:
+                    with resolved_path.open("r", encoding=encoding) as f:
+                        first_line = f.readline()
+                        if "\t" in first_line:
+                            delimiter = "\t"
+                        elif ";" in first_line:
+                            delimiter = ";"
+                        else:
+                            delimiter = ","
+                except Exception:
+                    delimiter = ","
+
+    # T014/T017/T018: Load with pandas
+    try:
+        df = pd.read_csv(resolved_path, sep=delimiter, encoding=encoding, na_values=na_values)
+    except Exception as e:
+        raise ValidationFailedError(str(resolved_path), [f"Failed to load table: {e}"]) from e
+
+    # Create TableRef
+    ref_id = uuid.uuid4().hex
+    table_format = format_hint.lower() if format_hint else ("tsv" if delimiter == "\t" else "csv")
+    table_ref = {
+        "ref_id": ref_id,
+        "type": "TableRef",
+        "uri": f"file://{resolved_path}",
+        "path": str(resolved_path),
+        "format": table_format,
+        "columns": list(df.columns),
+        "row_count": len(df),
+        "delimiter": delimiter,
+        "size_bytes": resolved_path.stat().st_size,
+        "created_at": datetime.now(UTC).isoformat(),
+    }
+
+    return {"outputs": {"table": table_ref}}
+
+
+def table_export(
+    *, inputs: dict[str, Any], params: dict[str, Any], work_dir: Path
+) -> dict[str, Any]:
+    """Export a TableRef or ObjectRef to a delimited file (CSV/TSV).
+
+    Args:
+        inputs: {"data": TableRef | ObjectRef}
+        params: {
+            "dest_path": str,
+            "sep": str = ","
+        }
+        work_dir: Working directory
+
+    Returns:
+        {"outputs": {"table": TableRef}}
+    """
+    data_ref = inputs.get("data")
+    if not data_ref:
+        raise ValueError("Missing input 'data'")
+
+    dest_path_str = params.get("dest_path")
+    if not dest_path_str:
+        raise ValueError("Missing required parameter: dest_path")
+
+    sep = params.get("sep", ",")
+
+    # T037: Validate path and log permission decision
+    try:
+        dest_path = validate_write_path(dest_path_str)
+        logger.info(f"Permission ALLOWED for WRITE: {dest_path_str}")
+    except PathNotAllowedError:
+        logger.info(
+            f"Permission DENIED for WRITE: {dest_path_str} (Reason: Path not in allowed_write list)"
+        )
+        raise
+
+    # Load data from TableRef or ObjectRef
+    if isinstance(data_ref, str):
+        # Handle simple URI string if provided
+        uri = data_ref
+        artifact_type = "TableRef"  # Assume TableRef if just a string
+        delimiter = ","
+    else:
+        uri = data_ref.get("uri", "")
+        artifact_type = data_ref.get("type", "TableRef")
+        delimiter = data_ref.get("delimiter", ",")
+
+    if artifact_type == "TableRef":
+        # Load from file
+        src_path = uri_to_path(uri)
+        if not src_path.exists():
+            raise FileNotFoundIOError(str(src_path))
+
+        # Load with pandas to preserve precision
+        df = pd.read_csv(src_path, sep=delimiter)
+    elif artifact_type == "ObjectRef":
+        # Load from memory
+        if not uri.startswith("obj://"):
+            raise ValueError(f"ObjectRef must have obj:// URI, got {uri}")
+
+        parts = uri[6:].split("/")
+        artifact_id = parts[-1]
+
+        from bioimage_mcp_base.entrypoint import _MEMORY_ARTIFACTS, _OBJECT_CACHE
+
+        try:
+            from bioimage_mcp.registry.dynamic.adapters.xarray import (
+                OBJECT_CACHE as XARRAY_CACHE,
+            )
+        except ImportError:
+            XARRAY_CACHE = {}
+
+        obj = _OBJECT_CACHE.get(artifact_id)
+        if obj is None:
+            obj = _MEMORY_ARTIFACTS.get(artifact_id)
+        if obj is None:
+            obj = XARRAY_CACHE.get(artifact_id)
+        if obj is None:
+            obj = _OBJECT_CACHE.get(uri)
+        if obj is None:
+            obj = _MEMORY_ARTIFACTS.get(uri)
+        if obj is None:
+            obj = XARRAY_CACHE.get(uri)
+
+        if obj is None:
+            raise ValueError(f"ObjectRef not found in memory: {uri}")
+
+        if not isinstance(obj, pd.DataFrame):
+            # Try to convert to DataFrame if it's a list of dicts or something
+            try:
+                df = pd.DataFrame(obj)
+            except Exception as e:
+                raise ValueError(
+                    f"Cannot convert object of type {type(obj).__name__} to DataFrame: {e}"
+                )
+        else:
+            df = obj
+    else:
+        raise ValueError(f"Unsupported artifact type for table export: {artifact_type}")
+
+    # T039: Preserve float precision (15 significant digits)
+    df.to_csv(dest_path, sep=sep, index=False, float_format="%.15g")
+
+    # Create TableRef output
+    ref_id = uuid.uuid4().hex
+    table_format = "tsv" if sep == "\t" else "csv"
+
+    table_ref = {
+        "ref_id": ref_id,
+        "type": "TableRef",
+        "uri": f"file://{dest_path}",
+        "path": str(dest_path),
+        "format": table_format,
+        "columns": list(df.columns),
+        "row_count": len(df),
+        "delimiter": sep,
+        "size_bytes": dest_path.stat().st_size,
+        "created_at": datetime.now(UTC).isoformat(),
+    }
+
+    return {"outputs": {"table": table_ref}}
 
 
 def inspect(*, inputs: dict[str, Any], params: dict[str, Any], work_dir: Path) -> dict[str, Any]:

@@ -18,6 +18,8 @@ def test_table_ref_creation() -> None:
         type="TableRef",
         uri="file:///tmp/table.parquet",
         format="parquet",
+        columns=["area", "label"],
+        row_count=100,
         mime_type="application/x-parquet",
         size_bytes=1024,
         created_at="2025-01-01T00:00:00Z",

@@ -5,7 +5,6 @@ import pytest
 
 from bioimage_mcp.api.discovery import DiscoveryService
 from bioimage_mcp.api.execution import ExecutionService
-from bioimage_mcp.artifacts.store import ArtifactStore
 from bioimage_mcp.config.schema import Config
 from tests.integration.mcp_test_client import MCPTestClient
 
