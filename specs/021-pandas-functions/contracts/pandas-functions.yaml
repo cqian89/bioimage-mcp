@@ -1,0 +1,76 @@
+# Pandas Function Contracts (Spec 021)
+
+functions:
+  - id: base.io.table.load
+    summary: Load a tabular file into a TableRef
+    inputs:
+      path: string (Absolute path to CSV/TSV (delimited) file)
+    params:
+      delimiter: string (optional, default=",")
+      format: string (optional, auto-detect if null)
+    outputs:
+      table: TableRef
+
+  - id: base.io.table.export
+    summary: Export a TableRef or ObjectRef to a delimited file (CSV/TSV)
+    inputs:
+      data: [TableRef, ObjectRef]
+    params:
+      dest_path: string
+      sep: string (optional, default=",")
+    outputs:
+      table: TableRef
+
+  - id: base.pandas.DataFrame
+    summary: Convert a TableRef to an in-memory DataFrame
+    inputs:
+      table: TableRef
+    outputs:
+      df: ObjectRef
+
+  - id: base.pandas.DataFrame.query
+    summary: Filter a DataFrame using a query string
+    inputs:
+      df: [TableRef, ObjectRef]
+    params:
+      expr: string (e.g., "area > 100 and label != 'noise'")
+    outputs:
+      result: ObjectRef
+
+  - id: base.pandas.DataFrame.groupby
+    summary: Group DataFrame by one or more columns
+    inputs:
+      df: ObjectRef
+    params:
+      by: [string, list[string]]
+    outputs:
+      grouped: GroupByRef
+
+  - id: base.pandas.GroupBy.mean
+    summary: Compute mean of groups
+    inputs:
+      grouped: GroupByRef
+    params:
+      numeric_only: boolean (default=true)
+    outputs:
+      result: ObjectRef
+
+  - id: base.pandas.merge
+    summary: Merge two DataFrames
+    inputs:
+      left: ObjectRef
+      right: ObjectRef
+    params:
+      on: [string, list[string]]
+      how: string (inner, left, right, outer)
+    outputs:
+      merged: ObjectRef
+
+  - id: base.pandas.concat
+    summary: Concatenate multiple DataFrames
+    inputs:
+      objs: list[ObjectRef]
+    params:
+      axis: integer (default=0)
+    outputs:
+      result: ObjectRef

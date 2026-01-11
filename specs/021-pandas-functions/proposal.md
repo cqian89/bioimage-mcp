@@ -412,7 +412,7 @@ PANDAS_SPECIAL_METHODS: dict[str, dict[str, Any]] = {
         "returns": "TableRef",
         "summary": "Convert in-memory DataFrame/ObjectRef to file-backed TableRef",
         "params": {
-            "format": {"type": "string", "enum": ["csv", "tsv", "parquet"], "default": "csv"},
+            "format": {"type": "string", "enum": ["csv", "tsv"], "default": "csv"},
         },
         "bioimage_use": "Materialize results for downstream tools or export",
     },
@@ -1013,8 +1013,7 @@ The following design questions have been resolved:
 
 1. **Excel support (`.xlsx`)**: Defer to separate proposal (requires `openpyxl` dependency)
 
-2. **Parquet support**: Include as optional export format in `base.io.table.export`?
-   - **Recommendation**: Yes, add `format: "parquet"` option
+2. **Parquet support**: Out of scope for this spec (TableRef remains CSV/TSV delimited only).
 
 3. **Multi-index handling**: Expose MultiIndex operations?
    - **Recommendation**: No for v1, keep API simple with single-level indices
