@@ -14,9 +14,9 @@ if TYPE_CHECKING:
 from bioimage_mcp.artifacts.base import Artifact
 from bioimage_mcp.registry.dynamic.adapters import BaseAdapter
 from bioimage_mcp.registry.dynamic.models import FunctionMetadata, IOPattern
+from bioimage_mcp.registry.dynamic.object_cache import OBJECT_CACHE
 
-# In-memory object cache for xarray DataArrays
-OBJECT_CACHE: dict[str, Any] = {}
+# Unified object cache is imported from object_cache module
 
 
 def should_expand_to_5d(output_format: str, output_hints: DimensionRequirement | None) -> bool:
