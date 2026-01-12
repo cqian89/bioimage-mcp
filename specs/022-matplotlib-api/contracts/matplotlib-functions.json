@@ -1,0 +1,380 @@
+[
+  {
+    "fn_id": "base.matplotlib.pyplot.figure",
+    "name": "figure",
+    "description": "Create a new figure, or activate an existing figure.",
+    "inputs": [],
+    "outputs": ["FigureRef"],
+    "params_schema": {
+      "type": "object",
+      "properties": {
+        "num": { "type": ["integer", "string"], "description": "Unique identifier for the figure" },
+        "figsize": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2, "description": "Width, height in inches" },
+        "dpi": { "type": "number", "description": "Resolution in dots per inch" },
+        "facecolor": { "type": "string" },
+        "edgecolor": { "type": "string" },
+        "frameon": { "type": "boolean", "default": true },
+        "clear": { "type": "boolean", "default": false }
+      }
+    }
+  },
+  {
+    "fn_id": "base.matplotlib.pyplot.subplots",
+    "name": "subplots",
+    "description": "Create a figure and a set of subplots.",
+    "inputs": [],
+    "outputs": ["FigureRef", "AxesRef"],
+    "params_schema": {
+      "type": "object",
+      "properties": {
+        "nrows": { "type": "integer", "default": 1 },
+        "ncols": { "type": "integer", "default": 1 },
+        "sharex": { "type": ["boolean", "string"], "enum": [true, false, "none", "all", "row", "col"], "default": false },
+        "sharey": { "type": ["boolean", "string"], "enum": [true, false, "none", "all", "row", "col"], "default": false },
+        "squeeze": { "type": "boolean", "default": true },
+        "subplot_kw": { "type": "object" },
+        "gridspec_kw": { "type": "object" },
+        "figsize": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 }
+      }
+    }
+  },
+  {
+    "fn_id": "base.matplotlib.pyplot.close",
+    "name": "close",
+    "description": "Close a figure window.",
+    "inputs": ["FigureRef"],
+    "outputs": [],
+    "params_schema": {
+      "type": "object",
+      "properties": {}
+    }
+  },
+  {
+    "fn_id": "base.matplotlib.Figure.savefig",
+    "name": "savefig",
+    "description": "Save the current figure as an image artifact.",
+    "inputs": ["FigureRef"],
+    "outputs": ["PlotRef"],
+    "params_schema": {
+      "type": "object",
+      "properties": {
+        "format": { "type": "string", "enum": ["png", "pdf", "svg", "jpg", "tif"], "default": "png" },
+        "dpi": { "type": ["number", "string"], "default": "figure" },
+        "bbox_inches": { "type": ["string", "null"], "enum": ["tight", null], "default": null },
+        "pad_inches": { "type": "number", "default": 0.1 },
+        "facecolor": { "type": ["string", "null"], "default": "auto" },
+        "transparent": { "type": "boolean", "default": false }
+      }
+    }
+  },
+  {
+    "fn_id": "base.matplotlib.Figure.add_subplot",
+    "name": "add_subplot",
+    "description": "Add an Axes to the figure as part of a subplot arrangement.",
+    "inputs": ["FigureRef"],
+    "outputs": ["AxesRef"],
+    "params_schema": {
+      "type": "object",
+      "properties": {
+        "nrows": { "type": "integer", "default": 1 },
+        "ncols": { "type": "integer", "default": 1 },
+        "index": { "type": "integer", "default": 1 },
+        "projection": { "type": ["string", "null"], "default": null },
+        "sharex": { "type": ["string", "null"], "default": null },
+        "sharey": { "type": ["string", "null"], "default": null },
+        "label": { "type": "string" }
+      }
+    }
+  },
+  {
+    "fn_id": "base.matplotlib.Figure.tight_layout",
+    "name": "tight_layout",
+    "description": "Adjust the padding between and around subplots.",
+    "inputs": ["FigureRef"],
+    "outputs": [],
+    "params_schema": {
+      "type": "object",
+      "properties": {
+        "pad": { "type": "number", "default": 1.08 },
+        "h_pad": { "type": ["number", "null"], "default": null },
+        "w_pad": { "type": ["number", "null"], "default": null },
+        "rect": { "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4 }
+      }
+    }
+  },
+  {
+    "fn_id": "base.matplotlib.Figure.suptitle",
+    "name": "suptitle",
+    "description": "Add a centered title to the figure.",
+    "inputs": ["FigureRef"],
+    "outputs": [],
+    "params_schema": {
+      "type": "object",
+      "required": ["t"],
+      "properties": {
+        "t": { "type": "string", "description": "The title text" },
+        "x": { "type": "number", "default": 0.5 },
+        "y": { "type": "number", "default": 0.98 },
+        "ha": { "type": "string", "enum": ["center", "left", "right"], "default": "center" },
+        "va": { "type": "string", "enum": ["top", "center", "bottom", "baseline"], "default": "top" },
+        "fontsize": { "type": ["number", "string"] },
+        "fontweight": { "type": ["number", "string"] }
+      }
+    }
+  },
+  {
+    "fn_id": "base.matplotlib.Axes.imshow",
+    "name": "imshow",
+    "description": "Display data as an image, i.e., on a 2D regular raster.",
+    "inputs": ["AxesRef", "BioImageRef"],
+    "outputs": ["AxesImageRef"],
+    "params_schema": {
+      "type": "object",
+      "properties": {
+        "cmap": { "type": ["string", "null"], "default": null },
+        "aspect": { "type": ["string", "number", "null"], "default": null },
+        "interpolation": { "type": ["string", "null"], "default": null },
+        "alpha": { "type": ["number", "null"], "default": null },
+        "vmin": { "type": ["number", "null"], "default": null },
+        "vmax": { "type": ["number", "null"], "default": null },
+        "origin": { "type": ["string", "null"], "enum": ["upper", "lower", null], "default": null },
+        "extent": { "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4 }
+      }
+    }
+  },
+  {
+    "fn_id": "base.matplotlib.Axes.plot",
+    "name": "plot",
+    "description": "Plot y versus x as lines and/or markers.",
+    "inputs": ["AxesRef", "TableRef"],
+    "outputs": [],
+    "params_schema": {
+      "type": "object",
+      "required": ["y"],
+      "properties": {
+        "x": { "type": "string", "description": "Column name for x-axis" },
+        "y": { "type": "string", "description": "Column name for y-axis" },
+        "fmt": { "type": "string", "description": "Format string (e.g., 'ro-')" },
+        "label": { "type": "string" },
+        "linewidth": { "type": "number" },
+        "markersize": { "type": "number" },
+        "color": { "type": "string" }
+      }
+    }
+  },
+  {
+    "fn_id": "base.matplotlib.Axes.scatter",
+    "name": "scatter",
+    "description": "A scatter plot of y vs. x with varying marker size and/or color.",
+    "inputs": ["AxesRef", "TableRef"],
+    "outputs": [],
+    "params_schema": {
+      "type": "object",
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "string", "description": "Column name for x-axis" },
+        "y": { "type": "string", "description": "Column name for y-axis" },
+        "s": { "type": ["number", "string"], "description": "Marker size or column name" },
+        "c": { "type": ["string", "array"], "description": "Marker color or column name" },
+        "marker": { "type": "string" },
+        "cmap": { "type": "string" },
+        "alpha": { "type": "number" },
+        "label": { "type": "string" }
+      }
+    }
+  },
+  {
+    "fn_id": "base.matplotlib.Axes.hist",
+    "name": "hist",
+    "description": "Compute and plot a histogram.",
+    "inputs": ["AxesRef", "TableRef"],
+    "outputs": [],
+    "params_schema": {
+      "type": "object",
+      "required": ["x"],
+      "properties": {
+        "x": { "type": "string", "description": "Column name for histogram data" },
+        "bins": { "type": ["integer", "array", "string"], "default": 10 },
+        "range": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
+        "density": { "type": "boolean", "default": false },
+        "cumulative": { "type": "boolean", "default": false },
+        "histtype": { "type": "string", "enum": ["bar", "barstacked", "step", "stepfilled"], "default": "bar" },
+        "color": { "type": "string" },
+        "label": { "type": "string" },
+        "alpha": { "type": "number" }
+      }
+    }
+  },
+  {
+    "fn_id": "base.matplotlib.Axes.set_title",
+    "name": "set_title",
+    "description": "Set a title for the Axes.",
+    "inputs": ["AxesRef"],
+    "outputs": [],
+    "params_schema": {
+      "type": "object",
+      "required": ["label"],
+      "properties": {
+        "label": { "type": "string" },
+        "fontdict": { "type": "object" },
+        "loc": { "type": "string", "enum": ["center", "left", "right"], "default": "center" },
+        "pad": { "type": "number", "default": 6.0 },
+        "y": { "type": "number" }
+      }
+    }
+  },
+  {
+    "fn_id": "base.matplotlib.Axes.set_xlabel",
+    "name": "set_xlabel",
+    "description": "Set the label for the x-axis.",
+    "inputs": ["AxesRef"],
+    "outputs": [],
+    "params_schema": {
+      "type": "object",
+      "required": ["xlabel"],
+      "properties": {
+        "xlabel": { "type": "string" },
+        "labelpad": { "type": "number" },
+        "loc": { "type": "string", "enum": ["left", "center", "right"] },
+        "fontsize": { "type": ["number", "string"] }
+      }
+    }
+  },
+  {
+    "fn_id": "base.matplotlib.Axes.set_ylabel",
+    "name": "set_ylabel",
+    "description": "Set the label for the y-axis.",
+    "inputs": ["AxesRef"],
+    "outputs": [],
+    "params_schema": {
+      "type": "object",
+      "required": ["ylabel"],
+      "properties": {
+        "ylabel": { "type": "string" },
+        "labelpad": { "type": "number" },
+        "loc": { "type": "string", "enum": ["bottom", "center", "top"] },
+        "fontsize": { "type": ["number", "string"] }
+      }
+    }
+  },
+  {
+    "fn_id": "base.matplotlib.Axes.set_xlim",
+    "name": "set_xlim",
+    "description": "Set the x-axis view limits.",
+    "inputs": ["AxesRef"],
+    "outputs": [],
+    "params_schema": {
+      "type": "object",
+      "properties": {
+        "left": { "type": "number" },
+        "right": { "type": "number" },
+        "emit": { "type": "boolean", "default": true },
+        "auto": { "type": "boolean", "default": false }
+      }
+    }
+  },
+  {
+    "fn_id": "base.matplotlib.Axes.set_ylim",
+    "name": "set_ylim",
+    "description": "Set the y-axis view limits.",
+    "inputs": ["AxesRef"],
+    "outputs": [],
+    "params_schema": {
+      "type": "object",
+      "properties": {
+        "bottom": { "type": "number" },
+        "top": { "type": "number" },
+        "emit": { "type": "boolean", "default": true },
+        "auto": { "type": "boolean", "default": false }
+      }
+    }
+  },
+  {
+    "fn_id": "base.matplotlib.Axes.grid",
+    "name": "grid",
+    "description": "Configure the grid lines.",
+    "inputs": ["AxesRef"],
+    "outputs": [],
+    "params_schema": {
+      "type": "object",
+      "properties": {
+        "visible": { "type": "boolean" },
+        "which": { "type": "string", "enum": ["major", "minor", "both"], "default": "major" },
+        "axis": { "type": "string", "enum": ["both", "x", "y"], "default": "both" },
+        "color": { "type": "string" },
+        "linestyle": { "type": "string" },
+        "linewidth": { "type": "number" }
+      }
+    }
+  },
+  {
+    "fn_id": "base.matplotlib.Axes.add_patch",
+    "name": "add_patch",
+    "description": "Add a Patch to the Axes.",
+    "inputs": ["AxesRef", "PatchRef"],
+    "outputs": [],
+    "params_schema": {
+      "type": "object",
+      "properties": {}
+    }
+  },
+  {
+    "fn_id": "base.matplotlib.Axes.colorbar",
+    "name": "colorbar",
+    "description": "Add a colorbar to a plot.",
+    "inputs": ["AxesRef", "AxesImageRef"],
+    "outputs": [],
+    "params_schema": {
+      "type": "object",
+      "properties": {
+        "label": { "type": "string" },
+        "orientation": { "type": "string", "enum": ["vertical", "horizontal"], "default": "vertical" },
+        "fraction": { "type": "number", "default": 0.15 },
+        "pad": { "type": "number", "default": 0.05 },
+        "shrink": { "type": "number", "default": 1.0 }
+      }
+    }
+  },
+  {
+    "fn_id": "base.matplotlib.patches.Circle",
+    "name": "Circle",
+    "description": "A circle patch.",
+    "inputs": [],
+    "outputs": ["PatchRef"],
+    "params_schema": {
+      "type": "object",
+      "required": ["xy", "radius"],
+      "properties": {
+        "xy": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2, "description": "Center (x, y)" },
+        "radius": { "type": "number" },
+        "color": { "type": "string" },
+        "fill": { "type": "boolean", "default": true },
+        "alpha": { "type": "number" },
+        "linewidth": { "type": "number" },
+        "linestyle": { "type": "string" }
+      }
+    }
+  },
+  {
+    "fn_id": "base.matplotlib.patches.Rectangle",
+    "name": "Rectangle",
+    "description": "A rectangle patch.",
+    "inputs": [],
+    "outputs": ["PatchRef"],
+    "params_schema": {
+      "type": "object",
+      "required": ["xy", "width", "height"],
+      "properties": {
+        "xy": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2, "description": "Bottom-left corner (x, y)" },
+        "width": { "type": "number" },
+        "height": { "type": "number" },
+        "angle": { "type": "number", "default": 0.0 },
+        "color": { "type": "string" },
+        "fill": { "type": "boolean", "default": true },
+        "alpha": { "type": "number" },
+        "linewidth": { "type": "number" },
+        "linestyle": { "type": "string" }
+      }
+    }
+  }
+]

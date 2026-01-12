@@ -1,0 +1,113 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "bioimage-mcp/specs/022-matplotlib-api/contracts/artifact-refs.json",
+  "title": "Matplotlib Artifact References",
+  "description": "Schema for Matplotlib-specific artifact types: FigureRef, AxesRef, AxesImageRef, and extended PlotRef.",
+  "version": "0.1.0",
+  "definitions": {
+    "FigureMetadata": {
+      "type": "object",
+      "properties": {
+        "num": { "type": "integer", "description": "Figure number" },
+        "figsize": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2, "description": "Width, height in inches" },
+        "dpi": { "type": "number" },
+        "facecolor": { "type": "string" },
+        "edgecolor": { "type": "string" },
+        "frameon": { "type": "boolean" },
+        "tight_layout": { "type": "boolean" },
+        "constrained_layout": { "type": "boolean" }
+      }
+    },
+    "AxesMetadata": {
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "xlabel": { "type": "string" },
+        "ylabel": { "type": "string" },
+        "xlim": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
+        "ylim": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
+        "grid": { "type": "boolean" },
+        "aspect": { "type": "string", "enum": ["auto", "equal"] }
+      }
+    },
+    "AxesImageMetadata": {
+      "type": "object",
+      "properties": {
+        "cmap": { "type": "string" },
+        "interpolation": { "type": "string" },
+        "alpha": { "type": "number", "minimum": 0, "maximum": 1 },
+        "extent": { "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4 }
+      }
+    },
+    "PlotMetadata": {
+      "type": "object",
+      "required": ["width_px", "height_px"],
+      "properties": {
+        "width_px": { "type": "integer" },
+        "height_px": { "type": "integer" },
+        "dpi": { "type": "integer", "default": 100 },
+        "plot_type": { "type": "string" },
+        "title": { "type": "string" },
+        "format": { "type": "string", "enum": ["png", "pdf", "svg", "eps", "jpg", "tif"] }
+      }
+    },
+    "FigureRef": {
+      "type": "object",
+      "required": ["ref_id", "type", "uri", "python_class", "storage_type"],
+      "properties": {
+        "ref_id": { "type": "string" },
+        "type": { "const": "ObjectRef" },
+        "uri": { "type": "string", "pattern": "^obj://" },
+        "python_class": { "const": "matplotlib.figure.Figure" },
+        "storage_type": { "const": "memory" },
+        "metadata": { "$ref": "#/definitions/FigureMetadata" }
+      }
+    },
+    "AxesRef": {
+      "type": "object",
+      "required": ["ref_id", "type", "uri", "python_class", "storage_type"],
+      "properties": {
+        "ref_id": { "type": "string" },
+        "type": { "const": "ObjectRef" },
+        "uri": { "type": "string", "pattern": "^obj://" },
+        "python_class": { "const": "matplotlib.axes.Axes" },
+        "storage_type": { "const": "memory" },
+        "metadata": { "$ref": "#/definitions/AxesMetadata" }
+      }
+    },
+    "AxesImageRef": {
+      "type": "object",
+      "required": ["ref_id", "type", "uri", "python_class", "storage_type"],
+      "properties": {
+        "ref_id": { "type": "string" },
+        "type": { "const": "ObjectRef" },
+        "uri": { "type": "string", "pattern": "^obj://" },
+        "python_class": { "const": "matplotlib.image.AxesImage" },
+        "storage_type": { "const": "memory" },
+        "metadata": { "$ref": "#/definitions/AxesImageMetadata" }
+      }
+    },
+    "PlotRef": {
+      "type": "object",
+      "required": ["ref_id", "type", "uri", "format", "metadata"],
+      "properties": {
+        "ref_id": { "type": "string" },
+        "type": { "const": "PlotRef" },
+        "uri": { "type": "string", "pattern": "^file://" },
+        "format": { "type": "string", "enum": ["PNG", "SVG", "PDF"] },
+        "metadata": { "$ref": "#/definitions/PlotMetadata" }
+      }
+    },
+    "PatchRef": {
+      "type": "object",
+      "required": ["ref_id", "type", "uri", "python_class", "storage_type"],
+      "properties": {
+        "ref_id": { "type": "string" },
+        "type": { "const": "ObjectRef" },
+        "uri": { "type": "string", "pattern": "^obj://" },
+        "python_class": { "type": "string", "pattern": "^matplotlib\\.patches\\." },
+        "storage_type": { "const": "memory" }
+      }
+    }
+  }
+}
