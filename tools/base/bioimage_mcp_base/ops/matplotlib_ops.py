@@ -1,0 +1,339 @@
+from __future__ import annotations
+
+import tempfile
+import uuid
+from pathlib import Path
+from typing import Any
+from urllib.parse import unquote, urlparse
+
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+import pandas as pd
+import numpy as np
+from bioio import BioImage
+from bioimage_mcp.registry.dynamic.object_cache import OBJECT_CACHE
+
+
+def subplots(**params) -> list[dict]:
+    """Create subplots and store in cache."""
+    fig, ax = plt.subplots(**params)
+
+    fig_id = str(uuid.uuid4())
+    fig_uri = f"obj://default/matplotlib/{fig_id}"
+    OBJECT_CACHE[fig_uri] = fig
+
+    ax_id = str(uuid.uuid4())
+    ax_uri = f"obj://default/matplotlib/{ax_id}"
+    OBJECT_CACHE[ax_uri] = ax
+
+    return [
+        {
+            "ref_id": fig_id,
+            "type": "ObjectRef",
+            "python_class": "matplotlib.figure.Figure",
+            "uri": fig_uri,
+            "storage_type": "memory",
+            "metadata": {"output_name": "figure"},
+        },
+        {
+            "ref_id": ax_id,
+            "type": "ObjectRef",
+            "python_class": "matplotlib.axes.Axes",
+            "uri": ax_uri,
+            "storage_type": "memory",
+            "metadata": {"output_name": "axes"},
+        },
+    ]
+
+
+def figure(**params) -> list[dict]:
+    """Create figure and store in cache."""
+    fig = plt.figure(**params)
+    fig_id = str(uuid.uuid4())
+    fig_uri = f"obj://default/matplotlib/{fig_id}"
+    OBJECT_CACHE[fig_uri] = fig
+
+    return [
+        {
+            "ref_id": fig_id,
+            "type": "ObjectRef",
+            "python_class": "matplotlib.figure.Figure",
+            "uri": fig_uri,
+            "storage_type": "memory",
+            "metadata": {"output_name": "figure"},
+        }
+    ]
+
+
+def imshow(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
+    """Display image on axes."""
+    ax = None
+    x_val = None
+
+    for name, value in inputs:
+        if name == "axes":
+            ax = _load_object(value)
+        elif name == "X":
+            x_val = value
+
+    if not ax and inputs:
+        ax = _load_object(inputs[0][1])
+
+    if not ax:
+        raise ValueError("Missing 'axes' input for imshow")
+
+    if x_val is None:
+        x_val = params.get("X")
+
+    if x_val is None:
+        # Check if any other input is a BioImageRef
+        for name, value in inputs:
+            if isinstance(value, dict) and value.get("type") == "BioImageRef":
+                x_val = value
+                break
+
+    if x_val is None:
+        raise ValueError("Missing 'X' (image data) for imshow")
+
+    # Load image data
+    if isinstance(x_val, dict) and x_val.get("type") == "BioImageRef":
+        img = BioImage(x_val.get("path"))
+        # Get 2D slice (first channel, first Z, first T)
+        # bioio.BioImage.data is (T, C, Z, Y, X)
+        data = img.data[0, 0, 0, :, :]
+    else:
+        data = x_val
+
+    # Handle downsampling
+    max_display_size = params.get("max_display_size")
+    if max_display_size and isinstance(data, np.ndarray):
+        h, w = data.shape[:2]
+        if max(h, w) > max_display_size:
+            scale = max_display_size / max(h, w)
+            from scipy.ndimage import zoom
+
+            data = zoom(data, scale, order=1)
+
+    # Filter params
+    imshow_params = {k: v for k, v in params.items() if k not in ["X", "max_display_size"]}
+    if "origin" not in imshow_params:
+        imshow_params["origin"] = "upper"
+
+    ax.imshow(data, **imshow_params)
+    return []
+
+
+def add_patch(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
+    """Add patch to axes."""
+    ax = None
+    patch = None
+
+    for name, value in inputs:
+        if name == "axes":
+            ax = _load_object(value)
+        elif name in ["p", "patch"]:
+            patch = _load_object(value)
+
+    if not ax and inputs:
+        ax = _load_object(inputs[0][1])
+
+    if not ax:
+        raise ValueError("Missing 'axes' input for add_patch")
+
+    if not patch:
+        patch = _load_object(params.get("p") or params.get("patch"))
+
+    if not patch:
+        # Look for ObjectRef with matplotlib.patches.Patch
+        for name, value in inputs:
+            obj = _load_object(value)
+            if isinstance(obj, patches.Patch):
+                patch = obj
+                break
+
+    if not patch:
+        raise ValueError("Missing 'patch' input for add_patch")
+
+    ax.add_patch(patch)
+    return []
+
+
+def create_circle(params: dict[str, Any]) -> list[dict]:
+    """Create a Circle patch and store in cache."""
+    circle = patches.Circle(**params)
+
+    patch_id = str(uuid.uuid4())
+    patch_uri = f"obj://default/matplotlib/{patch_id}"
+    OBJECT_CACHE[patch_uri] = circle
+
+    return [
+        {
+            "ref_id": patch_id,
+            "type": "ObjectRef",
+            "python_class": "matplotlib.patches.Circle",
+            "uri": patch_uri,
+            "storage_type": "memory",
+            "metadata": {"output_name": "output"},
+        }
+    ]
+
+
+def create_rectangle(params: dict[str, Any]) -> list[dict]:
+    """Create a Rectangle patch and store in cache."""
+    rect = patches.Rectangle(**params)
+
+    patch_id = str(uuid.uuid4())
+    patch_uri = f"obj://default/matplotlib/{patch_id}"
+    OBJECT_CACHE[patch_uri] = rect
+
+    return [
+        {
+            "ref_id": patch_id,
+            "type": "ObjectRef",
+            "python_class": "matplotlib.patches.Rectangle",
+            "uri": patch_uri,
+            "storage_type": "memory",
+            "metadata": {"output_name": "output"},
+        }
+    ]
+
+
+def hist(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
+    """Plot histogram on axes."""
+    # Find axes and data 'x'
+    ax = None
+    x_val = None
+
+    # inputs is a list of (name, value) tuples from dynamic_dispatch
+    for name, value in inputs:
+        if name == "axes":
+            ax = _load_object(value)
+        elif name == "x":
+            x_val = value
+
+    if not ax and inputs:
+        # Fallback to first input if names don't match
+        ax = _load_object(inputs[0][1])
+
+    if not ax:
+        raise ValueError("Missing 'axes' input for hist")
+
+    if x_val is None:
+        x_val = params.get("x")
+
+    if x_val is None:
+        raise ValueError("Missing 'x' (data) for hist")
+
+    data = _resolve_data(x_val, inputs, params)
+
+    # Filter params
+    hist_params = {k: v for k, v in params.items() if k != "x"}
+    ax.hist(data, **hist_params)
+
+    return []
+
+
+def savefig(inputs: list[Any], params: dict[str, Any], work_dir: Path | None = None) -> list[dict]:
+    """Save figure to file."""
+    fig = None
+    for name, value in inputs:
+        if name == "figure":
+            fig = _load_object(value)
+            break
+    if not fig and inputs:
+        fig = _load_object(inputs[0][1])
+
+    if not fig:
+        raise ValueError("Missing 'figure' input for savefig")
+
+    if work_dir is None:
+        work_dir = Path(tempfile.gettempdir())
+    work_dir.mkdir(parents=True, exist_ok=True)
+
+    fmt = params.get("format", "png").lower()
+    out_path = work_dir / f"plot_{uuid.uuid4().hex}.{fmt}"
+
+    fig.savefig(str(out_path), **params)
+    plt.close(fig)
+
+    return [
+        {
+            "type": "PlotRef",
+            "format": fmt.upper(),
+            "uri": out_path.absolute().as_uri(),
+            "path": str(out_path.absolute()),
+            "metadata": {"output_name": "plot"},
+        }
+    ]
+
+
+def _load_object(artifact: Any) -> Any:
+    """Load object from cache."""
+    if isinstance(artifact, dict):
+        uri = artifact.get("uri")
+    else:
+        uri = getattr(artifact, "uri", None)
+
+    if uri and uri.startswith("obj://"):
+        if uri not in OBJECT_CACHE:
+            raise ValueError(f"Object with URI {uri} not found in memory cache")
+        return OBJECT_CACHE[uri]
+    return None
+
+
+def _load_table(artifact: Any) -> pd.DataFrame:
+    """Load DataFrame from artifact."""
+    if isinstance(artifact, dict):
+        uri = artifact.get("uri")
+        path = artifact.get("path")
+    else:
+        uri = getattr(artifact, "uri", None)
+        path = getattr(artifact, "path", None)
+
+    if uri and uri.startswith("obj://"):
+        if uri not in OBJECT_CACHE:
+            raise ValueError(f"ObjectRef with URI '{uri}' not found in cache")
+        obj = OBJECT_CACHE[uri]
+        if isinstance(obj, pd.DataFrame):
+            return obj
+        return pd.DataFrame(obj)
+
+    if not path and uri:
+        parsed = urlparse(str(uri))
+        path = unquote(parsed.path)
+        if path.startswith("/") and len(path) > 2 and path[2] == ":":
+            path = path[1:]
+
+    if not path:
+        raise ValueError(f"Artifact missing URI or path: {artifact}")
+
+    path_obj = Path(path)
+    if path_obj.suffix == ".parquet":
+        return pd.read_parquet(path)
+    return pd.read_csv(path)
+
+
+def _resolve_data(x_val: Any, inputs: list[tuple[str, Any]], params: dict[str, Any]) -> Any:
+    """Resolve data for plotting."""
+    # Case 1: x_val is a column name
+    if isinstance(x_val, str) and not x_val.startswith("obj://"):
+        for _name, art in inputs:
+            if isinstance(art, dict) and art.get("type") == "TableRef":
+                df = _load_table(art)
+                if x_val in df.columns:
+                    return df[x_val].values
+
+    # Case 2: x_val is an artifact reference
+    if isinstance(x_val, dict) and "type" in x_val:
+        if x_val["type"] == "TableRef":
+            df = _load_table(x_val)
+            return df.values
+        elif x_val["type"] == "ObjectRef":
+            return _load_object(x_val)
+        elif x_val["type"] == "BioImageRef":
+            from bioio import BioImage
+
+            img = BioImage(x_val.get("path"))
+            return img.data.flatten()
+
+    return x_val
