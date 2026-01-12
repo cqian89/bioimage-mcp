@@ -35,7 +35,7 @@ def cellpose_image():
 @pytest.mark.requires_env("bioimage-mcp-cellpose")
 @pytest.mark.anyio
 @pytest.mark.timeout(300)
-async def test_cellpose_pipeline(live_server, cellpose_image):
+async def test_cellpose_pipeline(live_server, cellpose_image, interaction_logger):
     """Test Cellpose segmentation pipeline.
 
     Tests:

@@ -495,24 +495,13 @@ def table_export(
         from bioimage_mcp_base.entrypoint import _MEMORY_ARTIFACTS
         from bioimage_mcp.registry.dynamic.object_cache import OBJECT_CACHE
 
-        try:
-            from bioimage_mcp.registry.dynamic.adapters.xarray import (
-                OBJECT_CACHE as XARRAY_CACHE,
-            )
-        except ImportError:
-            XARRAY_CACHE = {}
-
         obj = OBJECT_CACHE.get(artifact_id)
         if obj is None:
             obj = _MEMORY_ARTIFACTS.get(artifact_id)
         if obj is None:
-            obj = XARRAY_CACHE.get(artifact_id)
-        if obj is None:
             obj = OBJECT_CACHE.get(uri)
         if obj is None:
             obj = _MEMORY_ARTIFACTS.get(uri)
-        if obj is None:
-            obj = XARRAY_CACHE.get(uri)
 
         if obj is None:
             raise ValueError(f"ObjectRef not found in memory: {uri}")
@@ -1090,26 +1079,13 @@ def export(*, inputs: dict[str, Any], params: dict[str, Any], work_dir: Path) ->
             from bioimage_mcp_base.entrypoint import _MEMORY_ARTIFACTS
             from bioimage_mcp.registry.dynamic.object_cache import OBJECT_CACHE
 
-            # Also try the xarray adapter's cache
-            try:
-                from bioimage_mcp.registry.dynamic.adapters.xarray import (
-                    OBJECT_CACHE as XARRAY_CACHE,
-                )
-            except ImportError:
-                XARRAY_CACHE = {}
-
-            obj = (
-                OBJECT_CACHE.get(artifact_id)
-                or _MEMORY_ARTIFACTS.get(artifact_id)
-                or XARRAY_CACHE.get(artifact_id)
-            )
+            obj = OBJECT_CACHE.get(artifact_id)
             if obj is None:
-                # Also try full URI as key
-                obj = (
-                    OBJECT_CACHE.get(str(uri))
-                    or _MEMORY_ARTIFACTS.get(str(uri))
-                    or XARRAY_CACHE.get(str(uri))
-                )
+                obj = _MEMORY_ARTIFACTS.get(artifact_id)
+            if obj is None:
+                obj = OBJECT_CACHE.get(str(uri))
+            if obj is None:
+                obj = _MEMORY_ARTIFACTS.get(str(uri))
 
             if obj is None:
                 raise ValueError(f"ObjectRef not found in memory: {uri}")
