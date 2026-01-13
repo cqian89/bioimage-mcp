@@ -478,7 +478,9 @@ def boxplot(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
         if data_col:
             groups = df.groupby(group_col)[data_col].apply(list).to_dict()
             labels = labels_val or list(groups.keys())
-            data = [groups[l] for l in labels if l in groups]
+            # Filter labels to only those present in groups to keep alignment
+            labels = [l for l in labels if l in groups]
+            data = [groups[l] for l in labels]
 
             # Map labels to positions 1..N
             positions = list(range(1, len(data) + 1))
@@ -502,6 +504,7 @@ def violinplot(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
     ax = None
     dataset_val = None
     positions_val = params.get("positions")
+    labels_val = params.get("labels")
 
     for name, value in inputs:
         if name == "axes":
@@ -541,13 +544,16 @@ def violinplot(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
 
         if data_col:
             groups = df.groupby(group_col)[data_col].apply(list).to_dict()
-            labels = list(groups.keys())
+            labels = labels_val or list(groups.keys())
+            labels = [l for l in labels if l in groups]
             data = [groups[l] for l in labels]
 
             # Map labels to positions 1..N
-            positions = list(range(1, len(labels) + 1))
+            positions = list(range(1, len(data) + 1))
 
-            violin_params = {k: v for k, v in params.items() if k not in ["dataset", "positions"]}
+            violin_params = {
+                k: v for k, v in params.items() if k not in ["dataset", "positions", "labels"]
+            }
             ax.violinplot(data, positions=positions, **violin_params)
 
             # Set labels on x-axis if vertical

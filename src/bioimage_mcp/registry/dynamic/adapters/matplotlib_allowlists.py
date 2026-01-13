@@ -185,6 +185,10 @@ MATPLOTLIB_AXES_ALLOWLIST = {
                 "type": "object",
                 "description": "The positions of the violins (array or column name for grouping)",
             },
+            "labels": {
+                "type": "array",
+                "description": "Labels for each violin (used when grouping)",
+            },
             "vert": {
                 "type": "boolean",
                 "default": True,
