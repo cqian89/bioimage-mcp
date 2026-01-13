@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from bioimage_mcp.registry.dynamic.adapters import BaseAdapter
@@ -15,6 +16,98 @@ from bioimage_mcp.registry.dynamic.models import FunctionMetadata, IOPattern, Pa
 if TYPE_CHECKING:
     from bioimage_mcp.api.schemas import DimensionRequirement
     from bioimage_mcp.artifacts.base import Artifact
+
+
+PATH_PARAM_NAMES = {"fname", "filename", "path", "fpath", "savefig", "outputfile"}
+FILE_IO_FUNCTIONS = {"imread", "imsave", "savefig"}
+
+
+def _looks_like_path(val: Any) -> bool:
+    """Heuristically detect if a value looks like a filesystem path."""
+    if not isinstance(val, str):
+        return False
+
+    # Exclude URIs and URLs
+    if any(
+        val.startswith(scheme) for scheme in ("http://", "https://", "obj://", "mem://", "file://")
+    ):
+        return False
+
+    # Check for path anchors (absolute or relative path starts)
+    path_anchors = ("/", "\\", "./", ".\\", "../", "..\\", "~")
+    if any(val.startswith(anchor) for anchor in path_anchors):
+        return True
+
+    # Check Windows drive letters
+    if len(val) >= 2 and val[1] == ":" and val[0].upper() in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
+        return True
+
+    # Check common file extensions (case insensitive)
+    extensions = (
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".tif",
+        ".tiff",
+        ".pdf",
+        ".svg",
+        ".gif",
+        ".bmp",
+    )
+    if any(val.lower().endswith(ext) for ext in extensions):
+        return True
+
+    return False
+
+
+def validate_path_params(
+    fn_id: str,
+    params: dict[str, Any],
+    fs_allowlist_read: list[Path] | None,
+    fs_allowlist_write: list[Path] | None,
+    method_name: str,
+) -> None:
+    """Check if any param value looks like a path and validate against allowlist."""
+    is_write = method_name in {"imsave", "savefig"}
+
+    for key, val in params.items():
+        # Check if param name or value looks like a path
+        is_path_param = key.lower() in PATH_PARAM_NAMES or _looks_like_path(val)
+
+        if is_path_param and isinstance(val, str):
+            path_obj = Path(val).expanduser().resolve()
+            allowlist = fs_allowlist_write if is_write else fs_allowlist_read
+
+            if allowlist is None:
+                # If no allowlist is provided, we can't validate, but the constitution says
+                # file access MUST be explicit. If we're doing a file operation,
+                # we should probably fail if no allowlist is provided.
+                # However, for plot(x, y), we don't want to fail.
+                # Only fail for explicit FILE_IO_FUNCTIONS or if we're sure it's a path.
+                if method_name in FILE_IO_FUNCTIONS:
+                    raise ValueError(
+                        f"Function {fn_id} requires a path but no "
+                        "filesystem allowlist is configured."
+                    )
+                continue
+
+            # Check against allowlist
+            allowed = False
+            for allowed_path in allowlist:
+                try:
+                    resolved_allowed = allowed_path.resolve()
+                    path_obj.relative_to(resolved_allowed)
+                    allowed = True
+                    break
+                except (ValueError, RuntimeError):
+                    continue
+
+            if not allowed:
+                mode = "write" if is_write else "read"
+                raise ValueError(
+                    f"Path '{val}' is not allowed for {mode} (not in allowed {mode} paths). "
+                    f"Function: {fn_id}, Parameter: {key}"
+                )
 
 
 class MatplotlibAdapter(BaseAdapter):
@@ -110,14 +203,19 @@ class MatplotlibAdapter(BaseAdapter):
         inputs: list[Artifact],
         params: dict[str, Any],
         work_dir: Any = None,
+        fs_allowlist_read: list[Path] | None = None,
+        fs_allowlist_write: list[Path] | None = None,
     ) -> list[dict]:
         """Execute a matplotlib function.
 
         Dispatches to implementation in bioimage_mcp_base.ops.matplotlib_ops.
         """
-        # Safety check: Block interactive methods
-
         method_name = fn_id.split(".")[-1]
+
+        # R1.2: Path validation guardrails
+        validate_path_params(fn_id, params, fs_allowlist_read, fs_allowlist_write, method_name)
+
+        # Safety check: Block interactive methods
         if method_name in MATPLOTLIB_DENYLIST:
             raise ValueError(f"Function {fn_id} is blocked for safety (interactive GUI method).")
 

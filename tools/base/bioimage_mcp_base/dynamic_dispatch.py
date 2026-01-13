@@ -208,6 +208,26 @@ def dispatch_dynamic(
     if "hints" in sig.parameters:
         exec_kwargs["hints"] = hints
 
+    if "fs_allowlist_read" in sig.parameters:
+        import json
+        import os
+
+        env_val = os.environ.get("BIOIMAGE_MCP_FS_ALLOWLIST_READ", "[]")
+        try:
+            exec_kwargs["fs_allowlist_read"] = [Path(p) for p in json.loads(env_val)]
+        except (json.JSONDecodeError, TypeError):
+            exec_kwargs["fs_allowlist_read"] = None
+
+    if "fs_allowlist_write" in sig.parameters:
+        import json
+        import os
+
+        env_val = os.environ.get("BIOIMAGE_MCP_FS_ALLOWLIST_WRITE", "[]")
+        try:
+            exec_kwargs["fs_allowlist_write"] = [Path(p) for p in json.loads(env_val)]
+        except (json.JSONDecodeError, TypeError):
+            exec_kwargs["fs_allowlist_write"] = None
+
     output_artifacts = adapter.execute(**exec_kwargs)
 
     # Convert outputs from artifacts to dict refs
