@@ -102,7 +102,7 @@ def test_scipy_adapter_discover_uses_module_context_for_io_pattern():
         assert fn_meta.io_pattern == IOPattern.IMAGE_TO_IMAGE
 
 
-@patch("bioimage_mcp.registry.dynamic.adapters.scipy_ndimage.BioImage")
+@patch("bioio.BioImage")
 @patch("scipy.ndimage.gaussian_filter")
 def test_scipy_adapter_execute_calls_gaussian_filter(mock_gaussian_filter, mock_bioimage):
     """execute() should call scipy.ndimage.gaussian_filter and return ArtifactRefs."""
@@ -139,7 +139,7 @@ def test_scipy_adapter_execute_calls_gaussian_filter(mock_gaussian_filter, mock_
     assert outputs[0]["type"] == "BioImageRef"
 
 
-@patch("bioimage_mcp.registry.dynamic.adapters.scipy_ndimage.BioImage")
+@patch("bioio.BioImage")
 @patch("scipy.ndimage.sobel")
 def test_scipy_adapter_execute_calls_sobel(mock_sobel, mock_bioimage):
     """execute() should call scipy.ndimage.sobel and return ArtifactRefs."""

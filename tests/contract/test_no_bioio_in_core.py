@@ -36,6 +36,7 @@ LAZY_IMPORT_ALLOWLIST = [
     "registry/dynamic/adapters/skimage.py",
     "registry/dynamic/adapters/xarray.py",
     "registry/dynamic/adapters/phasorpy.py",
+    "registry/dynamic/adapters/scipy_ndimage.py",
     "artifacts/metadata.py",  # Uses graceful fallback if bioio not available
     "artifacts/store.py",  # Lazy imports for export conversions
 ]

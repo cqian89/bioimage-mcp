@@ -12,7 +12,6 @@ from typing import TYPE_CHECKING, Any
 from urllib.parse import unquote, urlparse
 
 import numpy as np
-from bioio import BioImage
 
 from bioimage_mcp.artifacts.base import Artifact
 from bioimage_mcp.registry.dynamic.adapters import BaseAdapter
@@ -142,6 +141,8 @@ class ScipyNdimageAdapter(BaseAdapter):
         else:
             # Only path is present
             path = str(Path(path).absolute())
+
+        from bioio import BioImage
 
         img = BioImage(path)
         data = img.reader.data

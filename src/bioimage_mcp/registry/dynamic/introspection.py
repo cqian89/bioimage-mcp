@@ -125,6 +125,11 @@ class Introspector:
         param_info = self._parse_docstring_params(func)
 
         for param_name, param in sig.parameters.items():
+            # Skip variadic parameters (*args, **kwargs) as they are not
+            # easily represented in a flat MCP parameter schema and
+            # can cause issues if provided as named parameters (T054)
+            if param.kind in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD):
+                continue
             # Check if parameter has a default value
             has_default = param.default is not inspect.Parameter.empty
             default_value = self._make_json_serializable(param.default) if has_default else None
