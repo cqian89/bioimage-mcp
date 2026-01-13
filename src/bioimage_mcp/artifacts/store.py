@@ -169,8 +169,6 @@ class ArtifactStore:
             size_bytes=0,  # Memory artifacts don't have a file size yet
             created_at=ArtifactRef.now(),
             metadata=full_metadata,
-            ndim=len(shape),
-            dims=dims,
         )
         # Note: We don't persist memory artifacts in SQLite as they are transient
         return ref
@@ -283,9 +281,6 @@ class ArtifactStore:
             checksums=checksums,
             created_at=ArtifactRef.now(),
             metadata=meta,
-            ndim=ndim,
-            dims=dims,
-            physical_pixel_sizes=physical_pixel_sizes,
         )
         self._persist(ref)
         return ref
@@ -352,9 +347,6 @@ class ArtifactStore:
             checksums=checksums,
             created_at=ArtifactRef.now(),
             metadata=meta,
-            ndim=ndim,
-            dims=dims,
-            physical_pixel_sizes=physical_pixel_sizes,
         )
         self._persist(ref)
         return ref
@@ -418,9 +410,6 @@ class ArtifactStore:
             checksums=checksums,
             created_at=row["created_at"],
             metadata=metadata,
-            ndim=metadata.get("ndim"),
-            dims=metadata.get("dims"),
-            physical_pixel_sizes=metadata.get("physical_pixel_sizes"),
         )
 
     def get_payload(self, ref_id: str) -> dict:

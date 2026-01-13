@@ -6,6 +6,7 @@ from bioimage_mcp.api.artifacts import ArtifactsService
 from bioimage_mcp.api.discovery import DiscoveryService
 from bioimage_mcp.api.execution import ExecutionService
 from bioimage_mcp.api.interactive import InteractiveExecutionService
+from bioimage_mcp.api.serializers import RunResponseSerializer
 from bioimage_mcp.sessions.manager import SessionManager
 
 try:
@@ -141,11 +142,16 @@ def create_server(
         session_id: str | None = None,
         ordinal: int | None = None,
         dry_run: bool = False,
+        verbosity: str = "minimal",
         ctx: Context | None = None,
     ) -> dict[str, Any]:
         """Execute a function within a session.
 
         If session_id is not provided, uses the current MCP connection's session ID.
+
+        Args:
+            verbosity: Response detail level ('minimal', 'standard', or 'full').
+                       Defaults to 'minimal' for token-efficient LLM interaction.
         """
         if not session_id and ctx and ctx.session:
             session_id = get_session_identifier(ctx)
@@ -167,20 +173,24 @@ def create_server(
             dry_run=dry_run,
         )
 
-        # Map InteractiveExecutionService results to RunResponse schema
-        response = {
-            "session_id": result.get("session_id"),
+        # Build base result dict (includes all data from interactive service)
+        base_result = {
             "run_id": result.get("run_id", "none"),
+            "session_id": result.get("session_id"),
             "status": result.get("status"),
-            "id": fn_id,
             "outputs": result.get("outputs", {}),
             "warnings": result.get("warnings", []),
             "log_ref": result.get("log_ref"),
+            "workflow_record": result.get("workflow_record"),
         }
         if "dry_run" in result:
-            response["dry_run"] = result["dry_run"]
+            base_result["dry_run"] = result["dry_run"]
         if result.get("error"):
-            response["error"] = result["error"]
+            base_result["error"] = result["error"]
+
+        # Apply verbosity-aware serialization
+        serializer = RunResponseSerializer()
+        response = serializer.serialize(base_result, fn_id=fn_id, verbosity=verbosity)
 
         return response
 

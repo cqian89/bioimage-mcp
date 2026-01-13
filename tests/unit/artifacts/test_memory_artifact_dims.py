@@ -28,9 +28,7 @@ def test_create_memory_artifact_ref_dims(tmp_path):
 
     assert ref.uri == f"mem://{session_id}/{env_id}/{artifact_id}"
     assert ref.storage_type == "memory"
-    assert ref.ndim == 3
-    assert ref.dims == ["Z", "Y", "X"]
-    assert ref.metadata["shape"] == [10, 256, 256]
     assert ref.metadata["ndim"] == 3
     assert ref.metadata["dims"] == ["Z", "Y", "X"]
+    assert ref.metadata["shape"] == [10, 256, 256]
     assert ref.metadata["dtype"] == "uint8"

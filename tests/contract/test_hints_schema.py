@@ -30,6 +30,9 @@ ALLOWED_ARTIFACT_TYPES = {
     "PlotRef",
     "ObjectRef",
     "GroupByRef",
+    "FigureRef",
+    "AxesRef",
+    "AxesImageRef",
 }
 ALLOWED_STORAGE_TYPES = {"file", "zarr-temp"}
 

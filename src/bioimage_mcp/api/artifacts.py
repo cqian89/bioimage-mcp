@@ -37,10 +37,10 @@ class ArtifactsService:
             "checksums": [c.model_dump() for c in ref.checksums],
         }
 
-        # Add image-specific metadata
+        # Add image-specific metadata (read from metadata dict after model cleanup)
         if ref.type in ("BioImageRef", "LabelImageRef"):
-            response["dims"] = ref.dims
-            response["ndim"] = ref.ndim
+            response["dims"] = ref.metadata.get("dims")
+            response["ndim"] = ref.metadata.get("ndim")
             response["dtype"] = ref.metadata.get("dtype")
             response["shape"] = ref.metadata.get("shape")
 

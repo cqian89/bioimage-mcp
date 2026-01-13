@@ -52,12 +52,6 @@ class ArtifactRef(BaseModel):
     # Used to track changes in artifact format over time
     schema_version: str | None = None
 
-    # T008: Add ndim, dims, physical_pixel_sizes fields
-    ndim: int | None = None
-    dims: list[str] | None = None
-    physical_pixel_sizes: dict | None = None
-    dtype: str | None = None
-    shape: list[int] | None = None
     python_class: str | None = None
 
     @model_validator(mode="after")
@@ -80,7 +74,6 @@ class ArtifactRef(BaseModel):
                 )
         return self
 
-    # T011: Add model_validator for dimension metadata consistency
     @model_validator(mode="after")
     def validate_dimension_metadata(self) -> ArtifactRef:
         if self.type in ("BioImageRef", "LabelImageRef"):
@@ -89,7 +82,6 @@ class ArtifactRef(BaseModel):
             meta_ndim = meta.get("ndim")
             meta_dims = meta.get("dims")
 
-            # 1. Validate metadata['shape'] vs internal metadata ndim/dims
             if shape:
                 if meta_ndim is not None and len(shape) != meta_ndim:
                     raise ValueError(f"shape length ({len(shape)}) != metadata ndim ({meta_ndim})")
@@ -97,26 +89,23 @@ class ArtifactRef(BaseModel):
                     raise ValueError(
                         f"shape length ({len(shape)}) != metadata dims length ({len(meta_dims)})"
                     )
-
-            # 2. Validate top-level fields vs metadata['shape']
-            if shape:
-                if self.ndim is not None and len(shape) != self.ndim:
-                    raise ValueError(f"shape length ({len(shape)}) != top-level ndim ({self.ndim})")
-                if self.dims is not None and len(shape) != len(self.dims):
-                    raise ValueError(
-                        f"shape length ({len(shape)}) != top-level dims length ({len(self.dims)})"
-                    )
-
-            # 3. Cross-check between top-level ndim and metadata["ndim"]
-            if self.ndim is not None and meta_ndim is not None and self.ndim != meta_ndim:
-                raise ValueError(f"top-level ndim ({self.ndim}) != metadata ndim ({meta_ndim})")
-
-            # 4. Cross-check top-level ndim vs top-level dims
-            if self.ndim is not None and self.dims is not None and self.ndim != len(self.dims):
-                raise ValueError(
-                    f"top-level ndim ({self.ndim}) != top-level dims length ({len(self.dims)})"
-                )
         return self
+
+    def model_dump(self, **kwargs) -> dict[str, Any]:
+        """Custom serialization that excludes None values and empty collections."""
+        # Force exclude_none=True
+        kwargs["exclude_none"] = True
+        data = super().model_dump(**kwargs)
+
+        # Remove empty checksums
+        if "checksums" in data and not data["checksums"]:
+            del data["checksums"]
+
+        # Remove empty metadata
+        if "metadata" in data and not data["metadata"]:
+            del data["metadata"]
+
+        return data
 
     def is_memory_artifact(self) -> bool:
         """Check if artifact is memory-backed."""
