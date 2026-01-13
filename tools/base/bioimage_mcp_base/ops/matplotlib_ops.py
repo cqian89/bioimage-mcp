@@ -102,20 +102,12 @@ def figure(**params) -> list[dict]:
 
 def imshow(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
     """Display image on axes."""
-    ax = None
+    ax = _find_axes(inputs)
     x_val = None
 
     for name, value in inputs:
-        if name == "axes":
-            ax = _load_object(value)
-        elif name == "X":
+        if name == "X":
             x_val = value
-
-    if not ax and inputs:
-        ax = _load_object(inputs[0][1])
-
-    if not ax:
-        raise ValueError("Missing 'axes' input for imshow")
 
     if x_val is None:
         x_val = params.get("X")
@@ -160,20 +152,12 @@ def imshow(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
 
 def add_patch(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
     """Add patch to axes."""
-    ax = None
+    ax = _find_axes(inputs)
     patch = None
 
     for name, value in inputs:
-        if name == "axes":
-            ax = _load_object(value)
-        elif name in ["p", "patch"]:
+        if name in ["p", "patch"]:
             patch = _load_object(value)
-
-    if not ax and inputs:
-        ax = _load_object(inputs[0][1])
-
-    if not ax:
-        raise ValueError("Missing 'axes' input for add_patch")
 
     if not patch:
         patch = _load_object(params.get("p") or params.get("patch"))
@@ -235,23 +219,12 @@ def create_rectangle(params: dict[str, Any]) -> list[dict]:
 
 def hist(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
     """Plot histogram on axes."""
-    # Find axes and data 'x'
-    ax = None
+    ax = _find_axes(inputs)
     x_val = None
 
-    # inputs is a list of (name, value) tuples from dynamic_dispatch
     for name, value in inputs:
-        if name == "axes":
-            ax = _load_object(value)
-        elif name == "x":
+        if name == "x":
             x_val = value
-
-    if not ax and inputs:
-        # Fallback to first input if names don't match
-        ax = _load_object(inputs[0][1])
-
-    if not ax:
-        raise ValueError("Missing 'axes' input for hist")
 
     if x_val is None:
         x_val = params.get("x")
@@ -270,23 +243,15 @@ def hist(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
 
 def plot(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
     """Plot line/markers on axes."""
-    ax = None
+    ax = _find_axes(inputs)
     x_val = None
     y_val = None
 
     for name, value in inputs:
-        if name == "axes":
-            ax = _load_object(value)
-        elif name == "x":
+        if name == "x":
             x_val = value
         elif name == "y":
             y_val = value
-
-    if not ax and inputs:
-        ax = _load_object(inputs[0][1])
-
-    if not ax:
-        raise ValueError("Missing 'axes' input for plot")
 
     if x_val is None:
         x_val = params.get("x")
@@ -303,12 +268,6 @@ def plot(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
         if isinstance(art, dict) and art.get("type") == "TableRef":
             table_art = art
             break
-
-    # If x or y is a TableRef directly
-    if isinstance(x_val, dict) and x_val.get("type") == "TableRef":
-        table_art = x_val
-    elif isinstance(y_val, dict) and y_val.get("type") == "TableRef":
-        table_art = y_val
 
     if table_art:
         df = _load_table(table_art)
@@ -332,60 +291,19 @@ def plot(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
     return []
 
 
-def generic_op(inputs: list[Any], params: dict[str, Any], method_name: str) -> list[dict]:
-    """Execute a generic method on the first input object."""
-    if not inputs:
-        raise ValueError(f"Missing input for {method_name}")
-
-    obj = _load_object(inputs[0][1])
-    if not obj:
-        # If it's not an object ref, maybe it's the object itself
-        obj = inputs[0][1]
-
-    if not hasattr(obj, method_name):
-        raise ValueError(f"Object {type(obj)} has no method {method_name}")
-
-    method = getattr(obj, method_name)
-    method(**params)
-    return []
-
-
-def set_xlabel(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
-    """Set the label for the x-axis."""
-    return generic_op(inputs, params, "set_xlabel")
-
-
-def set_ylabel(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
-    """Set the label for the y-axis."""
-    return generic_op(inputs, params, "set_ylabel")
-
-
-def set_title(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
-    """Set a title for the Axes."""
-    return generic_op(inputs, params, "set_title")
-
-
 def scatter(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
     """Plot scatter on axes."""
-    ax = None
+    ax = _find_axes(inputs)
     x_val = None
     y_val = None
     s_val = params.get("s")
     c_val = params.get("c")
 
     for name, value in inputs:
-        if name == "axes":
-            ax = _load_object(value)
-        elif name == "x":
+        if name == "x":
             x_val = value
         elif name == "y":
             y_val = value
-
-    if not ax and inputs:
-        ax = _load_object(inputs[0][1])
-
-    if not ax:
-        raise ValueError("Missing 'axes' input for scatter")
 
     if x_val is None:
         x_val = params.get("x")
@@ -403,17 +321,9 @@ def scatter(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
             table_art = art
             break
 
-    # If x or y is a TableRef directly
-    if isinstance(x_val, dict) and x_val.get("type") == "TableRef":
-        table_art = x_val
-    elif isinstance(y_val, dict) and y_val.get("type") == "TableRef":
-        table_art = y_val
-
     if table_art:
         df = _load_table(table_art)
         if df.empty:
-            # FR-017: Handle empty TableRef
-            # We can still call scatter with empty arrays or just return
             ax.scatter([], [])
             return []
 
@@ -436,22 +346,14 @@ def scatter(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
 
 def boxplot(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
     """Plot boxplot on axes."""
-    ax = None
+    ax = _find_axes(inputs)
     x_val = None
     positions_val = params.get("positions")
     labels_val = params.get("labels")
 
     for name, value in inputs:
-        if name == "axes":
-            ax = _load_object(value)
-        elif name == "x":
+        if name == "x":
             x_val = value
-
-    if not ax and inputs:
-        ax = _load_object(inputs[0][1])
-
-    if not ax:
-        raise ValueError("Missing 'axes' input for boxplot")
 
     if x_val is None:
         x_val = params.get("x")
@@ -478,11 +380,9 @@ def boxplot(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
         if data_col:
             groups = df.groupby(group_col)[data_col].apply(list).to_dict()
             labels = labels_val or list(groups.keys())
-            # Filter labels to only those present in groups to keep alignment
             labels = [l for l in labels if l in groups]
             data = [groups[l] for l in labels]
 
-            # Map labels to positions 1..N
             positions = list(range(1, len(data) + 1))
 
             boxplot_params = {
@@ -491,9 +391,7 @@ def boxplot(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
             ax.boxplot(data, positions=positions, labels=labels, **boxplot_params)
             return []
 
-    # Standard resolve
     data = _resolve_data(x_val, inputs, params)
-
     boxplot_params = {k: v for k, v in params.items() if k != "x"}
     ax.boxplot(data, **boxplot_params)
     return []
@@ -501,22 +399,14 @@ def boxplot(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
 
 def violinplot(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
     """Plot violinplot on axes."""
-    ax = None
+    ax = _find_axes(inputs)
     dataset_val = None
     positions_val = params.get("positions")
     labels_val = params.get("labels")
 
     for name, value in inputs:
-        if name == "axes":
-            ax = _load_object(value)
-        elif name == "dataset":
+        if name == "dataset":
             dataset_val = value
-
-    if not ax and inputs:
-        ax = _load_object(inputs[0][1])
-
-    if not ax:
-        raise ValueError("Missing 'axes' input for violinplot")
 
     if dataset_val is None:
         dataset_val = params.get("dataset")
@@ -548,7 +438,6 @@ def violinplot(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
             labels = [l for l in labels if l in groups]
             data = [groups[l] for l in labels]
 
-            # Map labels to positions 1..N
             positions = list(range(1, len(data) + 1))
 
             violin_params = {
@@ -556,34 +445,48 @@ def violinplot(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
             }
             ax.violinplot(data, positions=positions, **violin_params)
 
-            # Set labels on x-axis if vertical
             if params.get("vert", True):
                 ax.set_xticks(positions)
                 ax.set_xticklabels(labels)
 
             return []
 
-    # Standard resolve
     data = _resolve_data(dataset_val, inputs, params)
-
     violin_params = {k: v for k, v in params.items() if k != "dataset"}
     ax.violinplot(data, **violin_params)
     return []
 
 
-def _resolve_column_or_data(
-    val: Any, df: pd.DataFrame | None, inputs: list[Any], params: dict[str, Any]
-) -> Any:
-    """Helper to resolve a value as either a column name in df or direct data."""
-    if val is None:
-        return None
+def generic_op(inputs: list[Any], params: dict[str, Any], method_name: str) -> list[dict]:
+    """Execute a generic method on the first input object."""
+    if not inputs:
+        raise ValueError(f"Missing input for {method_name}")
 
-    # If it's a string and we have a dataframe, check if it's a column
-    if isinstance(val, str) and df is not None and val in df.columns:
-        return df[val].values
+    obj = _load_object(inputs[0][1])
+    if not obj:
+        obj = inputs[0][1]
 
-    # Otherwise use _resolve_data logic
-    return _resolve_data(val, inputs, params)
+    if not hasattr(obj, method_name):
+        raise ValueError(f"Object {type(obj)} has no method {method_name}")
+
+    method = getattr(obj, method_name)
+    method(**params)
+    return []
+
+
+def set_xlabel(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
+    """Set the label for the x-axis."""
+    return generic_op(inputs, params, "set_xlabel")
+
+
+def set_ylabel(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
+    """Set the label for the y-axis."""
+    return generic_op(inputs, params, "set_ylabel")
+
+
+def set_title(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
+    """Set a title for the Axes."""
+    return generic_op(inputs, params, "set_title")
 
 
 def savefig(inputs: list[Any], params: dict[str, Any], work_dir: Path | None = None) -> list[dict]:
@@ -609,14 +512,12 @@ def savefig(inputs: list[Any], params: dict[str, Any], work_dir: Path | None = N
 
     out_path = work_dir / f"plot_{uuid.uuid4().hex}.{fmt}"
 
-    # Extract some metadata before saving/closing
     dpi = params.get("dpi", fig.dpi)
     w_inch, h_inch = fig.get_size_inches()
 
     fig.savefig(str(out_path), **params)
     plt.close(fig)
 
-    # Map jpeg back to JPG for PlotRef format literal
     plot_ref_fmt = "JPG" if fmt == "jpeg" else fmt.upper()
 
     return [
@@ -634,6 +535,18 @@ def savefig(inputs: list[Any], params: dict[str, Any], work_dir: Path | None = N
             },
         }
     ]
+
+
+def _find_axes(inputs: list[Any]) -> Any:
+    """Helper to find axes in inputs."""
+    for name, value in inputs:
+        if name == "axes":
+            return _load_object(value)
+    if inputs:
+        obj = _load_object(inputs[0][1])
+        if hasattr(obj, "set_xlabel"):
+            return obj
+    raise ValueError("Missing 'axes' input")
 
 
 def _load_object(artifact: Any) -> Any:
@@ -682,9 +595,21 @@ def _load_table(artifact: Any) -> pd.DataFrame:
     return pd.read_csv(path)
 
 
+def _resolve_column_or_data(
+    val: Any, df: pd.DataFrame | None, inputs: list[Any], params: dict[str, Any]
+) -> Any:
+    """Helper to resolve a value as either a column name in df or direct data."""
+    if val is None:
+        return None
+
+    if isinstance(val, str) and df is not None and val in df.columns:
+        return df[val].values
+
+    return _resolve_data(val, inputs, params)
+
+
 def _resolve_data(x_val: Any, inputs: list[tuple[str, Any]], params: dict[str, Any]) -> Any:
     """Resolve data for plotting."""
-    # Case 1: x_val is a column name
     if isinstance(x_val, str) and not x_val.startswith("obj://"):
         for _name, art in inputs:
             if isinstance(art, dict) and art.get("type") == "TableRef":
@@ -692,7 +617,6 @@ def _resolve_data(x_val: Any, inputs: list[tuple[str, Any]], params: dict[str, A
                 if x_val in df.columns:
                     return df[x_val].values
 
-    # Case 2: x_val is an artifact reference
     if isinstance(x_val, dict) and "type" in x_val:
         if x_val["type"] == "TableRef":
             df = _load_table(x_val)
@@ -700,8 +624,6 @@ def _resolve_data(x_val: Any, inputs: list[tuple[str, Any]], params: dict[str, A
         elif x_val["type"] == "ObjectRef":
             return _load_object(x_val)
         elif x_val["type"] == "BioImageRef":
-            from bioio import BioImage
-
             img = BioImage(x_val.get("path"))
             return img.data.flatten()
 
