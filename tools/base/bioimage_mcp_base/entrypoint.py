@@ -136,7 +136,7 @@ def _load_input_data(input_ref: str | dict) -> np.ndarray:
         input_ref: Either a file path string or a dict with 'uri' key
 
     Returns:
-        Numpy array (5D TCZYX from bioio)
+        Numpy array (native dimensions)
     """
     from bioio import BioImage
 
@@ -145,16 +145,22 @@ def _load_input_data(input_ref: str | dict) -> np.ndarray:
         uri = input_ref.get("uri", "")
         if uri.startswith("mem://"):
             # Load from worker memory
-            return _load_from_memory(uri)
+            data = _load_from_memory(uri)
         else:
             # Load from file URI
             path_str = uri.replace("file://", "")
             img = BioImage(path_str)
-            return img.data
+            data = img.reader.data
     else:
         # Load from file path string
         img = BioImage(str(input_ref))
-        return img.data
+        data = img.reader.data
+
+    # Handle dask arrays with .compute() if needed
+    if hasattr(data, "compute"):
+        data = data.compute()
+
+    return data
 
 
 def _infer_dims_from_shape(shape: tuple[int, ...]) -> str:
