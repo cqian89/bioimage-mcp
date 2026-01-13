@@ -57,21 +57,29 @@ def convert_to_ome_zarr(*, inputs: dict, params: dict, work_dir: Path) -> Path:
 
     # Use BioImage directly for auto-detection
     img = BioImage(str(in_path))
-    data = img.data
+    data = img.reader.data
     data = data.compute() if hasattr(data, "compute") else data
+    axes = img.reader.dims.order
 
     out_dir = work_dir / "converted.ome.zarr"
     if out_dir.exists():
         raise FileExistsError(out_dir)
 
     # Use bioio-ome-zarr writer for spec-compliant output
-    # Data is 5D TCZYX, level_shapes must match data rank
+    # Data is native rank, level_shapes must match data rank
     full_shape = data.shape
+
+    # Map axis names to OME-Zarr standard (lower case) and types
+    axis_type_map = {"t": "time", "c": "channel", "z": "space", "y": "space", "x": "space"}
+    axes_names = [d.lower() for d in axes]
+    axes_types = [axis_type_map.get(d, "space") for d in axes_names]
 
     writer = OMEZarrWriter(
         store=str(out_dir),
         level_shapes=[full_shape],
         dtype=data.dtype,
+        axes_names=axes_names,
+        axes_types=axes_types,
         zarr_format=2,  # OME-Zarr 0.4 uses Zarr v2
     )
     writer.write_full_volume(data)

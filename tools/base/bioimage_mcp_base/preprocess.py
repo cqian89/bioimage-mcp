@@ -54,7 +54,7 @@ def _load_image_with_axes(image_ref: dict | str) -> tuple[np.ndarray, str]:
         raise RuntimeError("Missing dependencies for denoise_image") from exc
 
     img = BioImage(str(path))
-    data = img.data
+    data = img.reader.data
     if hasattr(data, "compute"):
         data = data.compute()
 
@@ -64,7 +64,7 @@ def _load_image_with_axes(image_ref: dict | str) -> tuple[np.ndarray, str]:
         axes = (image_ref.get("metadata") or {}).get("axes", "")
 
     if not axes:
-        axes = getattr(img, "axes", "") or getattr(getattr(img, "dims", None), "order", "")
+        axes = img.reader.dims.order
 
     axes = axes.upper() if axes else axes
     if not axes or len(axes) != data.ndim:

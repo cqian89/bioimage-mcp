@@ -76,14 +76,11 @@ class SwapAxesParams(AxisToolParams):
 
 
 def load_image(path: Path, format_hint: str | None = None) -> np.ndarray:
-    """Load an image from disk using bioio.BioImage.
-
-    Note: tifffile fallback has been removed. Use bioio.BioImage exclusively.
-    """
+    """Load an image from disk using bioio.BioImage (native dimensions)."""
     from bioio import BioImage
 
     img = BioImage(str(path))
-    data = img.data
+    data = img.reader.data
     return data.compute() if hasattr(data, "compute") else data
 
 
