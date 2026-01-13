@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import tempfile
 import uuid
 from pathlib import Path
@@ -7,6 +8,9 @@ from typing import TYPE_CHECKING, Any
 from urllib.parse import unquote, urlparse
 
 import numpy as np
+
+logger = logging.getLogger(__name__)
+
 
 if TYPE_CHECKING:
     from bioimage_mcp.api.schemas import DimensionRequirement
@@ -280,7 +284,33 @@ class XarrayAdapterForRegistry(BaseAdapter):
         else:
             img = self._load_image(artifact)
             # Get xarray data (native dimensions - T017)
-            return img.reader.xarray_data
+            da = img.reader.xarray_data
+
+            # Fix Ghost Dimensions: Squeeze dimensions not present in metadata.axes
+            metadata = (
+                artifact.get("metadata")
+                if isinstance(artifact, dict)
+                else getattr(artifact, "metadata", {})
+            ) or {}
+            expected_axes = metadata.get("axes")
+            if expected_axes:
+                # Normalize expected_axes to uppercase set for case-insensitive comparison
+                expected_set = (
+                    set(expected_axes.upper())
+                    if isinstance(expected_axes, str)
+                    else {a.upper() for a in expected_axes}
+                )
+                dims_to_squeeze = [
+                    d for d in da.dims if d.upper() not in expected_set and da.sizes[d] == 1
+                ]
+                if dims_to_squeeze:
+                    logger.debug(
+                        "Squeezing ghost dimensions: %s for expected axes %s",
+                        dims_to_squeeze,
+                        expected_axes,
+                    )
+                    da = da.squeeze(dims_to_squeeze)
+            return da
 
     def execute(
         self,
@@ -530,8 +560,7 @@ class XarrayAdapterForRegistry(BaseAdapter):
             raise ValueError("No input artifact provided for DataArray constructor")
 
         _, artifact = normalized[0]
-        img = self._load_image(artifact)
-        da = img.reader.xarray_data
+        da = self._load_da(artifact)
 
         artifact_id = str(uuid.uuid4())
         uri = f"obj://default/xarray/{artifact_id}"

@@ -213,3 +213,37 @@ def test_xarray_save_output_expands_1d_to_2d(tmp_path):
     assert Path(outputs[0]["path"]).exists()
     assert outputs[0]["metadata"]["axes"] == "YX"
     assert outputs[0]["metadata"]["shape"] == [10, 1]
+
+
+def test_load_da_case_insensitive_axes_no_squeeze_yx(tmp_path):
+    """Test that _load_da handles case mismatch and only squeezes singletons.
+
+    Regression test for ghost dimension squeeze bug where uppercase metadata.axes
+    ("TCZYX") didn't match lowercase DataArray dims ("t","c","z","y","x"),
+    causing all dims to be marked for squeezing.
+    """
+    if "xarray" not in ADAPTER_REGISTRY:
+        pytest.skip("Xarray adapter not registered")
+
+    adapter = ADAPTER_REGISTRY["xarray"]
+
+    # Create a simple 2D image (YX only)
+    img_path = tmp_path / "test_2d.ome.tiff"
+    data = np.ones((10, 10), dtype=np.uint8)  # 2D YX
+    OmeTiffWriter.save(data, str(img_path), dim_order="YX")
+
+    # Simulate metadata claiming 5D axes (common in pipelines)
+    input_artifact = {
+        "type": "BioImageRef",
+        "format": "OME-TIFF",
+        "uri": img_path.as_uri(),
+        "metadata": {"axes": "TCZYX"},  # Uppercase, doesn't match lowercase dims
+    }
+
+    # This should NOT crash - the fix normalizes case and checks singleton
+    da = adapter._load_da(input_artifact)
+
+    # Verify we got a valid DataArray with correct shape
+    assert da is not None
+    assert da.shape == (10, 10) or da.shape[-2:] == (10, 10)  # At least YX preserved
+    # Should not have crashed trying to squeeze non-singleton Y/X

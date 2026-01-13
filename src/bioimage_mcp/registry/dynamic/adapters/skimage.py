@@ -414,6 +414,9 @@ class SkimageAdapter(BaseAdapter):
         args = []
         kwargs: dict[str, Any] = {}
         param_names = set(inspect.signature(func).parameters.keys())
+        output_axes = ""
+        channel_was_transposed = False
+        original_axes = None
         for name, artifact in self._normalize_inputs(inputs):
             # Skip if artifact is a plain string that looks like metadata (not a ref_id)
             if isinstance(artifact, str) and (" " in artifact or len(artifact) > 64):
@@ -431,9 +434,39 @@ class SkimageAdapter(BaseAdapter):
 
             image_data = self._load_image(artifact)
 
+            # Get axes for this artifact to handle channel-last requirement
+            axes = self._extract_axes(artifact)
+            if not axes:
+                axes = self._infer_axes(image_data)
+
             # Squeeze if requested (T048)
             if req and req.squeeze_singleton:
+                # Update axes string to match squeezed dimensions
+                if len(axes) == image_data.ndim:
+                    axes = "".join(axes[i] for i, size in enumerate(image_data.shape) if size > 1)
                 image_data = np.squeeze(image_data)
+                # Fallback if axes mismatched or became empty
+                if not axes or len(axes) != image_data.ndim:
+                    axes = self._infer_axes(image_data)
+
+            # Track original axes for restoring canonical order before save
+            if original_axes is None:
+                original_axes = axes
+
+            # scikit-image expects channel-last format (Y, X, C)
+            if "C" in axes:
+                c_idx = axes.find("C")
+                if c_idx != -1 and c_idx != image_data.ndim - 1:
+                    # Move channel axis to the end for skimage compatibility
+                    new_order = [i for i in range(image_data.ndim) if i != c_idx] + [c_idx]
+                    image_data = np.transpose(image_data, new_order)
+                    # Update axes to reflect the new order
+                    axes = "".join(axes[i] for i in new_order)
+                    channel_was_transposed = True
+
+            # Capture axes from the first image-like input for output reference
+            if not output_axes:
+                output_axes = axes
 
             param_name = name
             if name == "labels" and "label_image" in param_names:
@@ -453,6 +486,29 @@ class SkimageAdapter(BaseAdapter):
         # Execute function
         result = func(*args, **kwargs, **params)
 
+        # Restore channel-first order for OME-TIFF canonical output (T050)
+        if (
+            channel_was_transposed
+            and isinstance(result, np.ndarray)
+            and result.ndim == len(output_axes)
+        ):
+            # output_axes is channel-last (e.g., "YXC"), restore to original order
+            # Find where C is in output_axes and move it back to its original position
+            if "C" in output_axes:
+                c_idx_out = output_axes.find("C")
+                c_idx_orig = original_axes.find("C")
+                if c_idx_out != c_idx_orig and c_idx_out != -1:
+                    # Build the reverse transpose: move C from last to original position
+                    # Current order: [other dims..., C], target: insert C at c_idx_orig
+                    axes_list = list(output_axes)
+                    axes_list.pop(c_idx_out)
+                    axes_list.insert(c_idx_orig, "C")
+                    # Build transpose order
+                    current_positions = {ax: i for i, ax in enumerate(output_axes)}
+                    new_order = [current_positions[ax] for ax in axes_list]
+                    result = np.transpose(result, new_order)
+                    output_axes = "".join(axes_list)
+
         # Save result and create artifact reference dict
 
         io_pattern = self.determine_io_pattern(module_path, func_name)
@@ -461,14 +517,16 @@ class SkimageAdapter(BaseAdapter):
                 raise ValueError("Expected table dict output for labels_to_table function")
             output_ref = self._save_table(result, work_dir=work_dir)
         else:
-            axes = ""
-            for _, artifact in self._normalize_inputs(inputs):
-                # Skip metadata
-                if isinstance(artifact, str) and (" " in artifact or len(artifact) > 64):
-                    continue
-                axes = self._extract_axes(artifact)
-                if axes:
-                    break
+            # Use processed axes from inputs if available, otherwise find first
+            axes = output_axes
+            if not axes:
+                for _, artifact in self._normalize_inputs(inputs):
+                    # Skip metadata
+                    if isinstance(artifact, str) and (" " in artifact or len(artifact) > 64):
+                        continue
+                    axes = self._extract_axes(artifact)
+                    if axes:
+                        break
             # Use expand_if_required for OME-TIFF preservation (T045a)
 
             # For now, default to no specific output requirement unless hints

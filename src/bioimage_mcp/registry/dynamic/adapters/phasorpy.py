@@ -262,6 +262,21 @@ class PhasorPyAdapter:
 
         if hasattr(data, "compute"):
             data = data.compute()
+
+        # If metadata suggests fewer axes than data.ndim, and we have
+        # singleton dimensions, squeeze (like SkimageAdapter)
+        expected_axes = metadata.get("axes")
+        if expected_axes and len(expected_axes) < data.ndim:
+            squeezed = np.squeeze(data)
+            if squeezed.ndim == len(expected_axes):
+                logger.debug(
+                    "Squeezed data from %d to %d dimensions to match expected axes: %s",
+                    data.ndim,
+                    squeezed.ndim,
+                    expected_axes,
+                )
+                data = squeezed
+
         return data
 
     def _save_image(
@@ -273,6 +288,13 @@ class PhasorPyAdapter:
         extra_metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Save image array to file and return artifact reference dict."""
+        # Coerce axes to string if it's a list of single-char strings
+        if isinstance(axes, list):
+            if all(isinstance(a, str) and len(a) == 1 for a in axes):
+                axes = "".join(axes)
+            else:
+                axes = None  # Invalid format, let inference handle it
+
         ext = ".ome.tiff"
         if work_dir is None:
             fd, path_str = tempfile.mkstemp(suffix=ext)
@@ -284,15 +306,25 @@ class PhasorPyAdapter:
             work_dir.mkdir(parents=True, exist_ok=True)
             path = work_dir / f"{name}{ext}"
 
-        # Infer axes from array dimensions if not provided
-        if axes is None:
+        # Only use passed axes if they match the output array dimensions (inheritance)
+        if axes and len(axes) == array.ndim:
+            inferred_axes = axes
+        else:
+            # Infer axes from array dimensions
             axes_map = {2: "YX", 3: "ZYX", 4: "CZYX", 5: "TCZYX"}
-            axes = axes_map.get(array.ndim, "TCZYX"[-array.ndim :])
+            if array.ndim in axes_map:
+                inferred_axes = axes_map[array.ndim]
+            else:
+                if array.ndim > 6:
+                    raise ValueError(
+                        f"Cannot infer axes for {array.ndim}D array (max 6 dimensions supported). "
+                        "Provide explicit axes metadata."
+                    )
+                inferred_axes = (
+                    "TCZYX"[-array.ndim :] if array.ndim <= 5 else "STCZYX"[: array.ndim]
+                )
 
-        # Ensure axes length matches array.ndim without padding the array
-        if array.ndim != len(axes):
-            # If dimensions don't match, adjust axes to match array's native dimensions
-            axes = "TCZYX"[-array.ndim :] if array.ndim <= 5 else "STCZYX"[: array.ndim]
+        axes = inferred_axes
 
         from bioio.writers import OmeTiffWriter
 
@@ -394,7 +426,10 @@ class PhasorPyAdapter:
                 if param.name in bound_args:
                     if param.kind == inspect.Parameter.POSITIONAL_ONLY:
                         pos_args.append(bound_args[param.name])
-                    else:
+                    elif param.kind not in (
+                        inspect.Parameter.VAR_POSITIONAL,
+                        inspect.Parameter.VAR_KEYWORD,
+                    ):
                         kw_args[param.name] = bound_args[param.name]
 
             # Prepare execution environment for plots
@@ -408,6 +443,17 @@ class PhasorPyAdapter:
 
             # Prepare metadata for output (T026, T039)
             extra_metadata = {}
+
+            # Extract axes from primary input for inheritance
+            input_axes = None
+            for _name, artifact in input_items:
+                if isinstance(artifact, dict):
+                    input_axes = artifact.get("metadata", {}).get("axes")
+                else:
+                    input_axes = getattr(artifact, "metadata", {}).get("axes")
+                if input_axes:
+                    break
+
             try:
                 import phasorpy
 
@@ -441,13 +487,18 @@ class PhasorPyAdapter:
                                 item,
                                 work_dir,
                                 f"{func_name}-{name_hint}",
+                                axes=input_axes,
                                 extra_metadata=extra_metadata,
                             )
                         )
             elif isinstance(result, np.ndarray) and not is_plot:
                 outputs.append(
                     self._save_image(
-                        result, work_dir, f"{func_name}-output", extra_metadata=extra_metadata
+                        result,
+                        work_dir,
+                        f"{func_name}-output",
+                        axes=input_axes,
+                        extra_metadata=extra_metadata,
                     )
                 )
             elif is_plot:
@@ -524,10 +575,11 @@ class PhasorPyAdapter:
                         required=True,
                         description="Input signal array (decay or spectrum)",
                         dimension_requirements=DimensionRequirement(
+                            min_ndim=2,
                             preprocessing_instructions=[
                                 "Ensure the decay/spectrum dimension is at axis -1"
                             ],
-                            expected_axes=["T", "C", "Z", "Y", "X"],
+                            # Don't force 5D, allow any dimensionality where axis -1 is signal
                         ),
                     )
                 }

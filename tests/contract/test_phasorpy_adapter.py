@@ -5,6 +5,7 @@ Verifies that PhasorPyAdapter correctly implements the BaseAdapter protocol
 for discovering and executing phasorpy functions.
 """
 
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -325,3 +326,37 @@ def test_map_io_pattern_to_ports_for_calibrate():
 
 def test_save_image_metadata_includes_ndim(tmp_path):
     """T011: _save_image must include ndim in metadata matching shape length."""
+    adapter = PhasorPyAdapter()
+    test_data = np.random.rand(2, 64, 64).astype(np.float32)
+    output_ref = adapter._save_image(test_data, work_dir=tmp_path, name="test_ndim")
+    assert output_ref["metadata"]["ndim"] == 3
+    assert output_ref["metadata"]["shape"] == [2, 64, 64]
+
+
+def test_save_image_handles_list_axes(tmp_path):
+    """Test that _save_image coerces list axes to string.
+
+    Regression test for bug where metadata.axes as a list (e.g., ["T","C","Y","X"])
+    would crash OmeTiffWriter.save() which expects a string dim_order.
+    """
+    adapter = PhasorPyAdapter()
+
+    # Create test data with 4 dimensions
+    test_data = np.random.rand(2, 3, 64, 64).astype(np.float32)
+
+    # Pass axes as a list (the bug case)
+    axes_list = ["T", "C", "Y", "X"]
+
+    # This should NOT crash - the fix coerces list to string
+    output_ref = adapter._save_image(
+        test_data,
+        work_dir=tmp_path,
+        name="test_output",
+        axes=axes_list,
+    )
+
+    # Verify output
+    assert output_ref is not None
+    assert output_ref["type"] == "BioImageRef"
+    assert output_ref["metadata"]["axes"] == "TCYX"  # Should be string, not list
+    assert Path(output_ref["path"]).exists()
