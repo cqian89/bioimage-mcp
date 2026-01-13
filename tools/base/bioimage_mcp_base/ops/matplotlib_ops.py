@@ -15,12 +15,17 @@ from bioio import BioImage
 from bioimage_mcp.registry.dynamic.object_cache import OBJECT_CACHE
 
 
-def subplots(**params) -> list[dict]:
+def _build_obj_uri(session_id: str, env_id: str, artifact_id: str) -> str:
+    """Build properly scoped obj:// URI."""
+    return f"obj://{session_id}/{env_id}/{artifact_id}"
+
+
+def subplots(session_id: str = "default", env_id: str = "base", **params) -> list[dict]:
     """Create subplots and store in cache."""
     fig, ax = plt.subplots(**params)
 
     fig_id = str(uuid.uuid4())
-    fig_uri = f"obj://default/matplotlib/{fig_id}"
+    fig_uri = _build_obj_uri(session_id, env_id, fig_id)
     OBJECT_CACHE[fig_uri] = fig
     fig._mcp_ref_id = fig_id
 
@@ -43,7 +48,7 @@ def subplots(**params) -> list[dict]:
     if isinstance(ax, np.ndarray):
         for i, a in enumerate(ax.flatten()):
             ax_id = str(uuid.uuid4())
-            ax_uri = f"obj://default/matplotlib/{ax_id}"
+            ax_uri = _build_obj_uri(session_id, env_id, ax_id)
             OBJECT_CACHE[ax_uri] = a
             a._mcp_ref_id = ax_id
             results.append(
@@ -61,7 +66,7 @@ def subplots(**params) -> list[dict]:
             )
     else:
         ax_id = str(uuid.uuid4())
-        ax_uri = f"obj://default/matplotlib/{ax_id}"
+        ax_uri = _build_obj_uri(session_id, env_id, ax_id)
         OBJECT_CACHE[ax_uri] = ax
         ax._mcp_ref_id = ax_id
         results.append(
@@ -81,11 +86,11 @@ def subplots(**params) -> list[dict]:
     return results
 
 
-def figure(**params) -> list[dict]:
+def figure(session_id: str = "default", env_id: str = "base", **params) -> list[dict]:
     """Create figure and store in cache."""
     fig = plt.figure(**params)
     fig_id = str(uuid.uuid4())
-    fig_uri = f"obj://default/matplotlib/{fig_id}"
+    fig_uri = _build_obj_uri(session_id, env_id, fig_id)
     OBJECT_CACHE[fig_uri] = fig
     fig._mcp_ref_id = fig_id
 
@@ -105,7 +110,9 @@ def figure(**params) -> list[dict]:
     ]
 
 
-def imshow(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
+def imshow(
+    inputs: list[Any], params: dict[str, Any], session_id: str = "default", env_id: str = "base"
+) -> list[dict]:
     """Display image on axes."""
     ax = _find_axes(inputs)
     x_val = None
@@ -154,7 +161,7 @@ def imshow(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
     im = ax.imshow(data, **imshow_params)
 
     im_id = str(uuid.uuid4())
-    im_uri = f"obj://default/matplotlib/{im_id}"
+    im_uri = _build_obj_uri(session_id, env_id, im_id)
     OBJECT_CACHE[im_uri] = im
 
     return [
@@ -172,7 +179,9 @@ def imshow(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
     ]
 
 
-def add_patch(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
+def add_patch(
+    inputs: list[Any], params: dict[str, Any], session_id: str = "default", env_id: str = "base"
+) -> list[dict]:
     """Add patch to axes."""
     ax = _find_axes(inputs)
     patch = None
@@ -199,12 +208,14 @@ def add_patch(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
     return []
 
 
-def create_circle(params: dict[str, Any]) -> list[dict]:
+def create_circle(
+    params: dict[str, Any], session_id: str = "default", env_id: str = "base"
+) -> list[dict]:
     """Create a Circle patch and store in cache."""
     circle = patches.Circle(**params)
 
     patch_id = str(uuid.uuid4())
-    patch_uri = f"obj://default/matplotlib/{patch_id}"
+    patch_uri = _build_obj_uri(session_id, env_id, patch_id)
     OBJECT_CACHE[patch_uri] = circle
 
     return [
@@ -219,12 +230,14 @@ def create_circle(params: dict[str, Any]) -> list[dict]:
     ]
 
 
-def create_rectangle(params: dict[str, Any]) -> list[dict]:
+def create_rectangle(
+    params: dict[str, Any], session_id: str = "default", env_id: str = "base"
+) -> list[dict]:
     """Create a Rectangle patch and store in cache."""
     rect = patches.Rectangle(**params)
 
     patch_id = str(uuid.uuid4())
-    patch_uri = f"obj://default/matplotlib/{patch_id}"
+    patch_uri = _build_obj_uri(session_id, env_id, patch_id)
     OBJECT_CACHE[patch_uri] = rect
 
     return [
@@ -239,7 +252,9 @@ def create_rectangle(params: dict[str, Any]) -> list[dict]:
     ]
 
 
-def hist(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
+def hist(
+    inputs: list[Any], params: dict[str, Any], session_id: str = "default", env_id: str = "base"
+) -> list[dict]:
     """Plot histogram on axes."""
     ax = _find_axes(inputs)
     x_val = None
@@ -263,7 +278,9 @@ def hist(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
     return []
 
 
-def plot(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
+def plot(
+    inputs: list[Any], params: dict[str, Any], session_id: str = "default", env_id: str = "base"
+) -> list[dict]:
     """Plot line/markers on axes."""
     ax = _find_axes(inputs)
     x_val = None
@@ -313,7 +330,9 @@ def plot(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
     return []
 
 
-def scatter(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
+def scatter(
+    inputs: list[Any], params: dict[str, Any], session_id: str = "default", env_id: str = "base"
+) -> list[dict]:
     """Plot scatter on axes."""
     ax = _find_axes(inputs)
     x_val = None
@@ -366,7 +385,9 @@ def scatter(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
     return []
 
 
-def boxplot(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
+def boxplot(
+    inputs: list[Any], params: dict[str, Any], session_id: str = "default", env_id: str = "base"
+) -> list[dict]:
     """Plot boxplot on axes."""
     ax = _find_axes(inputs)
     x_val = None
@@ -419,7 +440,9 @@ def boxplot(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
     return []
 
 
-def violinplot(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
+def violinplot(
+    inputs: list[Any], params: dict[str, Any], session_id: str = "default", env_id: str = "base"
+) -> list[dict]:
     """Plot violinplot on axes."""
     ax = _find_axes(inputs)
     dataset_val = None
@@ -479,7 +502,9 @@ def violinplot(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
     return []
 
 
-def colorbar(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
+def colorbar(
+    inputs: list[Any], params: dict[str, Any], session_id: str = "default", env_id: str = "base"
+) -> list[dict]:
     """Add a colorbar to a plot."""
     mappable = None
     ax = None
@@ -514,7 +539,13 @@ def colorbar(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
     return []
 
 
-def generic_op(inputs: list[Any], params: dict[str, Any], method_name: str) -> list[dict]:
+def generic_op(
+    inputs: list[Any],
+    params: dict[str, Any],
+    method_name: str,
+    session_id: str = "default",
+    env_id: str = "base",
+) -> list[dict]:
     """Execute a generic method on the first input object."""
     if not inputs:
         raise ValueError(f"Missing input for {method_name}")
@@ -536,7 +567,7 @@ def generic_op(inputs: list[Any], params: dict[str, Any], method_name: str) -> l
     if isinstance(res, plt.Figure):
         # Handle Figure (similar to figure() op)
         fig_id = str(uuid.uuid4())
-        fig_uri = f"obj://default/matplotlib/{fig_id}"
+        fig_uri = _build_obj_uri(session_id, env_id, fig_id)
         OBJECT_CACHE[fig_uri] = res
         return [
             {
@@ -555,7 +586,7 @@ def generic_op(inputs: list[Any], params: dict[str, Any], method_name: str) -> l
 
     # For other returns, return as an ObjectRef
     ref_id = str(uuid.uuid4())
-    uri = f"obj://default/matplotlib/{ref_id}"
+    uri = _build_obj_uri(session_id, env_id, ref_id)
     OBJECT_CACHE[uri] = res
     return [
         {
@@ -571,7 +602,9 @@ def generic_op(inputs: list[Any], params: dict[str, Any], method_name: str) -> l
     ]
 
 
-def pyplot_op(params: dict[str, Any], method_name: str) -> list[dict]:
+def pyplot_op(
+    params: dict[str, Any], method_name: str, session_id: str = "default", env_id: str = "base"
+) -> list[dict]:
     """Execute a generic pyplot function."""
     if not hasattr(plt, method_name):
         raise ValueError(f"matplotlib.pyplot has no function {method_name}")
@@ -585,7 +618,7 @@ def pyplot_op(params: dict[str, Any], method_name: str) -> list[dict]:
     # If it returns a figure, we should handle it like figure() does
     if isinstance(res, plt.Figure):
         fig_id = str(uuid.uuid4())
-        fig_uri = f"obj://default/matplotlib/{fig_id}"
+        fig_uri = _build_obj_uri(session_id, env_id, fig_id)
         OBJECT_CACHE[fig_uri] = res
         res._mcp_ref_id = fig_id
         return [
@@ -605,7 +638,7 @@ def pyplot_op(params: dict[str, Any], method_name: str) -> list[dict]:
 
     # For other returns, return as an ObjectRef so it can be inspected
     ref_id = str(uuid.uuid4())
-    uri = f"obj://default/matplotlib/{ref_id}"
+    uri = _build_obj_uri(session_id, env_id, ref_id)
     OBJECT_CACHE[uri] = res
     return [
         {
@@ -621,7 +654,9 @@ def pyplot_op(params: dict[str, Any], method_name: str) -> list[dict]:
     ]
 
 
-def patch_op(params: dict[str, Any], class_name: str) -> list[dict]:
+def patch_op(
+    params: dict[str, Any], class_name: str, session_id: str = "default", env_id: str = "base"
+) -> list[dict]:
     """Create a patch from matplotlib.patches and store in cache."""
     if not hasattr(patches, class_name):
         raise ValueError(f"matplotlib.patches has no class {class_name}")
@@ -630,7 +665,7 @@ def patch_op(params: dict[str, Any], class_name: str) -> list[dict]:
     patch = cls(**params)
 
     patch_id = str(uuid.uuid4())
-    patch_uri = f"obj://default/matplotlib/{patch_id}"
+    patch_uri = _build_obj_uri(session_id, env_id, patch_id)
     OBJECT_CACHE[patch_uri] = patch
 
     return [
@@ -660,7 +695,13 @@ def set_title(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
     return generic_op(inputs, params, "set_title")
 
 
-def savefig(inputs: list[Any], params: dict[str, Any], work_dir: Path | None = None) -> list[dict]:
+def savefig(
+    inputs: list[Any],
+    params: dict[str, Any],
+    work_dir: Path | None = None,
+    session_id: str = "default",
+    env_id: str = "base",
+) -> list[dict]:
     """Save figure to file."""
     fig = None
     for name, value in inputs:

@@ -16,6 +16,111 @@ from bioimage_mcp.registry.dynamic.models import FunctionMetadata, IOPattern, Pa
 if TYPE_CHECKING:
     from bioimage_mcp.api.schemas import DimensionRequirement
     from bioimage_mcp.artifacts.base import Artifact
+    from bioimage_mcp.artifacts.memory import MemoryArtifactStore
+
+
+class SessionObjectNotFoundError(ValueError):
+    """Raised when obj:// reference is not registered to active session."""
+
+    pass
+
+
+def _validate_single_ref(
+    uri: str,
+    ref_id: str | None,
+    session_id: str,
+    memory_store: MemoryArtifactStore | None,
+) -> None:
+    """Validate a single obj:// reference against the active session."""
+    from bioimage_mcp.artifacts.memory import parse_mem_uri
+
+    if not uri.startswith("obj://"):
+        return
+
+    if not ref_id:
+        raise SessionObjectNotFoundError(
+            f"Object with URI '{uri}' is missing ref_id - cannot validate ownership."
+        )
+
+    # 1. Check if registered in memory_store
+    if memory_store:
+        if not memory_store.exists(ref_id):
+            raise SessionObjectNotFoundError(
+                f"Object reference '{ref_id}' (URI: {uri}) is not "
+                f"registered to session '{session_id}'. "
+                "The object may have been evicted, the session may have "
+                "expired, or the reference belongs to a different session. "
+                "Please recreate the object in this session."
+            )
+
+        # 2. Verify session matches by parsing the stored URI
+        stored_artifact = memory_store.get(ref_id)
+        if stored_artifact:
+            stored_session, _, _ = parse_mem_uri(stored_artifact.uri)
+            if stored_session != session_id:
+                raise SessionObjectNotFoundError(
+                    f"Object reference '{ref_id}' (URI: {uri}) is registered "
+                    f"to a different session ('{stored_session}'), "
+                    f"not the active session '{session_id}'."
+                )
+    else:
+        raise SessionObjectNotFoundError(
+            f"Cannot validate object reference '{ref_id}' - memory store not available. "
+            f"Session isolation cannot be enforced."
+        )
+
+
+def _validate_params_refs(
+    params: dict[str, Any],
+    session_id: str,
+    memory_store: MemoryArtifactStore | None,
+) -> None:
+    """Recursively scan params for obj:// references and validate them."""
+    for val in params.values():
+        if isinstance(val, dict):
+            uri = val.get("uri", "")
+            if isinstance(uri, str) and uri.startswith("obj://"):
+                ref_id = val.get("ref_id")
+                # Apply same validation logic as inputs
+                _validate_single_ref(uri, ref_id, session_id, memory_store)
+            else:
+                # Recurse into nested dicts
+                _validate_params_refs(val, session_id, memory_store)
+        elif isinstance(val, list):
+            for item in val:
+                if isinstance(item, dict):
+                    # Check if it's an object ref itself or contains them
+                    uri = item.get("uri", "")
+                    if isinstance(uri, str) and uri.startswith("obj://"):
+                        _validate_single_ref(uri, item.get("ref_id"), session_id, memory_store)
+                    else:
+                        _validate_params_refs(item, session_id, memory_store)
+
+
+def _validate_input_ownership(
+    inputs: list[Artifact],
+    params: dict[str, Any],
+    session_id: str,
+    memory_store: MemoryArtifactStore | None,
+) -> None:
+    """Validate that all obj:// references belong to the active session.
+
+    Checks both inputs list and params dict for obj:// URIs.
+    """
+    for item in inputs:
+        # Artifact can be a dict or an object
+        if isinstance(item, dict):
+            uri = item.get("uri")
+            ref_id = item.get("ref_id")
+        else:
+            uri = getattr(item, "uri", None)
+            ref_id = getattr(item, "ref_id", None)
+
+        if uri and isinstance(uri, str) and uri.startswith("obj://"):
+            _validate_single_ref(uri, ref_id, session_id, memory_store)
+
+    # Recursively check params for obj:// references
+    _validate_params_refs(params, session_id, memory_store)
 
 
 PATH_PARAM_NAMES = {"fname", "filename", "path", "fpath", "savefig", "outputfile"}
@@ -205,12 +310,19 @@ class MatplotlibAdapter(BaseAdapter):
         work_dir: Any = None,
         fs_allowlist_read: list[Path] | None = None,
         fs_allowlist_write: list[Path] | None = None,
+        session_id: str | None = None,
+        env_id: str = "base",
+        memory_store: MemoryArtifactStore | None = None,
     ) -> list[dict]:
         """Execute a matplotlib function.
 
         Dispatches to implementation in bioimage_mcp_base.ops.matplotlib_ops.
         """
         method_name = fn_id.split(".")[-1]
+
+        # R2.4: Session ownership validation
+        if session_id:
+            _validate_input_ownership(inputs, params, session_id, memory_store)
 
         # R1.2: Path validation guardrails
         validate_path_params(fn_id, params, fs_allowlist_read, fs_allowlist_write, method_name)
@@ -237,41 +349,69 @@ class MatplotlibAdapter(BaseAdapter):
         normalized_inputs = self._normalize_inputs(inputs)
 
         # 1. Specific High-Level Dispatches (require custom logic)
+        eff_session_id = session_id or "default"
+
         if fn_id.endswith("matplotlib.pyplot.subplots"):
-            return matplotlib_ops.subplots(**params)
+            return matplotlib_ops.subplots(session_id=eff_session_id, env_id=env_id, **params)
         if fn_id.endswith("matplotlib.pyplot.figure"):
-            return matplotlib_ops.figure(**params)
+            return matplotlib_ops.figure(session_id=eff_session_id, env_id=env_id, **params)
         if fn_id.endswith("matplotlib.Axes.imshow"):
-            return matplotlib_ops.imshow(normalized_inputs, params)
+            return matplotlib_ops.imshow(
+                normalized_inputs, params, session_id=eff_session_id, env_id=env_id
+            )
         if fn_id.endswith("matplotlib.Axes.hist"):
-            return matplotlib_ops.hist(normalized_inputs, params)
+            return matplotlib_ops.hist(
+                normalized_inputs, params, session_id=eff_session_id, env_id=env_id
+            )
         if fn_id.endswith("matplotlib.Axes.boxplot"):
-            return matplotlib_ops.boxplot(normalized_inputs, params)
+            return matplotlib_ops.boxplot(
+                normalized_inputs, params, session_id=eff_session_id, env_id=env_id
+            )
         if fn_id.endswith("matplotlib.Axes.violinplot"):
-            return matplotlib_ops.violinplot(normalized_inputs, params)
+            return matplotlib_ops.violinplot(
+                normalized_inputs, params, session_id=eff_session_id, env_id=env_id
+            )
         if fn_id.endswith("matplotlib.Axes.plot"):
-            return matplotlib_ops.plot(normalized_inputs, params)
+            return matplotlib_ops.plot(
+                normalized_inputs, params, session_id=eff_session_id, env_id=env_id
+            )
         if fn_id.endswith("matplotlib.Axes.scatter"):
-            return matplotlib_ops.scatter(normalized_inputs, params)
+            return matplotlib_ops.scatter(
+                normalized_inputs, params, session_id=eff_session_id, env_id=env_id
+            )
         if fn_id.endswith("matplotlib.Axes.add_patch"):
-            return matplotlib_ops.add_patch(normalized_inputs, params)
+            return matplotlib_ops.add_patch(
+                normalized_inputs, params, session_id=eff_session_id, env_id=env_id
+            )
         if fn_id.endswith("matplotlib.Figure.savefig"):
-            return matplotlib_ops.savefig(normalized_inputs, params, work_dir)
+            return matplotlib_ops.savefig(
+                normalized_inputs, params, work_dir, session_id=eff_session_id, env_id=env_id
+            )
         if fn_id.endswith("matplotlib.Axes.colorbar"):
-            return matplotlib_ops.colorbar(normalized_inputs, params)
+            return matplotlib_ops.colorbar(
+                normalized_inputs, params, session_id=eff_session_id, env_id=env_id
+            )
 
         # 2. Generic Category Dispatches
         if "matplotlib.pyplot" in fn_id:
-            return matplotlib_ops.pyplot_op(params, method_name)
+            return matplotlib_ops.pyplot_op(
+                params, method_name, session_id=eff_session_id, env_id=env_id
+            )
 
         if "matplotlib.Figure" in fn_id:
-            return matplotlib_ops.generic_op(normalized_inputs, params, method_name)
+            return matplotlib_ops.generic_op(
+                normalized_inputs, params, method_name, session_id=eff_session_id, env_id=env_id
+            )
 
         if "matplotlib.Axes" in fn_id:
-            return matplotlib_ops.generic_op(normalized_inputs, params, method_name)
+            return matplotlib_ops.generic_op(
+                normalized_inputs, params, method_name, session_id=eff_session_id, env_id=env_id
+            )
 
         if "matplotlib.patches" in fn_id:
-            return matplotlib_ops.patch_op(params, method_name)
+            return matplotlib_ops.patch_op(
+                params, method_name, session_id=eff_session_id, env_id=env_id
+            )
 
         return []
 
