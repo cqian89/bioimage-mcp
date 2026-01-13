@@ -58,6 +58,8 @@ def test_axes_methods_exposed():
     assert "base.matplotlib.Axes.plot" in fn_ids
     assert "base.matplotlib.Axes.scatter" in fn_ids
     assert "base.matplotlib.Axes.hist" in fn_ids
+    assert "base.matplotlib.Axes.boxplot" in fn_ids
+    assert "base.matplotlib.Axes.violinplot" in fn_ids
 
 
 def test_figure_methods_exposed():
@@ -226,3 +228,24 @@ def test_savefig_schema():
     assert params["format"].type == "string"
     assert params["dpi"].type == "number"
     assert params["transparent"].type == "boolean"
+
+
+def test_plot_schema():
+    """T026: Verify base.matplotlib.Axes.plot schema."""
+    from bioimage_mcp.registry.dynamic.adapters.matplotlib import MatplotlibAdapter
+
+    adapter = MatplotlibAdapter()
+    module_config = {"modules": ["matplotlib.axes"]}
+    discovered = adapter.discover(module_config)
+
+    plot_fn = next((fn for fn in discovered if fn.fn_id == "base.matplotlib.Axes.plot"), None)
+    assert plot_fn is not None, "base.matplotlib.Axes.plot not found"
+
+    params = plot_fn.parameters
+    assert "x" in params
+    assert "y" in params
+    assert "fmt" in params
+    assert "label" in params
+    assert "linewidth" in params
+    assert "color" in params
+    assert "marker" in params

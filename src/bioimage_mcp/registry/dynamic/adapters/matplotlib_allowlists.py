@@ -113,7 +113,7 @@ MATPLOTLIB_AXES_ALLOWLIST = {
     },
     "plot": {
         "summary": "Plot y versus x as lines and/or markers.",
-        "io_pattern": "OBJECTREF_CHAIN",
+        "io_pattern": "MATPLOTLIB_AXES_OP",
         "params": {
             "x": {"type": "array", "description": "x-coordinates"},
             "y": {"type": "array", "description": "y-coordinates"},
@@ -121,6 +121,7 @@ MATPLOTLIB_AXES_ALLOWLIST = {
             "label": {"type": "string", "description": "Label for legend"},
             "linewidth": {"type": "number", "description": "Line width"},
             "color": {"type": "string", "description": "Line color"},
+            "marker": {"type": "string", "description": "Marker style"},
         },
     },
     "scatter": {
@@ -150,6 +151,61 @@ MATPLOTLIB_AXES_ALLOWLIST = {
             },
             "color": {"type": "string", "description": "Bar color"},
             "alpha": {"type": "number", "description": "Transparency"},
+        },
+    },
+    "boxplot": {
+        "summary": "Make a box and whisker plot.",
+        "io_pattern": "MATPLOTLIB_AXES_OP",
+        "params": {
+            "x": {"type": "object", "description": "The input data (array or column name)"},
+            "positions": {
+                "type": "object",
+                "description": "The positions of the boxes (array or column name for grouping)",
+            },
+            "labels": {"type": "array", "description": "Labels for each box"},
+            "vert": {
+                "type": "boolean",
+                "default": True,
+                "description": "If True, makes vertical boxes",
+            },
+            "patch_artist": {
+                "type": "boolean",
+                "default": False,
+                "description": "If True, fills boxes with color",
+            },
+            "widths": {"type": "object", "description": "The widths of the boxes"},
+        },
+    },
+    "violinplot": {
+        "summary": "Make a violin plot.",
+        "io_pattern": "MATPLOTLIB_AXES_OP",
+        "params": {
+            "dataset": {"type": "object", "description": "The input data (array or column name)"},
+            "positions": {
+                "type": "object",
+                "description": "The positions of the violins (array or column name for grouping)",
+            },
+            "vert": {
+                "type": "boolean",
+                "default": True,
+                "description": "If True, makes vertical violins",
+            },
+            "widths": {"type": "object", "description": "The widths of each violin"},
+            "showmeans": {
+                "type": "boolean",
+                "default": False,
+                "description": "Whether to show the mean",
+            },
+            "showextrema": {
+                "type": "boolean",
+                "default": True,
+                "description": "Whether to show the extrema",
+            },
+            "showmedians": {
+                "type": "boolean",
+                "default": False,
+                "description": "Whether to show the median",
+            },
         },
     },
     "set_title": {

@@ -268,6 +268,103 @@ def hist(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
     return []
 
 
+def plot(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
+    """Plot line/markers on axes."""
+    ax = None
+    x_val = None
+    y_val = None
+
+    for name, value in inputs:
+        if name == "axes":
+            ax = _load_object(value)
+        elif name == "x":
+            x_val = value
+        elif name == "y":
+            y_val = value
+
+    if not ax and inputs:
+        ax = _load_object(inputs[0][1])
+
+    if not ax:
+        raise ValueError("Missing 'axes' input for plot")
+
+    if x_val is None:
+        x_val = params.get("x")
+    if y_val is None:
+        y_val = params.get("y")
+
+    if x_val is None or y_val is None:
+        raise ValueError("Missing 'x' or 'y' data for plot")
+
+    # Find a TableRef if any of x, y are column names
+    df = None
+    table_art = None
+    for name, art in inputs:
+        if isinstance(art, dict) and art.get("type") == "TableRef":
+            table_art = art
+            break
+
+    # If x or y is a TableRef directly
+    if isinstance(x_val, dict) and x_val.get("type") == "TableRef":
+        table_art = x_val
+    elif isinstance(y_val, dict) and y_val.get("type") == "TableRef":
+        table_art = y_val
+
+    if table_art:
+        df = _load_table(table_art)
+        if df.empty:
+            ax.plot([], [])
+            return []
+
+    # Resolve x, y
+    x_data = _resolve_column_or_data(x_val, df, inputs, params)
+    y_data = _resolve_column_or_data(y_val, df, inputs, params)
+
+    # Filter params
+    fmt = params.get("fmt")
+    plot_params = {k: v for k, v in params.items() if k not in ["x", "y", "fmt"]}
+
+    if fmt:
+        ax.plot(x_data, y_data, fmt, **plot_params)
+    else:
+        ax.plot(x_data, y_data, **plot_params)
+
+    return []
+
+
+def generic_op(inputs: list[Any], params: dict[str, Any], method_name: str) -> list[dict]:
+    """Execute a generic method on the first input object."""
+    if not inputs:
+        raise ValueError(f"Missing input for {method_name}")
+
+    obj = _load_object(inputs[0][1])
+    if not obj:
+        # If it's not an object ref, maybe it's the object itself
+        obj = inputs[0][1]
+
+    if not hasattr(obj, method_name):
+        raise ValueError(f"Object {type(obj)} has no method {method_name}")
+
+    method = getattr(obj, method_name)
+    method(**params)
+    return []
+
+
+def set_xlabel(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
+    """Set the label for the x-axis."""
+    return generic_op(inputs, params, "set_xlabel")
+
+
+def set_ylabel(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
+    """Set the label for the y-axis."""
+    return generic_op(inputs, params, "set_ylabel")
+
+
+def set_title(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
+    """Set a title for the Axes."""
+    return generic_op(inputs, params, "set_title")
+
+
 def scatter(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
     """Plot scatter on axes."""
     ax = None
@@ -334,6 +431,137 @@ def scatter(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
         scatter_params["c"] = c_data
 
     ax.scatter(x_data, y_data, **scatter_params)
+    return []
+
+
+def boxplot(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
+    """Plot boxplot on axes."""
+    ax = None
+    x_val = None
+    positions_val = params.get("positions")
+    labels_val = params.get("labels")
+
+    for name, value in inputs:
+        if name == "axes":
+            ax = _load_object(value)
+        elif name == "x":
+            x_val = value
+
+    if not ax and inputs:
+        ax = _load_object(inputs[0][1])
+
+    if not ax:
+        raise ValueError("Missing 'axes' input for boxplot")
+
+    if x_val is None:
+        x_val = params.get("x")
+
+    if x_val is None:
+        raise ValueError("Missing 'x' (data) for boxplot")
+
+    # Find TableRef
+    df = None
+    table_art = None
+    for name, art in inputs:
+        if isinstance(art, dict) and art.get("type") == "TableRef":
+            table_art = art
+            break
+
+    if table_art:
+        df = _load_table(table_art)
+
+    # T037: Handle categorical grouping
+    if df is not None and isinstance(positions_val, str) and positions_val in df.columns:
+        group_col = positions_val
+        data_col = x_val if isinstance(x_val, str) and x_val in df.columns else None
+
+        if data_col:
+            groups = df.groupby(group_col)[data_col].apply(list).to_dict()
+            labels = labels_val or list(groups.keys())
+            data = [groups[l] for l in labels if l in groups]
+
+            # Map labels to positions 1..N
+            positions = list(range(1, len(data) + 1))
+
+            boxplot_params = {
+                k: v for k, v in params.items() if k not in ["x", "positions", "labels"]
+            }
+            ax.boxplot(data, positions=positions, labels=labels, **boxplot_params)
+            return []
+
+    # Standard resolve
+    data = _resolve_data(x_val, inputs, params)
+
+    boxplot_params = {k: v for k, v in params.items() if k != "x"}
+    ax.boxplot(data, **boxplot_params)
+    return []
+
+
+def violinplot(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
+    """Plot violinplot on axes."""
+    ax = None
+    dataset_val = None
+    positions_val = params.get("positions")
+
+    for name, value in inputs:
+        if name == "axes":
+            ax = _load_object(value)
+        elif name == "dataset":
+            dataset_val = value
+
+    if not ax and inputs:
+        ax = _load_object(inputs[0][1])
+
+    if not ax:
+        raise ValueError("Missing 'axes' input for violinplot")
+
+    if dataset_val is None:
+        dataset_val = params.get("dataset")
+
+    if dataset_val is None:
+        raise ValueError("Missing 'dataset' for violinplot")
+
+    # Find TableRef
+    df = None
+    table_art = None
+    for name, art in inputs:
+        if isinstance(art, dict) and art.get("type") == "TableRef":
+            table_art = art
+            break
+
+    if table_art:
+        df = _load_table(table_art)
+
+    # T037: Handle categorical grouping
+    if df is not None and isinstance(positions_val, str) and positions_val in df.columns:
+        group_col = positions_val
+        data_col = (
+            dataset_val if isinstance(dataset_val, str) and dataset_val in df.columns else None
+        )
+
+        if data_col:
+            groups = df.groupby(group_col)[data_col].apply(list).to_dict()
+            labels = list(groups.keys())
+            data = [groups[l] for l in labels]
+
+            # Map labels to positions 1..N
+            positions = list(range(1, len(labels) + 1))
+
+            violin_params = {k: v for k, v in params.items() if k not in ["dataset", "positions"]}
+            ax.violinplot(data, positions=positions, **violin_params)
+
+            # Set labels on x-axis if vertical
+            if params.get("vert", True):
+                ax.set_xticks(positions)
+                ax.set_xticklabels(labels)
+
+            return []
+
+    # Standard resolve
+    data = _resolve_data(dataset_val, inputs, params)
+
+    violin_params = {k: v for k, v in params.items() if k != "dataset"}
+    ax.violinplot(data, **violin_params)
     return []
 
 

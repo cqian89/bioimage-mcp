@@ -144,18 +144,40 @@ class MatplotlibAdapter(BaseAdapter):
             return matplotlib_ops.figure(**params)
         if fn_id.endswith("matplotlib.Axes.hist"):
             return matplotlib_ops.hist(normalized_inputs, params)
+        if fn_id.endswith("matplotlib.Axes.boxplot"):
+            return matplotlib_ops.boxplot(normalized_inputs, params)
+        if fn_id.endswith("matplotlib.Axes.violinplot"):
+            return matplotlib_ops.violinplot(normalized_inputs, params)
+        if fn_id.endswith("matplotlib.Axes.plot"):
+            return matplotlib_ops.plot(normalized_inputs, params)
         if fn_id.endswith("matplotlib.Axes.scatter"):
             return matplotlib_ops.scatter(normalized_inputs, params)
         if fn_id.endswith("matplotlib.Axes.imshow"):
             return matplotlib_ops.imshow(normalized_inputs, params)
         if fn_id.endswith("matplotlib.Axes.add_patch"):
             return matplotlib_ops.add_patch(normalized_inputs, params)
+        if fn_id.endswith("matplotlib.Axes.set_xlabel"):
+            return matplotlib_ops.generic_op(normalized_inputs, params, "set_xlabel")
+        if fn_id.endswith("matplotlib.Axes.set_ylabel"):
+            return matplotlib_ops.generic_op(normalized_inputs, params, "set_ylabel")
+        if fn_id.endswith("matplotlib.Axes.set_title"):
+            return matplotlib_ops.generic_op(normalized_inputs, params, "set_title")
+        if fn_id.endswith("matplotlib.Axes.set_xlim"):
+            return matplotlib_ops.generic_op(normalized_inputs, params, "set_xlim")
+        if fn_id.endswith("matplotlib.Axes.set_ylim"):
+            return matplotlib_ops.generic_op(normalized_inputs, params, "set_ylim")
+        if fn_id.endswith("matplotlib.Axes.grid"):
+            return matplotlib_ops.generic_op(normalized_inputs, params, "grid")
         if fn_id.endswith("matplotlib.patches.Circle"):
             return matplotlib_ops.create_circle(params)
         if fn_id.endswith("matplotlib.patches.Rectangle"):
             return matplotlib_ops.create_rectangle(params)
         if fn_id.endswith("matplotlib.Figure.savefig"):
             return matplotlib_ops.savefig(normalized_inputs, params, work_dir)
+        if fn_id.endswith("matplotlib.Figure.tight_layout"):
+            return matplotlib_ops.generic_op(normalized_inputs, params, "tight_layout")
+        if fn_id.endswith("matplotlib.Figure.suptitle"):
+            return matplotlib_ops.generic_op(normalized_inputs, params, "suptitle")
 
         return []
 

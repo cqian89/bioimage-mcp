@@ -89,24 +89,24 @@ def test_discovery_metadata(adapter):
 
     # Check subplots
     subplots = next(fn for fn in discovered if fn.name == "subplots")
-    assert subplots.io_pattern == IOPattern.CONSTRUCTOR
+    assert subplots.io_pattern == IOPattern.MATPLOTLIB_SUBPLOTS
     assert "nrows" in subplots.parameters
     assert subplots.parameters["nrows"].type == "integer"
     assert subplots.parameters["nrows"].default == 1
 
     # Check savefig
     savefig = next(fn for fn in discovered if fn.name == "savefig")
-    assert savefig.io_pattern == IOPattern.OBJECT_TO_IMAGE
+    assert savefig.io_pattern == IOPattern.PLOT
     assert "format" in savefig.parameters
 
     # Check imshow
     imshow = next(fn for fn in discovered if fn.name == "imshow")
-    assert imshow.io_pattern == IOPattern.OBJECTREF_CHAIN
+    assert imshow.io_pattern == IOPattern.MATPLOTLIB_AXES_OP
     assert "cmap" in imshow.parameters
 
     # Check patches
     module_config_patches = {"modules": ["matplotlib.patches"]}
     discovered_patches = adapter.discover(module_config_patches)
     circle = next(fn for fn in discovered_patches if fn.name == "Circle")
-    assert circle.io_pattern == IOPattern.CONSTRUCTOR
+    assert circle.io_pattern == IOPattern.PURE_CONSTRUCTOR
     assert "radius" in circle.parameters
