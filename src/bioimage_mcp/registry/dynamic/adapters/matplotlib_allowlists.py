@@ -292,6 +292,7 @@ MATPLOTLIB_AXES_ALLOWLIST = {
     "imshow": {
         "summary": "Display data as an image, i.e., on a 2D regular raster.",
         "io_pattern": "MATPLOTLIB_AXES_OP",
+        "returns": "AxesImageRef",
         "params": {
             "X": {"type": "object", "description": "Image data (BioImageRef or array)"},
             "cmap": {"type": "string", "description": "Colormap"},

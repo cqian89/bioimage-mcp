@@ -164,16 +164,32 @@ def imshow(
     im_uri = _build_obj_uri(session_id, env_id, im_id)
     OBJECT_CACHE[im_uri] = im
 
+    # Get parent axes ref_id
+    parent_axes_ref_id = getattr(ax, "_mcp_ref_id", None)
+
+    # Fallback: look for AxesRef in inputs (or ObjectRef that is this axes)
+    if not parent_axes_ref_id:
+        for _name, value in inputs:
+            if isinstance(value, dict) and value.get("ref_id"):
+                if value.get("type") == "AxesRef" or _load_object(value) is ax:
+                    parent_axes_ref_id = value.get("ref_id")
+                    break
+
     return [
         {
             "ref_id": im_id,
-            "type": "ObjectRef",
+            "type": "AxesImageRef",
             "python_class": "matplotlib.image.AxesImage",
             "uri": im_uri,
             "storage_type": "memory",
             "metadata": {
-                "output_name": "imshow_result",
-                "parent_axes_ref_id": getattr(ax, "_mcp_ref_id", None),
+                "output_name": "axes_image",
+                "parent_axes_ref_id": parent_axes_ref_id,
+                "cmap": imshow_params.get("cmap", "viridis"),
+                "vmin": imshow_params.get("vmin"),
+                "vmax": imshow_params.get("vmax"),
+                "origin": imshow_params.get("origin", "upper"),
+                "interpolation": imshow_params.get("interpolation", "antialiased"),
             },
         }
     ]
