@@ -116,6 +116,7 @@ class MatplotlibAdapter(BaseAdapter):
         Dispatches to implementation in bioimage_mcp_base.ops.matplotlib_ops.
         """
         # Safety check: Block interactive methods
+
         method_name = fn_id.split(".")[-1]
         if method_name in MATPLOTLIB_DENYLIST:
             raise ValueError(f"Function {fn_id} is blocked for safety (interactive GUI method).")
@@ -143,6 +144,8 @@ class MatplotlibAdapter(BaseAdapter):
             return matplotlib_ops.figure(**params)
         if fn_id.endswith("matplotlib.Axes.hist"):
             return matplotlib_ops.hist(normalized_inputs, params)
+        if fn_id.endswith("matplotlib.Axes.scatter"):
+            return matplotlib_ops.scatter(normalized_inputs, params)
         if fn_id.endswith("matplotlib.Axes.imshow"):
             return matplotlib_ops.imshow(normalized_inputs, params)
         if fn_id.endswith("matplotlib.Axes.add_patch"):

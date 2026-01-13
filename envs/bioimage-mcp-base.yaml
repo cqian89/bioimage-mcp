@@ -13,6 +13,7 @@ dependencies:
   - bioio-ome-tiff
   - bioio-ome-zarr
   # Other scientific computing dependencies
+  - matplotlib>=3.8
   - numpy
   - openjdk
   - scipy

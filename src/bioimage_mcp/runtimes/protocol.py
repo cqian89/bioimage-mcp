@@ -40,6 +40,31 @@ class WorkflowCompatibilityError:
     message: str
 
 
+# Type inheritance map for compatibility checking (T018)
+# Key: actual type, Value: list of types it satisfies
+_TYPE_COMPATIBILITY = {
+    "AxesRef": ["AxesRef", "ObjectRef", "ArtifactRef"],
+    "FigureRef": ["FigureRef", "ObjectRef", "ArtifactRef"],
+    "AxesImageRef": ["AxesImageRef", "ObjectRef", "ArtifactRef"],
+    "GroupByRef": ["GroupByRef", "ObjectRef", "ArtifactRef"],
+    "ObjectRef": ["ObjectRef", "ArtifactRef"],
+    "BioImageRef": ["BioImageRef", "ArtifactRef"],
+    "LabelImageRef": ["LabelImageRef", "BioImageRef", "ArtifactRef"],
+    "TableRef": ["TableRef", "ArtifactRef"],
+    "ScalarRef": ["ScalarRef", "ArtifactRef"],
+    "PlotRef": ["PlotRef", "ArtifactRef"],
+    "NativeOutputRef": ["NativeOutputRef", "ArtifactRef"],
+    "LogRef": ["LogRef", "ArtifactRef"],
+}
+
+
+def _is_type_compatible(actual: str, expected: str) -> bool:
+    """Check if actual artifact type is compatible with expected type."""
+    if actual == expected or expected == "ArtifactRef" or not expected:
+        return True
+    return expected in _TYPE_COMPATIBILITY.get(actual, [])
+
+
 def validate_workflow_compatibility(
     workflow_spec: dict[str, Any],
     function_ports: dict[str, dict[str, list[dict[str, Any]]]],
@@ -133,8 +158,12 @@ def validate_workflow_compatibility(
 
             # Check type compatibility
             if expected_types and actual_types:
-                # Check if all possible actual types are covered by expected types
-                is_compatible = all(t in expected_types for t in actual_types)
+                # Check if all possible actual types are covered by expected types (T018: handle inheritance)
+                is_compatible = True
+                for act_t in actual_types:
+                    if not any(_is_type_compatible(act_t, exp_t) for exp_t in expected_types):
+                        is_compatible = False
+                        break
 
                 if not is_compatible:
                     actual_type_str = " | ".join(sorted(set(actual_types)))

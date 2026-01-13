@@ -635,9 +635,13 @@ class ExecutionService:
                 mem_ref = self._memory_store.get(val)
                 if mem_ref:
                     resolved = mem_ref.model_dump()
-                    simulated_path = (
-                        mem_ref.metadata.get("_simulated_path") if mem_ref.metadata else None
-                    )
+                    meta = mem_ref.metadata
+                    simulated_path = None
+                    if isinstance(meta, dict):
+                        simulated_path = meta.get("_simulated_path")
+                    elif hasattr(meta, "model_dump"):
+                        simulated_path = meta.model_dump().get("_simulated_path")
+
                     if simulated_path:
                         resolved["uri"] = f"file://{simulated_path}"
                     return resolved
@@ -685,7 +689,14 @@ class ExecutionService:
             if mem_ref:
                 resolved = mem_ref.model_dump()
                 # Use simulated file path for tool input (T016 Fix)
-                simulated_path = mem_ref.metadata.get("_simulated_path")
+                # Handle both dict and Pydantic model metadata (T024)
+                meta = mem_ref.metadata
+                simulated_path = None
+                if isinstance(meta, dict):
+                    simulated_path = meta.get("_simulated_path")
+                elif hasattr(meta, "model_dump"):
+                    simulated_path = meta.model_dump().get("_simulated_path")
+
                 if simulated_path:
                     resolved["uri"] = f"file://{simulated_path}"
                     logger.debug(
@@ -729,9 +740,16 @@ class ExecutionService:
             except KeyError:
                 return val
 
-            source_env = _extract_env_from_uri(artifact.uri) or artifact.metadata.get(
-                "env_id", "unknown"
-            )
+            meta = artifact.metadata
+            env_id = "unknown"
+            if isinstance(meta, dict):
+                env_id = meta.get("env_id", "unknown")
+            elif hasattr(meta, "env_id"):
+                env_id = getattr(meta, "env_id", "unknown")
+            elif hasattr(meta, "model_dump"):
+                env_id = meta.model_dump().get("env_id", "unknown")
+
+            source_env = _extract_env_from_uri(artifact.uri) or env_id
 
             # Get target format from port definitions
             target_format = None
@@ -968,27 +986,44 @@ class ExecutionService:
                 logger.info("Memory output generated: ref_id=%s storage_type=%s", ref_id, "memory")
                 outputs_payload[name] = ref.model_dump()
                 record_artifact_dimensions(run.provenance, f"output.{name}", outputs_payload[name])
-            elif out_type == "ObjectRef":
-                # Handle ObjectRef (T018-T024)
+            elif out_type in ["ObjectRef", "FigureRef", "AxesRef", "AxesImageRef", "GroupByRef"]:
+                # Handle ObjectRef and its subclasses (T018-T024)
                 # Register in memory store so it can be resolved for next steps
                 ref_id = out.get("ref_id")
                 uri = out.get("uri")
-                from bioimage_mcp.artifacts.models import ObjectRef
+                from bioimage_mcp.artifacts.models import (
+                    AxesImageRef,
+                    AxesRef,
+                    FigureRef,
+                    GroupByRef,
+                    ObjectRef,
+                )
 
-                ref = ObjectRef(
+                type_map = {
+                    "ObjectRef": ObjectRef,
+                    "FigureRef": FigureRef,
+                    "AxesRef": AxesRef,
+                    "AxesImageRef": AxesImageRef,
+                    "GroupByRef": GroupByRef,
+                }
+                ref_class = type_map.get(out_type, ObjectRef)
+
+                ref = ref_class(
                     ref_id=ref_id,
-                    type="ObjectRef",
+                    type=out_type,
                     uri=uri,
                     format=out.get("format", "pickle"),
                     storage_type="memory",
-                    created_at=ObjectRef.now(),
+                    created_at=ref_class.now(),
                     metadata=out.get("metadata", {}),
                     python_class=out.get("python_class", "unknown"),
                 )
                 self._memory_store.register(ref)
                 # Also register with worker manager for session tracking
                 self._worker_manager.register_artifact(session_id, env_id, ref_id)
-                logger.info("Object output registered: ref_id=%s uri=%s", ref_id, uri)
+                logger.info(
+                    "Object output registered: type=%s ref_id=%s uri=%s", out_type, ref_id, uri
+                )
                 outputs_payload[name] = ref.model_dump()
             elif path:
                 p = Path(path)

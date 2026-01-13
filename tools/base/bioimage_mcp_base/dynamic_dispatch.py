@@ -102,6 +102,8 @@ def _convert_inputs_to_artifacts(inputs: dict[str, Any]) -> list[Any]:
                     valid_items = []
                     break
             if not valid_items:
+                # Support literal lists (e.g. data for histograms)
+                result.append((name, value))
                 continue
             value = valid_items  # Use normalized list
         else:

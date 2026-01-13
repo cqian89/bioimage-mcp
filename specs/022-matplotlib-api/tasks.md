@@ -15,21 +15,21 @@ Implementation of the Matplotlib dynamic tool adapter and plotting artifact type
 ---
 
 ## Phase 1: Setup (TDD)
-- [ ] T001 [P] Write failing contract test asserting `envs/bioimage-mcp-base.yaml` declares `matplotlib>=3.8` in `tests/contract/test_matplotlib_env.py`
-- [ ] T002 [P] Update `envs/bioimage-mcp-base.yaml` with `matplotlib>=3.8`
-- [ ] T003 [P] Update `envs/bioimage-mcp-base.lock.yml` to reflect new dependencies
+- [X] T001 [P] Write failing contract test asserting `envs/bioimage-mcp-base.yaml` declares `matplotlib>=3.8` in `tests/contract/test_matplotlib_env.py`
+- [X] T002 [P] Update `envs/bioimage-mcp-base.yaml` with `matplotlib>=3.8`
+- [X] T003 [P] Update `envs/bioimage-mcp-base.lock.yml` to reflect new dependencies
 
 ---
 
 ## Phase 2: Foundational (BLOCKS ALL STORIES)
 *Goal: Core artifact models and the dynamic adapter infrastructure required for all plotting operations.*
 
-- [ ] T004 [P] Write failing unit tests for `FigureRef`, `AxesRef`, `AxesImageRef` + metadata models in `tests/unit/artifacts/test_matplotlib_refs.py`
-- [ ] T005 [P] Implement `FigureRef`, `AxesRef`, `AxesImageRef` and related metadata models in `src/bioimage_mcp/artifacts/models.py` (no PatchRef)
-- [ ] T006 [P] Write failing contract tests for `base.matplotlib.*` discovery + schema separation in `tests/contract/test_matplotlib_adapter_discovery.py`
-- [ ] T007 [P] Write failing unit tests for adapter safety (Agg enforced, interactive methods blocked, unknown functions rejected) in `tests/unit/registry/test_matplotlib_adapter.py`
-- [ ] T008 Implement Matplotlib allowlist/denylist + `MatplotlibAdapter` in `src/bioimage_mcp/registry/dynamic/adapters/matplotlib_allowlists.py` and `src/bioimage_mcp/registry/dynamic/adapters/matplotlib.py`
-- [ ] T009 [P] Register plotting types in `src/bioimage_mcp/api/schemas.py` and update `tools/base/manifest.yaml` with `dynamic_source` for Matplotlib
+- [X] T004 [P] Write failing unit tests for `FigureRef`, `AxesRef`, `AxesImageRef` + metadata models in `tests/unit/artifacts/test_matplotlib_refs.py`
+- [X] T005 [P] Implement `FigureRef`, `AxesRef`, `AxesImageRef` and related metadata models in `src/bioimage_mcp/artifacts/models.py` (no PatchRef)
+- [X] T006 [P] Write failing contract tests for `base.matplotlib.*` discovery + schema separation in `tests/contract/test_matplotlib_adapter_discovery.py`
+- [X] T007 [P] Write failing unit tests for adapter safety (Agg enforced, interactive methods blocked, unknown functions rejected) in `tests/unit/registry/test_matplotlib_adapter.py`
+- [X] T008 Implement Matplotlib allowlist/denylist + `MatplotlibAdapter` in `src/bioimage_mcp/registry/dynamic/adapters/matplotlib_allowlists.py` and `src/bioimage_mcp/registry/dynamic/adapters/matplotlib.py`
+- [X] T009 [P] Register plotting types in `src/bioimage_mcp/api/schemas.py` and update `tools/base/manifest.yaml` with `dynamic_source` for Matplotlib
 
 **Checkpoint**: `pytest tests/unit/artifacts/test_matplotlib_refs.py tests/unit/registry/test_matplotlib_adapter.py tests/contract/test_matplotlib_adapter_discovery.py -v` passes.
 

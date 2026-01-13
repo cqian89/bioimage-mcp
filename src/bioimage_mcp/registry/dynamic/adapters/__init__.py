@@ -79,12 +79,14 @@ def _populate_default_adapters() -> None:
         return
 
     # Import adapters here to avoid circular imports
+    from bioimage_mcp.registry.dynamic.adapters.matplotlib import MatplotlibAdapter
     from bioimage_mcp.registry.dynamic.adapters.pandas import PandasAdapterForRegistry
     from bioimage_mcp.registry.dynamic.adapters.phasorpy import PhasorPyAdapter
     from bioimage_mcp.registry.dynamic.adapters.scipy_ndimage import ScipyNdimageAdapter
     from bioimage_mcp.registry.dynamic.adapters.skimage import SkimageAdapter
     from bioimage_mcp.registry.dynamic.adapters.xarray import XarrayAdapterForRegistry
 
+    ADAPTER_REGISTRY["matplotlib"] = MatplotlibAdapter()
     ADAPTER_REGISTRY["phasorpy"] = PhasorPyAdapter()
     ADAPTER_REGISTRY["scipy"] = ScipyNdimageAdapter()
     ADAPTER_REGISTRY["skimage"] = SkimageAdapter()

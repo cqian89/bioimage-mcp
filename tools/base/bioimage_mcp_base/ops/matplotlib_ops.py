@@ -22,28 +22,59 @@ def subplots(**params) -> list[dict]:
     fig_uri = f"obj://default/matplotlib/{fig_id}"
     OBJECT_CACHE[fig_uri] = fig
 
-    ax_id = str(uuid.uuid4())
-    ax_uri = f"obj://default/matplotlib/{ax_id}"
-    OBJECT_CACHE[ax_uri] = ax
+    fig_ref = {
+        "ref_id": fig_id,
+        "type": "FigureRef",
+        "python_class": "matplotlib.figure.Figure",
+        "uri": fig_uri,
+        "storage_type": "memory",
+        "metadata": {
+            "output_name": "figure",
+            "figsize": fig.get_size_inches().tolist(),
+            "dpi": int(fig.get_dpi()),
+            "axes_count": len(fig.axes),
+        },
+    }
 
-    return [
-        {
-            "ref_id": fig_id,
-            "type": "ObjectRef",
-            "python_class": "matplotlib.figure.Figure",
-            "uri": fig_uri,
-            "storage_type": "memory",
-            "metadata": {"output_name": "figure"},
-        },
-        {
-            "ref_id": ax_id,
-            "type": "ObjectRef",
-            "python_class": "matplotlib.axes.Axes",
-            "uri": ax_uri,
-            "storage_type": "memory",
-            "metadata": {"output_name": "axes"},
-        },
-    ]
+    results = [fig_ref]
+
+    if isinstance(ax, np.ndarray):
+        for i, a in enumerate(ax.flatten()):
+            ax_id = str(uuid.uuid4())
+            ax_uri = f"obj://default/matplotlib/{ax_id}"
+            OBJECT_CACHE[ax_uri] = a
+            results.append(
+                {
+                    "ref_id": ax_id,
+                    "type": "AxesRef",
+                    "python_class": "matplotlib.axes._axes.Axes",
+                    "uri": ax_uri,
+                    "storage_type": "memory",
+                    "metadata": {
+                        "output_name": f"axes_{i}",
+                        "parent_figure_ref_id": fig_id,
+                    },
+                }
+            )
+    else:
+        ax_id = str(uuid.uuid4())
+        ax_uri = f"obj://default/matplotlib/{ax_id}"
+        OBJECT_CACHE[ax_uri] = ax
+        results.append(
+            {
+                "ref_id": ax_id,
+                "type": "AxesRef",
+                "python_class": "matplotlib.axes._axes.Axes",
+                "uri": ax_uri,
+                "storage_type": "memory",
+                "metadata": {
+                    "output_name": "axes",
+                    "parent_figure_ref_id": fig_id,
+                },
+            }
+        )
+
+    return results
 
 
 def figure(**params) -> list[dict]:
@@ -56,11 +87,15 @@ def figure(**params) -> list[dict]:
     return [
         {
             "ref_id": fig_id,
-            "type": "ObjectRef",
+            "type": "FigureRef",
             "python_class": "matplotlib.figure.Figure",
             "uri": fig_uri,
             "storage_type": "memory",
-            "metadata": {"output_name": "figure"},
+            "metadata": {
+                "output_name": "figure",
+                "figsize": fig.get_size_inches().tolist(),
+                "dpi": int(fig.get_dpi()),
+            },
         }
     ]
 
@@ -233,6 +268,90 @@ def hist(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
     return []
 
 
+def scatter(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
+    """Plot scatter on axes."""
+    ax = None
+    x_val = None
+    y_val = None
+    s_val = params.get("s")
+    c_val = params.get("c")
+
+    for name, value in inputs:
+        if name == "axes":
+            ax = _load_object(value)
+        elif name == "x":
+            x_val = value
+        elif name == "y":
+            y_val = value
+
+    if not ax and inputs:
+        ax = _load_object(inputs[0][1])
+
+    if not ax:
+        raise ValueError("Missing 'axes' input for scatter")
+
+    if x_val is None:
+        x_val = params.get("x")
+    if y_val is None:
+        y_val = params.get("y")
+
+    if x_val is None or y_val is None:
+        raise ValueError("Missing 'x' or 'y' data for scatter")
+
+    # Find a TableRef if any of x, y, s, c are column names
+    df = None
+    table_art = None
+    for name, art in inputs:
+        if isinstance(art, dict) and art.get("type") == "TableRef":
+            table_art = art
+            break
+
+    # If x or y is a TableRef directly
+    if isinstance(x_val, dict) and x_val.get("type") == "TableRef":
+        table_art = x_val
+    elif isinstance(y_val, dict) and y_val.get("type") == "TableRef":
+        table_art = y_val
+
+    if table_art:
+        df = _load_table(table_art)
+        if df.empty:
+            # FR-017: Handle empty TableRef
+            # We can still call scatter with empty arrays or just return
+            ax.scatter([], [])
+            return []
+
+    # Resolve x, y, s, c
+    x_data = _resolve_column_or_data(x_val, df, inputs, params)
+    y_data = _resolve_column_or_data(y_val, df, inputs, params)
+    s_data = _resolve_column_or_data(s_val, df, inputs, params)
+    c_data = _resolve_column_or_data(c_val, df, inputs, params)
+
+    # Filter params
+    scatter_params = {k: v for k, v in params.items() if k not in ["x", "y", "s", "c"]}
+    if s_data is not None:
+        scatter_params["s"] = s_data
+    if c_data is not None:
+        scatter_params["c"] = c_data
+
+    ax.scatter(x_data, y_data, **scatter_params)
+    return []
+
+
+def _resolve_column_or_data(
+    val: Any, df: pd.DataFrame | None, inputs: list[Any], params: dict[str, Any]
+) -> Any:
+    """Helper to resolve a value as either a column name in df or direct data."""
+    if val is None:
+        return None
+
+    # If it's a string and we have a dataframe, check if it's a column
+    if isinstance(val, str) and df is not None and val in df.columns:
+        return df[val].values
+
+    # Otherwise use _resolve_data logic
+    return _resolve_data(val, inputs, params)
+
+
 def savefig(inputs: list[Any], params: dict[str, Any], work_dir: Path | None = None) -> list[dict]:
     """Save figure to file."""
     fig = None
@@ -251,18 +370,34 @@ def savefig(inputs: list[Any], params: dict[str, Any], work_dir: Path | None = N
     work_dir.mkdir(parents=True, exist_ok=True)
 
     fmt = params.get("format", "png").lower()
+    if fmt == "jpg":
+        fmt = "jpeg"
+
     out_path = work_dir / f"plot_{uuid.uuid4().hex}.{fmt}"
+
+    # Extract some metadata before saving/closing
+    dpi = params.get("dpi", fig.dpi)
+    w_inch, h_inch = fig.get_size_inches()
 
     fig.savefig(str(out_path), **params)
     plt.close(fig)
 
+    # Map jpeg back to JPG for PlotRef format literal
+    plot_ref_fmt = "JPG" if fmt == "jpeg" else fmt.upper()
+
     return [
         {
             "type": "PlotRef",
-            "format": fmt.upper(),
+            "format": plot_ref_fmt,
             "uri": out_path.absolute().as_uri(),
             "path": str(out_path.absolute()),
-            "metadata": {"output_name": "plot"},
+            "metadata": {
+                "width_px": int(w_inch * dpi),
+                "height_px": int(h_inch * dpi),
+                "dpi": int(dpi),
+                "plot_type": "matplotlib",
+                "output_name": "plot",
+            },
         }
     ]
 

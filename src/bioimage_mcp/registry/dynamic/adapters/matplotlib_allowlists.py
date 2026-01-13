@@ -125,7 +125,7 @@ MATPLOTLIB_AXES_ALLOWLIST = {
     },
     "scatter": {
         "summary": "A scatter plot of y vs. x with varying marker size and/or color.",
-        "io_pattern": "OBJECTREF_CHAIN",
+        "io_pattern": "MATPLOTLIB_AXES_OP",
         "params": {
             "x": {"type": "array", "description": "x-coordinates"},
             "y": {"type": "array", "description": "y-coordinates"},

@@ -20,9 +20,12 @@ ARTIFACT_TYPES = {
     "ScalarRef": "Single numeric values (thresholds, statistics)",
     "LogRef": "Execution log output",
     "NativeOutputRef": "Tool-native output bundle (format is tool-dependent)",
-    "PlotRef": "Visualization plots (PNG/SVG)",
+    "PlotRef": "Visualization plots (PNG/SVG/PDF/JPG)",
     "ObjectRef": "Serialized Python object (e.g., ML model)",
     "GroupByRef": "Result of pandas groupby operation",
+    "FigureRef": "Matplotlib Figure object in memory",
+    "AxesRef": "Matplotlib Axes object in memory",
+    "AxesImageRef": "Matplotlib AxesImage object in memory",
 }
 
 
@@ -152,7 +155,7 @@ class PlotRef(ArtifactRef):
     """Reference to a matplotlib plot artifact."""
 
     type: Literal["PlotRef"] = "PlotRef"
-    format: Literal["PNG", "SVG"] = "PNG"
+    format: Literal["PNG", "SVG", "PDF", "JPG"] = "PNG"
     metadata: PlotMetadata
 
 
@@ -227,3 +230,58 @@ class GroupByRef(ObjectRef):
 
     type: Literal["GroupByRef"] = "GroupByRef"
     metadata: GroupByMetadata
+
+
+class FigureMetadata(BaseModel):
+    figsize: tuple[float, float]
+    dpi: int = 100
+    facecolor: str | None = None
+    edgecolor: str | None = None
+    layout: str | None = None
+    axes_count: int = 0
+
+
+class FigureRef(ObjectRef):
+    """Reference to a matplotlib.figure.Figure object."""
+
+    type: Literal["FigureRef"] = "FigureRef"
+    python_class: str = "matplotlib.figure.Figure"
+    metadata: FigureMetadata
+
+
+class AxesMetadata(BaseModel):
+    title: str | None = None
+    xlabel: str | None = None
+    ylabel: str | None = None
+    xlim: tuple[float, float] | None = None
+    ylim: tuple[float, float] | None = None
+    xscale: str = "linear"
+    yscale: str = "linear"
+    aspect: str | float = "auto"
+    is_axis_off: bool = False
+    parent_figure_ref_id: str
+
+
+class AxesRef(ObjectRef):
+    """Reference to a matplotlib.axes.Axes object."""
+
+    type: Literal["AxesRef"] = "AxesRef"
+    python_class: str = "matplotlib.axes._axes.Axes"
+    metadata: AxesMetadata
+
+
+class AxesImageMetadata(BaseModel):
+    cmap: str = "viridis"
+    vmin: float | None = None
+    vmax: float | None = None
+    origin: Literal["upper", "lower"] = "upper"
+    interpolation: str = "antialiased"
+    parent_axes_ref_id: str
+
+
+class AxesImageRef(ObjectRef):
+    """Reference to a matplotlib.image.AxesImage object."""
+
+    type: Literal["AxesImageRef"] = "AxesImageRef"
+    python_class: str = "matplotlib.image.AxesImage"
+    metadata: AxesImageMetadata

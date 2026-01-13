@@ -155,3 +155,74 @@ def test_patches_schema():
     assert rect_fn is not None, "base.matplotlib.patches.Rectangle not found"
     assert "width" in rect_fn.parameters
     assert "height" in rect_fn.parameters
+    assert "xy" in rect_fn.parameters
+
+
+def test_scatter_schema():
+    """T022: Verify base.matplotlib.Axes.scatter schema."""
+    from bioimage_mcp.registry.dynamic.adapters.matplotlib import MatplotlibAdapter
+
+    adapter = MatplotlibAdapter()
+    module_config = {"modules": ["matplotlib.axes"]}
+    discovered = adapter.discover(module_config)
+
+    scatter_fn = next((fn for fn in discovered if fn.fn_id == "base.matplotlib.Axes.scatter"), None)
+    assert scatter_fn is not None, "base.matplotlib.Axes.scatter not found"
+
+    params = scatter_fn.parameters
+    assert "x" in params
+    assert "y" in params
+    assert "s" in params
+    assert "c" in params
+    assert "marker" in params
+    assert "cmap" in params
+    assert "alpha" in params
+
+
+def test_subplots_schema():
+    """T018: Verify base.matplotlib.subplots schema."""
+    from bioimage_mcp.registry.dynamic.adapters.matplotlib import MatplotlibAdapter
+
+    adapter = MatplotlibAdapter()
+    module_config = {"modules": ["matplotlib.pyplot"]}
+    discovered = adapter.discover(module_config)
+
+    subplots_fn = next(
+        (fn for fn in discovered if fn.fn_id == "base.matplotlib.pyplot.subplots"), None
+    )
+    assert subplots_fn is not None, "base.matplotlib.pyplot.subplots not found"
+
+    params = subplots_fn.parameters
+    assert "nrows" in params
+    assert "ncols" in params
+    assert "sharex" in params
+    assert "sharey" in params
+    assert "figsize" in params
+
+    assert params["nrows"].type == "integer"
+    assert params["ncols"].type == "integer"
+    assert params["figsize"].type == "array"
+
+
+def test_savefig_schema():
+    """T030: Verify base.matplotlib.Figure.savefig schema."""
+    from bioimage_mcp.registry.dynamic.adapters.matplotlib import MatplotlibAdapter
+
+    adapter = MatplotlibAdapter()
+    module_config = {"modules": ["matplotlib.figure"]}
+    discovered = adapter.discover(module_config)
+
+    savefig_fn = next(
+        (fn for fn in discovered if fn.fn_id == "base.matplotlib.Figure.savefig"), None
+    )
+    assert savefig_fn is not None, "base.matplotlib.Figure.savefig not found"
+
+    params = savefig_fn.parameters
+    assert "format" in params
+    assert "dpi" in params
+    assert "bbox_inches" in params
+    assert "transparent" in params
+
+    assert params["format"].type == "string"
+    assert params["dpi"].type == "number"
+    assert params["transparent"].type == "boolean"

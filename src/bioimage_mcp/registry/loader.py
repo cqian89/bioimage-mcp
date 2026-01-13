@@ -96,6 +96,21 @@ def _map_io_pattern_to_ports(pattern: IOPattern) -> tuple[list[Port], list[Port]
     elif pattern == IOPattern.OBJECT_TO_IMAGE:
         inputs = [Port(name="image", artifact_type=["BioImageRef", "ObjectRef"])]
         outputs = [Port(name="output", artifact_type="BioImageRef")]
+    elif pattern == IOPattern.PURE_CONSTRUCTOR:
+        inputs = []
+        outputs = [Port(name="output", artifact_type="ObjectRef")]
+    elif pattern == IOPattern.MATPLOTLIB_SUBPLOTS:
+        inputs = []
+        outputs = [
+            Port(name="figure", artifact_type=["FigureRef", "ObjectRef"]),
+            Port(name="axes", artifact_type=["AxesRef", "ObjectRef"]),
+        ]
+    elif pattern == IOPattern.MATPLOTLIB_AXES_OP:
+        inputs = [Port(name="axes", artifact_type=["AxesRef", "ObjectRef"])]
+        outputs = [Port(name="output", artifact_type="ObjectRef")]
+    elif pattern == IOPattern.PLOT:
+        inputs = [Port(name="figure", artifact_type="ObjectRef")]
+        outputs = [Port(name="plot", artifact_type="PlotRef")]
     else:
         # Default/Generic: single input/output
         inputs = [Port(name="image", artifact_type="BioImageRef")]

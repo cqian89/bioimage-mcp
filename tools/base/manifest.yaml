@@ -70,6 +70,14 @@ dynamic_sources:
     exclude_patterns:
       - "_*"
 
+  - adapter: matplotlib
+    prefix: matplotlib
+    modules: []
+    include_patterns:
+      - "*"
+    exclude_patterns:
+      - "_*"
+
 functions:
   # xarray-based tools (Wrapper Consolidation)
   - fn_id: base.io.bioimage.load

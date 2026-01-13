@@ -6,7 +6,13 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field
 
-from bioimage_mcp.artifacts.models import ArtifactChecksum, ArtifactRef
+from bioimage_mcp.artifacts.models import (
+    ArtifactChecksum,
+    ArtifactRef,
+    AxesImageRef,
+    AxesRef,
+    FigureRef,
+)
 
 AxisName = Annotated[str, Field(pattern="^[A-Z]$")]
 ArtifactType = Literal[
@@ -18,6 +24,9 @@ ArtifactType = Literal[
     "PlotRef",
     "ObjectRef",
     "GroupByRef",
+    "FigureRef",
+    "AxesRef",
+    "AxesImageRef",
 ]
 StorageType = Literal["file", "zarr-temp"]
 
@@ -277,6 +286,9 @@ class ArtifactTypeEnum(str, Enum):
     MODEL = "ModelRef"
     LOG = "LogRef"
     NATIVE_OUTPUT = "NativeOutputRef"
+    FIGURE = "FigureRef"
+    AXES = "AxesRef"
+    AXES_IMAGE = "AxesImageRef"
 
 
 class ErrorDetail(BaseModel):
