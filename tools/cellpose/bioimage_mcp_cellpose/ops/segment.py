@@ -54,10 +54,10 @@ def run_segment(
     from bioio import BioImage
 
     bio_img = BioImage(image_path, reader=reader)
-    img_data = bio_img.data
-    img_data = img_data.compute() if hasattr(img_data, "compute") else img_data  # 5D TCZYX
+    img_data = bio_img.reader.data
+    img_data = img_data.compute() if hasattr(img_data, "compute") else img_data
 
-    # Handle 5D normalization (T026)
+    # Handle dimensions (T026)
     # Squeeze singleton dimensions for cellpose
     # Cellpose expects (Y, X) or (Z, Y, X) or (C, Y, X) or (Z, C, Y, X)
     img = np.squeeze(img_data)

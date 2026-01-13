@@ -17,10 +17,9 @@ import traceback
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
-if TYPE_CHECKING:
-    import numpy as np
+import numpy as np
 
 # Add parent directory to path so bioimage_mcp_cellpose can be imported
 BASE_DIR = Path(__file__).resolve().parent
@@ -136,21 +135,38 @@ def _load_object(uri: str) -> Any:
     return _OBJECT_CACHE[object_id]
 
 
-def _load_input_data(input_ref: str | dict) -> Any:
-    """Load input data from file or memory."""
+def _load_input_data(input_ref: str | dict) -> np.ndarray:
+    """Load input data from file or memory (preserving native dimensions).
+
+    Args:
+        input_ref: Either a file path string or a dict with 'uri' key
+
+    Returns:
+        Numpy array (native dimensions)
+    """
     from bioio import BioImage
 
+    # Handle dict refs (artifact references)
     if isinstance(input_ref, dict):
         uri = input_ref.get("uri", "")
         if uri.startswith("mem://"):
-            return _load_from_memory(uri)
+            # Load from worker memory
+            data = _load_from_memory(uri)
         else:
+            # Load from file URI
             path_str = uri.replace("file://", "")
             img = BioImage(path_str)
-            return img.data
+            data = img.reader.data
     else:
+        # Load from file path string
         img = BioImage(str(input_ref))
-        return img.data
+        data = img.reader.data
+
+    # Handle dask arrays with .compute() if needed
+    if hasattr(data, "compute"):
+        data = data.compute()
+
+    return data
 
 
 def _infer_dims_from_shape(shape: tuple[int, ...]) -> str:
@@ -173,8 +189,6 @@ def _infer_dims_from_shape(shape: tuple[int, ...]) -> str:
 
 def _expand_to_5d(data: np.ndarray) -> np.ndarray:
     """Expand array to 5D by prepending singleton dimensions."""
-    import numpy as np
-
     while data.ndim < 5:
         data = np.expand_dims(data, axis=0)
     return data

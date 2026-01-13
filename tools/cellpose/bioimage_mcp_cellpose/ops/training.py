@@ -57,12 +57,12 @@ def run_train_seg(
     # Load data
     print(f"Loading image from {image_path}")
     bio_img = BioImage(image_path)
-    img_data = bio_img.data
+    img_data = bio_img.reader.data
     img_data = img_data.compute() if hasattr(img_data, "compute") else img_data
 
     print(f"Loading mask from {mask_path}")
     bio_mask = BioImage(mask_path)
-    mask_data = bio_mask.data
+    mask_data = bio_mask.reader.data
     mask_data = mask_data.compute() if hasattr(mask_data, "compute") else mask_data
 
     # Squeeze to 2D/3D (Cellpose expects list of arrays)

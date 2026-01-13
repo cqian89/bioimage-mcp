@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any
 from urllib.parse import unquote, urlparse
 
 import numpy as np
+from bioio import BioImage
 
 from bioimage_mcp.artifacts.base import Artifact
 from bioimage_mcp.registry.dynamic.adapters import BaseAdapter
@@ -117,9 +118,6 @@ class ScipyNdimageAdapter(BaseAdapter):
 
     def _load_image(self, artifact: Artifact) -> np.ndarray:
         """Load image data from artifact reference."""
-        if tifffile is None:
-            raise RuntimeError("tifffile is required for loading images")
-
         # Handle both dict and Pydantic model
         if isinstance(artifact, dict):
             uri = artifact.get("uri")
@@ -145,7 +143,11 @@ class ScipyNdimageAdapter(BaseAdapter):
             # Only path is present
             path = str(Path(path).absolute())
 
-        return tifffile.imread(path)
+        img = BioImage(path)
+        data = img.reader.data
+        if hasattr(data, "compute"):
+            data = data.compute()
+        return data
 
     def _save_image(self, array: np.ndarray, work_dir: Path | None = None) -> dict:
         """Save image array to file and return artifact reference dict."""

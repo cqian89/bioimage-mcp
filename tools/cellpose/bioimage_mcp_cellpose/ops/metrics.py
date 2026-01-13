@@ -48,7 +48,7 @@ def run_average_precision(
         raise ValueError("No masks_pred input provided")
     pred_path = _uri_to_path(pred_uri)
     pred_bio = BioImage(pred_path)
-    pred_data = pred_bio.data
+    pred_data = pred_bio.reader.data
     pred_data = pred_data.compute() if hasattr(pred_data, "compute") else pred_data
     masks_pred = np.squeeze(pred_data).astype(np.int32)
 
@@ -59,7 +59,7 @@ def run_average_precision(
         raise ValueError("No masks_true input provided")
     true_path = _uri_to_path(true_uri)
     true_bio = BioImage(true_path)
-    true_data = true_bio.data
+    true_data = true_bio.reader.data
     true_data = true_data.compute() if hasattr(true_data, "compute") else true_data
     masks_true = np.squeeze(true_data).astype(np.int32)
 

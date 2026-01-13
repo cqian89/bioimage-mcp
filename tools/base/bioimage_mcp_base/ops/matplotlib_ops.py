@@ -137,9 +137,14 @@ def imshow(
     # Load image data
     if isinstance(x_val, dict) and x_val.get("type") == "BioImageRef":
         img = BioImage(x_val.get("path"))
-        # Get 2D slice (first channel, first Z, first T)
-        # bioio.BioImage.data is (T, C, Z, Y, X)
-        data = img.data[0, 0, 0, :, :]
+        data = img.reader.data
+        if hasattr(data, "compute"):
+            data = data.compute()
+        # Get 2D slice for display - handle variable dimensions
+        if data.ndim > 2:
+            # Take first slice of all leading dimensions
+            while data.ndim > 2:
+                data = data[0]
     else:
         data = x_val
 
@@ -858,6 +863,9 @@ def _resolve_data(x_val: Any, inputs: list[tuple[str, Any]], params: dict[str, A
             return _load_object(x_val)
         elif x_val["type"] == "BioImageRef":
             img = BioImage(x_val.get("path"))
-            return img.data.flatten()
+            data = img.reader.data
+            if hasattr(data, "compute"):
+                data = data.compute()
+            return data.flatten()
 
     return x_val
