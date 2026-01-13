@@ -97,7 +97,7 @@ def export_ome_tiff(*, inputs: dict, params: dict, work_dir: Path) -> dict:
 
     try:
         img = BioImage(in_path)
-        data = img.data
+        data = img.reader.data  # Native dimensions
 
         # Check size before full materialization
         size_bytes = data.nbytes if hasattr(data, "nbytes") else 0
@@ -174,24 +174,34 @@ def export_ome_tiff(*, inputs: dict, params: dict, work_dir: Path) -> dict:
         )
         data = data.astype(np.float64)
 
-    # Ensure 5D TCZYX
-    while data.ndim < 5:
-        data = data[np.newaxis, ...]
+    # Infer dims from native data shape
+    dims_map = {2: "YX", 3: "ZYX", 4: "CZYX", 5: "TCZYX"}
+    dim_order = dims_map.get(data.ndim, "TCZYX"[-data.ndim :] if data.ndim <= 5 else None)
 
-    OmeTiffWriter.save(
-        data,
-        str(out_path),
-        dim_order="TCZYX",
-        physical_pixel_sizes=physical_pixel_sizes,
-        channel_names=channel_names,
-        compression=compression,
-    )
+    if dim_order:
+        OmeTiffWriter.save(
+            data,
+            str(out_path),
+            dim_order=dim_order,
+            physical_pixel_sizes=physical_pixel_sizes,
+            channel_names=channel_names,
+            compression=compression,
+        )
+    else:
+        # For >5D, fall back to tifffile
+        import tifffile
+
+        tifffile.imwrite(str(out_path), data)
     return {
         "outputs": {
             "output": {
                 "type": "BioImageRef",
                 "format": "OME-TIFF",
                 "path": str(out_path),
+                "metadata": {
+                    "shape": list(data.shape),
+                    "dim_order": dim_order if dim_order else "unknown",
+                },
             }
         },
         "warnings": warnings,

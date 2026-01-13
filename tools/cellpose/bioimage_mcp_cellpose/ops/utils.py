@@ -64,17 +64,17 @@ def _ensure_ome_tiff_compatible(
         pass
 
     bio_img = BioImage(image_path, reader=reader)
-    data = bio_img.data
+    data = bio_img.reader.data  # Native dimensions
     data = data.compute() if hasattr(data, "compute") else data
 
     # Write to temporary OME-TIFF
     temp_path = work_dir / "converted_input.ome.tiff"
 
-    # Ensure 5D for OmeTiffWriter
-    while data.ndim < 5:
-        data = np.expand_dims(data, axis=0)
+    # Use native dimensions
+    dims_map = {2: "YX", 3: "ZYX", 4: "CZYX", 5: "TCZYX"}
+    dim_order = dims_map.get(data.ndim, "TCZYX"[-data.ndim :] if data.ndim <= 5 else "TCZYX")
 
-    OmeTiffWriter.save(data, str(temp_path), dim_order="TCZYX")
+    OmeTiffWriter.save(data, str(temp_path), dim_order=dim_order)
 
     # Return converted path with OME-TIFF reader hint
     tiff_reader = None
