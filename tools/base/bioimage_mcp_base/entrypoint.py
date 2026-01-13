@@ -23,6 +23,7 @@ if str(TOOLS_ROOT) not in sys.path:
 from datetime import UTC  # noqa: E402
 
 from bioimage_mcp_base.ops import io as io_ops  # noqa: E402
+
 from bioimage_mcp.registry.dynamic.object_cache import OBJECT_CACHE  # noqa: E402
 
 # Deprecated: use OBJECT_CACHE instead

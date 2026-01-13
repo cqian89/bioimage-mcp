@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import pytest
-from pathlib import Path
-from bioio.writers import OmeTiffWriter
 from bioio import BioImage
+from bioio.writers import OmeTiffWriter
 
 
 @pytest.mark.integration

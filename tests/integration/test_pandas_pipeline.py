@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-import pytest
-import pandas as pd
 from pathlib import Path
+
+import pandas as pd
+import pytest
+
 from bioimage_mcp.registry.dynamic.adapters.pandas import PandasAdapterForRegistry
 
 

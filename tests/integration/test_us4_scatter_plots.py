@@ -2,8 +2,9 @@
 Integration tests for User Story 4: Scatter Plot Feature Relationships.
 """
 
-import pandas as pd
 from pathlib import Path
+
+import pandas as pd
 import pytest
 
 from bioimage_mcp.api.execution import ExecutionService

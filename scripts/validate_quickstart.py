@@ -1,9 +1,11 @@
-import os
 import json
-import pandas as pd
-import numpy as np
+import os
 from pathlib import Path
-from bioimage_mcp_base.ops.io import table_load, table_export
+
+import numpy as np
+import pandas as pd
+from bioimage_mcp_base.ops.io import table_export, table_load
+
 from bioimage_mcp.registry.dynamic.pandas_adapter import PandasAdapter
 
 

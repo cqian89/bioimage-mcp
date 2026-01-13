@@ -1,6 +1,6 @@
 import logging
 import threading
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -18,9 +18,9 @@ class LRUCache(dict):
         super().__init__()
         self.max_size = max_size
         self.max_memory = max_memory
-        self.access_order: List[str] = []
+        self.access_order: list[str] = []
         self.current_memory: int = 0
-        self.obj_memory: Dict[str, int] = {}
+        self.obj_memory: dict[str, int] = {}
         self._lock = threading.RLock()
 
     def _get_memory_usage(self, value: Any) -> int:

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 import yaml
 
 BASE_ENV_PATH = Path(__file__).parents[2] / "envs" / "bioimage-mcp-base.yaml"

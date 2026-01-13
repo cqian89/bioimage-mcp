@@ -4,8 +4,9 @@ Integration tests for User Story 2: ROI Overlays on Microscopy Images.
 
 import os
 from pathlib import Path
-import pytest
+
 import numpy as np
+import pytest
 from bioio.writers import OmeTiffWriter
 
 from bioimage_mcp.api.execution import ExecutionService

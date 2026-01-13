@@ -1,14 +1,15 @@
 import pytest
 from pydantic import ValidationError
+
 from bioimage_mcp.artifacts.models import (
-    FigureRef,
-    AxesRef,
-    AxesImageRef,
-    FigureMetadata,
-    AxesMetadata,
     AxesImageMetadata,
-    PlotRef,
+    AxesImageRef,
+    AxesMetadata,
+    AxesRef,
+    FigureMetadata,
+    FigureRef,
     PlotMetadata,
+    PlotRef,
 )
 
 

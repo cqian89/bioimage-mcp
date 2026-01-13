@@ -35,6 +35,7 @@ class IOPattern(str, Enum):
     PURE_CONSTRUCTOR = "pure_constructor"  # No artifact inputs, ObjectRef out
     MATPLOTLIB_SUBPLOTS = "matplotlib_subplots"  # No inputs, FigureRef + AxesRef out
     MATPLOTLIB_AXES_OP = "matplotlib_axes_op"  # AxesRef (+ optional data) in, AxesRef out
+    MATPLOTLIB_FIGURE_OP = "matplotlib_figure_op"  # FigureRef in, FigureRef out
     GENERIC = "generic"
 
 

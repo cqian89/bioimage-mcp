@@ -492,7 +492,7 @@ def colorbar(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
 
     if not mappable:
         # Look for any ObjectRef that is a mappable
-        for name, value in inputs:
+        for _name, value in inputs:
             obj = _load_object(value)
             if obj and hasattr(obj, "get_cmap"):
                 mappable = obj
@@ -527,8 +527,48 @@ def generic_op(inputs: list[Any], params: dict[str, Any], method_name: str) -> l
         raise ValueError(f"Object {type(obj)} has no method {method_name}")
 
     method = getattr(obj, method_name)
-    method(**params)
-    return []
+    res = method(**params)
+
+    if res is None:
+        return []
+
+    # If it returns a figure or axes, we should handle it
+    if isinstance(res, plt.Figure):
+        # Handle Figure (similar to figure() op)
+        fig_id = str(uuid.uuid4())
+        fig_uri = f"obj://default/matplotlib/{fig_id}"
+        OBJECT_CACHE[fig_uri] = res
+        return [
+            {
+                "ref_id": fig_id,
+                "type": "FigureRef",
+                "python_class": "matplotlib.figure.Figure",
+                "uri": fig_uri,
+                "storage_type": "memory",
+                "metadata": {
+                    "output_name": "figure",
+                    "figsize": res.get_size_inches().tolist(),
+                    "dpi": int(res.get_dpi()),
+                },
+            }
+        ]
+
+    # For other returns, return as an ObjectRef
+    ref_id = str(uuid.uuid4())
+    uri = f"obj://default/matplotlib/{ref_id}"
+    OBJECT_CACHE[uri] = res
+    return [
+        {
+            "ref_id": ref_id,
+            "type": "ObjectRef",
+            "python_class": f"{type(res).__module__}.{type(res).__name__}",
+            "uri": uri,
+            "storage_type": "memory",
+            "metadata": {
+                "output_name": "return",
+            },
+        }
+    ]
 
 
 def pyplot_op(params: dict[str, Any], method_name: str) -> list[dict]:
@@ -537,8 +577,48 @@ def pyplot_op(params: dict[str, Any], method_name: str) -> list[dict]:
         raise ValueError(f"matplotlib.pyplot has no function {method_name}")
 
     method = getattr(plt, method_name)
-    method(**params)
-    return []
+    res = method(**params)
+
+    if res is None:
+        return []
+
+    # If it returns a figure, we should handle it like figure() does
+    if isinstance(res, plt.Figure):
+        fig_id = str(uuid.uuid4())
+        fig_uri = f"obj://default/matplotlib/{fig_id}"
+        OBJECT_CACHE[fig_uri] = res
+        res._mcp_ref_id = fig_id
+        return [
+            {
+                "ref_id": fig_id,
+                "type": "FigureRef",
+                "python_class": "matplotlib.figure.Figure",
+                "uri": fig_uri,
+                "storage_type": "memory",
+                "metadata": {
+                    "output_name": "figure",
+                    "figsize": res.get_size_inches().tolist(),
+                    "dpi": int(res.get_dpi()),
+                },
+            }
+        ]
+
+    # For other returns, return as an ObjectRef so it can be inspected
+    ref_id = str(uuid.uuid4())
+    uri = f"obj://default/matplotlib/{ref_id}"
+    OBJECT_CACHE[uri] = res
+    return [
+        {
+            "ref_id": ref_id,
+            "type": "ObjectRef",
+            "python_class": f"{type(res).__module__}.{type(res).__name__}",
+            "uri": uri,
+            "storage_type": "memory",
+            "metadata": {
+                "output_name": "return",
+            },
+        }
+    ]
 
 
 def patch_op(params: dict[str, Any], class_name: str) -> list[dict]:
@@ -608,6 +688,11 @@ def savefig(inputs: list[Any], params: dict[str, Any], work_dir: Path | None = N
 
     fig.savefig(str(out_path), **params)
     plt.close(fig)
+
+    # Clean up OBJECT_CACHE (T045: Verify that figures are being closed after savefig)
+    for uri, cached_fig in list(OBJECT_CACHE.items()):
+        if cached_fig is fig:
+            del OBJECT_CACHE[uri]
 
     plot_ref_fmt = "JPG" if fmt == "jpeg" else fmt.upper()
 

@@ -493,6 +493,7 @@ def table_export(
         artifact_id = parts[-1]
 
         from bioimage_mcp_base.entrypoint import _MEMORY_ARTIFACTS
+
         from bioimage_mcp.registry.dynamic.object_cache import OBJECT_CACHE
 
         obj = OBJECT_CACHE.get(artifact_id)
@@ -1077,6 +1078,7 @@ def export(*, inputs: dict[str, Any], params: dict[str, Any], work_dir: Path) ->
 
             # Try to load from object cache or memory artifacts
             from bioimage_mcp_base.entrypoint import _MEMORY_ARTIFACTS
+
             from bioimage_mcp.registry.dynamic.object_cache import OBJECT_CACHE
 
             obj = OBJECT_CACHE.get(artifact_id)

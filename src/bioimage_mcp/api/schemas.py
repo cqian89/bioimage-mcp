@@ -9,9 +9,6 @@ from pydantic import BaseModel, Field
 from bioimage_mcp.artifacts.models import (
     ArtifactChecksum,
     ArtifactRef,
-    AxesImageRef,
-    AxesRef,
-    FigureRef,
 )
 
 AxisName = Annotated[str, Field(pattern="^[A-Z]$")]

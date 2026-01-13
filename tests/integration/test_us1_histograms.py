@@ -3,6 +3,7 @@ Integration tests for User Story 1: Intensity Histograms.
 """
 
 from pathlib import Path
+
 import pytest
 
 from bioimage_mcp.api.execution import ExecutionService

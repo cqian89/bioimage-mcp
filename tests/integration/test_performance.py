@@ -1,8 +1,9 @@
 import time
-import pandas as pd
+
 import numpy as np
+import pandas as pd
 import pytest
-from pathlib import Path
+
 from bioimage_mcp.registry.dynamic.pandas_adapter import PandasAdapter
 
 
@@ -68,8 +69,8 @@ def test_table_load_empty_with_headers(tmp_path):
     work_dir.mkdir()
 
     # Need to set environment variable for allowed paths
-    import os
     import json
+    import os
 
     os.environ["BIOIMAGE_MCP_FS_ALLOWLIST_READ"] = json.dumps([str(tmp_path)])
 

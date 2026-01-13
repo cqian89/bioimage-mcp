@@ -1,12 +1,14 @@
 import threading
+
 import pytest
+
 from bioimage_mcp.registry.dynamic.object_cache import (
+    OBJECT_CACHE,
     LRUCache,
+    clear,
+    evict,
     get_by_artifact_id,
     register,
-    evict,
-    clear,
-    OBJECT_CACHE,
 )
 
 

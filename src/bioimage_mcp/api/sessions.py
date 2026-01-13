@@ -296,7 +296,13 @@ class SessionService:
                 # Build input with available metadata to enable lazy reconstruction in execution service
                 resolved_input = {"ref_id": ref_id}
                 if original_art_ref:
-                    resolved_input.update(original_art_ref.model_dump(exclude_none=True))
+                    original_data = original_art_ref.model_dump(exclude_none=True)
+                    if source.source == "step":
+                        # For step dependencies, we MUST use the new ref_id and uri
+                        # produced by the replay. Overwriting with original would break cache lookup.
+                        original_data.pop("ref_id", None)
+                        original_data.pop("uri", None)
+                    resolved_input.update(original_data)
 
                 if (
                     original_art_ref

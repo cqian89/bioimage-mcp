@@ -108,6 +108,9 @@ def _map_io_pattern_to_ports(pattern: IOPattern) -> tuple[list[Port], list[Port]
     elif pattern == IOPattern.MATPLOTLIB_AXES_OP:
         inputs = [Port(name="axes", artifact_type=["AxesRef", "ObjectRef"])]
         outputs = [Port(name="output", artifact_type="ObjectRef")]
+    elif pattern == IOPattern.MATPLOTLIB_FIGURE_OP:
+        inputs = [Port(name="figure", artifact_type=["FigureRef", "ObjectRef"])]
+        outputs = [Port(name="output", artifact_type="ObjectRef")]
     elif pattern == IOPattern.PLOT:
         inputs = [Port(name="figure", artifact_type="ObjectRef")]
         outputs = [Port(name="plot", artifact_type="PlotRef")]

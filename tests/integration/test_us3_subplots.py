@@ -2,8 +2,9 @@
 Integration tests for User Story 3: Multi-panel comparison figures.
 """
 
-import numpy as np
 from pathlib import Path
+
+import numpy as np
 import pytest
 import tifffile
 

@@ -1,7 +1,6 @@
-import os
 import sys
 from pathlib import Path
-import pytest
+
 from bioimage_mcp.registry.dynamic.adapters.matplotlib import MatplotlibAdapter
 
 # Add base tool to path for dynamic dispatch to find bioimage_mcp_base
