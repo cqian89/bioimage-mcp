@@ -1,6 +1,7 @@
 """Contract tests for Matplotlib dynamic discovery."""
 
 import pytest
+
 from bioimage_mcp.registry.dynamic.adapters import ADAPTER_REGISTRY
 
 
@@ -249,3 +250,38 @@ def test_plot_schema():
     assert "linewidth" in params
     assert "color" in params
     assert "marker" in params
+
+
+def test_axes_styling_discoverable():
+    """T043: Verify axes styling methods are discoverable."""
+    from bioimage_mcp.registry.dynamic.adapters.matplotlib import MatplotlibAdapter
+
+    adapter = MatplotlibAdapter()
+    module_config = {"modules": ["matplotlib.axes"]}
+    discovered = adapter.discover(module_config)
+
+    fn_ids = {fn.fn_id for fn in discovered}
+    assert "base.matplotlib.Axes.set_title" in fn_ids
+    assert "base.matplotlib.Axes.set_xlabel" in fn_ids
+    assert "base.matplotlib.Axes.set_ylabel" in fn_ids
+    assert "base.matplotlib.Axes.set_xlim" in fn_ids
+    assert "base.matplotlib.Axes.set_ylim" in fn_ids
+    assert "base.matplotlib.Axes.grid" in fn_ids
+    assert "base.matplotlib.Axes.tick_params" in fn_ids
+    assert "base.matplotlib.Axes.legend" in fn_ids
+    assert "base.matplotlib.Axes.annotate" in fn_ids
+    assert "base.matplotlib.Axes.text" in fn_ids
+    assert "base.matplotlib.Axes.colorbar" in fn_ids
+
+
+def test_matplotlib_function_count():
+    """T047: Assert that MatplotlibAdapter exposes at least 200 functions."""
+    from bioimage_mcp.registry.dynamic.adapters.matplotlib import MatplotlibAdapter
+
+    adapter = MatplotlibAdapter()
+    # Discover all modules
+    module_config = {"modules": []}
+    discovered = adapter.discover(module_config)
+
+    count = len(discovered)
+    assert count >= 200, f"Expected at least 200 matplotlib functions, but found {count}"

@@ -6,11 +6,12 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import unquote, urlparse
 
-import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-import pandas as pd
+import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from bioio import BioImage
+
 from bioimage_mcp.registry.dynamic.object_cache import OBJECT_CACHE
 
 
@@ -21,6 +22,7 @@ def subplots(**params) -> list[dict]:
     fig_id = str(uuid.uuid4())
     fig_uri = f"obj://default/matplotlib/{fig_id}"
     OBJECT_CACHE[fig_uri] = fig
+    fig._mcp_ref_id = fig_id
 
     fig_ref = {
         "ref_id": fig_id,
@@ -43,6 +45,7 @@ def subplots(**params) -> list[dict]:
             ax_id = str(uuid.uuid4())
             ax_uri = f"obj://default/matplotlib/{ax_id}"
             OBJECT_CACHE[ax_uri] = a
+            a._mcp_ref_id = ax_id
             results.append(
                 {
                     "ref_id": ax_id,
@@ -60,6 +63,7 @@ def subplots(**params) -> list[dict]:
         ax_id = str(uuid.uuid4())
         ax_uri = f"obj://default/matplotlib/{ax_id}"
         OBJECT_CACHE[ax_uri] = ax
+        ax._mcp_ref_id = ax_id
         results.append(
             {
                 "ref_id": ax_id,
@@ -83,6 +87,7 @@ def figure(**params) -> list[dict]:
     fig_id = str(uuid.uuid4())
     fig_uri = f"obj://default/matplotlib/{fig_id}"
     OBJECT_CACHE[fig_uri] = fig
+    fig._mcp_ref_id = fig_id
 
     return [
         {
@@ -114,7 +119,7 @@ def imshow(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
 
     if x_val is None:
         # Check if any other input is a BioImageRef
-        for name, value in inputs:
+        for _, value in inputs:
             if isinstance(value, dict) and value.get("type") == "BioImageRef":
                 x_val = value
                 break
@@ -146,8 +151,25 @@ def imshow(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
     if "origin" not in imshow_params:
         imshow_params["origin"] = "upper"
 
-    ax.imshow(data, **imshow_params)
-    return []
+    im = ax.imshow(data, **imshow_params)
+
+    im_id = str(uuid.uuid4())
+    im_uri = f"obj://default/matplotlib/{im_id}"
+    OBJECT_CACHE[im_uri] = im
+
+    return [
+        {
+            "ref_id": im_id,
+            "type": "ObjectRef",
+            "python_class": "matplotlib.image.AxesImage",
+            "uri": im_uri,
+            "storage_type": "memory",
+            "metadata": {
+                "output_name": "imshow_result",
+                "parent_axes_ref_id": getattr(ax, "_mcp_ref_id", None),
+            },
+        }
+    ]
 
 
 def add_patch(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
@@ -164,7 +186,7 @@ def add_patch(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
 
     if not patch:
         # Look for ObjectRef with matplotlib.patches.Patch
-        for name, value in inputs:
+        for _, value in inputs:
             obj = _load_object(value)
             if isinstance(obj, patches.Patch):
                 patch = obj
@@ -264,7 +286,7 @@ def plot(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
     # Find a TableRef if any of x, y are column names
     df = None
     table_art = None
-    for name, art in inputs:
+    for _, art in inputs:
         if isinstance(art, dict) and art.get("type") == "TableRef":
             table_art = art
             break
@@ -316,7 +338,7 @@ def scatter(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
     # Find a TableRef if any of x, y, s, c are column names
     df = None
     table_art = None
-    for name, art in inputs:
+    for _, art in inputs:
         if isinstance(art, dict) and art.get("type") == "TableRef":
             table_art = art
             break
@@ -364,7 +386,7 @@ def boxplot(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
     # Find TableRef
     df = None
     table_art = None
-    for name, art in inputs:
+    for _, art in inputs:
         if isinstance(art, dict) and art.get("type") == "TableRef":
             table_art = art
             break
@@ -380,8 +402,8 @@ def boxplot(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
         if data_col:
             groups = df.groupby(group_col)[data_col].apply(list).to_dict()
             labels = labels_val or list(groups.keys())
-            labels = [l for l in labels if l in groups]
-            data = [groups[l] for l in labels]
+            labels = [label for label in labels if label in groups]
+            data = [groups[label] for label in labels]
 
             positions = list(range(1, len(data) + 1))
 
@@ -417,7 +439,7 @@ def violinplot(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
     # Find TableRef
     df = None
     table_art = None
-    for name, art in inputs:
+    for _, art in inputs:
         if isinstance(art, dict) and art.get("type") == "TableRef":
             table_art = art
             break
@@ -435,8 +457,8 @@ def violinplot(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
         if data_col:
             groups = df.groupby(group_col)[data_col].apply(list).to_dict()
             labels = labels_val or list(groups.keys())
-            labels = [l for l in labels if l in groups]
-            data = [groups[l] for l in labels]
+            labels = [label for label in labels if label in groups]
+            data = [groups[label] for label in labels]
 
             positions = list(range(1, len(data) + 1))
 
@@ -457,6 +479,41 @@ def violinplot(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
     return []
 
 
+def colorbar(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
+    """Add a colorbar to a plot."""
+    mappable = None
+    ax = None
+
+    for name, value in inputs:
+        if name == "mappable":
+            mappable = _load_object(value)
+        elif name in ["axes", "ax"]:
+            ax = _load_object(value)
+
+    if not mappable:
+        # Look for any ObjectRef that is a mappable
+        for name, value in inputs:
+            obj = _load_object(value)
+            if obj and hasattr(obj, "get_cmap"):
+                mappable = obj
+                break
+
+    if not ax:
+        try:
+            ax = _find_axes(inputs)
+        except ValueError:
+            if mappable and hasattr(mappable, "axes"):
+                ax = mappable.axes
+
+    if not ax:
+        raise ValueError("Missing 'axes' for colorbar")
+
+    fig = ax.figure
+    cb_params = {k: v for k, v in params.items() if k not in ["mappable", "ax"]}
+    fig.colorbar(mappable, ax=ax, **cb_params)
+    return []
+
+
 def generic_op(inputs: list[Any], params: dict[str, Any], method_name: str) -> list[dict]:
     """Execute a generic method on the first input object."""
     if not inputs:
@@ -472,6 +529,40 @@ def generic_op(inputs: list[Any], params: dict[str, Any], method_name: str) -> l
     method = getattr(obj, method_name)
     method(**params)
     return []
+
+
+def pyplot_op(params: dict[str, Any], method_name: str) -> list[dict]:
+    """Execute a generic pyplot function."""
+    if not hasattr(plt, method_name):
+        raise ValueError(f"matplotlib.pyplot has no function {method_name}")
+
+    method = getattr(plt, method_name)
+    method(**params)
+    return []
+
+
+def patch_op(params: dict[str, Any], class_name: str) -> list[dict]:
+    """Create a patch from matplotlib.patches and store in cache."""
+    if not hasattr(patches, class_name):
+        raise ValueError(f"matplotlib.patches has no class {class_name}")
+
+    cls = getattr(patches, class_name)
+    patch = cls(**params)
+
+    patch_id = str(uuid.uuid4())
+    patch_uri = f"obj://default/matplotlib/{patch_id}"
+    OBJECT_CACHE[patch_uri] = patch
+
+    return [
+        {
+            "ref_id": patch_id,
+            "type": "ObjectRef",
+            "python_class": f"matplotlib.patches.{class_name}",
+            "uri": patch_uri,
+            "storage_type": "memory",
+            "metadata": {"output_name": "output"},
+        }
+    ]
 
 
 def set_xlabel(inputs: list[Any], params: dict[str, Any]) -> list[dict]:

@@ -1,20 +1,20 @@
 from __future__ import annotations
 
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from bioimage_mcp.registry.dynamic.adapters import BaseAdapter
-from bioimage_mcp.registry.dynamic.models import FunctionMetadata, IOPattern, ParameterSchema
 from bioimage_mcp.registry.dynamic.adapters.matplotlib_allowlists import (
-    MATPLOTLIB_DENYLIST,
-    MATPLOTLIB_PYPLOT_ALLOWLIST,
-    MATPLOTLIB_FIGURE_ALLOWLIST,
     MATPLOTLIB_AXES_ALLOWLIST,
+    MATPLOTLIB_DENYLIST,
+    MATPLOTLIB_FIGURE_ALLOWLIST,
     MATPLOTLIB_PATCHES_ALLOWLIST,
+    MATPLOTLIB_PYPLOT_ALLOWLIST,
 )
+from bioimage_mcp.registry.dynamic.models import FunctionMetadata, IOPattern, ParameterSchema
 
 if TYPE_CHECKING:
-    from bioimage_mcp.artifacts.base import Artifact
     from bioimage_mcp.api.schemas import DimensionRequirement
+    from bioimage_mcp.artifacts.base import Artifact
 
 
 class MatplotlibAdapter(BaseAdapter):
@@ -138,10 +138,13 @@ class MatplotlibAdapter(BaseAdapter):
         # Normalize inputs for dispatch
         normalized_inputs = self._normalize_inputs(inputs)
 
+        # 1. Specific High-Level Dispatches (require custom logic)
         if fn_id.endswith("matplotlib.pyplot.subplots"):
             return matplotlib_ops.subplots(**params)
         if fn_id.endswith("matplotlib.pyplot.figure"):
             return matplotlib_ops.figure(**params)
+        if fn_id.endswith("matplotlib.Axes.imshow"):
+            return matplotlib_ops.imshow(normalized_inputs, params)
         if fn_id.endswith("matplotlib.Axes.hist"):
             return matplotlib_ops.hist(normalized_inputs, params)
         if fn_id.endswith("matplotlib.Axes.boxplot"):
@@ -152,32 +155,25 @@ class MatplotlibAdapter(BaseAdapter):
             return matplotlib_ops.plot(normalized_inputs, params)
         if fn_id.endswith("matplotlib.Axes.scatter"):
             return matplotlib_ops.scatter(normalized_inputs, params)
-        if fn_id.endswith("matplotlib.Axes.imshow"):
-            return matplotlib_ops.imshow(normalized_inputs, params)
         if fn_id.endswith("matplotlib.Axes.add_patch"):
             return matplotlib_ops.add_patch(normalized_inputs, params)
-        if fn_id.endswith("matplotlib.Axes.set_xlabel"):
-            return matplotlib_ops.generic_op(normalized_inputs, params, "set_xlabel")
-        if fn_id.endswith("matplotlib.Axes.set_ylabel"):
-            return matplotlib_ops.generic_op(normalized_inputs, params, "set_ylabel")
-        if fn_id.endswith("matplotlib.Axes.set_title"):
-            return matplotlib_ops.generic_op(normalized_inputs, params, "set_title")
-        if fn_id.endswith("matplotlib.Axes.set_xlim"):
-            return matplotlib_ops.generic_op(normalized_inputs, params, "set_xlim")
-        if fn_id.endswith("matplotlib.Axes.set_ylim"):
-            return matplotlib_ops.generic_op(normalized_inputs, params, "set_ylim")
-        if fn_id.endswith("matplotlib.Axes.grid"):
-            return matplotlib_ops.generic_op(normalized_inputs, params, "grid")
-        if fn_id.endswith("matplotlib.patches.Circle"):
-            return matplotlib_ops.create_circle(params)
-        if fn_id.endswith("matplotlib.patches.Rectangle"):
-            return matplotlib_ops.create_rectangle(params)
         if fn_id.endswith("matplotlib.Figure.savefig"):
             return matplotlib_ops.savefig(normalized_inputs, params, work_dir)
-        if fn_id.endswith("matplotlib.Figure.tight_layout"):
-            return matplotlib_ops.generic_op(normalized_inputs, params, "tight_layout")
-        if fn_id.endswith("matplotlib.Figure.suptitle"):
-            return matplotlib_ops.generic_op(normalized_inputs, params, "suptitle")
+        if fn_id.endswith("matplotlib.Axes.colorbar"):
+            return matplotlib_ops.colorbar(normalized_inputs, params)
+
+        # 2. Generic Category Dispatches
+        if "matplotlib.pyplot" in fn_id:
+            return matplotlib_ops.pyplot_op(params, method_name)
+
+        if "matplotlib.Figure" in fn_id:
+            return matplotlib_ops.generic_op(normalized_inputs, params, method_name)
+
+        if "matplotlib.Axes" in fn_id:
+            return matplotlib_ops.generic_op(normalized_inputs, params, method_name)
+
+        if "matplotlib.patches" in fn_id:
+            return matplotlib_ops.patch_op(params, method_name)
 
         return []
 

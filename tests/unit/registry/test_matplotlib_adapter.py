@@ -1,5 +1,6 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 # Note: These imports will fail until the implementation is added (TDD RED phase)
 try:
@@ -32,26 +33,28 @@ def test_agg_backend_enforced():
 
 def test_interactive_methods_blocked(adapter):
     """
-    T007: Test that interactive methods like show, pause, ginput, connect are blocked.
+    T042: Test that all MATPLOTLIB_DENYLIST methods are blocked with proper error messages.
     """
-    interactive_methods = [
-        "base.matplotlib.pyplot.show",
-        "base.matplotlib.pyplot.pause",
-        "base.matplotlib.pyplot.ginput",
-        "base.matplotlib.pyplot.connect",
-    ]
+    from bioimage_mcp.registry.dynamic.adapters.matplotlib_allowlists import MATPLOTLIB_DENYLIST
 
-    for fn_id in interactive_methods:
-        with pytest.raises(ValueError, match="(?i)blocked|denied|not allowed|forbidden"):
-            adapter.execute(fn_id, inputs={}, params={})
+    for method in MATPLOTLIB_DENYLIST:
+        fn_id = f"base.matplotlib.pyplot.{method}"
+        with pytest.raises(ValueError) as excinfo:
+            adapter.execute(fn_id, inputs=[], params={})
+
+        assert "blocked for safety" in str(excinfo.value)
+        assert "interactive GUI method" in str(excinfo.value)
 
 
 def test_unknown_function_rejected(adapter):
     """
-    T007: Test that unknown/non-allowlisted functions are rejected.
+    T042: Test that unknown/non-allowlisted functions are rejected with proper error messages.
     """
-    with pytest.raises(ValueError, match="(?i)unknown|not allowed|forbidden"):
-        adapter.execute("base.matplotlib.pyplot.some_random_function", inputs={}, params={})
+    fn_id = "base.matplotlib.pyplot.some_random_function"
+    with pytest.raises(ValueError) as excinfo:
+        adapter.execute(fn_id, inputs=[], params={})
+
+    assert "unknown or not allowed" in str(excinfo.value)
 
 
 def test_allowlisted_function_accepted(adapter):
@@ -99,8 +102,8 @@ def test_discovery_metadata(adapter):
     assert savefig.io_pattern == IOPattern.PLOT
     assert "format" in savefig.parameters
 
-    # Check imshow
-    imshow = next(fn for fn in discovered if fn.name == "imshow")
+    # Check imshow (specifically from Axes)
+    imshow = next(fn for fn in discovered if fn.name == "imshow" and "Axes" in fn.fn_id)
     assert imshow.io_pattern == IOPattern.MATPLOTLIB_AXES_OP
     assert "cmap" in imshow.parameters
 
