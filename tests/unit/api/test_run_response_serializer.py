@@ -1,4 +1,5 @@
 import pytest
+
 from bioimage_mcp.api.serializers import RunResponseSerializer
 
 
@@ -86,7 +87,7 @@ class TestRunResponseSerializer:
         assert artifact["ref_id"] == "art_123"
         assert artifact["type"] == "BioImageRef"
         assert artifact["shape"] == [1, 1, 10, 512, 512]
-        assert artifact["dims"] == "TCZYX"
+        assert artifact["dims"] == ["T", "C", "Z", "Y", "X"]
         assert artifact["dtype"] == "uint16"
         assert artifact["size_mb"] == 1.0
 
@@ -158,6 +159,80 @@ class TestRunResponseSerializer:
         assert "created_at" in artifact
         assert "file_metadata" in artifact["metadata"]
         assert "workflow_record" in artifact
+
+    def test_invalid_verbosity_coerced_to_minimal(self, success_result, caplog):
+        """Test that invalid verbosity is coerced to minimal with a warning."""
+        serializer = RunResponseSerializer()
+        with caplog.at_level("WARNING"):
+            serialized = serializer.serialize(
+                success_result, fn_id="base.gauss", verbosity="invalid"
+            )
+
+        assert "Invalid verbosity 'invalid', coercing to 'minimal'" in caplog.text
+        # Should match minimal output (e.g., no URI for filesystem artifact)
+        assert "uri" not in serialized["outputs"]["image"]
+        assert "storage_type" not in serialized["outputs"]["image"]
+
+    def test_extract_from_metadata_priority(self):
+        """Test that dimension fields are extracted from metadata with priority."""
+        artifact = {
+            "ref_id": "art_1",
+            "type": "BioImageRef",
+            "shape": [1, 1, 1, 10, 10],  # Top-level
+            "metadata": {
+                "shape": [1, 1, 1, 20, 20],  # Metadata (higher priority)
+                "dims": "ZYX",
+            },
+            "summary": {
+                "dims": "TCZYX"  # Summary (lower priority)
+            },
+        }
+        result = {"run_id": "run_1", "status": "success", "outputs": {"image": artifact}}
+        serializer = RunResponseSerializer()
+        serialized = serializer.serialize(result, fn_id="test", verbosity="minimal")
+
+        out = serialized["outputs"]["image"]
+        assert out["shape"] == [1, 1, 1, 20, 20]
+        assert out["dims"] == ["Z", "Y", "X"]
+
+    def test_filter_workflow_record_from_outputs(self, success_result):
+        """Test that 'workflow_record' key in outputs is filtered unless full verbosity."""
+        success_result["outputs"]["workflow_record"] = {
+            "ref_id": "wf_out",
+            "type": "NativeOutputRef",
+        }
+
+        serializer = RunResponseSerializer()
+
+        # Minimal: should be filtered
+        serialized_min = serializer.serialize(success_result, fn_id="test", verbosity="minimal")
+        assert "workflow_record" not in serialized_min["outputs"]
+
+        # Standard: should be filtered
+        serialized_std = serializer.serialize(success_result, fn_id="test", verbosity="standard")
+        assert "workflow_record" not in serialized_std["outputs"]
+
+        # Full: should be included
+        serialized_full = serializer.serialize(success_result, fn_id="test", verbosity="full")
+        assert "workflow_record" in serialized_full["outputs"]
+
+    def test_sanitize_artifact_removes_summary_and_content(self):
+        """Test that 'summary' and 'content' are removed from artifacts in all verbosities."""
+        artifact = {
+            "ref_id": "art_1",
+            "type": "LogRef",
+            "summary": "Process completed",
+            "content": "Line 1\nLine 2",
+            "metadata": {"foo": "bar"},
+        }
+        result = {"run_id": "run_1", "status": "success", "outputs": {"log": artifact}}
+        serializer = RunResponseSerializer()
+
+        for verbosity in ["minimal", "standard", "full"]:
+            serialized = serializer.serialize(result, fn_id="test", verbosity=verbosity)
+            out = serialized["outputs"]["log"]
+            assert "summary" not in out
+            assert "content" not in out
 
     def test_error_status_always_includes_log_ref(self):
         """Test that validation_failed always includes log_ref."""

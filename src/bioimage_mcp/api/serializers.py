@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Literal
+
+logger = logging.getLogger(__name__)
 
 
 class RunResponseSerializer:
@@ -15,9 +18,16 @@ class RunResponseSerializer:
         result: dict[str, Any],
         *,
         fn_id: str,
-        verbosity: Literal["minimal", "standard", "full"] = "minimal",
+        verbosity: Literal["minimal", "standard", "full"] | str = "minimal",
     ) -> dict[str, Any]:
         """Serialize a run result with the specified verbosity level."""
+        # Validate verbosity - coerce invalid values to minimal (token-safe default)
+        if verbosity not in self.VERBOSITY_LEVELS:
+            logger.warning(
+                f"Invalid verbosity '{verbosity}', coercing to 'minimal' for token safety"
+            )
+            verbosity = "minimal"
+
         # Top-level fields: run_id, status, fn_id, outputs
         serialized = {
             "run_id": result["run_id"],
@@ -26,15 +36,22 @@ class RunResponseSerializer:
             "outputs": {},
         }
 
-        # Handle outputs
+        # Handle outputs - filter workflow_record from outputs in minimal/standard
         outputs = result.get("outputs", {})
         for key, artifact in outputs.items():
+            # Skip workflow_record output unless full verbosity
+            if key == "workflow_record" and verbosity != "full":
+                continue
+
+            # Sanitize artifact to remove summary/content (all verbosity levels)
+            sanitized = self._sanitize_artifact(artifact)
+
             if verbosity == "minimal":
-                serialized["outputs"][key] = self._artifact_minimal(artifact)
+                serialized["outputs"][key] = self._artifact_minimal(sanitized)
             elif verbosity == "standard":
-                serialized["outputs"][key] = self._artifact_standard(artifact)
+                serialized["outputs"][key] = self._artifact_standard(sanitized)
             else:  # full
-                serialized["outputs"][key] = artifact
+                serialized["outputs"][key] = sanitized
 
         # warnings only if non-empty
         warnings = result.get("warnings", [])
@@ -53,28 +70,77 @@ class RunResponseSerializer:
 
         return serialized
 
+    def _sanitize_artifact(self, ref_dict: dict[str, Any]) -> dict[str, Any]:
+        """Remove summary and content fields from artifact dict.
+
+        These are never included in run responses per spec:
+        - summary: redundant with flattened minimal fields
+        - content: prevents token explosion from inline log content
+        """
+        sanitized = dict(ref_dict)
+        sanitized.pop("summary", None)
+        sanitized.pop("content", None)
+        return sanitized
+
+    def _extract_dimension_field(self, ref_dict: dict[str, Any], field: str) -> Any:
+        """Extract a dimension field from metadata, top-level, or summary (in order).
+
+        After ArtifactRef cleanup, dimension fields live in metadata.
+        This helper provides backward compatibility during transition.
+        """
+        metadata = ref_dict.get("metadata", {})
+        summary = ref_dict.get("summary", {})
+
+        # Order of preference: metadata > top-level > summary
+        value = metadata.get(field) or ref_dict.get(field) or summary.get(field)
+
+        return value
+
+    def _normalize_dims(self, dims: Any) -> list[str] | None:
+        """Normalize dims to a list of strings.
+
+        Handles:
+        - list: ["T", "C", "Z", "Y", "X"] -> unchanged
+        - string: "TCZYX" -> ["T", "C", "Z", "Y", "X"]
+        - None: -> None
+        """
+        if dims is None:
+            return None
+        if isinstance(dims, list):
+            return dims
+        if isinstance(dims, str):
+            return list(dims)
+        return None
+
     def _artifact_minimal(self, ref_dict: dict[str, Any]) -> dict[str, Any]:
         """Extract minimal artifact summary for LLM chaining."""
+        # Extract dimension fields from metadata (primary) or fallbacks
+        shape = self._extract_dimension_field(ref_dict, "shape")
+        dims = self._normalize_dims(self._extract_dimension_field(ref_dict, "dims"))
+        dtype = self._extract_dimension_field(ref_dict, "dtype")
+        physical_pixel_sizes = self._extract_dimension_field(ref_dict, "physical_pixel_sizes")
+        channel_names = self._extract_dimension_field(ref_dict, "channel_names")
+
         minimal = {
             "ref_id": ref_dict["ref_id"],
             "type": ref_dict["type"],
-            "shape": ref_dict.get("shape"),
-            "dims": ref_dict.get("dims"),
-            "dtype": ref_dict.get("dtype"),
+            "shape": shape,
+            "dims": dims,
+            "dtype": dtype,
             "size_mb": self._size_mb(ref_dict.get("size_bytes")),
         }
 
         # Optional fields allowed in minimal
-        for field in ("physical_pixel_sizes", "format"):
-            if field in ref_dict:
-                minimal[field] = ref_dict[field]
-
-        if "channel_names" in ref_dict:
-            minimal["channel_names"] = self._maybe_truncate_channel_names(ref_dict["channel_names"])
+        if physical_pixel_sizes is not None:
+            minimal["physical_pixel_sizes"] = physical_pixel_sizes
+        if ref_dict.get("format"):
+            minimal["format"] = ref_dict["format"]
+        if channel_names is not None:
+            minimal["channel_names"] = self._maybe_truncate_channel_names(channel_names)
 
         # uri only if memory-backed
         if self._is_memory_artifact(ref_dict):
-            minimal["uri"] = ref_dict["uri"]
+            minimal["uri"] = ref_dict.get("uri")
 
         # Remove None values for cleaner output
         return {k: v for k, v in minimal.items() if v is not None}
@@ -85,6 +151,13 @@ class RunResponseSerializer:
         Standard includes: ref_id, type, uri, format, storage_type, size_bytes,
         size_mb, metadata (stripped). Plus dimension fields from minimal.
         """
+        # Extract dimension fields from metadata (primary) or fallbacks
+        shape = self._extract_dimension_field(ref_dict, "shape")
+        dims = self._normalize_dims(self._extract_dimension_field(ref_dict, "dims"))
+        dtype = self._extract_dimension_field(ref_dict, "dtype")
+        physical_pixel_sizes = self._extract_dimension_field(ref_dict, "physical_pixel_sizes")
+        channel_names = self._extract_dimension_field(ref_dict, "channel_names")
+
         standard = {
             "ref_id": ref_dict["ref_id"],
             "type": ref_dict["type"],
@@ -93,15 +166,16 @@ class RunResponseSerializer:
             "storage_type": ref_dict.get("storage_type"),
             "size_bytes": ref_dict.get("size_bytes"),
             "size_mb": self._size_mb(ref_dict.get("size_bytes")),
-            "shape": ref_dict.get("shape"),
-            "dims": ref_dict.get("dims"),
-            "dtype": ref_dict.get("dtype"),
+            "shape": shape,
+            "dims": dims,
+            "dtype": dtype,
         }
 
         # Add physical_pixel_sizes and channel_names if present
-        for field in ("physical_pixel_sizes", "channel_names"):
-            if field in ref_dict:
-                standard[field] = ref_dict[field]
+        if physical_pixel_sizes is not None:
+            standard["physical_pixel_sizes"] = physical_pixel_sizes
+        if channel_names is not None:
+            standard["channel_names"] = channel_names
 
         # metadata (stripped)
         if "metadata" in ref_dict:
