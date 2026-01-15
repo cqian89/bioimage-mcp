@@ -18,6 +18,6 @@ dependencies:
   - bioio
   - bioio-ome-tiff
   # TTTR analysis library (C++ with SWIG bindings)
-  - tttrlib
+  - tttrlib=0.25.0
   # For table output
   - pandas

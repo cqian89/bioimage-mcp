@@ -3,7 +3,7 @@
   "title": "tttrlib API Schema",
   "description": "Curated API surface for tttrlib integration with bioimage-mcp",
   "version": "0.1.0",
-  "upstream_version": "0.24.6",
+  "upstream_version": "0.25.0",
   "generated_from": "tttrlib documentation and source introspection",
   "functions": {
     "tttrlib.TTTR": {
@@ -23,7 +23,7 @@
             "SPC-130",
             "SPC-630_256",
             "SPC-630_4096",
-            "HDF",
+            "PHOTON-HDF5",
             "CZ-RAW",
             "SM"
           ],
@@ -182,6 +182,10 @@
           "type": "integer",
           "required": false
         },
+        "n_frames": {
+          "type": "integer",
+          "required": false
+        },
         "marker_frame_start": {
           "type": "array",
           "items": {
@@ -278,7 +282,7 @@
         }
       },
       "outputs": {
-        "tttr": {
+        "tttr_out": {
           "artifact_type": "TTTRRef"
         }
       }
