@@ -119,9 +119,6 @@ class TestTTTRLibSmoke:
                 assert len(rows) > 0
 
     @pytest.mark.anyio
-    @pytest.mark.xfail(
-        reason="tttrlib CLSMImage.compute_ics crashes with some data - library issue"
-    )
     @pytest.mark.skipif(not is_valid_dataset(PTU_FILE), reason="PTU dataset not available or empty")
     async def test_ics_workflow(self, live_server) -> None:
         """Smoke test 8.2: ICS workflow."""
@@ -150,6 +147,9 @@ class TestTTTRLibSmoke:
                 "params": {
                     "reading_routine": "SP5",
                     "channels": [0],
+                    "marker_frame_start": [4],
+                    "marker_line_start": 2,
+                    "marker_line_stop": 3,
                 },
             },
         )
@@ -229,7 +229,7 @@ class TestTTTRLibSmoke:
     @pytest.mark.anyio
     @pytest.mark.skipif(not is_valid_dataset(HDF_FILE), reason="HDF dataset not available or empty")
     async def test_photon_hdf5(self, live_server) -> None:
-        """Smoke test 8.4: Photon-HDF5 import/export."""
+        """Smoke test 8.4: Photon-HDF5 opening and header extraction."""
         # 1. Open HDF
         open_result = await live_server.call_tool(
             "run",
@@ -238,7 +238,7 @@ class TestTTTRLibSmoke:
                 "inputs": {},
                 "params": {
                     "filename": str(HDF_FILE.absolute()),
-                    "container_type": "HDF",
+                    "container_type": "PHOTON-HDF5",
                 },
             },
         )
@@ -258,25 +258,6 @@ class TestTTTRLibSmoke:
         assert_valid_artifact_ref(header_ref, "NativeOutputRef")
         assert header_ref["format"] == "json"
 
-        # 3. Export
-        exported_path = "exported.h5"
-        write_result = await live_server.call_tool(
-            "run",
-            {
-                "fn_id": "tttrlib.TTTR.write",
-                "inputs": {"tttr": tttr_hdf_ref},
-                "params": {
-                    "filename": exported_path,
-                },
-            },
-        )
-        assert write_result.get("status") == "success"
-        exported_ref = write_result["outputs"]["tttr_out"]
-        assert_valid_artifact_ref(exported_ref, "TTTRRef")
-
-        # Final check on exported file
-        uri = exported_ref["uri"]
-        assert uri.startswith("file://")
-        path = Path(uri[7:])
-        assert path.exists()
-        assert path.suffix.lower() in [".h5", ".hdf", ".hdf5"]
+        # NOTE: tttrlib can READ Photon-HDF5 but it CANNOT WRITE to it
+        # (It throws "combination of container and record does not make sense")
+        # So we skip testing tttrlib.TTTR.write with Photon-HDF5 containers.

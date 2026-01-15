@@ -30,7 +30,7 @@ functions:
           description: "Path to the TTTR file"
         container_type:
           type: string
-          enum: ["PTU", "HT3", "SPC-130", "SPC-630_256", "SPC-630_4096", "HDF", "CZ-RAW", "SM"]
+          enum: ["PTU", "HT3", "SPC-130", "SPC-630_256", "SPC-630_4096", "PHOTON-HDF5", "CZ-RAW", "SM"]
           description: "Type of the TTTR container"
       required:
         - filename
@@ -233,6 +233,15 @@ functions:
           type: boolean
           default: false
           description: "Whether to include a summary table"
+        frames_index_pairs:
+          type: array
+          items:
+            type: array
+            items:
+              type: integer
+            minItems: 2
+            maxItems: 2
+          description: "List of frame index pairs for cross-correlation (e.g., [[0,0], [1,1]])"
 
   - fn_id: tttrlib.TTTR.write
     tool_id: tools.tttrlib

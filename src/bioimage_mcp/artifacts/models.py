@@ -291,7 +291,9 @@ class TTTRRef(ArtifactRef):
 
     type: Literal["TTTRRef"] = "TTTRRef"
     format: (
-        Literal["PTU", "HT3", "SPC-130", "SPC-630_256", "SPC-630_4096", "HDF", "CZ-RAW", "SM"]
+        Literal[
+            "PTU", "HT3", "SPC-130", "SPC-630_256", "SPC-630_4096", "PHOTON-HDF5", "CZ-RAW", "SM"
+        ]
         | None
     ) = None
     metadata: TTTRMetadata = Field(default_factory=TTTRMetadata)

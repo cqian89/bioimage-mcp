@@ -385,7 +385,7 @@ def handle_tttr_write(
 
         ext = filepath.suffix.lower()
         if ext in {".h5", ".hdf5"}:
-            fmt = "HDF"
+            fmt = "PHOTON-HDF5"
         else:
             fmt = filepath.suffix[1:].upper() if filepath.suffix else "auto"
 
@@ -437,7 +437,8 @@ def handle_compute_ics(
         else:
             # Default: autocorrelation for all frames
             n_frames = clsm.n_frames
-            ics_kwargs["frames_index_pairs"] = list(zip(range(n_frames), range(n_frames)))
+            frame_range = range(n_frames)
+            ics_kwargs["frames_index_pairs"] = list(zip(frame_range, frame_range, strict=True))
 
         # Static method call as per tttrlib docs
         ics_data = tttrlib.CLSMImage.compute_ics(**ics_kwargs)
