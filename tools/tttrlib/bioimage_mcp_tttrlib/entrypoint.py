@@ -127,7 +127,7 @@ def handle_tttr_open(
         "SPC-130": 2,
         "SPC-630_256": 3,
         "SPC-630_4096": 4,
-        "HDF": 5,
+        "PHOTON-HDF5": 5,
         "CZ-RAW": 6,
         "SM": 7,
     }
@@ -219,28 +219,26 @@ def handle_clsm_image(
     try:
         tttr = _load_tttr(tttr_key)
 
-        # CLSMImage constructor arguments
-        clsm_kwargs: dict[str, Any] = {"tttr": tttr}
+        # Reconstruct image from TTTR data
+        clsm_kwargs = {
+            "tttr_data": tttr,
+            "reading_routine": params.get("reading_routine", "SP5"),
+            "marker_frame_start": params.get("marker_frame_start", [4]),
+            "marker_line_start": params.get("marker_line_start", 2),
+            "marker_line_stop": params.get("marker_line_stop", 3),
+            "channels": params.get("channels", [0]),
+            "fill": params.get("fill", True),
+        }
 
-        # Pass through curated optional params
+        # Add optional parameters if present
         for key in [
-            "reading_routine",
-            "channels",
-            "fill",
             "n_pixel_per_line",
             "n_lines",
             "n_frames",
-            "marker_frame_start",
-            "marker_line_start",
-            "marker_line_stop",
             "skip_before_first_frame_marker",
         ]:
             if key in params:
                 clsm_kwargs[key] = params[key]
-
-        # Backward compatibility with earlier schema drafts
-        if "n_pixel" in params and "n_pixel_per_line" not in clsm_kwargs:
-            clsm_kwargs["n_pixel_per_line"] = params["n_pixel"]
 
         clsm = tttrlib.CLSMImage(**clsm_kwargs)
 
@@ -412,6 +410,7 @@ def handle_compute_ics(
 ) -> dict[str, Any]:
     """Handle tttrlib.CLSMImage.compute_ics - compute Image Correlation Spectroscopy."""
     import numpy as np
+    import tttrlib
     from bioio.writers import OmeTiffWriter
 
     clsm_ref = inputs.get("clsm", {})
@@ -425,13 +424,28 @@ def handle_compute_ics(
             subtract_average = "frame" if subtract_average else ""
 
         ics_kwargs: dict[str, Any] = {
+            "clsm": clsm,
             "subtract_average": subtract_average,
             "x_range": params.get("x_range", [0, -1]),
             "y_range": params.get("y_range", [0, -1]),
         }
 
-        ics_data = clsm.compute_ics(**ics_kwargs)
+        # Handle frames_index_pairs
+        if "frames_index_pairs" in params:
+            # Convert list of lists to list of tuples if needed
+            ics_kwargs["frames_index_pairs"] = [tuple(p) for p in params["frames_index_pairs"]]
+        else:
+            # Default: autocorrelation for all frames
+            n_frames = clsm.n_frames
+            ics_kwargs["frames_index_pairs"] = list(zip(range(n_frames), range(n_frames)))
+
+        # Static method call as per tttrlib docs
+        ics_data = tttrlib.CLSMImage.compute_ics(**ics_kwargs)
         ics_data = np.asarray(ics_data)
+
+        # Ensure we have at least 2D (YX) for OmeTiffWriter
+        if ics_data.ndim < 2:
+            ics_data = np.atleast_2d(ics_data)
 
         out_path = work_dir / f"ics_{uuid.uuid4().hex[:8]}.ome.tif"
         ndim_map = {2: "YX", 3: "ZYX", 4: "CZYX", 5: "TCZYX"}
