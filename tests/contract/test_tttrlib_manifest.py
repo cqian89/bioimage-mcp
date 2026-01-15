@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+
 import pytest
 import yaml
 
@@ -56,6 +57,9 @@ class TestTTTRLibManifestContract:
             "tttrlib.CLSMImage",
             "tttrlib.CLSMImage.compute_ics",
             "tttrlib.CLSMImage.get_intensity",
+            "tttrlib.CLSMImage.get_phasor",
+            "tttrlib.CLSMImage.get_fluorescence_decay",
+            "tttrlib.CLSMImage.get_mean_lifetime",
             "tttrlib.TTTR.write",
         ]
 

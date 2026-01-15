@@ -265,6 +265,103 @@ functions:
           default: false
           description: "Sum across all frames into single 2D image"
 
+  - fn_id: tttrlib.CLSMImage.get_phasor
+    tool_id: tools.tttrlib
+    name: Get Phasor Image
+    description: Compute phasor coordinates (g, s) per pixel from FLIM data
+    tags: [imaging, phasor, flim, clsm]
+    inputs:
+      - name: clsm
+        artifact_type: ObjectRef
+        required: true
+      - name: tttr_data
+        artifact_type: TTTRRef
+        required: true
+      - name: tttr_irf
+        artifact_type: TTTRRef
+        required: false
+    outputs:
+      - name: phasor
+        artifact_type: BioImageRef
+        format: OME-TIFF
+        required: true
+    params_schema:
+      type: object
+      properties:
+        frequency:
+          type: number
+          default: -1.0
+          description: "Modulation frequency in MHz. -1 for auto-detect"
+        minimum_number_of_photons:
+          type: integer
+          default: 2
+          description: "Minimum photons per pixel for valid phasor"
+        stack_frames:
+          type: boolean
+          default: false
+          description: "Combine frames before phasor calculation"
+
+  - fn_id: tttrlib.CLSMImage.get_fluorescence_decay
+    tool_id: tools.tttrlib
+    name: Get Fluorescence Decay
+    description: Extract fluorescence decay histogram per pixel from FLIM data
+    tags: [imaging, decay, flim, clsm]
+    inputs:
+      - name: clsm
+        artifact_type: ObjectRef
+        required: true
+      - name: tttr_data
+        artifact_type: TTTRRef
+        required: true
+    outputs:
+      - name: decay
+        artifact_type: BioImageRef
+        format: OME-TIFF
+        required: true
+    params_schema:
+      type: object
+      properties:
+        micro_time_coarsening:
+          type: integer
+          default: 1
+          description: "Factor to coarsen microtime bins (reduce memory)"
+        stack_frames:
+          type: boolean
+          default: false
+          description: "Combine frames before extraction"
+
+  - fn_id: tttrlib.CLSMImage.get_mean_lifetime
+    tool_id: tools.tttrlib
+    name: Get Mean Lifetime
+    description: Compute mean fluorescence lifetime per pixel from FLIM data
+    tags: [imaging, lifetime, flim, clsm]
+    inputs:
+      - name: clsm
+        artifact_type: ObjectRef
+        required: true
+      - name: tttr_data
+        artifact_type: TTTRRef
+        required: true
+      - name: tttr_irf
+        artifact_type: TTTRRef
+        required: false
+    outputs:
+      - name: lifetime
+        artifact_type: BioImageRef
+        format: OME-TIFF
+        required: true
+    params_schema:
+      type: object
+      properties:
+        minimum_number_of_photons:
+          type: integer
+          default: 3
+          description: "Minimum photons per pixel for valid lifetime"
+        stack_frames:
+          type: boolean
+          default: false
+          description: "Combine frames before calculation"
+
   - fn_id: tttrlib.TTTR.write
     tool_id: tools.tttrlib
     name: Write TTTR File

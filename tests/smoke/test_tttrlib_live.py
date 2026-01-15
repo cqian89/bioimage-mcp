@@ -237,6 +237,183 @@ class TestTTTRLibSmoke:
         assert path.suffix.lower() in [".tif", ".tiff"]
 
     @pytest.mark.anyio
+    @pytest.mark.skipif(not is_valid_dataset(PTU_FILE), reason="PTU dataset not available or empty")
+    async def test_phasor_extraction(self, live_server) -> None:
+        """Smoke test: TTTR → CLSMImage → phasor → BioImageRef (Pathway A)"""
+        # 1. Open TTTR
+        open_result = await live_server.call_tool(
+            "run",
+            {
+                "fn_id": "tttrlib.TTTR",
+                "inputs": {},
+                "params": {
+                    "filename": str(PTU_FILE.absolute()),
+                    "container_type": "PTU",
+                },
+            },
+        )
+        assert open_result.get("status") == "success"
+        tttr_ref = open_result["outputs"]["tttr"]
+
+        # 2. Construct CLSMImage
+        clsm_result = await live_server.call_tool(
+            "run",
+            {
+                "fn_id": "tttrlib.CLSMImage",
+                "inputs": {"tttr": tttr_ref},
+                "params": {
+                    "reading_routine": "SP5",
+                    "channels": [0],
+                    "marker_frame_start": [4],
+                    "marker_line_start": 2,
+                    "marker_line_stop": 3,
+                },
+            },
+        )
+        assert clsm_result.get("status") == "success"
+        clsm_ref = clsm_result["outputs"]["clsm"]
+
+        # 3. Get phasor image
+        phasor_result = await live_server.call_tool(
+            "run",
+            {
+                "fn_id": "tttrlib.CLSMImage.get_phasor",
+                "inputs": {"clsm": clsm_ref, "tttr_data": tttr_ref},
+                "params": {"frequency": 80.0, "stack_frames": True},
+            },
+        )
+        assert phasor_result.get("status") == "success", f"Phasor failed: {phasor_result}"
+        phasor_ref = phasor_result["outputs"]["phasor"]
+        assert_valid_artifact_ref(phasor_ref, "BioImageRef")
+
+        # Verify output file exists and has g,s channels
+        uri = phasor_ref["uri"]
+        assert uri.startswith("file://")
+        path = Path(uri[7:])
+        assert path.exists()
+        assert path.suffix.lower() in [".tif", ".tiff"]
+
+        # Check metadata indicates 2 channels (g, s)
+        metadata = phasor_ref.get("metadata", {})
+        assert "C" in metadata.get("axes", "") or metadata.get("shape", [])[-1] == 2
+
+    @pytest.mark.anyio
+    @pytest.mark.skipif(not is_valid_dataset(PTU_FILE), reason="PTU dataset not available or empty")
+    async def test_fluorescence_decay_extraction(self, live_server) -> None:
+        """Smoke test: TTTR → CLSMImage → decay → BioImageRef (Pathway B)"""
+        # 1. Open TTTR
+        open_result = await live_server.call_tool(
+            "run",
+            {
+                "fn_id": "tttrlib.TTTR",
+                "inputs": {},
+                "params": {
+                    "filename": str(PTU_FILE.absolute()),
+                    "container_type": "PTU",
+                },
+            },
+        )
+        assert open_result.get("status") == "success"
+        tttr_ref = open_result["outputs"]["tttr"]
+
+        # 2. Construct CLSMImage
+        clsm_result = await live_server.call_tool(
+            "run",
+            {
+                "fn_id": "tttrlib.CLSMImage",
+                "inputs": {"tttr": tttr_ref},
+                "params": {
+                    "reading_routine": "SP5",
+                    "channels": [0],
+                    "marker_frame_start": [4],
+                    "marker_line_start": 2,
+                    "marker_line_stop": 3,
+                },
+            },
+        )
+        assert clsm_result.get("status") == "success"
+        clsm_ref = clsm_result["outputs"]["clsm"]
+
+        # 3. Get fluorescence decay
+        decay_result = await live_server.call_tool(
+            "run",
+            {
+                "fn_id": "tttrlib.CLSMImage.get_fluorescence_decay",
+                "inputs": {"clsm": clsm_ref, "tttr_data": tttr_ref},
+                "params": {"micro_time_coarsening": 4, "stack_frames": True},
+            },
+        )
+        assert decay_result.get("status") == "success", f"Decay failed: {decay_result}"
+        decay_ref = decay_result["outputs"]["decay"]
+        assert_valid_artifact_ref(decay_ref, "BioImageRef")
+
+        # Verify output file exists
+        uri = decay_ref["uri"]
+        assert uri.startswith("file://")
+        path = Path(uri[7:])
+        assert path.exists()
+
+    @pytest.mark.anyio
+    @pytest.mark.skipif(not is_valid_dataset(PTU_FILE), reason="PTU dataset not available or empty")
+    async def test_mean_lifetime_extraction(self, live_server) -> None:
+        """Smoke test: TTTR → CLSMImage → lifetime → BioImageRef"""
+        # 1. Open TTTR
+        open_result = await live_server.call_tool(
+            "run",
+            {
+                "fn_id": "tttrlib.TTTR",
+                "inputs": {},
+                "params": {
+                    "filename": str(PTU_FILE.absolute()),
+                    "container_type": "PTU",
+                },
+            },
+        )
+        assert open_result.get("status") == "success"
+        tttr_ref = open_result["outputs"]["tttr"]
+
+        # 2. Construct CLSMImage
+        clsm_result = await live_server.call_tool(
+            "run",
+            {
+                "fn_id": "tttrlib.CLSMImage",
+                "inputs": {"tttr": tttr_ref},
+                "params": {
+                    "reading_routine": "SP5",
+                    "channels": [0],
+                    "marker_frame_start": [4],
+                    "marker_line_start": 2,
+                    "marker_line_stop": 3,
+                },
+            },
+        )
+        assert clsm_result.get("status") == "success"
+        clsm_ref = clsm_result["outputs"]["clsm"]
+
+        # 3. Get mean lifetime
+        lifetime_result = await live_server.call_tool(
+            "run",
+            {
+                "fn_id": "tttrlib.CLSMImage.get_mean_lifetime",
+                "inputs": {"clsm": clsm_ref, "tttr_data": tttr_ref},
+                "params": {"stack_frames": True},
+            },
+        )
+        assert lifetime_result.get("status") == "success", f"Lifetime failed: {lifetime_result}"
+        lifetime_ref = lifetime_result["outputs"]["lifetime"]
+        assert_valid_artifact_ref(lifetime_ref, "BioImageRef")
+
+        # Verify output file exists
+        uri = lifetime_ref["uri"]
+        assert uri.startswith("file://")
+        path = Path(uri[7:])
+        assert path.exists()
+
+        # Check metadata indicates nanoseconds unit
+        metadata = lifetime_ref.get("metadata", {})
+        assert metadata.get("unit") == "nanoseconds"
+
+    @pytest.mark.anyio
     @pytest.mark.skipif(not is_valid_dataset(SPC_FILE), reason="SPC dataset not available or empty")
     async def test_burst_selection(self, live_server) -> None:
         """Smoke test 8.3: Single-molecule burst selection."""
@@ -318,3 +495,109 @@ class TestTTTRLibSmoke:
         # NOTE: tttrlib can READ Photon-HDF5 but it CANNOT WRITE to it
         # (It throws "combination of container and record does not make sense")
         # So we skip testing tttrlib.TTTR.write with Photon-HDF5 containers.
+
+    @pytest.mark.anyio
+    @pytest.mark.skipif(not is_valid_dataset(PTU_FILE), reason="PTU dataset not available or empty")
+    @pytest.mark.requires_env("bioimage-mcp-cellpose")
+    async def test_tttr_to_cellpose_workflow(self, live_server) -> None:
+        """Smoke test: TTTR → intensity → Cellpose → per-cell lifetime analysis.
+
+        This test demonstrates cross-tool interoperability:
+        1. Open TTTR data (tttrlib)
+        2. Construct CLSMImage (tttrlib)
+        3. Extract intensity image (tttrlib)
+        4. Segment cells with Cellpose (cellpose)
+        5. Extract lifetime image (tttrlib)
+        6. Combine segmentation with lifetime for per-cell analysis
+        """
+        # 1. Open TTTR
+        open_result = await live_server.call_tool(
+            "run",
+            {
+                "fn_id": "tttrlib.TTTR",
+                "inputs": {},
+                "params": {
+                    "filename": str(PTU_FILE.absolute()),
+                    "container_type": "PTU",
+                },
+            },
+        )
+        assert open_result.get("status") == "success", f"Failed to open TTTR: {open_result}"
+        tttr_ref = open_result["outputs"]["tttr"]
+
+        # 2. Construct CLSMImage
+        clsm_result = await live_server.call_tool(
+            "run",
+            {
+                "fn_id": "tttrlib.CLSMImage",
+                "inputs": {"tttr": tttr_ref},
+                "params": {
+                    "reading_routine": "SP5",
+                    "channels": [0],
+                    "marker_frame_start": [4],
+                    "marker_line_start": 2,
+                    "marker_line_stop": 3,
+                },
+            },
+        )
+        assert clsm_result.get("status") == "success", f"CLSMImage failed: {clsm_result}"
+        clsm_ref = clsm_result["outputs"]["clsm"]
+
+        # 3. Get intensity image (stacked for 2D Cellpose input)
+        intensity_result = await live_server.call_tool(
+            "run",
+            {
+                "fn_id": "tttrlib.CLSMImage.get_intensity",
+                "inputs": {"clsm": clsm_ref},
+                "params": {"stack_frames": True},
+            },
+        )
+        assert intensity_result.get("status") == "success", f"Intensity failed: {intensity_result}"
+        intensity_ref = intensity_result["outputs"]["intensity"]
+        assert_valid_artifact_ref(intensity_ref, "BioImageRef")
+
+        # 4. Initialize Cellpose model
+        model_result = await live_server.call_tool(
+            "run",
+            {
+                "fn_id": "cellpose.models.CellposeModel",
+                "inputs": {},
+                "params": {"model_type": "cyto3"},
+            },
+        )
+        assert model_result.get("status") == "success", f"Model init failed: {model_result}"
+        model_ref = model_result["outputs"]["model"]
+        assert_valid_artifact_ref(model_ref, "ObjectRef")
+
+        # 5. Segment with Cellpose
+        seg_result = await live_server.call_tool(
+            "run",
+            {
+                "fn_id": "cellpose.models.CellposeModel.eval",
+                "inputs": {"model": model_ref, "x": intensity_ref},
+                "params": {"diameter": 30.0},
+            },
+        )
+        assert seg_result.get("status") == "success", f"Segmentation failed: {seg_result}"
+        labels_ref = seg_result["outputs"]["labels"]
+        assert_valid_artifact_ref(labels_ref, "LabelImageRef")
+
+        # 6. Get mean lifetime (stacked for matching shape)
+        lifetime_result = await live_server.call_tool(
+            "run",
+            {
+                "fn_id": "tttrlib.CLSMImage.get_mean_lifetime",
+                "inputs": {"clsm": clsm_ref, "tttr_data": tttr_ref},
+                "params": {"stack_frames": True},
+            },
+        )
+        assert lifetime_result.get("status") == "success", f"Lifetime failed: {lifetime_result}"
+        lifetime_ref = lifetime_result["outputs"]["lifetime"]
+        assert_valid_artifact_ref(lifetime_ref, "BioImageRef")
+
+        # Verify both outputs exist
+        for ref in [labels_ref, lifetime_ref]:
+            uri = ref["uri"]
+            assert uri.startswith("file://")
+            path = Path(uri[7:])
+            assert path.exists(), f"Output file not found: {path}"

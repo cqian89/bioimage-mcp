@@ -522,6 +522,11 @@ def handle_get_intensity(
         else:
             dim_order = "ZYX"  # Frames as Z
 
+        # Ensure YX are at the end for OmeTiffWriter
+        if intensity.ndim == 3 and dim_order == "ZYX":
+            # Already ZYX, which is fine as YX are at the end
+            pass
+
         out_path = work_dir / f"intensity_{uuid.uuid4().hex[:8]}.ome.tif"
         OmeTiffWriter.save(intensity, str(out_path), dim_order=dim_order)
 
@@ -545,6 +550,201 @@ def handle_get_intensity(
         return {"ok": False, "error": {"message": str(e)}}
 
 
+def handle_get_phasor(
+    inputs: dict[str, Any], params: dict[str, Any], work_dir: Path
+) -> dict[str, Any]:
+    """Handle tttrlib.CLSMImage.get_phasor - compute phasor image."""
+    import numpy as np
+    from bioio.writers import OmeTiffWriter
+
+    clsm_ref = inputs.get("clsm", {})
+    clsm_key = clsm_ref.get("uri") or clsm_ref.get("ref_id") or ""
+
+    tttr_ref = inputs.get("tttr_data", {})
+    tttr_key = tttr_ref.get("uri") or tttr_ref.get("ref_id") or ""
+
+    tttr_irf_ref = inputs.get("tttr_irf")
+
+    try:
+        clsm = _load_object(clsm_key)
+        tttr_data = _load_tttr(tttr_key)
+
+        # Prepare IRF if provided
+        tttr_irf = None
+        if tttr_irf_ref:
+            irf_key = tttr_irf_ref.get("uri") or tttr_irf_ref.get("ref_id") or ""
+            if irf_key:
+                tttr_irf = _load_tttr(irf_key)
+
+        phasor_kwargs = {
+            "tttr_data": tttr_data,
+            "frequency": params.get("frequency", -1.0),
+            "minimum_number_of_photons": params.get("minimum_number_of_photons", 2),
+            "stack_frames": params.get("stack_frames", False),
+        }
+        if tttr_irf is not None:
+            phasor_kwargs["tttr_irf"] = tttr_irf
+
+        # get_phasor returns array with last dim being [g, s]
+        phasor_data = clsm.get_phasor(**phasor_kwargs)
+        phasor_data = np.asarray(phasor_data, dtype=np.float32)
+
+        # Determine dimension order based on shape
+        # tttrlib returns (frames, lines, pixels, 2) or (lines, pixels, 2) if stacked
+        if phasor_data.ndim == 3:  # (Y, X, 2) - stacked
+            phasor_data = np.moveaxis(phasor_data, -1, 0)  # (C, Y, X)
+            dim_order = "CYX"
+        elif phasor_data.ndim == 4:  # (Z, Y, X, 2)
+            phasor_data = np.moveaxis(phasor_data, -1, 0)  # (C, Z, Y, X)
+            dim_order = "CZYX"
+        else:
+            dim_order = "TCZYXC"[-phasor_data.ndim :]
+
+        out_path = work_dir / f"phasor_{uuid.uuid4().hex[:8]}.ome.tif"
+        OmeTiffWriter.save(phasor_data, str(out_path), dim_order=dim_order)
+
+        output = {
+            "ref_id": uuid.uuid4().hex,
+            "type": "BioImageRef",
+            "uri": f"file://{out_path.absolute()}",
+            "path": str(out_path.absolute()),
+            "format": "OME-TIFF",
+            "created_at": datetime.now(UTC).isoformat(),
+            "metadata": {
+                "axes": dim_order,
+                "shape": list(phasor_data.shape),
+                "dtype": str(phasor_data.dtype),
+                "channel_names": ["g", "s"],
+                "frequency_mhz": params.get("frequency", -1.0),
+            },
+        }
+
+        return {"ok": True, "outputs": {"phasor": output}, "log": "Phasor computed"}
+
+    except Exception as e:
+        return {"ok": False, "error": {"message": str(e)}}
+
+
+def handle_get_fluorescence_decay(
+    inputs: dict[str, Any], params: dict[str, Any], work_dir: Path
+) -> dict[str, Any]:
+    """Handle tttrlib.CLSMImage.get_fluorescence_decay - extract decay histogram per pixel."""
+    import numpy as np
+    from bioio.writers import OmeTiffWriter
+
+    clsm_ref = inputs.get("clsm", {})
+    clsm_key = clsm_ref.get("uri") or clsm_ref.get("ref_id") or ""
+
+    tttr_ref = inputs.get("tttr_data", {})
+    tttr_key = tttr_ref.get("uri") or tttr_ref.get("ref_id") or ""
+
+    try:
+        clsm = _load_object(clsm_key)
+        tttr_data = _load_tttr(tttr_key)
+
+        decay_kwargs = {
+            "tttr_data": tttr_data,
+            "micro_time_coarsening": params.get("micro_time_coarsening", 1),
+            "stack_frames": params.get("stack_frames", False),
+        }
+
+        # get_fluorescence_decay returns (Z, Y, X, T) where T is microtime bins
+        decay_data = clsm.get_fluorescence_decay(**decay_kwargs)
+        decay_data = np.asarray(decay_data, dtype=np.float32)
+
+        # Determine dimension order based on shape
+        if decay_data.ndim == 3:  # (Y, X, T) - stacked
+            dim_order = "YXC"
+        elif decay_data.ndim == 4:  # (Z, Y, X, T)
+            dim_order = "ZYXC"
+        else:
+            dim_order = "TCZYXC"[-decay_data.ndim :]
+
+        out_path = work_dir / f"decay_{uuid.uuid4().hex[:8]}.ome.tif"
+        OmeTiffWriter.save(decay_data, str(out_path), dim_order=dim_order)
+
+        output = {
+            "ref_id": uuid.uuid4().hex,
+            "type": "BioImageRef",
+            "uri": f"file://{out_path.absolute()}",
+            "path": str(out_path.absolute()),
+            "format": "OME-TIFF",
+            "created_at": datetime.now(UTC).isoformat(),
+            "metadata": {
+                "axes": dim_order,
+                "shape": list(decay_data.shape),
+                "dtype": str(decay_data.dtype),
+                "n_microtime_bins": decay_data.shape[-1],
+            },
+        }
+
+        return {"ok": True, "outputs": {"decay": output}, "log": "Decay extracted"}
+
+    except Exception as e:
+        return {"ok": False, "error": {"message": str(e)}}
+
+
+def handle_get_mean_lifetime(
+    inputs: dict[str, Any], params: dict[str, Any], work_dir: Path
+) -> dict[str, Any]:
+    """Handle tttrlib.CLSMImage.get_mean_lifetime - compute lifetime image."""
+    import numpy as np
+    from bioio.writers import OmeTiffWriter
+
+    clsm_ref = inputs.get("clsm", {})
+    clsm_key = clsm_ref.get("uri") or clsm_ref.get("ref_id") or ""
+
+    tttr_ref = inputs.get("tttr_data", {})
+    tttr_key = tttr_ref.get("uri") or tttr_ref.get("ref_id") or ""
+
+    tttr_irf_ref = inputs.get("tttr_irf")
+
+    try:
+        clsm = _load_object(clsm_key)
+        tttr_data = _load_tttr(tttr_key)
+
+        lifetime_kwargs = {
+            "tttr_data": tttr_data,
+            "minimum_number_of_photons": params.get("minimum_number_of_photons", 3),
+            "stack_frames": params.get("stack_frames", False),
+        }
+
+        # IRF for accurate lifetime calculation
+        if tttr_irf_ref:
+            irf_key = tttr_irf_ref.get("uri") or tttr_irf_ref.get("ref_id") or ""
+            if irf_key:
+                lifetime_kwargs["tttr_irf"] = _load_tttr(irf_key)
+
+        # get_mean_lifetime returns (Z, Y, X) in nanoseconds
+        lifetime_data = clsm.get_mean_lifetime(**lifetime_kwargs)
+        lifetime_data = np.asarray(lifetime_data, dtype=np.float32)
+
+        dim_order = "YX" if lifetime_data.ndim == 2 else "ZYX"
+
+        out_path = work_dir / f"lifetime_{uuid.uuid4().hex[:8]}.ome.tif"
+        OmeTiffWriter.save(lifetime_data, str(out_path), dim_order=dim_order)
+
+        output = {
+            "ref_id": uuid.uuid4().hex,
+            "type": "BioImageRef",
+            "uri": f"file://{out_path.absolute()}",
+            "path": str(out_path.absolute()),
+            "format": "OME-TIFF",
+            "created_at": datetime.now(UTC).isoformat(),
+            "metadata": {
+                "axes": dim_order,
+                "shape": list(lifetime_data.shape),
+                "dtype": str(lifetime_data.dtype),
+                "unit": "nanoseconds",
+            },
+        }
+
+        return {"ok": True, "outputs": {"lifetime": output}, "log": "Lifetime computed"}
+
+    except Exception as e:
+        return {"ok": False, "error": {"message": str(e)}}
+
+
 # Function dispatch table
 FUNCTION_HANDLERS = {
     "tttrlib.TTTR": handle_tttr_open,
@@ -554,6 +754,9 @@ FUNCTION_HANDLERS = {
     "tttrlib.CLSMImage": handle_clsm_image,
     "tttrlib.CLSMImage.compute_ics": handle_compute_ics,
     "tttrlib.CLSMImage.get_intensity": handle_get_intensity,
+    "tttrlib.CLSMImage.get_phasor": handle_get_phasor,
+    "tttrlib.CLSMImage.get_fluorescence_decay": handle_get_fluorescence_decay,
+    "tttrlib.CLSMImage.get_mean_lifetime": handle_get_mean_lifetime,
     "tttrlib.Correlator": handle_correlator,
 }
 

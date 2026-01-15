@@ -289,6 +289,120 @@
         }
       }
     },
+    "tttrlib.CLSMImage.get_phasor": {
+      "summary": "Compute phasor coordinates (g, s) per pixel",
+      "inputs": {
+        "clsm": {
+          "artifact_type": "ObjectRef",
+          "required": true
+        },
+        "tttr_data": {
+          "artifact_type": "TTTRRef",
+          "required": true,
+          "description": "Original TTTR data for microtime access"
+        },
+        "tttr_irf": {
+          "artifact_type": "TTTRRef",
+          "required": false,
+          "description": "IRF data for correction"
+        }
+      },
+      "params": {
+        "frequency": {
+          "type": "number",
+          "default": -1.0,
+          "description": "Modulation frequency in MHz. -1 to auto-detect from header"
+        },
+        "minimum_number_of_photons": {
+          "type": "integer",
+          "default": 2,
+          "description": "Minimum photons per pixel for valid phasor"
+        },
+        "stack_frames": {
+          "type": "boolean",
+          "default": false,
+          "description": "Combine frames before phasor calculation"
+        }
+      },
+      "outputs": {
+        "phasor": {
+          "artifact_type": "BioImageRef",
+          "format": "OME-TIFF",
+          "description": "Array where last dimension contains [g, s] phasor coordinates"
+        }
+      }
+    },
+    "tttrlib.CLSMImage.get_fluorescence_decay": {
+      "summary": "Extract fluorescence decay histogram per pixel",
+      "inputs": {
+        "clsm": {
+          "artifact_type": "ObjectRef",
+          "required": true
+        },
+        "tttr_data": {
+          "artifact_type": "TTTRRef",
+          "required": true,
+          "description": "Original TTTR data for microtime access"
+        }
+      },
+      "params": {
+        "micro_time_coarsening": {
+          "type": "integer",
+          "default": 1,
+          "description": "Factor to coarsen microtime bins (reduce memory)"
+        },
+        "stack_frames": {
+          "type": "boolean",
+          "default": false,
+          "description": "Combine frames before extraction"
+        }
+      },
+      "outputs": {
+        "decay": {
+          "artifact_type": "BioImageRef",
+          "format": "OME-TIFF",
+          "description": "Array where last dimension contains microtime decay histogram"
+        }
+      }
+    },
+    "tttrlib.CLSMImage.get_mean_lifetime": {
+      "summary": "Compute mean fluorescence lifetime per pixel",
+      "inputs": {
+        "clsm": {
+          "artifact_type": "ObjectRef",
+          "required": true
+        },
+        "tttr_data": {
+          "artifact_type": "TTTRRef",
+          "required": true,
+          "description": "Original TTTR data for microtime access"
+        },
+        "tttr_irf": {
+          "artifact_type": "TTTRRef",
+          "required": false,
+          "description": "IRF data for deconvolution"
+        }
+      },
+      "params": {
+        "minimum_number_of_photons": {
+          "type": "integer",
+          "default": 3,
+          "description": "Minimum photons per pixel for valid lifetime"
+        },
+        "stack_frames": {
+          "type": "boolean",
+          "default": false,
+          "description": "Combine frames before calculation"
+        }
+      },
+      "outputs": {
+        "lifetime": {
+          "artifact_type": "BioImageRef",
+          "format": "OME-TIFF",
+          "description": "Mean lifetime image in nanoseconds"
+        }
+      }
+    },
     "tttrlib.TTTR.write": {
       "summary": "Export TTTR data to file",
       "inputs": {

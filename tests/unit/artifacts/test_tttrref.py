@@ -57,7 +57,7 @@ class TestTTTRRefValidation:
 
     @pytest.mark.parametrize(
         "valid_format",
-        ["PTU", "HT3", "SPC-130", "SPC-630_256", "SPC-630_4096", "HDF", "CZ-RAW", "SM"],
+        ["PTU", "HT3", "SPC-130", "SPC-630_256", "SPC-630_4096", "PHOTON-HDF5", "CZ-RAW", "SM"],
     )
     def test_valid_tttr_formats(self, valid_format):
         """Test TTTRRef with each valid format."""
