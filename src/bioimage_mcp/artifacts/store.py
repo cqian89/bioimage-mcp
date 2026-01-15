@@ -21,6 +21,9 @@ from bioimage_mcp.artifacts.models import (
     ArtifactRef,
     PlotMetadata,
     PlotRef,
+    ScalarRef,
+    TableRef,
+    TTTRRef,
 )
 from bioimage_mcp.config.fs_policy import assert_path_allowed
 from bioimage_mcp.config.schema import Config, OverwritePolicy
@@ -270,18 +273,20 @@ class ArtifactStore:
             if "physical_pixel_sizes" in metadata_override:
                 physical_pixel_sizes = metadata_override["physical_pixel_sizes"]
 
-        ref = ArtifactRef(
-            ref_id=ref_id,
-            type=artifact_type,
-            uri=dest.absolute().as_uri(),
-            format=format,
-            storage_type="file",
-            mime_type=_guess_mime_type(artifact_type, format),
-            size_bytes=size,
-            checksums=checksums,
-            created_at=ArtifactRef.now(),
-            metadata=meta,
-        )
+        kwargs = {
+            "ref_id": ref_id,
+            "type": artifact_type,
+            "uri": dest.absolute().as_uri(),
+            "format": format,
+            "storage_type": "file",
+            "mime_type": _guess_mime_type(artifact_type, format),
+            "size_bytes": size,
+            "checksums": checksums,
+            "created_at": ArtifactRef.now(),
+            "metadata": meta,
+        }
+
+        ref = self._reconstruct_ref(**kwargs)
         self._persist(ref)
         return ref
 
@@ -336,22 +341,28 @@ class ArtifactStore:
                 dims = meta.get("dims")
                 physical_pixel_sizes = meta.get("physical_pixel_sizes")
 
-        ref = ArtifactRef(
-            ref_id=ref_id,
-            type=artifact_type,
-            uri=dest.absolute().as_uri(),
-            format=format,
-            storage_type=storage_type,
-            mime_type=_guess_mime_type(artifact_type, format),
-            size_bytes=size,
-            checksums=checksums,
-            created_at=ArtifactRef.now(),
-            metadata=meta,
-        )
+        kwargs = {
+            "ref_id": ref_id,
+            "type": artifact_type,
+            "uri": dest.absolute().as_uri(),
+            "format": format,
+            "storage_type": storage_type,
+            "mime_type": _guess_mime_type(artifact_type, format),
+            "size_bytes": size,
+            "checksums": checksums,
+            "created_at": ArtifactRef.now(),
+            "metadata": meta,
+        }
+
+        ref = self._reconstruct_ref(**kwargs)
         self._persist(ref)
         return ref
 
     def _persist(self, ref: ArtifactRef) -> None:
+        metadata = ref.metadata
+        if hasattr(metadata, "model_dump"):
+            metadata = metadata.model_dump(exclude_none=True)
+
         self._conn.execute(
             """
             INSERT INTO artifacts(
@@ -377,11 +388,29 @@ class ArtifactStore:
                 ref.mime_type,
                 ref.size_bytes,
                 json.dumps([c.model_dump() for c in ref.checksums]),
-                json.dumps(ref.metadata),
+                json.dumps(metadata),
                 ref.created_at,
             ),
         )
         self._conn.commit()
+
+    def _reconstruct_ref(self, **kwargs) -> ArtifactRef:
+        """Instantiate the appropriate ArtifactRef subclass based on type."""
+        artifact_type = kwargs.get("type")
+        meta = kwargs.get("metadata", {})
+
+        if artifact_type == "TableRef":
+            kwargs.setdefault("columns", [c["name"] for c in meta.get("columns", [])])
+            kwargs.setdefault("row_count", meta.get("row_count", 0))
+            return TableRef(**kwargs)
+        elif artifact_type == "ScalarRef":
+            return ScalarRef(**kwargs)
+        elif artifact_type == "TTTRRef":
+            return TTTRRef(**kwargs)
+        elif artifact_type == "PlotRef":
+            return PlotRef(**kwargs)
+        else:
+            return ArtifactRef(**kwargs)
 
     def get(self, ref_id: str) -> ArtifactRef:
         # Try memory store first (T015)
@@ -399,7 +428,8 @@ class ArtifactStore:
             raise KeyError(ref_id)
         checksums = [ArtifactChecksum(**c) for c in json.loads(row["checksums_json"])]
         metadata = json.loads(row["metadata_json"])
-        return ArtifactRef(
+
+        return self._reconstruct_ref(
             ref_id=row["ref_id"],
             type=row["type"],
             uri=row["uri"],

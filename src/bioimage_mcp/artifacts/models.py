@@ -26,6 +26,7 @@ ARTIFACT_TYPES = {
     "FigureRef": "Matplotlib Figure object in memory",
     "AxesRef": "Matplotlib Axes object in memory",
     "AxesImageRef": "Matplotlib AxesImage object in memory",
+    "TTTRRef": "Time-Tagged Time-Resolved photon data (FLIM/FCS)",
 }
 
 
@@ -274,3 +275,23 @@ class AxesImageRef(ObjectRef):
     type: Literal["AxesImageRef"] = "AxesImageRef"
     python_class: str = "matplotlib.image.AxesImage"
     metadata: AxesImageMetadata
+
+
+class TTTRMetadata(BaseModel):
+    """Metadata for TTTR photon-stream artifacts."""
+
+    n_valid_events: int | None = None
+    used_routing_channels: list[int] | None = None
+    macro_time_resolution_s: float | None = None
+    micro_time_resolution_s: float | None = None
+
+
+class TTTRRef(ArtifactRef):
+    """Reference to Time-Tagged Time-Resolved photon data."""
+
+    type: Literal["TTTRRef"] = "TTTRRef"
+    format: (
+        Literal["PTU", "HT3", "SPC-130", "SPC-630_256", "SPC-630_4096", "HDF", "CZ-RAW", "SM"]
+        | None
+    ) = None
+    metadata: TTTRMetadata = Field(default_factory=TTTRMetadata)

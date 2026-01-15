@@ -93,13 +93,20 @@ def _populate_default_adapters() -> None:
     ADAPTER_REGISTRY["xarray"] = XarrayAdapterForRegistry()
     ADAPTER_REGISTRY["pandas"] = PandasAdapterForRegistry()
 
-    # Import cellpose adapter (optional - may not be installed)
     try:
         from bioimage_mcp.registry.dynamic.adapters.cellpose import CellposeAdapter
 
         ADAPTER_REGISTRY["cellpose"] = CellposeAdapter()
     except ImportError:
         pass  # cellpose not installed, skip adapter
+
+    # Import tttrlib adapter (manual schema adapter)
+    try:
+        from bioimage_mcp.registry.dynamic.adapters.tttrlib import TttrlibAdapter
+
+        ADAPTER_REGISTRY["tttrlib"] = TttrlibAdapter()
+    except ImportError:
+        pass  # tttrlib not installed, skip adapter
 
 
 # Populate on module import

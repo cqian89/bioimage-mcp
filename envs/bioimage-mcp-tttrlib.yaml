@@ -1,0 +1,23 @@
+# tttrlib environment for bioimage-mcp
+# Time-Tagged Time-Resolved data analysis (FCS, ICS, FLIM)
+# NOTE: Uses Python 3.12 due to C++ binding compatibility
+name: bioimage-mcp-tttrlib
+
+channels:
+  - tpeulen
+  - conda-forge
+  - defaults
+
+dependencies:
+  - python=3.12
+  - pip
+  - numpy>=1.20,<2.1
+  - scipy
+  - tifffile
+  # Standard image I/O
+  - bioio
+  - bioio-ome-tiff
+  # TTTR analysis library (C++ with SWIG bindings)
+  - tttrlib
+  # For table output
+  - pandas

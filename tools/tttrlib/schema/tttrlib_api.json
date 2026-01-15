@@ -1,0 +1,287 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "tttrlib API Schema",
+  "description": "Curated API surface for tttrlib integration with bioimage-mcp",
+  "version": "0.1.0",
+  "upstream_version": "0.24.6",
+  "generated_from": "tttrlib documentation and source introspection",
+  "functions": {
+    "tttrlib.TTTR": {
+      "summary": "Open a TTTR file and return a reference",
+      "params": {
+        "filename": {
+          "type": "string",
+          "required": true,
+          "description": "Path to TTTR file"
+        },
+        "container_type": {
+          "type": "string",
+          "required": false,
+          "enum": [
+            "PTU",
+            "HT3",
+            "SPC-130",
+            "SPC-630_256",
+            "SPC-630_4096",
+            "HDF",
+            "CZ-RAW",
+            "SM"
+          ],
+          "description": "Container format type. Inferred if omitted."
+        }
+      },
+      "outputs": {
+        "tttr": {
+          "artifact_type": "TTTRRef"
+        }
+      }
+    },
+    "tttrlib.TTTR.header": {
+      "summary": "Extract metadata header as JSON",
+      "inputs": {
+        "tttr": {
+          "artifact_type": "TTTRRef",
+          "required": true
+        }
+      },
+      "outputs": {
+        "header": {
+          "artifact_type": "NativeOutputRef",
+          "format": "json"
+        }
+      }
+    },
+    "tttrlib.TTTR.get_time_window_ranges": {
+      "summary": "Burst selection based on count rate",
+      "inputs": {
+        "tttr": {
+          "artifact_type": "TTTRRef",
+          "required": true
+        }
+      },
+      "params": {
+        "minimum_window_length": {
+          "type": "number",
+          "required": true,
+          "description": "Minimum burst duration in seconds"
+        },
+        "maximum_window_length": {
+          "type": "number",
+          "required": false,
+          "description": "Maximum burst duration in seconds"
+        },
+        "minimum_number_of_photons_in_time_window": {
+          "type": "integer",
+          "required": true,
+          "description": "Minimum photons per burst"
+        },
+        "maximum_number_of_photons_in_time_window": {
+          "type": "integer",
+          "required": false
+        },
+        "invert": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "outputs": {
+        "ranges": {
+          "artifact_type": "TableRef",
+          "columns": [
+            "start_index",
+            "stop_index"
+          ]
+        }
+      }
+    },
+    "tttrlib.Correlator": {
+      "summary": "Multi-tau correlation analysis",
+      "inputs": {
+        "tttr": {
+          "artifact_type": "TTTRRef",
+          "required": true
+        }
+      },
+      "params": {
+        "channels": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "required": true,
+          "description": "[[ch1_list], [ch2_list]] for cross-correlation"
+        },
+        "n_bins": {
+          "type": "integer",
+          "default": 17
+        },
+        "n_casc": {
+          "type": "integer",
+          "default": 25
+        },
+        "make_fine": {
+          "type": "boolean",
+          "default": false
+        },
+        "method": {
+          "type": "string",
+          "enum": [
+            "wahl",
+            "felekyan",
+            "laurence"
+          ],
+          "default": "wahl"
+        }
+      },
+      "outputs": {
+        "curve": {
+          "artifact_type": "TableRef",
+          "columns": [
+            "tau",
+            "correlation"
+          ]
+        }
+      }
+    },
+    "tttrlib.CLSMImage": {
+      "summary": "Construct scanning image from TTTR data",
+      "inputs": {
+        "tttr": {
+          "artifact_type": "TTTRRef",
+          "required": true
+        }
+      },
+      "params": {
+        "reading_routine": {
+          "type": "string",
+          "enum": [
+            "default",
+            "SP5",
+            "SP8"
+          ],
+          "default": "default"
+        },
+        "channels": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "fill": {
+          "type": "boolean",
+          "default": true
+        },
+        "n_pixel_per_line": {
+          "type": "integer",
+          "required": false
+        },
+        "n_lines": {
+          "type": "integer",
+          "required": false
+        },
+        "marker_frame_start": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          },
+          "required": false
+        },
+        "marker_line_start": {
+          "type": "integer",
+          "required": false
+        },
+        "marker_line_stop": {
+          "type": "integer",
+          "required": false
+        },
+        "skip_before_first_frame_marker": {
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "outputs": {
+        "clsm": {
+          "artifact_type": "ObjectRef",
+          "python_class": "tttrlib.CLSMImage"
+        }
+      }
+    },
+    "tttrlib.CLSMImage.compute_ics": {
+      "summary": "Image Correlation Spectroscopy on scanning image",
+      "inputs": {
+        "clsm": {
+          "artifact_type": "ObjectRef",
+          "required": true
+        }
+      },
+      "params": {
+        "x_range": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          },
+          "default": [
+            0,
+            -1
+          ]
+        },
+        "y_range": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          },
+          "default": [
+            0,
+            -1
+          ]
+        },
+        "subtract_average": {
+          "type": "string",
+          "enum": [
+            "frame",
+            "stack",
+            ""
+          ],
+          "default": "frame"
+        },
+        "include_summary": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "outputs": {
+        "ics": {
+          "artifact_type": "BioImageRef"
+        },
+        "summary": {
+          "artifact_type": "TableRef",
+          "required": false
+        }
+      }
+    },
+    "tttrlib.TTTR.write": {
+      "summary": "Export TTTR data to file",
+      "inputs": {
+        "tttr": {
+          "artifact_type": "TTTRRef",
+          "required": true
+        }
+      },
+      "params": {
+        "filename": {
+          "type": "string",
+          "required": true,
+          "description": "Output path"
+        }
+      },
+      "outputs": {
+        "tttr": {
+          "artifact_type": "TTTRRef"
+        }
+      }
+    }
+  }
+}

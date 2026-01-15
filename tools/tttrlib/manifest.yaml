@@ -1,0 +1,226 @@
+manifest_version: "1.0"
+tool_id: tools.tttrlib
+tool_version: "0.1.0"
+name: tttrlib TTTR Analysis
+description: Time-Tagged Time-Resolved data analysis for FCS, ICS, and single-molecule spectroscopy
+
+env_id: bioimage-mcp-tttrlib
+entrypoint: bioimage_mcp_tttrlib/entrypoint.py
+python_version: "3.12"
+platforms_supported:
+  - linux-64
+  - osx-arm64
+
+functions:
+  - fn_id: tttrlib.TTTR
+    tool_id: tools.tttrlib
+    name: Open TTTR File
+    description: Opens a Time-Tagged Time-Resolved (TTTR) file and returns a TTTRRef.
+    tags: [io, tttr]
+    inputs: []
+    outputs:
+      - name: tttr
+        artifact_type: TTTRRef
+        required: true
+    params_schema:
+      type: object
+      properties:
+        filename:
+          type: string
+          description: "Path to the TTTR file"
+        container_type:
+          type: string
+          enum: ["PTU", "HT3", "SPC-130", "SPC-600", "PICOQUANT", "BECKER_HICKL"]
+          description: "Type of the TTTR container"
+      required:
+        - filename
+
+  - fn_id: tttrlib.TTTR.header
+    tool_id: tools.tttrlib
+    name: Get TTTR Header
+    description: Extracts metadata header from a TTTR file as JSON.
+    tags: [metadata, tttr]
+    inputs:
+      - name: tttr
+        artifact_type: TTTRRef
+        required: true
+    outputs:
+      - name: header
+        artifact_type: NativeOutputRef
+        format: json
+        required: true
+    params_schema:
+      type: object
+      properties: {}
+
+  - fn_id: tttrlib.TTTR.get_time_window_ranges
+    tool_id: tools.tttrlib
+    name: Get Time Window Ranges
+    description: Burst selection based on count rate.
+    tags: [burst-analysis, tttr]
+    inputs:
+      - name: tttr
+        artifact_type: TTTRRef
+        required: true
+    outputs:
+      - name: ranges
+        artifact_type: TableRef
+        format: csv
+        required: true
+    params_schema:
+      type: object
+      properties:
+        minimum_window_length:
+          type: number
+          description: "Minimum length of the time window"
+        maximum_window_length:
+          type: number
+          description: "Maximum length of the time window"
+        minimum_number_of_photons_in_time_window:
+          type: integer
+          description: "Minimum number of photons in the time window"
+        maximum_number_of_photons_in_time_window:
+          type: integer
+          description: "Maximum number of photons in the time window"
+        invert:
+          type: boolean
+          default: false
+          description: "Invert the selection"
+
+  - fn_id: tttrlib.Correlator
+    tool_id: tools.tttrlib
+    name: Multi-tau Correlation
+    description: Compute multi-tau correlation curve.
+    tags: [correlation, fcs, tttr]
+    inputs:
+      - name: tttr
+        artifact_type: TTTRRef
+        required: true
+    outputs:
+      - name: curve
+        artifact_type: TableRef
+        format: csv
+        required: true
+    params_schema:
+      type: object
+      properties:
+        channels:
+          type: array
+          items:
+            type: integer
+          description: "List of channels to correlate"
+        n_bins:
+          type: integer
+          default: 16
+          description: "Number of bins"
+        n_casc:
+          type: integer
+          default: 25
+          description: "Number of cascades"
+        make_fine:
+          type: boolean
+          default: false
+          description: "Whether to use fine correlation"
+        method:
+          type: string
+          default: "multi-tau"
+          enum: ["multi-tau", "wahl"]
+          description: "Correlation method"
+
+  - fn_id: tttrlib.CLSMImage
+    tool_id: tools.tttrlib
+    name: Construct CLSM Image
+    description: Constructs a scanning image (CLSM) from TTTR data.
+    tags: [imaging, clsm, tttr]
+    inputs:
+      - name: tttr
+        artifact_type: TTTRRef
+        required: true
+    outputs:
+      - name: clsm
+        artifact_type: ObjectRef
+        required: true
+    params_schema:
+      type: object
+      properties:
+        reading_routine:
+          type: string
+          default: "standard"
+          description: "Routine used to read the CLSM data"
+        channels:
+          type: array
+          items:
+            type: integer
+          description: "Channels to include in the image"
+        fill:
+          type: number
+          default: 0.0
+          description: "Value to fill missing pixels"
+        n_pixel_per_line:
+          type: integer
+          description: "Number of pixels per line"
+        n_lines:
+          type: integer
+          description: "Number of lines"
+
+  - fn_id: tttrlib.CLSMImage.compute_ics
+    tool_id: tools.tttrlib
+    name: Compute ICS
+    description: Image Correlation Spectroscopy on a CLSM image.
+    tags: [correlation, ics, imaging]
+    inputs:
+      - name: clsm
+        artifact_type: ObjectRef
+        required: true
+    outputs:
+      - name: ics
+        artifact_type: BioImageRef
+        format: OME-TIFF
+        required: true
+      - name: summary
+        artifact_type: TableRef
+        format: csv
+        required: false
+    params_schema:
+      type: object
+      properties:
+        x_range:
+          type: array
+          items:
+            type: integer
+          description: "Range of X coordinates [start, end]"
+        y_range:
+          type: array
+          items:
+            type: integer
+          description: "Range of Y coordinates [start, end]"
+        subtract_average:
+          type: boolean
+          default: true
+          description: "Whether to subtract the average intensity"
+        include_summary:
+          type: boolean
+          default: false
+          description: "Whether to include a summary table"
+
+  - fn_id: tttrlib.TTTR.write
+    tool_id: tools.tttrlib
+    name: Write TTTR File
+    description: Export TTTR data to a file.
+    tags: [io, export, tttr]
+    inputs:
+      - name: tttr
+        artifact_type: TTTRRef
+        required: true
+    outputs:
+      - name: tttr_out
+        artifact_type: TTTRRef
+        required: true
+    params_schema:
+      type: object
+      properties:
+        filename:
+          type: string
+          description: "Path to the output TTTR file"
+      required:
+        - filename

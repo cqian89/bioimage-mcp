@@ -36,6 +36,11 @@ class IOPattern(str, Enum):
     MATPLOTLIB_SUBPLOTS = "matplotlib_subplots"  # No inputs, FigureRef + AxesRef out
     MATPLOTLIB_AXES_OP = "matplotlib_axes_op"  # AxesRef (+ optional data) in, AxesRef out
     MATPLOTLIB_FIGURE_OP = "matplotlib_figure_op"  # FigureRef in, FigureRef out
+    FILE_TO_REF = "file_to_ref"
+    REF_TO_JSON = "ref_to_json"
+    REF_TO_TABLE = "ref_to_table"
+    REF_TO_OBJECT = "ref_to_object"
+    REF_TO_FILE = "ref_to_file"
     GENERIC = "generic"
 
 
