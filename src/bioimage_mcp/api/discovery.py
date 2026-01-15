@@ -491,64 +491,73 @@ class DiscoveryService:
         params_schema = payload.get("schema", {})
         introspection_source = payload.get("introspection_source", "manual")
 
-        # Try to get enriched schema from cache or via meta.describe
+        # Try to get enriched schema from cache or via meta.describe.
+        # Only do this when the tool's recorded manifest_path exists on disk.
         if manifest:
-            schema_cache_path = config.schema_cache_path or (
-                config.artifact_store_root / "state" / "schema_cache.json"
-            )
-            cache = SchemaCache(schema_cache_path)
-            cached = cache.get(
-                tool_id=manifest.tool_id,
-                tool_version=manifest.tool_version,
-                fn_id=fn_id,
-            )
-            if cached:
-                params_schema = cached["params_schema"]
-                introspection_source = cached.get("introspection_source", "manual")
-            else:
-                entrypoint = manifest.entrypoint
-                entry_path = Path(entrypoint)
-                if not entry_path.is_absolute():
-                    candidate = manifest.manifest_path.parent / entry_path
-                    if candidate.exists():
-                        entrypoint = str(candidate)
+            tool_row = self._index._conn.execute(
+                "SELECT manifest_path FROM tools WHERE tool_id = ?",
+                (manifest.tool_id,),
+            ).fetchone()
+            db_manifest_path = tool_row[0] if tool_row else None
 
-                request = {
-                    "fn_id": "meta.describe",
-                    "params": {"target_fn": fn_id},
-                    "inputs": {},
-                    "work_dir": str(config.artifact_store_root / "work" / "describe"),
-                }
-                try:
-                    response, _log_text, _exit_code = execute_tool(
-                        entrypoint=entrypoint,
-                        request=request,
-                        env_id=manifest.env_id,
-                    )
-                    if response.get("ok"):
-                        result = response.get("result") or {}
-                        if isinstance(result.get("params_schema"), dict):
-                            params_schema = result["params_schema"]
-                            introspection_source = str(
-                                result.get("introspection_source") or "manual"
-                            )
-                            cache.set(
-                                tool_id=manifest.tool_id,
-                                tool_version=manifest.tool_version,
-                                fn_id=fn_id,
-                                params_schema=params_schema,
-                                introspection_source=introspection_source,
-                            )
-                except Exception as exc:
-                    import logging
+            if db_manifest_path and Path(db_manifest_path).exists():
+                schema_cache_path = config.schema_cache_path or (
+                    config.artifact_store_root / "state" / "schema_cache.json"
+                )
+                cache = SchemaCache(schema_cache_path)
 
-                    logger = logging.getLogger(__name__)
-                    logger.warning(
-                        "meta.describe call failed for %s: %s",
-                        fn_id,
-                        exc,
-                    )
-                    # Continue with manifest schema as fallback
+                cached = cache.get(
+                    tool_id=manifest.tool_id,
+                    tool_version=manifest.tool_version,
+                    fn_id=fn_id,
+                )
+                if cached:
+                    params_schema = cached["params_schema"]
+                    introspection_source = cached.get("introspection_source", "manual")
+                else:
+                    entrypoint = manifest.entrypoint
+                    entry_path = Path(entrypoint)
+                    if not entry_path.is_absolute():
+                        candidate = manifest.manifest_path.parent / entry_path
+                        if candidate.exists():
+                            entrypoint = str(candidate)
+
+                    request = {
+                        "fn_id": "meta.describe",
+                        "params": {"target_fn": fn_id},
+                        "inputs": {},
+                        "work_dir": str(config.artifact_store_root / "work" / "describe"),
+                    }
+                    try:
+                        response, _log_text, _exit_code = execute_tool(
+                            entrypoint=entrypoint,
+                            request=request,
+                            env_id=manifest.env_id,
+                        )
+                        if response.get("ok"):
+                            result = response.get("result") or {}
+                            if isinstance(result.get("params_schema"), dict):
+                                params_schema = result["params_schema"]
+                                introspection_source = str(
+                                    result.get("introspection_source") or "manual"
+                                )
+                                cache.set(
+                                    tool_id=manifest.tool_id,
+                                    tool_version=manifest.tool_version,
+                                    fn_id=fn_id,
+                                    params_schema=params_schema,
+                                    introspection_source=introspection_source,
+                                )
+                    except Exception as exc:
+                        import logging
+
+                        logger = logging.getLogger(__name__)
+                        logger.warning(
+                            "meta.describe call failed for %s: %s",
+                            fn_id,
+                            exc,
+                        )
+                        # Continue with manifest schema as fallback
 
         # Contract T036: params_schema contains NO artifact port keys
         if params_schema and "properties" in params_schema:

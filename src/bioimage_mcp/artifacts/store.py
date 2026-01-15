@@ -204,6 +204,7 @@ class ArtifactStore:
         artifact_type: str,
         format: str,
         metadata_override: dict | None = None,
+        ref_id: str | None = None,
     ) -> ArtifactRef:
         src = src.expanduser().absolute()
 
@@ -214,7 +215,8 @@ class ArtifactStore:
         if not _is_within(src, self._config.artifact_store_root):
             assert_path_allowed("read", src, self._config)
 
-        ref_id = uuid.uuid4().hex
+        if ref_id is None:
+            ref_id = uuid.uuid4().hex
         suffix = _get_compound_suffix(src, format)
         dest = self._artifact_path(ref_id, suffix)
         dest.parent.mkdir(parents=True, exist_ok=True)
@@ -290,10 +292,18 @@ class ArtifactStore:
         self._persist(ref)
         return ref
 
-    def import_directory(self, src: Path, *, artifact_type: str, format: str) -> ArtifactRef:
+    def import_directory(
+        self,
+        src: Path,
+        *,
+        artifact_type: str,
+        format: str,
+        ref_id: str | None = None,
+    ) -> ArtifactRef:
         assert_path_allowed("read", src, self._config)
 
-        ref_id = uuid.uuid4().hex
+        if ref_id is None:
+            ref_id = uuid.uuid4().hex
         suffix = _get_compound_suffix(src, format)
         dest = self._artifact_path(ref_id, suffix)
         dest.parent.mkdir(parents=True, exist_ok=True)

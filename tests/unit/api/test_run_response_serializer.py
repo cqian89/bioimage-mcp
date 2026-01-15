@@ -96,8 +96,8 @@ class TestRunResponseSerializer:
         assert artifact["format"] == "ome-tiff"
         assert artifact["channel_names"] == ["DAPI", "GFP", "RFP"]
 
-        # Fields that should be excluded in minimal
-        assert "uri" not in artifact
+        # Fields that should be excluded in minimal (except uri)
+        assert artifact["uri"] == "file:///path/to/image.ome.tif"
         assert "storage_type" not in artifact
         assert "size_bytes" not in artifact
         assert "metadata" not in artifact
@@ -106,7 +106,7 @@ class TestRunResponseSerializer:
         assert "workflow_record" not in artifact
 
     def test_serialize_minimal_memory_artifact(self, memory_artifact_ref):
-        """Test that memory-backed artifacts include URI even in minimal mode."""
+        """Test that artifacts include URI in minimal mode."""
         result = {
             "run_id": "run_mem",
             "status": "success",
@@ -169,8 +169,8 @@ class TestRunResponseSerializer:
             )
 
         assert "Invalid verbosity 'invalid', coercing to 'minimal'" in caplog.text
-        # Should match minimal output (e.g., no URI for filesystem artifact)
-        assert "uri" not in serialized["outputs"]["image"]
+        # Should match minimal output
+        assert serialized["outputs"]["image"]["uri"] == "file:///path/to/image.ome.tif"
         assert "storage_type" not in serialized["outputs"]["image"]
 
     def test_extract_from_metadata_priority(self):

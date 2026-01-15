@@ -30,7 +30,7 @@ functions:
           description: "Path to the TTTR file"
         container_type:
           type: string
-          enum: ["PTU", "HT3", "SPC-130", "SPC-600", "PICOQUANT", "BECKER_HICKL"]
+          enum: ["PTU", "HT3", "SPC-130", "SPC-630_256", "SPC-630_4096", "HDF", "CZ-RAW", "SM"]
           description: "Type of the TTTR container"
       required:
         - filename
@@ -86,6 +86,9 @@ functions:
           type: boolean
           default: false
           description: "Invert the selection"
+      required:
+        - minimum_window_length
+        - minimum_number_of_photons_in_time_window
 
   - fn_id: tttrlib.Correlator
     tool_id: tools.tttrlib
@@ -106,12 +109,16 @@ functions:
       properties:
         channels:
           type: array
+          minItems: 2
+          maxItems: 2
           items:
-            type: integer
-          description: "List of channels to correlate"
+            type: array
+            items:
+              type: integer
+          description: "Pair of channel lists: [[ch_a...], [ch_b...]]"
         n_bins:
           type: integer
-          default: 16
+          default: 17
           description: "Number of bins"
         n_casc:
           type: integer
@@ -123,9 +130,11 @@ functions:
           description: "Whether to use fine correlation"
         method:
           type: string
-          default: "multi-tau"
-          enum: ["multi-tau", "wahl"]
+          default: "wahl"
+          enum: ["wahl", "felekyan", "laurence"]
           description: "Correlation method"
+      required:
+        - channels
 
   - fn_id: tttrlib.CLSMImage
     tool_id: tools.tttrlib
@@ -145,23 +154,42 @@ functions:
       properties:
         reading_routine:
           type: string
-          default: "standard"
-          description: "Routine used to read the CLSM data"
+          enum: ["default", "SP5", "SP8"]
+          default: "default"
+          description: "Marker decoding routine (microscope-specific)"
         channels:
           type: array
           items:
             type: integer
           description: "Channels to include in the image"
         fill:
-          type: number
-          default: 0.0
-          description: "Value to fill missing pixels"
+          type: boolean
+          default: true
+          description: "Fill missing pixels"
         n_pixel_per_line:
           type: integer
           description: "Number of pixels per line"
         n_lines:
           type: integer
           description: "Number of lines"
+        n_frames:
+          type: integer
+          description: "Number of frames"
+        marker_frame_start:
+          type: array
+          items:
+            type: integer
+          description: "Frame start marker channel(s)"
+        marker_line_start:
+          type: integer
+          description: "Line start marker channel"
+        marker_line_stop:
+          type: integer
+          description: "Line stop marker channel"
+        skip_before_first_frame_marker:
+          type: boolean
+          default: true
+          description: "Skip events before first frame marker"
 
   - fn_id: tttrlib.CLSMImage.compute_ics
     tool_id: tools.tttrlib
@@ -188,16 +216,19 @@ functions:
           type: array
           items:
             type: integer
+          default: [0, -1]
           description: "Range of X coordinates [start, end]"
         y_range:
           type: array
           items:
             type: integer
+          default: [0, -1]
           description: "Range of Y coordinates [start, end]"
         subtract_average:
-          type: boolean
-          default: true
-          description: "Whether to subtract the average intensity"
+          type: string
+          enum: ["frame", "stack", ""]
+          default: "frame"
+          description: "Subtract average intensity (frame/stack/none)"
         include_summary:
           type: boolean
           default: false

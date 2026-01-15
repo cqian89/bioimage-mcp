@@ -10,7 +10,7 @@ if str(TOOLS_CELLPOSE) not in sys.path:
 if str(REPO_ROOT / "src") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "src"))
 
-from bioimage_mcp_cellpose.entrypoint import process_execute_request
+import bioimage_mcp_cellpose.entrypoint as entrypoint
 
 
 def test_dynamic_dispatch_segment():
@@ -28,10 +28,10 @@ def test_dynamic_dispatch_segment():
         "outputs": {"labels": {"path": "foo", "type": "LabelImageRef", "format": "OME-TIFF"}},
     }
     with patch.dict(
-        "bioimage_mcp_cellpose.entrypoint.FUNCTION_HANDLERS",
+        entrypoint.FUNCTION_HANDLERS,
         {"cellpose.models.CellposeModel.eval": mock_handle},
     ):
-        response = process_execute_request(request)
+        response = entrypoint.process_execute_request(request)
         assert response["ok"] is True
         assert mock_handle.called
 
@@ -51,10 +51,10 @@ def test_dynamic_dispatch_eval():
         "outputs": {"labels": {"path": "foo", "type": "LabelImageRef", "format": "OME-TIFF"}},
     }
     with patch.dict(
-        "bioimage_mcp_cellpose.entrypoint.FUNCTION_HANDLERS",
+        entrypoint.FUNCTION_HANDLERS,
         {"cellpose.models.CellposeModel.eval": mock_handle},
     ):
-        response = process_execute_request(request)
+        response = entrypoint.process_execute_request(request)
         assert response["ok"] is True
         assert mock_handle.called
 
@@ -75,10 +75,10 @@ def test_dynamic_dispatch_train_seg():
         "error": {"message": "not implemented"},
     }
     with patch.dict(
-        "bioimage_mcp_cellpose.entrypoint.FUNCTION_HANDLERS",
+        entrypoint.FUNCTION_HANDLERS,
         {"cellpose.train.train_seg": mock_handle},
     ):
-        response = process_execute_request(request)
+        response = entrypoint.process_execute_request(request)
         assert response["ok"] is False
         assert "implemented" in response["error"]["message"].lower()
         assert "not" in response["error"]["message"].lower()
@@ -93,7 +93,7 @@ def test_dynamic_dispatch_unknown():
         "work_dir": "/tmp/work_unknown",
         "ordinal": 1,
     }
-    response = process_execute_request(request)
+    response = entrypoint.process_execute_request(request)
     assert response["ok"] is False
     assert "Unknown fn_id" in response["error"]["message"]
 
@@ -108,15 +108,15 @@ def test_meta_describe_eval():
     }
     # Mock _introspect_cellpose_fn and _get_cellpose_version to avoid heavy imports
     with (
-        patch("bioimage_mcp_cellpose.entrypoint._introspect_cellpose_fn") as mock_intro,
-        patch("bioimage_mcp_cellpose.entrypoint._get_cellpose_version") as mock_version,
-        patch("bioimage_mcp_cellpose.entrypoint._convert_memory_inputs_to_files") as mock_convert,
+        patch.object(entrypoint, "_introspect_cellpose_fn") as mock_intro,
+        patch.object(entrypoint, "_get_cellpose_version") as mock_version,
+        patch.object(entrypoint, "_convert_memory_inputs_to_files") as mock_convert,
     ):
         mock_intro.return_value = {"type": "object", "properties": {}}
         mock_version.return_value = "test-version"
         mock_convert.side_effect = lambda inputs, wd: inputs
 
-        response = process_execute_request(request)
+        response = entrypoint.process_execute_request(request)
 
         if not response.get("ok"):
             print(f"Response error: {response}")

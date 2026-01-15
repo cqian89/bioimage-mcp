@@ -298,9 +298,6 @@ def _introspect_cellpose_fn(target_fn: str) -> dict[str, Any]:
     exclude = {
         "self",
         "x",
-        "channels",
-        "channel_axis",
-        "z_axis",
         "train_data",
         "train_labels",
         "test_data",
@@ -339,6 +336,34 @@ def _introspect_cellpose_fn(target_fn: str) -> dict[str, Any]:
             prop["type"] = "string"
 
         schema["properties"][name] = prop
+
+    # Ensure key curated parameters are present even when Cellpose uses **kwargs
+    if target_fn == "cellpose.models.CellposeModel.eval":
+        schema["properties"]["channels"] = {
+            "type": "array",
+            "items": {"type": "integer"},
+            "default": [0, 0],
+            "description": "Channels to segment: [cytoplasm_channel, nucleus_channel]",
+        }
+        schema["properties"]["flow_threshold"] = {
+            "type": "number",
+            "default": 0.4,
+            "description": SEGMENT_DESCRIPTIONS.get("flow_threshold", "Flow threshold"),
+        }
+        schema["properties"]["cellprob_threshold"] = {
+            "type": "number",
+            "default": 0.0,
+            "description": SEGMENT_DESCRIPTIONS.get(
+                "cellprob_threshold", "Cell probability threshold"
+            ),
+        }
+
+    if target_fn == "cellpose.train.train_seg":
+        schema["properties"]["normalize"] = {
+            "type": "boolean",
+            "default": True,
+            "description": SEGMENT_DESCRIPTIONS.get("normalize", "Normalize image"),
+        }
 
     return schema
 

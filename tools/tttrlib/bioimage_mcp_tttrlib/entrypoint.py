@@ -82,13 +82,16 @@ def _store_object(obj: Any, class_name: str) -> dict[str, Any]:
     }
 
 
-def _load_object(uri: str) -> Any:
-    """Load object from cache by obj:// URI."""
-    if not uri.startswith("obj://"):
-        raise ValueError(f"Invalid object URI: {uri}")
-    parts = uri[6:].split("/")
+def _load_object(uri_or_id: str) -> Any:
+    """Load object from cache by obj:// URI or ref_id."""
+    if uri_or_id in _OBJECT_CACHE:
+        return _OBJECT_CACHE[uri_or_id]
+
+    if not uri_or_id.startswith("obj://"):
+        raise ValueError(f"Invalid object URI or ID: {uri_or_id}")
+    parts = uri_or_id[6:].split("/")
     if len(parts) != 3:
-        raise ValueError(f"Invalid object URI format: {uri}")
+        raise ValueError(f"Invalid object URI format: {uri_or_id}")
     _, _, object_id = parts
     if object_id not in _OBJECT_CACHE:
         raise KeyError(f"Object not found: {object_id}")
@@ -147,6 +150,7 @@ def handle_tttr_open(
             "ref_id": ref_id,
             "type": "TTTRRef",
             "uri": uri,
+            "path": str(filepath.absolute()),
             "format": container_type or "auto",
             "storage_type": "file",
             "created_at": datetime.now(UTC).isoformat(),
@@ -168,10 +172,11 @@ def handle_tttr_header(
     import json as json_module
 
     tttr_ref = inputs.get("tttr", {})
-    ref_id = tttr_ref.get("ref_id") or tttr_ref.get("uri", "").split("/")[-1]
+    tttr_key = tttr_ref.get("uri") or tttr_ref.get("ref_id") or ""
+    ref_id = tttr_ref.get("ref_id") or uuid.uuid4().hex
 
     try:
-        tttr = _load_tttr(ref_id)
+        tttr = _load_tttr(tttr_key)
         # Extract header data safely
         header_data = {}
         if hasattr(tttr, "header"):
@@ -190,6 +195,7 @@ def handle_tttr_header(
             "ref_id": uuid.uuid4().hex,
             "type": "NativeOutputRef",
             "uri": f"file://{header_path.absolute()}",
+            "path": str(header_path.absolute()),
             "format": "json",
             "mime_type": "application/json",
             "created_at": datetime.now(UTC).isoformat(),
@@ -208,26 +214,33 @@ def handle_clsm_image(
     import tttrlib
 
     tttr_ref = inputs.get("tttr", {})
-    ref_id = tttr_ref.get("ref_id") or tttr_ref.get("uri", "").split("/")[-1]
+    tttr_key = tttr_ref.get("uri") or tttr_ref.get("ref_id") or ""
 
     try:
-        tttr = _load_tttr(ref_id)
+        tttr = _load_tttr(tttr_key)
 
         # CLSMImage constructor arguments
-        clsm_kwargs = {
-            "tttr": tttr,
-        }
-        # Add optional params if provided
+        clsm_kwargs: dict[str, Any] = {"tttr": tttr}
+
+        # Pass through curated optional params
         for key in [
-            "n_frames",
+            "reading_routine",
+            "channels",
+            "fill",
+            "n_pixel_per_line",
             "n_lines",
-            "n_pixel",
+            "n_frames",
+            "marker_frame_start",
             "marker_line_start",
             "marker_line_stop",
-            "marker_frame_start",
+            "skip_before_first_frame_marker",
         ]:
             if key in params:
                 clsm_kwargs[key] = params[key]
+
+        # Backward compatibility with earlier schema drafts
+        if "n_pixel" in params and "n_pixel_per_line" not in clsm_kwargs:
+            clsm_kwargs["n_pixel_per_line"] = params["n_pixel"]
 
         clsm = tttrlib.CLSMImage(**clsm_kwargs)
 
@@ -251,46 +264,219 @@ def handle_correlator(
     import tttrlib
 
     tttr_ref = inputs.get("tttr", {})
-    ref_id = tttr_ref.get("ref_id") or tttr_ref.get("uri", "").split("/")[-1]
+    tttr_key = tttr_ref.get("uri") or tttr_ref.get("ref_id") or ""
 
     try:
-        tttr = _load_tttr(ref_id)
+        tttr = _load_tttr(tttr_key)
 
-        # Setup correlator
-        correlator = tttrlib.Correlator(
-            tttr=tttr,
-            method=params.get("method", "react"),
-            n_bins=params.get("n_bins", 17),
-            n_casc=params.get("n_casc", 25),
-        )
+        correlator_kwargs: dict[str, Any] = {
+            "tttr": tttr,
+            "n_bins": params.get("n_bins", 17),
+            "n_casc": params.get("n_casc", 25),
+            "make_fine": params.get("make_fine", False),
+            "method": params.get("method", "wahl"),
+        }
+        if "channels" in params:
+            correlator_kwargs["channels"] = params["channels"]
 
-        # Store correlator object
-        output = _store_object(correlator, "tttrlib.Correlator")
+        correlator = tttrlib.Correlator(**correlator_kwargs)
 
-        # If user wants the curve immediately
-        results = {}
-        if params.get("return_curve", False):
-            x = correlator.x
-            y = correlator.y
+        x = correlator.x
+        y = correlator.y
 
-            # Save to CSV
-            csv_path = work_dir / f"correlation_{uuid.uuid4().hex[:8]}.csv"
-            data = np.column_stack((x, y))
-            np.savetxt(csv_path, data, delimiter=",", header="tau,g2", comments="")
+        # Save to CSV
+        csv_path = work_dir / f"correlation_{uuid.uuid4().hex[:8]}.csv"
+        data = np.column_stack((x, y))
+        np.savetxt(csv_path, data, delimiter=",", header="tau,correlation", comments="")
 
-            results["curve"] = {
-                "ref_id": uuid.uuid4().hex,
-                "type": "TableRef",
-                "uri": f"file://{csv_path.absolute()}",
-                "format": "csv",
-                "created_at": datetime.now(UTC).isoformat(),
-            }
+        curve = {
+            "ref_id": uuid.uuid4().hex,
+            "type": "TableRef",
+            "uri": f"file://{csv_path.absolute()}",
+            "path": str(csv_path.absolute()),
+            "format": "csv",
+            "created_at": datetime.now(UTC).isoformat(),
+            "columns": ["tau", "correlation"],
+            "row_count": len(x),
+            "metadata": {
+                "columns": [
+                    {"name": "tau", "dtype": "float64"},
+                    {"name": "correlation", "dtype": "float64"},
+                ],
+                "row_count": len(x),
+            },
+        }
 
         return {
             "ok": True,
-            "outputs": {"correlator": output, **results},
-            "log": "Correlator initialized",
+            "outputs": {"curve": curve},
+            "log": "Correlation computed",
         }
+
+    except Exception as e:
+        return {"ok": False, "error": {"message": str(e)}}
+
+
+def handle_get_time_window_ranges(
+    inputs: dict[str, Any], params: dict[str, Any], work_dir: Path
+) -> dict[str, Any]:
+    """Handle tttrlib.TTTR.get_time_window_ranges - burst selection."""
+    import numpy as np
+
+    tttr_ref = inputs.get("tttr", {})
+    tttr_key = tttr_ref.get("uri") or tttr_ref.get("ref_id") or ""
+
+    try:
+        tttr = _load_tttr(tttr_key)
+
+        ranges = tttr.get_time_window_ranges(**params)
+
+        csv_path = work_dir / f"ranges_{uuid.uuid4().hex[:8]}.csv"
+        np.savetxt(
+            csv_path,
+            ranges,
+            delimiter=",",
+            header="start_index,stop_index",
+            comments="",
+            fmt="%d",
+        )
+
+        output = {
+            "ref_id": uuid.uuid4().hex,
+            "type": "TableRef",
+            "uri": f"file://{csv_path.absolute()}",
+            "path": str(csv_path.absolute()),
+            "format": "csv",
+            "created_at": datetime.now(UTC).isoformat(),
+            "columns": ["start_index", "stop_index"],
+            "row_count": len(ranges),
+            "metadata": {
+                "columns": [
+                    {"name": "start_index", "dtype": "int64"},
+                    {"name": "stop_index", "dtype": "int64"},
+                ],
+                "row_count": len(ranges),
+            },
+        }
+
+        return {"ok": True, "outputs": {"ranges": output}, "log": "Time window ranges computed"}
+
+    except Exception as e:
+        return {"ok": False, "error": {"message": str(e)}}
+
+
+def handle_tttr_write(
+    inputs: dict[str, Any], params: dict[str, Any], work_dir: Path
+) -> dict[str, Any]:
+    """Handle tttrlib.TTTR.write - export TTTR data."""
+    tttr_ref = inputs.get("tttr", {})
+    tttr_key = tttr_ref.get("uri") or tttr_ref.get("ref_id") or ""
+    filename = params.get("filename")
+
+    if not filename:
+        return {"ok": False, "error": {"message": "filename is required"}}
+
+    try:
+        tttr = _load_tttr(tttr_key)
+
+        filepath = Path(filename)
+        if not filepath.is_absolute():
+            filepath = work_dir / filepath
+
+        tttr.write(str(filepath))
+
+        ext = filepath.suffix.lower()
+        if ext in {".h5", ".hdf5"}:
+            fmt = "HDF"
+        else:
+            fmt = filepath.suffix[1:].upper() if filepath.suffix else "auto"
+
+        output = {
+            "ref_id": uuid.uuid4().hex,
+            "type": "TTTRRef",
+            "uri": f"file://{filepath.absolute()}",
+            "path": str(filepath.absolute()),
+            "format": fmt,
+            "storage_type": "file",
+            "created_at": datetime.now(UTC).isoformat(),
+        }
+
+        return {"ok": True, "outputs": {"tttr_out": output}, "log": f"TTTR written to {filename}"}
+
+    except Exception as e:
+        return {"ok": False, "error": {"message": str(e)}}
+
+
+def handle_compute_ics(
+    inputs: dict[str, Any], params: dict[str, Any], work_dir: Path
+) -> dict[str, Any]:
+    """Handle tttrlib.CLSMImage.compute_ics - compute Image Correlation Spectroscopy."""
+    import numpy as np
+    from bioio.writers import OmeTiffWriter
+
+    clsm_ref = inputs.get("clsm", {})
+    clsm_key = clsm_ref.get("uri") or clsm_ref.get("ref_id") or ""
+
+    try:
+        clsm = _load_object(clsm_key)
+
+        subtract_average = params.get("subtract_average", "frame")
+        if isinstance(subtract_average, bool):
+            subtract_average = "frame" if subtract_average else ""
+
+        ics_kwargs: dict[str, Any] = {
+            "subtract_average": subtract_average,
+            "x_range": params.get("x_range", [0, -1]),
+            "y_range": params.get("y_range", [0, -1]),
+        }
+
+        ics_data = clsm.compute_ics(**ics_kwargs)
+        ics_data = np.asarray(ics_data)
+
+        out_path = work_dir / f"ics_{uuid.uuid4().hex[:8]}.ome.tif"
+        ndim_map = {2: "YX", 3: "ZYX", 4: "CZYX", 5: "TCZYX"}
+        dim_order = ndim_map.get(
+            ics_data.ndim, "TCZYX"[-ics_data.ndim :] if ics_data.ndim <= 5 else "TCZYX"
+        )
+        OmeTiffWriter.save(ics_data, str(out_path), dim_order=dim_order)
+
+        outputs: dict[str, Any] = {
+            "ics": {
+                "ref_id": uuid.uuid4().hex,
+                "type": "BioImageRef",
+                "uri": f"file://{out_path.absolute()}",
+                "path": str(out_path.absolute()),
+                "format": "OME-TIFF",
+                "created_at": datetime.now(UTC).isoformat(),
+            }
+        }
+
+        if params.get("include_summary", False):
+            summary_path = work_dir / f"ics_summary_{uuid.uuid4().hex[:8]}.csv"
+            rows = [
+                ("subtract_average", str(subtract_average)),
+                ("x_range", json.dumps(ics_kwargs["x_range"])),
+                ("y_range", json.dumps(ics_kwargs["y_range"])),
+                ("shape", json.dumps(list(ics_data.shape))),
+                ("dtype", str(ics_data.dtype)),
+            ]
+            with open(summary_path, "w") as f:
+                f.write("metric,value\n")
+                for metric, value in rows:
+                    f.write(f"{metric},{value}\n")
+
+            outputs["summary"] = {
+                "ref_id": uuid.uuid4().hex,
+                "type": "TableRef",
+                "uri": f"file://{summary_path.absolute()}",
+                "path": str(summary_path.absolute()),
+                "format": "csv",
+                "created_at": datetime.now(UTC).isoformat(),
+                "columns": ["metric", "value"],
+                "row_count": len(rows),
+            }
+
+        return {"ok": True, "outputs": outputs, "log": "ICS computed"}
 
     except Exception as e:
         return {"ok": False, "error": {"message": str(e)}}
@@ -300,7 +486,10 @@ def handle_correlator(
 FUNCTION_HANDLERS = {
     "tttrlib.TTTR": handle_tttr_open,
     "tttrlib.TTTR.header": handle_tttr_header,
+    "tttrlib.TTTR.get_time_window_ranges": handle_get_time_window_ranges,
+    "tttrlib.TTTR.write": handle_tttr_write,
     "tttrlib.CLSMImage": handle_clsm_image,
+    "tttrlib.CLSMImage.compute_ics": handle_compute_ics,
     "tttrlib.Correlator": handle_correlator,
 }
 

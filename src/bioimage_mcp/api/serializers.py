@@ -138,9 +138,8 @@ class RunResponseSerializer:
         if channel_names is not None:
             minimal["channel_names"] = self._maybe_truncate_channel_names(channel_names)
 
-        # uri only if memory-backed
-        if self._is_memory_artifact(ref_dict):
-            minimal["uri"] = ref_dict.get("uri")
+        # uri included in minimal for connectivity (Constitution III)
+        minimal["uri"] = ref_dict.get("uri")
 
         # Remove None values for cleaner output
         return {k: v for k, v in minimal.items() if v is not None}

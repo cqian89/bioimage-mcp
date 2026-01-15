@@ -986,7 +986,13 @@ class ExecutionService:
                 logger.info("Memory output generated: ref_id=%s storage_type=%s", ref_id, "memory")
                 outputs_payload[name] = ref.model_dump()
                 record_artifact_dimensions(run.provenance, f"output.{name}", outputs_payload[name])
-            elif out_type in ["ObjectRef", "FigureRef", "AxesRef", "AxesImageRef", "GroupByRef"]:
+            elif out_type in [
+                "ObjectRef",
+                "FigureRef",
+                "AxesRef",
+                "AxesImageRef",
+                "GroupByRef",
+            ]:
                 # Handle ObjectRef and its subclasses (T018-T024)
                 # Register in memory store so it can be resolved for next steps
                 ref_id = out.get("ref_id")
@@ -1036,12 +1042,19 @@ class ExecutionService:
 
                 if p.is_dir():
                     ref = self._artifact_store.import_directory(
-                        p, artifact_type=out_type, format=fmt
+                        p,
+                        artifact_type=out_type,
+                        format=fmt,
+                        ref_id=out.get("ref_id"),
                     )
                 else:
                     # Pass tool metadata as override to preserve native dimensions (T048)
                     ref = self._artifact_store.import_file(
-                        p, artifact_type=out_type, format=fmt, metadata_override=tool_metadata
+                        p,
+                        artifact_type=out_type,
+                        format=fmt,
+                        metadata_override=tool_metadata,
+                        ref_id=out.get("ref_id"),
                     )
 
                 ref_data = ref.model_dump()
