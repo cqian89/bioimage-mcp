@@ -55,6 +55,7 @@ class TestTTTRLibManifestContract:
             "tttrlib.Correlator",
             "tttrlib.CLSMImage",
             "tttrlib.CLSMImage.compute_ics",
+            "tttrlib.CLSMImage.get_intensity",
             "tttrlib.TTTR.write",
         ]
 

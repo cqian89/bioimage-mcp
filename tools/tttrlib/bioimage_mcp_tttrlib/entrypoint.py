@@ -497,6 +497,54 @@ def handle_compute_ics(
         return {"ok": False, "error": {"message": str(e)}}
 
 
+def handle_get_intensity(
+    inputs: dict[str, Any], params: dict[str, Any], work_dir: Path
+) -> dict[str, Any]:
+    """Handle tttrlib.CLSMImage.get_intensity - extract intensity image."""
+    import numpy as np
+    from bioio.writers import OmeTiffWriter
+
+    clsm_ref = inputs.get("clsm", {})
+    clsm_key = clsm_ref.get("uri") or clsm_ref.get("ref_id") or ""
+
+    try:
+        clsm = _load_object(clsm_key)
+
+        # Get intensity array from CLSMImage
+        # tttrlib API: CLSMImage.intensity property -> (n_frames, n_lines, n_pixel)
+        intensity = np.asarray(clsm.intensity)
+
+        stack_frames = params.get("stack_frames", False)
+        if stack_frames:
+            # Sum across frames to get 2D image
+            intensity = intensity.sum(axis=0)
+            dim_order = "YX"
+        else:
+            dim_order = "ZYX"  # Frames as Z
+
+        out_path = work_dir / f"intensity_{uuid.uuid4().hex[:8]}.ome.tif"
+        OmeTiffWriter.save(intensity, str(out_path), dim_order=dim_order)
+
+        output = {
+            "ref_id": uuid.uuid4().hex,
+            "type": "BioImageRef",
+            "uri": f"file://{out_path.absolute()}",
+            "path": str(out_path.absolute()),
+            "format": "OME-TIFF",
+            "created_at": datetime.now(UTC).isoformat(),
+            "metadata": {
+                "axes": dim_order,
+                "shape": list(intensity.shape),
+                "dtype": str(intensity.dtype),
+            },
+        }
+
+        return {"ok": True, "outputs": {"intensity": output}, "log": "Intensity extracted"}
+
+    except Exception as e:
+        return {"ok": False, "error": {"message": str(e)}}
+
+
 # Function dispatch table
 FUNCTION_HANDLERS = {
     "tttrlib.TTTR": handle_tttr_open,
@@ -505,6 +553,7 @@ FUNCTION_HANDLERS = {
     "tttrlib.TTTR.write": handle_tttr_write,
     "tttrlib.CLSMImage": handle_clsm_image,
     "tttrlib.CLSMImage.compute_ics": handle_compute_ics,
+    "tttrlib.CLSMImage.get_intensity": handle_get_intensity,
     "tttrlib.Correlator": handle_correlator,
 }
 

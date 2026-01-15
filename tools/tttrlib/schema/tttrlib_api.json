@@ -266,6 +266,29 @@
         }
       }
     },
+    "tttrlib.CLSMImage.get_intensity": {
+      "summary": "Extract intensity image from CLSM data",
+      "inputs": {
+        "clsm": {
+          "artifact_type": "ObjectRef",
+          "required": true
+        }
+      },
+      "params": {
+        "stack_frames": {
+          "type": "boolean",
+          "default": false,
+          "description": "Sum intensity across all frames into a single 2D image"
+        }
+      },
+      "outputs": {
+        "intensity": {
+          "artifact_type": "BioImageRef",
+          "format": "OME-TIFF",
+          "description": "3D array (Z,Y,X) or 2D (Y,X) if stack_frames=true"
+        }
+      }
+    },
     "tttrlib.TTTR.write": {
       "summary": "Export TTTR data to file",
       "inputs": {

@@ -180,6 +180,63 @@ class TestTTTRLibSmoke:
         assert path.suffix.lower() in [".tif", ".tiff"]
 
     @pytest.mark.anyio
+    @pytest.mark.skipif(not is_valid_dataset(PTU_FILE), reason="PTU dataset not available or empty")
+    async def test_intensity_extraction(self, live_server) -> None:
+        """Smoke test: TTTR → CLSMImage → intensity → BioImageRef"""
+        # 1. Open TTTR
+        open_result = await live_server.call_tool(
+            "run",
+            {
+                "fn_id": "tttrlib.TTTR",
+                "inputs": {},
+                "params": {
+                    "filename": str(PTU_FILE.absolute()),
+                    "container_type": "PTU",
+                },
+            },
+        )
+        assert open_result.get("status") == "success"
+        tttr_ref = open_result["outputs"]["tttr"]
+
+        # 2. Construct CLSMImage
+        clsm_result = await live_server.call_tool(
+            "run",
+            {
+                "fn_id": "tttrlib.CLSMImage",
+                "inputs": {"tttr": tttr_ref},
+                "params": {
+                    "reading_routine": "SP5",
+                    "channels": [0],
+                    "marker_frame_start": [4],
+                    "marker_line_start": 2,
+                    "marker_line_stop": 3,
+                },
+            },
+        )
+        assert clsm_result.get("status") == "success"
+        clsm_ref = clsm_result["outputs"]["clsm"]
+
+        # 3. Get intensity image
+        intensity_result = await live_server.call_tool(
+            "run",
+            {
+                "fn_id": "tttrlib.CLSMImage.get_intensity",
+                "inputs": {"clsm": clsm_ref},
+                "params": {"stack_frames": True},
+            },
+        )
+        assert intensity_result.get("status") == "success"
+        intensity_ref = intensity_result["outputs"]["intensity"]
+        assert_valid_artifact_ref(intensity_ref, "BioImageRef")
+
+        # Verify output file exists
+        uri = intensity_ref["uri"]
+        assert uri.startswith("file://")
+        path = Path(uri[7:])
+        assert path.exists()
+        assert path.suffix.lower() in [".tif", ".tiff"]
+
+    @pytest.mark.anyio
     @pytest.mark.skipif(not is_valid_dataset(SPC_FILE), reason="SPC dataset not available or empty")
     async def test_burst_selection(self, live_server) -> None:
         """Smoke test 8.3: Single-molecule burst selection."""

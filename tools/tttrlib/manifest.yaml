@@ -243,6 +243,28 @@ functions:
             maxItems: 2
           description: "List of frame index pairs for cross-correlation (e.g., [[0,0], [1,1]])"
 
+  - fn_id: tttrlib.CLSMImage.get_intensity
+    tool_id: tools.tttrlib
+    name: Get Intensity Image
+    description: Extract intensity image (photon counts per pixel) from CLSM data
+    tags: [imaging, intensity, clsm]
+    inputs:
+      - name: clsm
+        artifact_type: ObjectRef
+        required: true
+    outputs:
+      - name: intensity
+        artifact_type: BioImageRef
+        format: OME-TIFF
+        required: true
+    params_schema:
+      type: object
+      properties:
+        stack_frames:
+          type: boolean
+          default: false
+          description: "Sum across all frames into single 2D image"
+
   - fn_id: tttrlib.TTTR.write
     tool_id: tools.tttrlib
     name: Write TTTR File
