@@ -72,10 +72,11 @@ def test_regionprops_redirect_to_regionprops_table():
                 assert len(outputs) == 1
                 assert outputs[0]["type"] == "TableRef"
 
-                # Verify notice is present
-                assert "notice" in outputs[0]
-                assert "redirected" in outputs[0]["notice"].lower()
-                assert "regionprops_table" in outputs[0]["notice"]
+                # Verify notice is present in metadata
+                assert "metadata" in outputs[0]
+                assert "notice" in outputs[0]["metadata"]
+                assert "redirected" in outputs[0]["metadata"]["notice"].lower()
+                assert "regionprops_table" in outputs[0]["metadata"]["notice"]
 
 
 def test_regionprops_table_no_redirect():
@@ -111,6 +112,8 @@ def test_regionprops_table_no_redirect():
             assert len(outputs) == 1
             assert outputs[0]["type"] == "TableRef"
             assert "notice" not in outputs[0]
+            if "metadata" in outputs[0]:
+                assert "notice" not in outputs[0]["metadata"]
 
 
 def test_regionprops_discovery():

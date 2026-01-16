@@ -553,7 +553,9 @@ class SkimageAdapter(BaseAdapter):
                 raise ValueError("Expected table dict output for labels_to_table function")
             output_ref = self._save_table(result, work_dir=work_dir)
             if notice:
-                output_ref["notice"] = notice
+                if "metadata" not in output_ref:
+                    output_ref["metadata"] = {}
+                output_ref["metadata"]["notice"] = notice
         else:
             # Use processed axes from inputs if available, otherwise find first
             axes = output_axes
