@@ -6,6 +6,7 @@ from __future__ import annotations
 import importlib
 import json
 import sys
+import traceback
 import uuid
 from pathlib import Path
 from typing import Any
@@ -623,7 +624,7 @@ def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
                     "ok": False,
                     "ordinal": ordinal,
                     "error": {"message": result_response.get("error", "Unknown error")},
-                    "log": "failed",
+                    "log": traceback.format_exc(),
                 }
         elif fn_id in FN_MAP:
             func, _descriptions = FN_MAP[fn_id]
@@ -748,7 +749,7 @@ def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
             "ordinal": ordinal,
             "error": error,
             "outputs": {},
-            "log": "failed",
+            "log": traceback.format_exc(),
         }
 
     return response
