@@ -41,7 +41,11 @@ def test_regionprops_redirect_to_regionprops_table():
                 outputs = adapter.execute(
                     fn_id="skimage.measure.regionprops",
                     inputs=[("labels", labels_ref)],
-                    params={"cache": True, "offset": (0, 0)},  # offset is only in regionprops
+                    params={
+                        "cache": True,
+                        "offset": (0, 0),
+                        "coordinates": "rc",
+                    },  # offset/coordinates are regionprops-only
                 )
 
                 # Verify regionprops was NOT called
@@ -55,9 +59,13 @@ def test_regionprops_redirect_to_regionprops_table():
                 assert np.array_equal(args[0], labels)
                 assert kwargs["cache"] is True
                 assert "offset" not in kwargs  # Should be dropped
+                assert "coordinates" not in kwargs  # Should be dropped
                 # Should have default properties
                 assert "properties" in kwargs
                 assert "label" in kwargs["properties"]
+                assert (
+                    "mean_intensity" not in kwargs["properties"]
+                )  # Should be removed from defaults
 
                 # Verify output is a TableRef (CSV)
                 assert len(outputs) == 1

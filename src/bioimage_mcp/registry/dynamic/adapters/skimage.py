@@ -417,8 +417,9 @@ class SkimageAdapter(BaseAdapter):
             # Map parameters
             params = params.copy()
             params.pop("offset", None)  # Not supported by regionprops_table
+            params.pop("coordinates", None)  # Not supported by regionprops_table
             if "properties" not in params:
-                params["properties"] = ["label", "area", "centroid", "bbox", "mean_intensity"]
+                params["properties"] = ["label", "area", "centroid", "bbox"]
 
         from bioimage_mcp.api.schemas import DimensionRequirement
 
