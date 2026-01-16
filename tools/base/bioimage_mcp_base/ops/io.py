@@ -727,6 +727,7 @@ def slice_image(
         "ref_id": ref_id,
         "type": "BioImageRef",
         "uri": f"file://{out_path}",
+        "path": str(out_path),
         "format": "OME-Zarr",
         "storage_type": "file",
         "mime_type": "application/octet-stream",
