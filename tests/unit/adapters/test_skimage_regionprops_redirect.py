@@ -1,8 +1,9 @@
+from unittest.mock import patch
+
 import numpy as np
 import pytest
-from unittest.mock import MagicMock, patch
+
 from bioimage_mcp.registry.dynamic.adapters.skimage import SkimageAdapter
-from bioimage_mcp.artifacts.models import ArtifactRef
 
 
 def test_regionprops_redirect_to_regionprops_table():
@@ -125,6 +126,48 @@ def test_regionprops_discovery():
     assert len(discovered) == 1
     assert discovered[0].name == "regionprops"
     assert discovered[0].fn_id == "skimage.measure.regionprops"
+
+
+def test_regionprops_schema_alignment():
+    """
+    Follow-up 1: Verify that regionprops schema matches regionprops_table schema.
+    """
+    adapter = SkimageAdapter()
+
+    # Discover regionprops
+    discovered_rp = adapter.discover(
+        {
+            "module_name": "skimage.measure",
+            "include": ["regionprops"],
+        }
+    )
+
+    # Discover regionprops_table
+    discovered_rpt = adapter.discover(
+        {
+            "module_name": "skimage.measure",
+            "include": ["regionprops_table"],
+        }
+    )
+
+    assert len(discovered_rp) == 1
+    assert len(discovered_rpt) == 1
+
+    rp = discovered_rp[0]
+    rpt = discovered_rpt[0]
+
+    # 1. Verify description includes redirection note
+    assert "redirected to regionprops_table" in rp.description.lower()
+
+    # 2. Verify parameters match regionprops_table parameters
+    assert set(rp.parameters.keys()) == set(rpt.parameters.keys())
+
+    # 3. Verify specifically that offset and coordinates are NOT in rp parameters
+    assert "offset" not in rp.parameters
+    assert "coordinates" not in rp.parameters
+
+    # 4. Verify properties is present (it's in rpt, but not in original rp)
+    assert "properties" in rp.parameters
 
 
 if __name__ == "__main__":

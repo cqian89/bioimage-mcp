@@ -107,11 +107,33 @@ class SkimageAdapter(BaseAdapter):
 
                 # Introspect
                 io_pattern = self.determine_io_pattern(mod_name, name)
+
+                # Redirect regionprops schema to regionprops_table (Follow-up 1)
+                is_regionprops_redirect = name == "regionprops" and mod_name == "skimage.measure"
+                introspection_obj = obj
+                if is_regionprops_redirect:
+                    try:
+                        # Introspect regionprops_table instead to get the correct schema
+                        introspection_obj = getattr(module, "regionprops_table")
+                    except AttributeError:
+                        pass
+
                 meta = self.introspector.introspect(
-                    func=obj,
+                    func=introspection_obj,
                     source_adapter="skimage",
                     io_pattern=io_pattern,
                 )
+
+                if is_regionprops_redirect:
+                    # Restore the original name (which would be regionprops_table from introspection)
+                    meta.name = name
+                    meta.description = (
+                        "NOTE: This function is redirected to regionprops_table for serializable output. "
+                        + (meta.description or "")
+                    )
+                    # Ensure offset and coordinates are removed (if they were somehow present)
+                    meta.parameters.pop("offset", None)
+                    meta.parameters.pop("coordinates", None)
 
                 # Keep original parameter names for hint generation before filtering
                 all_param_names = list(meta.parameters.keys())
