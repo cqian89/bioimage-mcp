@@ -14,7 +14,6 @@ from bioimage_mcp.artifacts.memory import MemoryArtifactStore
 from bioimage_mcp.artifacts.metadata import (
     extract_image_metadata,
     extract_table_metadata,
-    get_ndim,
 )
 from bioimage_mcp.artifacts.models import (
     ArtifactChecksum,
@@ -252,28 +251,15 @@ class ArtifactStore:
         # Extract image metadata for image artifact types
         # Use src instead of dest because src has the correct file extension (T020 fix)
         meta = {}
-        ndim = None
-        dims = None
-        physical_pixel_sizes = None
 
         if artifact_type in {"BioImageRef", "LabelImageRef"}:
             meta = extract_image_metadata(src) or {}
-            if meta:
-                ndim = get_ndim(meta)
-                dims = meta.get("dims")
-                physical_pixel_sizes = meta.get("physical_pixel_sizes")
         elif artifact_type == "TableRef":
             meta = extract_table_metadata(src) or {}
 
         # Apply metadata override (T048)
         if metadata_override:
             meta.update(metadata_override)
-            if "ndim" in metadata_override:
-                ndim = metadata_override["ndim"]
-            if "dims" in metadata_override:
-                dims = metadata_override["dims"]
-            if "physical_pixel_sizes" in metadata_override:
-                physical_pixel_sizes = metadata_override["physical_pixel_sizes"]
 
         kwargs = {
             "ref_id": ref_id,
@@ -298,6 +284,7 @@ class ArtifactStore:
         *,
         artifact_type: str,
         format: str,
+        metadata_override: dict | None = None,
         ref_id: str | None = None,
     ) -> ArtifactRef:
         assert_path_allowed("read", src, self._config)
@@ -340,16 +327,12 @@ class ArtifactStore:
 
         # Extract metadata for directory-based artifacts (e.g. OME-Zarr) (T028)
         meta = {}
-        ndim = None
-        dims = None
-        physical_pixel_sizes = None
-
         if artifact_type in {"BioImageRef", "LabelImageRef"} and storage_type == "zarr-temp":
             meta = extract_image_metadata(src) or {}
-            if meta:
-                ndim = get_ndim(meta)
-                dims = meta.get("dims")
-                physical_pixel_sizes = meta.get("physical_pixel_sizes")
+
+        # Apply metadata override (T048)
+        if metadata_override:
+            meta.update(metadata_override)
 
         kwargs = {
             "ref_id": ref_id,

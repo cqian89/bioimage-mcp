@@ -316,7 +316,7 @@ functions:
     outputs:
       - name: decay
         artifact_type: BioImageRef
-        format: OME-TIFF
+        format: OME-Zarr
         required: true
     params_schema:
       type: object

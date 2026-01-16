@@ -639,7 +639,7 @@ def handle_get_fluorescence_decay(
 ) -> dict[str, Any]:
     """Handle tttrlib.CLSMImage.get_fluorescence_decay - extract decay histogram per pixel."""
     import numpy as np
-    from bioio.writers import OmeTiffWriter
+    from bioio_ome_zarr.writers import OMEZarrWriter
 
     clsm_ref = inputs.get("clsm", {})
     clsm_key = clsm_ref.get("uri") or clsm_ref.get("ref_id") or ""
@@ -657,49 +657,59 @@ def handle_get_fluorescence_decay(
             "stack_frames": params.get("stack_frames", False),
         }
 
-        # get_fluorescence_decay returns (Z, Y, X, T) where T is microtime bins
+        # get_fluorescence_decay returns (Y, X, bins) or (Z, Y, X, bins)
         decay_data = clsm.get_fluorescence_decay(**decay_kwargs)
         decay_data = np.asarray(decay_data, dtype=np.float32)
 
-        # Determine dimension order based on shape.
-        # tttrlib returns microtime bins along the last axis.
-        # OME-TIFF writers require that the last two axes are YX, so we move microtime
-        # bins to a leading axis. We map microtime bins to the OME 'T' axis and record
-        # their role explicitly in artifact metadata.
         micro_time_coarsening = params.get("micro_time_coarsening", 1)
 
-        if decay_data.ndim == 3:  # (Y, X, bins) - stacked
-            decay_data = np.moveaxis(decay_data, -1, 0)  # (bins, Y, X)
-            dim_order = "TYX"
-        elif decay_data.ndim == 4:  # (Z, Y, X, bins)
-            decay_data = np.moveaxis(decay_data, -1, 0)  # (bins, Z, Y, X)
-            dim_order = "TZYX"
+        # Keep native tttrlib output order - no moveaxis needed!
+        # tttrlib returns (Y, X, bins) or (Z, Y, X, bins)
+        if decay_data.ndim == 3:  # (Y, X, B)
+            axes_names = ["y", "x", "b"]
+            axes_types = ["space", "space", "other"]
+            dims = ["Y", "X", "B"]
+        elif decay_data.ndim == 4:  # (Z, Y, X, B)
+            axes_names = ["z", "y", "x", "b"]
+            axes_types = ["space", "space", "space", "other"]
+            dims = ["Z", "Y", "X", "B"]
         else:
             return {
                 "ok": False,
                 "error": {
-                    "message": (f"Unexpected decay ndim={decay_data.ndim} shape={decay_data.shape}")
+                    "message": f"Unexpected decay ndim={decay_data.ndim} shape={decay_data.shape}"
                 },
             }
 
-        out_path = work_dir / f"decay_{uuid.uuid4().hex[:8]}.ome.tif"
-        OmeTiffWriter.save(decay_data, str(out_path), dim_order=dim_order)
+        out_path = work_dir / f"decay_{uuid.uuid4().hex[:8]}.ome.zarr"
 
-        # Note: after axis move, bins are along the T axis.
+        writer = OMEZarrWriter(
+            store=str(out_path),
+            level_shapes=[decay_data.shape],
+            dtype=decay_data.dtype,
+            axes_names=axes_names,
+            axes_types=axes_types,
+            zarr_format=2,  # Zarr v2 for OME-Zarr v0.4 compatibility
+        )
+        writer.write_full_volume(decay_data)
+
         output = {
             "ref_id": uuid.uuid4().hex,
             "type": "BioImageRef",
             "uri": f"file://{out_path.absolute()}",
             "path": str(out_path.absolute()),
-            "format": "OME-TIFF",
+            "format": "OME-Zarr",
+            "storage_type": "zarr-temp",
+            "mime_type": "application/zarr+ome",
             "created_at": datetime.now(UTC).isoformat(),
             "metadata": {
-                "axes": dim_order,
+                "dims": dims,
                 "shape": list(decay_data.shape),
+                "ndim": decay_data.ndim,
                 "dtype": str(decay_data.dtype),
-                "microtime_axis": "T",
+                "axis_roles": {"B": "microtime_histogram"},
                 "micro_time_coarsening": micro_time_coarsening,
-                "n_microtime_bins": decay_data.shape[0],
+                "n_microtime_bins": decay_data.shape[-1],
             },
         }
 

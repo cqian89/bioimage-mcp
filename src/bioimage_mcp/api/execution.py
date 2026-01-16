@@ -436,7 +436,7 @@ class ExecutionService:
         """
         # Determine target environment from python_class
         # Heuristic: try to find env via _get_target_env with a guessed fn_id
-        target_env = self._get_target_env(python_class)
+        # target_env = self._get_target_env(python_class)
 
         # Execute the reconstruction
         work_dir = (
@@ -485,7 +485,8 @@ class ExecutionService:
 
         ref = ObjectRef(**obj_ref_data)
 
-        # Ensure it's registered in memory store (execute_step might have already done this via worker_manager)
+        # Ensure it's registered in memory store
+        # (execute_step might have already done this via worker_manager)
         if not self._memory_store.get(ref.ref_id):
             self._memory_store.register(ref)
 
@@ -628,7 +629,8 @@ class ExecutionService:
         target_env = self._get_target_env(fn_id)
         fn_ports = _get_function_ports(self._config, [fn_id]).get(fn_id, {})
 
-        # Pre-process inputs: convert plain ref_id strings or lists of ref_ids to resolved artifact dicts
+        # Pre-process inputs: convert plain ref_id strings or lists of ref_ids
+        # to resolved artifact dicts
         def _resolve_input_ref(val: Any) -> Any:
             if isinstance(val, str) and not val.startswith(("file://", "mem://", "/")):
                 # Treat as ref_id string - resolve to full artifact
@@ -1045,6 +1047,7 @@ class ExecutionService:
                         p,
                         artifact_type=out_type,
                         format=fmt,
+                        metadata_override=tool_metadata,
                         ref_id=out.get("ref_id"),
                     )
                 else:

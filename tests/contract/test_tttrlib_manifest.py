@@ -97,3 +97,22 @@ class TestTTTRLibManifestContract:
 
         assert "TTTRRef" in input_types
         assert "ObjectRef" in output_types
+
+    def test_decay_output_format_is_ome_zarr(self) -> None:
+        """Test that get_fluorescence_decay output declares OME-Zarr format (spec 026)."""
+        if not TTTRLIB_MANIFEST_PATH.exists():
+            pytest.skip("tttrlib manifest not yet created")
+
+        with open(TTTRLIB_MANIFEST_PATH) as f:
+            raw = yaml.safe_load(f)
+
+        decay_fn = next(
+            f for f in raw["functions"] if f["fn_id"] == "tttrlib.CLSMImage.get_fluorescence_decay"
+        )
+
+        # Find the decay output
+        decay_output = next(o for o in decay_fn["outputs"] if o["name"] == "decay")
+
+        assert decay_output["format"] == "OME-Zarr", (
+            f"Decay output must be OME-Zarr per spec 026, got {decay_output.get('format')}"
+        )

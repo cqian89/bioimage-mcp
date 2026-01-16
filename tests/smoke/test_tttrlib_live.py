@@ -346,27 +346,47 @@ class TestTTTRLibSmoke:
                 "fn_id": "tttrlib.CLSMImage.get_fluorescence_decay",
                 "inputs": {"clsm": clsm_ref, "tttr_data": tttr_ref},
                 "params": {"micro_time_coarsening": 4, "stack_frames": True},
+                "verbosity": "full",
             },
         )
         assert decay_result.get("status") == "success", f"Decay failed: {decay_result}"
         decay_ref = decay_result["outputs"]["decay"]
         assert_valid_artifact_ref(decay_ref, "BioImageRef")
 
-        # Verify output file exists
+        # Verify output is OME-Zarr directory (spec 026)
         uri = decay_ref["uri"]
         assert uri.startswith("file://")
         path = Path(uri[7:])
-        assert path.exists()
-
-        # Verify metadata encodes microtime bins correctly
-        metadata = decay_ref.get("metadata", {})
-        axes = metadata.get("axes", "")
-        assert isinstance(axes, str) and axes.startswith("T"), (
-            f"Expected decay bins on leading T axis, got axes={axes}"
+        assert path.exists(), f"Decay output not found: {path}"
+        assert path.is_dir(), f"OME-Zarr output must be a directory: {path}"
+        assert str(path).lower().endswith((".ome.zarr", ".zarr")), (
+            f"Expected .ome.zarr or .zarr directory, got {path}"
         )
-        assert metadata.get("microtime_axis") == "T"
+
+        # Verify format is OME-Zarr
+        assert decay_ref.get("format") == "OME-Zarr", (
+            f"Expected format='OME-Zarr', got {decay_ref.get('format')}"
+        )
+
+        # Verify metadata uses B axis for microtime bins (spec 026)
+        metadata = decay_ref.get("metadata", {})
+        dims = metadata.get("dims", [])
+        assert "B" in dims, f"Expected 'B' in dims for microtime bins, got {dims}"
+
+        # Verify axis roles
+        axis_roles = metadata.get("axis_roles", {})
+        assert axis_roles.get("B") == "microtime_histogram", (
+            f"Expected axis_roles['B']='microtime_histogram', got {axis_roles}"
+        )
+
+        # Verify microtime bins count
         assert isinstance(metadata.get("n_microtime_bins"), int)
         assert metadata["n_microtime_bins"] > 0
+
+        # Verify microtime_axis is NOT present (legacy field removed)
+        assert "microtime_axis" not in metadata, (
+            f"Legacy 'microtime_axis' field should be removed, got {metadata}"
+        )
 
     @pytest.mark.anyio
     @pytest.mark.skipif(not is_valid_dataset(PTU_FILE), reason="PTU dataset not available or empty")

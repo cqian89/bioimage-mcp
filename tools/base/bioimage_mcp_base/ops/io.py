@@ -521,7 +521,7 @@ def table_export(
             except Exception as e:
                 raise ValueError(
                     f"Cannot convert object of type {type(obj).__name__} to DataFrame: {e}"
-                )
+                ) from e
         else:
             df = obj
     else:
