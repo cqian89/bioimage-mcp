@@ -5,9 +5,9 @@ import os
 import subprocess
 import threading
 import time
+from collections import deque
 from datetime import UTC, datetime
 from pathlib import Path
-from queue import Empty, Queue
 from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
@@ -90,7 +90,8 @@ class WorkerProcess:
         self.started_at = datetime.now(UTC)
 
         # Start stderr capture thread
-        self._stderr_lines: Queue[str] = Queue()
+        self._stderr_lines: deque[str] = deque(maxlen=100)  # Keep last 100 lines (T115)
+        self._stderr_lock = threading.Lock()
         self._stderr_thread = threading.Thread(
             target=self._capture_stderr,
             daemon=True,
@@ -244,7 +245,8 @@ class WorkerProcess:
             for line in self._process.stderr:
                 line = line.rstrip("\r\n")
                 if line:
-                    self._stderr_lines.put(line)
+                    with self._stderr_lock:
+                        self._stderr_lines.append(line)
                     logger.debug("Worker stderr [%s/%s]: %s", self.session_id, self.env_id, line)
         except Exception as e:  # noqa: BLE001
             logger.warning("Stderr capture failed for %s/%s: %s", self.session_id, self.env_id, e)
@@ -637,13 +639,10 @@ class WorkerProcess:
 
     def get_stderr_lines(self) -> list[str]:
         """Get captured stderr lines (non-blocking)."""
-        lines = []
-        try:
-            while True:
-                lines.append(self._stderr_lines.get_nowait())
-        except Empty:
-            pass
-        return lines
+        with self._stderr_lock:
+            lines = list(self._stderr_lines)
+            self._stderr_lines.clear()
+            return lines
 
     def shutdown(self, graceful: bool = True, wait_timeout: float = 30.0) -> None:
         """Terminate the worker process.
