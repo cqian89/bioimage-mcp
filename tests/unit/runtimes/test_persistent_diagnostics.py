@@ -57,6 +57,7 @@ def test_execute_includes_stderr_on_error(tmp_path):
     script.write_text("""
 import sys
 import json
+import time
 
 # Send ready handshake
 print(json.dumps({"command": "ready", "version": "1.0.0"}), flush=True)
@@ -69,6 +70,7 @@ for line in sys.stdin:
             # Print to stderr
             print("Captured stderr message during execution", file=sys.stderr)
             sys.stderr.flush()
+            time.sleep(0.01)  # Robustness: ensure stderr is drained by background thread
 
             # Return error response
             response = {
@@ -80,7 +82,8 @@ for line in sys.stdin:
             }
             print(json.dumps(response), flush=True)
         elif req.get("command") == "shutdown":
-            print(json.dumps({"command": "shutdown_ack", "ok": True, "ordinal": req.get("ordinal")}), flush=True)
+            ack = {"command": "shutdown_ack", "ok": True, "ordinal": req.get("ordinal")}
+            print(json.dumps(ack), flush=True)
             break
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
@@ -95,6 +98,71 @@ for line in sys.stdin:
         assert "Captured stderr message during execution" in response.get("log", "")
         assert "Some existing log" in response.get("log", "")
         assert "--- stderr ---" in response.get("log", "")
+    finally:
+        worker.shutdown(graceful=False)
+
+
+def test_execute_preserves_warnings_until_error(tmp_path):
+    """Verify that stderr from successful calls is preserved and included in a later error."""
+    script = tmp_path / "warning_entrypoint.py"
+    script.write_text("""
+import sys
+import json
+import time
+
+print(json.dumps({"command": "ready", "version": "1.0.0"}), flush=True)
+
+for line in sys.stdin:
+    try:
+        req = json.loads(line)
+        if req.get("command") == "execute":
+            fn_id = req.get("fn_id")
+            if fn_id == "success_with_warning":
+                print("Warning from successful call", file=sys.stderr)
+                sys.stderr.flush()
+                time.sleep(0.01)
+                response = {
+                    "command": "execute_result",
+                    "ok": True,
+                    "ordinal": req.get("ordinal"),
+                    "outputs": {}
+                }
+            else:
+                print("Error message", file=sys.stderr)
+                sys.stderr.flush()
+                time.sleep(0.01)
+                response = {
+                    "command": "execute_result",
+                    "ok": False,
+                    "ordinal": req.get("ordinal"),
+                    "error": {"message": "Failed"},
+                    "log": "Error log"
+                }
+            print(json.dumps(response), flush=True)
+        elif req.get("command") == "shutdown":
+            ack = {"command": "shutdown_ack", "ok": True, "ordinal": req.get("ordinal")}
+            print(json.dumps(ack), flush=True)
+            break
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+""")
+
+    worker = WorkerProcess(session_id="test_warning_persistence", env_id="", entrypoint=str(script))
+
+    try:
+        # 1. Call that succeeds but emits warning
+        res1 = worker.execute({"fn_id": "success_with_warning"})
+        assert res1["ok"] is True
+        # Stderr should NOT have been drained
+
+        # 2. Call that fails
+        res2 = worker.execute({"fn_id": "fail"})
+        assert res2["ok"] is False
+
+        # Log should contain BOTH the earlier warning and the current error message
+        log = res2.get("log", "")
+        assert "Warning from successful call" in log
+        assert "Error message" in log
     finally:
         worker.shutdown(graceful=False)
 

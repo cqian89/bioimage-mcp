@@ -124,7 +124,8 @@ class WorkerProcess:
                 # Timeout waiting for ready handshake
                 stderr_content = "\n".join(self.get_stderr_lines()[-10:]) or "(no stderr)"
                 logger.error(
-                    "Timeout waiting for ready handshake after %.1fs (session=%s env=%s). Stderr: %s",
+                    "Timeout waiting for ready handshake after %.1fs (session=%s env=%s). "
+                    "Stderr: %s",
                     self.HANDSHAKE_TIMEOUT,
                     session_id,
                     env_id,
@@ -134,8 +135,8 @@ class WorkerProcess:
                 self._process.wait()
                 self.state = WorkerState.TERMINATED
                 raise RuntimeError(
-                    f"Worker failed to send ready handshake within {self.HANDSHAKE_TIMEOUT} seconds "
-                    f"(session={session_id}, env={env_id}).\n"
+                    f"Worker failed to send ready handshake within {self.HANDSHAKE_TIMEOUT} "
+                    f"seconds (session={session_id}, env={env_id}).\n"
                     f"Stderr output:\n{stderr_content}"
                 )
 
@@ -160,7 +161,8 @@ class WorkerProcess:
             if not ready_line:
                 stderr_content = "\n".join(self.get_stderr_lines()[-10:]) or "(no stderr)"
                 logger.error(
-                    "Worker closed stdout before sending ready handshake (session=%s env=%s). Stderr: %s",
+                    "Worker closed stdout before sending ready handshake "
+                    "(session=%s env=%s). Stderr: %s",
                     session_id,
                     env_id,
                     stderr_content,
@@ -189,7 +191,8 @@ class WorkerProcess:
                 self._process.wait()
                 self.state = WorkerState.TERMINATED
                 raise RuntimeError(
-                    f"Worker sent invalid handshake: expected 'ready', got '{ready_msg.get('command')}' "
+                    f"Worker sent invalid handshake: expected 'ready', "
+                    f"got '{ready_msg.get('command')}' "
                     f"(session={session_id}, env={env_id}).\n"
                     f"Stderr output:\n{stderr_content}"
                 )
@@ -385,18 +388,17 @@ class WorkerProcess:
 
                 response_dict = decode_message(response_line)
 
-                # Drain stderr queue (T111)
-                stderr_lines = self.get_stderr_lines()
-
-                # Append stderr to log for error responses
-                if stderr_lines and not response_dict.get("ok", True):
-                    existing_log = response_dict.get("log", "")
-                    stderr_content = "\n".join(stderr_lines)
-                    response_dict["log"] = (
-                        f"{existing_log}\n--- stderr ---\n{stderr_content}"
-                        if existing_log
-                        else f"--- stderr ---\n{stderr_content}"
-                    )
+                # Append stderr to log for error responses (T111)
+                if not response_dict.get("ok", True):
+                    stderr_lines = self.get_stderr_lines()
+                    if stderr_lines:
+                        existing_log = response_dict.get("log", "")
+                        stderr_content = "\n".join(stderr_lines)
+                        response_dict["log"] = (
+                            f"{existing_log}\n--- stderr ---\n{stderr_content}"
+                            if existing_log
+                            else f"--- stderr ---\n{stderr_content}"
+                        )
 
                 # Validate response
                 if response_dict.get("command") != "execute_result":
