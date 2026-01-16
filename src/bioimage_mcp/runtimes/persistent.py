@@ -385,6 +385,19 @@ class WorkerProcess:
 
                 response_dict = decode_message(response_line)
 
+                # Drain stderr queue (T111)
+                stderr_lines = self.get_stderr_lines()
+
+                # Append stderr to log for error responses
+                if stderr_lines and not response_dict.get("ok", True):
+                    existing_log = response_dict.get("log", "")
+                    stderr_content = "\n".join(stderr_lines)
+                    response_dict["log"] = (
+                        f"{existing_log}\n--- stderr ---\n{stderr_content}"
+                        if existing_log
+                        else f"--- stderr ---\n{stderr_content}"
+                    )
+
                 # Validate response
                 if response_dict.get("command") != "execute_result":
                     raise RuntimeError(

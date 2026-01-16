@@ -1,4 +1,3 @@
-
 import pytest
 
 from bioimage_mcp.runtimes.persistent import WorkerProcess
@@ -49,6 +48,55 @@ time.sleep(10)
     assert "failed to send ready handshake within 0.5 seconds" in error_msg
     assert "Stderr output:" in error_msg
     assert "Worker starting up..." in error_msg
+
+
+def test_execute_includes_stderr_on_error(tmp_path):
+    """Verify that stderr is captured and included in the log field for error responses."""
+    # Create a custom entrypoint script
+    script = tmp_path / "custom_entrypoint_exec.py"
+    script.write_text("""
+import sys
+import json
+
+# Send ready handshake
+print(json.dumps({"command": "ready", "version": "1.0.0"}), flush=True)
+
+# Loop and handle requests
+for line in sys.stdin:
+    try:
+        req = json.loads(line)
+        if req.get("command") == "execute":
+            # Print to stderr
+            print("Captured stderr message during execution", file=sys.stderr)
+            sys.stderr.flush()
+
+            # Return error response
+            response = {
+                "command": "execute_result",
+                "ok": False,
+                "ordinal": req.get("ordinal"),
+                "error": {"message": "Execution failed"},
+                "log": "Some existing log"
+            }
+            print(json.dumps(response), flush=True)
+        elif req.get("command") == "shutdown":
+            print(json.dumps({"command": "shutdown_ack", "ok": True, "ordinal": req.get("ordinal")}), flush=True)
+            break
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+""")
+
+    worker = WorkerProcess(session_id="test_stderr_exec", env_id="", entrypoint=str(script))
+
+    try:
+        response = worker.execute({"fn_id": "test_fn", "inputs": {}})
+
+        assert response["ok"] is False
+        assert "Captured stderr message during execution" in response.get("log", "")
+        assert "Some existing log" in response.get("log", "")
+        assert "--- stderr ---" in response.get("log", "")
+    finally:
+        worker.shutdown(graceful=False)
 
 
 if __name__ == "__main__":
