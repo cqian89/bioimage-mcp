@@ -198,6 +198,12 @@ def validation_failed_error(path: str, reason: str) -> dict[str, Any]:
 
 def _detect_format(path: Path) -> str:
     """Detect image format from file extension."""
+    # Check for OME-Zarr directories first
+    if path.is_dir():
+        name_lower = str(path).lower()
+        if name_lower.endswith(".ome.zarr") or name_lower.endswith(".zarr"):
+            return "OME-Zarr"
+
     suffix = path.suffix.lower()
     format_map = {
         ".tif": "TIFF",
@@ -223,6 +229,7 @@ def _get_mime_type(path: Path) -> str:
     mime_map = {
         "TIFF": "image/tiff",
         "OME-TIFF": "image/tiff",
+        "OME-Zarr": "application/zarr+ome",
         "PNG": "image/png",
         "JPEG": "image/jpeg",
         "CZI": "application/octet-stream",
