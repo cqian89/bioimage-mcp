@@ -328,7 +328,7 @@
         "phasor": {
           "artifact_type": "BioImageRef",
           "format": "OME-TIFF",
-          "description": "Array where last dimension contains [g, s] phasor coordinates"
+          "description": "Phasor image with channels [g, s] stored on the leading C axis (CYX or CZYX)."
         }
       }
     },
@@ -361,7 +361,7 @@
         "decay": {
           "artifact_type": "BioImageRef",
           "format": "OME-TIFF",
-          "description": "Array where last dimension contains microtime decay histogram"
+          "description": "Microtime-bin histogram image. Stored as OME-TIFF with bins on the leading T axis (TYX or TZYX)."
         }
       }
     },

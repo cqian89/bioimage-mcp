@@ -511,8 +511,8 @@ def handle_get_intensity(
         clsm = _load_object(clsm_key)
 
         # Get intensity array from CLSMImage
-        # tttrlib API: CLSMImage.intensity property -> (n_frames, n_lines, n_pixel)
-        intensity = np.asarray(clsm.intensity)
+        # tttrlib API: CLSMImage.get_intensity() -> (n_frames, n_lines, n_pixel)
+        intensity = np.asarray(clsm.get_intensity())
 
         stack_frames = params.get("stack_frames", False)
         if stack_frames:
@@ -589,8 +589,10 @@ def handle_get_phasor(
         phasor_data = clsm.get_phasor(**phasor_kwargs)
         phasor_data = np.asarray(phasor_data, dtype=np.float32)
 
-        # Determine dimension order based on shape
-        # tttrlib returns (frames, lines, pixels, 2) or (lines, pixels, 2) if stacked
+        # Determine dimension order based on shape.
+        # tttrlib returns (frames, lines, pixels, 2) or (lines, pixels, 2) if stacked,
+        # where the last axis contains the phasor coordinates [g, s].
+        # Store g/s as channels to preserve semantics.
         if phasor_data.ndim == 3:  # (Y, X, 2) - stacked
             phasor_data = np.moveaxis(phasor_data, -1, 0)  # (C, Y, X)
             dim_order = "CYX"
@@ -598,7 +600,14 @@ def handle_get_phasor(
             phasor_data = np.moveaxis(phasor_data, -1, 0)  # (C, Z, Y, X)
             dim_order = "CZYX"
         else:
-            dim_order = "TCZYXC"[-phasor_data.ndim :]
+            return {
+                "ok": False,
+                "error": {
+                    "message": (
+                        f"Unexpected phasor ndim={phasor_data.ndim} shape={phasor_data.shape}"
+                    )
+                },
+            }
 
         out_path = work_dir / f"phasor_{uuid.uuid4().hex[:8]}.ome.tif"
         OmeTiffWriter.save(phasor_data, str(out_path), dim_order=dim_order)
@@ -652,17 +661,31 @@ def handle_get_fluorescence_decay(
         decay_data = clsm.get_fluorescence_decay(**decay_kwargs)
         decay_data = np.asarray(decay_data, dtype=np.float32)
 
-        # Determine dimension order based on shape
-        if decay_data.ndim == 3:  # (Y, X, T) - stacked
-            dim_order = "YXC"
-        elif decay_data.ndim == 4:  # (Z, Y, X, T)
-            dim_order = "ZYXC"
+        # Determine dimension order based on shape.
+        # tttrlib returns microtime bins along the last axis.
+        # OME-TIFF writers require that the last two axes are YX, so we move microtime
+        # bins to a leading axis. We map microtime bins to the OME 'T' axis and record
+        # their role explicitly in artifact metadata.
+        micro_time_coarsening = params.get("micro_time_coarsening", 1)
+
+        if decay_data.ndim == 3:  # (Y, X, bins) - stacked
+            decay_data = np.moveaxis(decay_data, -1, 0)  # (bins, Y, X)
+            dim_order = "TYX"
+        elif decay_data.ndim == 4:  # (Z, Y, X, bins)
+            decay_data = np.moveaxis(decay_data, -1, 0)  # (bins, Z, Y, X)
+            dim_order = "TZYX"
         else:
-            dim_order = "TCZYXC"[-decay_data.ndim :]
+            return {
+                "ok": False,
+                "error": {
+                    "message": (f"Unexpected decay ndim={decay_data.ndim} shape={decay_data.shape}")
+                },
+            }
 
         out_path = work_dir / f"decay_{uuid.uuid4().hex[:8]}.ome.tif"
         OmeTiffWriter.save(decay_data, str(out_path), dim_order=dim_order)
 
+        # Note: after axis move, bins are along the T axis.
         output = {
             "ref_id": uuid.uuid4().hex,
             "type": "BioImageRef",
@@ -674,7 +697,9 @@ def handle_get_fluorescence_decay(
                 "axes": dim_order,
                 "shape": list(decay_data.shape),
                 "dtype": str(decay_data.dtype),
-                "n_microtime_bins": decay_data.shape[-1],
+                "microtime_axis": "T",
+                "micro_time_coarsening": micro_time_coarsening,
+                "n_microtime_bins": decay_data.shape[0],
             },
         }
 

@@ -295,7 +295,12 @@ class TestTTTRLibSmoke:
 
         # Check metadata indicates 2 channels (g, s)
         metadata = phasor_ref.get("metadata", {})
-        assert "C" in metadata.get("axes", "") or metadata.get("shape", [])[-1] == 2
+        axes = metadata.get("axes", "")
+        shape = metadata.get("shape", [])
+        assert isinstance(axes, str) and "C" in axes, f"Expected channel axis in axes: {axes}"
+        assert shape, f"Expected shape in metadata: {metadata}"
+        c_index = axes.index("C")
+        assert shape[c_index] == 2, f"Expected 2 channels, got shape={shape} axes={axes}"
 
     @pytest.mark.anyio
     @pytest.mark.skipif(not is_valid_dataset(PTU_FILE), reason="PTU dataset not available or empty")
@@ -352,6 +357,16 @@ class TestTTTRLibSmoke:
         assert uri.startswith("file://")
         path = Path(uri[7:])
         assert path.exists()
+
+        # Verify metadata encodes microtime bins correctly
+        metadata = decay_ref.get("metadata", {})
+        axes = metadata.get("axes", "")
+        assert isinstance(axes, str) and axes.startswith("T"), (
+            f"Expected decay bins on leading T axis, got axes={axes}"
+        )
+        assert metadata.get("microtime_axis") == "T"
+        assert isinstance(metadata.get("n_microtime_bins"), int)
+        assert metadata["n_microtime_bins"] > 0
 
     @pytest.mark.anyio
     @pytest.mark.skipif(not is_valid_dataset(PTU_FILE), reason="PTU dataset not available or empty")

@@ -113,8 +113,8 @@ decay = run("tttrlib.CLSMImage.get_fluorescence_decay",
     inputs={"clsm": clsm, "tttr_data": tttr},
     params={"micro_time_coarsening": 4, "stack_frames": True})
 
-# decay is a BioImageRef (OME-TIFF) with microtime bins
-# Can be used with phasorpy.phasor_from_signal
+# decay is a BioImageRef (OME-TIFF) with microtime bins stored along the leading T axis
+# For phasorpy.phasor_from_signal, pass axis=0 to operate over microtime bins
 ```
 
 ### Mean Lifetime Analysis
