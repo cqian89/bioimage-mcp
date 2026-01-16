@@ -624,7 +624,7 @@ def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
                     "ok": False,
                     "ordinal": ordinal,
                     "error": {"message": result_response.get("error", "Unknown error")},
-                    "log": traceback.format_exc(),
+                    "log": f"meta.describe failed: {result_response.get('error', 'Unknown error')}",
                 }
         elif fn_id in FN_MAP:
             func, _descriptions = FN_MAP[fn_id]
