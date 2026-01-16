@@ -59,6 +59,25 @@ class TestTTTRLibEnvContract:
 
         assert tttrlib_found, "tttrlib not found in environment dependencies"
 
+    def test_env_includes_bioio_ome_zarr(self) -> None:
+        """Test that bioio-ome-zarr is included for OME-Zarr writing support."""
+        if not TTTRLIB_ENV_PATH.exists():
+            pytest.skip("tttrlib env file not yet created")
+
+        with open(TTTRLIB_ENV_PATH) as f:
+            env_def = yaml.safe_load(f)
+
+        dependencies = env_def.get("dependencies", [])
+        bioio_ome_zarr_found = any(
+            isinstance(dep, str) and "bioio-ome-zarr" in dep
+            for dep in dependencies
+        )
+
+        assert bioio_ome_zarr_found, (
+            "bioio-ome-zarr not found in environment dependencies. "
+            "Required for OME-Zarr output in FLIM decay functions."
+        )
+
     def test_api_schema_file_exists(self) -> None:
         """Test that the tttrlib API schema version file exists."""
         assert TTTRLIB_API_SCHEMA_PATH.exists(), (

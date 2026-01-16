@@ -17,6 +17,7 @@ dependencies:
   # Standard image I/O
   - bioio
   - bioio-ome-tiff
+  - bioio-ome-zarr  # Required for OME-Zarr output in FLIM decay functions
   # TTTR analysis library (C++ with SWIG bindings)
   - tttrlib=0.25.0
   # For table output
