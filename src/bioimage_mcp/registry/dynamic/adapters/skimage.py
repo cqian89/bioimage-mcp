@@ -407,6 +407,19 @@ class SkimageAdapter(BaseAdapter):
         module = importlib.import_module(module_path)
         func = getattr(module, func_name)
 
+        # Transparently redirect regionprops -> regionprops_table (Task 1)
+        notice = None
+        if func_name == "regionprops" and "measure" in module_path:
+            func_name = "regionprops_table"
+            func = getattr(module, func_name)
+            notice = "Redirected regionprops to regionprops_table for serializable output."
+
+            # Map parameters
+            params = params.copy()
+            params.pop("offset", None)  # Not supported by regionprops_table
+            if "properties" not in params:
+                params["properties"] = ["label", "area", "centroid", "bbox", "mean_intensity"]
+
         from bioimage_mcp.api.schemas import DimensionRequirement
 
         # Load input images
@@ -516,6 +529,8 @@ class SkimageAdapter(BaseAdapter):
             if not isinstance(result, dict):
                 raise ValueError("Expected table dict output for labels_to_table function")
             output_ref = self._save_table(result, work_dir=work_dir)
+            if notice:
+                output_ref["notice"] = notice
         else:
             # Use processed axes from inputs if available, otherwise find first
             axes = output_axes
