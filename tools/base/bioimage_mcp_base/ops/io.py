@@ -1052,11 +1052,9 @@ def export(*, inputs: dict[str, Any], params: dict[str, Any], work_dir: Path) ->
         source_path_str = artifact.get("path")
         if not source_path_str:
             # Try to extract from URI
-            uri = artifact.get("uri", "")
+            plot_uri = artifact.get("uri", "")
             try:
-                from bioimage_mcp_base.utils import uri_to_path
-
-                source_path_str = str(uri_to_path(uri))
+                source_path_str = str(uri_to_path(plot_uri))
             except Exception:
                 pass
 
