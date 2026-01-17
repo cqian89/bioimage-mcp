@@ -19,6 +19,7 @@ import numpy as np
 from bioimage_mcp.artifacts.base import Artifact
 from bioimage_mcp.registry.dynamic.introspection import Introspector
 from bioimage_mcp.registry.dynamic.models import FunctionMetadata, IOPattern
+from bioimage_mcp.registry.dynamic.object_cache import OBJECT_CACHE
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -190,6 +191,12 @@ class PhasorPyAdapter:
             path = getattr(artifact, "path", None)
             metadata = getattr(artifact, "metadata", {}) or {}
             fmt = getattr(artifact, "format", None)
+
+        # Handle ObjectRef input
+        if uri and str(uri).startswith("obj://"):
+            if uri not in OBJECT_CACHE:
+                raise ValueError(f"Object with URI {uri} not found in memory cache")
+            return OBJECT_CACHE[uri]
 
         if not uri and not path:
             raise ValueError(f"Artifact missing both URI and path: {artifact}")
