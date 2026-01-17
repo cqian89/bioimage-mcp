@@ -90,3 +90,32 @@ def test_phasor_calibrate_returns_calibrate_pattern():
     # Since PlotRef is a semantic type assigned by the adapter during execution,
     # discovery might not show it as the return type yet if it's based on introspector
     # but we should ensure the adapter is configured to produce them.
+
+
+def test_artifact_params_filtered():
+    """Verify that artifact input parameters are filtered from params_schema."""
+    adapter = PhasorPyAdapter()
+
+    # Check phasor_from_signal (should not have 'signal')
+    module_config = {"modules": ["phasorpy.phasor"], "include": ["phasor_from_signal"]}
+    discovered = adapter.discover(module_config)
+    assert len(discovered) == 1
+    fn = discovered[0]
+    assert "signal" not in fn.parameters
+
+    # Check phasor_center (should not have 'real', 'imag', 'mean')
+    module_config = {"modules": ["phasorpy.phasor"], "include": ["phasor_center"]}
+    discovered = adapter.discover(module_config)
+    assert len(discovered) == 1
+    fn = discovered[0]
+    assert "real" not in fn.parameters
+    assert "imag" not in fn.parameters
+    assert "mean" not in fn.parameters
+
+    # Check plot_phasor (should not have 'real', 'imag')
+    module_config = {"modules": ["phasorpy.plot"], "include": ["plot_phasor"]}
+    discovered = adapter.discover(module_config)
+    assert len(discovered) == 1
+    fn = discovered[0]
+    assert "real" not in fn.parameters
+    assert "imag" not in fn.parameters
