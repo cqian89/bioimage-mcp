@@ -25,6 +25,27 @@ from bioimage_mcp.registry.dynamic.object_cache import OBJECT_CACHE
 logger = logging.getLogger(__name__)
 
 
+# Parameters that are artifact inputs, not schema params
+# This prevents them from appearing in the MCP tools params_schema
+# as scalar "number" types when they should be passed as BioImageRef/inputs.
+ARTIFACT_INPUT_PARAMS = {
+    "signal",  # phasor_from_signal primary input
+    "real",  # phasor coordinate arrays
+    "imag",  # phasor coordinate arrays
+    "mean",  # mean intensity image
+    "reference_real",  # calibration reference
+    "reference_imag",  # calibration reference
+    "measured_real",  # calibration measured
+    "measured_imag",  # calibration measured
+    "phase",  # polar coordinates
+    "modulation",  # polar coordinates
+    "image",  # general image input
+    "data",  # generic data input
+    "phasor_real",  # alternative naming
+    "phasor_imag",  # alternative naming
+}
+
+
 # Import phasorpy functions at module level for patching in tests
 try:
     from phasorpy.phasor import phasor_from_signal, phasor_transform
@@ -131,6 +152,14 @@ class PhasorPyAdapter:
                 metadata.module = module_name
                 metadata.qualified_name = f"{module_name}.{func_name}"
                 metadata.fn_id = f"{module_name}.{func_name}"
+
+                # Filter out parameters that are artifact inputs, not schema params
+                # This prevents them from appearing in the MCP tools params_schema
+                metadata.parameters = {
+                    p_name: p_schema
+                    for p_name, p_schema in metadata.parameters.items()
+                    if p_name not in ARTIFACT_INPUT_PARAMS
+                }
 
                 # Add dimension hints
                 metadata.hints = self.generate_dimension_hints(module_name, func_name)
@@ -445,6 +474,23 @@ class PhasorPyAdapter:
                 import matplotlib
 
                 matplotlib.use("Agg")  # T020: Use Agg backend for headless plot capture
+
+                # Check for ax/axes in params that should be passed through via **kwargs
+                for ax_name in ("ax", "axes"):
+                    if ax_name in params and ax_name not in kw_args:
+                        ax_ref = params[ax_name]
+                        # Resolve ObjectRef/AxesRef from cache
+                        if isinstance(ax_ref, dict) and ax_ref.get("uri", "").startswith("obj://"):
+                            uri = ax_ref["uri"]
+                            if uri in OBJECT_CACHE:
+                                kw_args["ax"] = OBJECT_CACHE[uri]
+                            else:
+                                raise ValueError(
+                                    f"AxesRef with URI '{uri}' not found in object cache"
+                                )
+                        elif ax_ref is not None and not isinstance(ax_ref, dict):
+                            # Already a matplotlib axes object (shouldn't happen in MCP but handle it)
+                            kw_args["ax"] = ax_ref
 
             result = target_fn(*pos_args, **kw_args)
 
