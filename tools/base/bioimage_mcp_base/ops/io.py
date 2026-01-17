@@ -5,10 +5,12 @@ from __future__ import annotations
 import json
 import logging
 import os
+import shutil
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import unquote, urlparse
 
 import numpy as np
 import pandas as pd
@@ -1021,7 +1023,7 @@ def export(*, inputs: dict[str, Any], params: dict[str, Any], work_dir: Path) ->
 
     Args:
         inputs: {"image": BioImageRef} or {"artifact": Ref}
-        params: {"format": str | None, "path": str | None}
+        params: {"format": str | None, "path": str | None, "dest_path": str | None}
         work_dir: Working directory
 
     Returns:
@@ -1032,7 +1034,7 @@ def export(*, inputs: dict[str, Any], params: dict[str, Any], work_dir: Path) ->
         raise ValueError("Missing input 'image' or 'artifact'")
 
     dest_format = params.get("format")
-    dest_path_str = params.get("path")
+    dest_path_str = params.get("path") or params.get("dest_path")
 
     # T016: Contract requires at least one of path or format to be specified
     # to avoid ambiguous export calls (though manifest says both are optional).
@@ -1043,6 +1045,42 @@ def export(*, inputs: dict[str, Any], params: dict[str, Any], work_dir: Path) ->
         dest_path = validate_write_path(dest_path_str)
     else:
         dest_path = None
+
+    # Handle PlotRef as direct file copy
+    artifact_type = artifact.get("type", "") if isinstance(artifact, dict) else ""
+    if artifact_type == "PlotRef":
+        source_path_str = artifact.get("path")
+        if not source_path_str:
+            # Try to extract from URI
+            uri = artifact.get("uri", "")
+            if uri.startswith("file://"):
+                source_path_str = unquote(urlparse(uri).path)
+
+        if not source_path_str:
+            raise ValueError("PlotRef missing source path and URI")
+
+        source_path = Path(source_path_str)
+        if not source_path.exists():
+            raise FileNotFoundIOError(str(source_path))
+
+        if dest_path is None:
+            dest_path = work_dir / f"exported_plot_{uuid.uuid4().hex[:8]}.png"
+            dest_path = validate_write_path(str(dest_path))
+
+        # Copy the file
+        shutil.copy2(source_path, dest_path)
+
+        return {
+            "outputs": {
+                "output": {
+                    "type": "PlotRef",
+                    "format": artifact.get("format", "PNG"),
+                    "uri": dest_path.as_uri(),
+                    "path": str(dest_path),
+                    "metadata": artifact.get("metadata", {}),
+                }
+            }
+        }
 
     if dest_format is None:
         dest_format = _infer_export_format(artifact, dest_path_str)
