@@ -91,3 +91,38 @@ def test_load_image_bioimage_call(mock_bioimage):
 
         assert mock_bioimage.called
         assert data.shape == (5, 5)
+
+
+def test_load_image_objectref_bypasses_allowlist():
+    """Verify obj:// URIs do NOT trigger filesystem allowlist validation."""
+    from unittest.mock import patch
+    from bioimage_mcp.registry.dynamic.adapters.phasorpy import PhasorPyAdapter
+    from bioimage_mcp.registry.dynamic.object_cache import OBJECT_CACHE
+    import numpy as np
+
+    adapter = PhasorPyAdapter()
+    test_uri = "obj://default/base/test-bypass-123"
+    test_data = np.array([[1, 2], [3, 4]])
+
+    # Store in cache
+    OBJECT_CACHE[test_uri] = test_data
+
+    try:
+        artifact = {"type": "ObjectRef", "uri": test_uri}
+
+        # Patch _assert_read_allowed to raise if called
+        with patch.object(adapter, "_assert_read_allowed") as mock_assert:
+            mock_assert.side_effect = AssertionError(
+                "_assert_read_allowed should NOT be called for obj:// URIs"
+            )
+
+            result = adapter._load_image(artifact)
+
+            # Verify data was returned
+            np.testing.assert_array_equal(result, test_data)
+            # Verify _assert_read_allowed was NOT called
+            mock_assert.assert_not_called()
+    finally:
+        # Cleanup
+        if test_uri in OBJECT_CACHE:
+            del OBJECT_CACHE[test_uri]
