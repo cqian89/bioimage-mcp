@@ -21,6 +21,7 @@ from bioimage_mcp.artifacts.base import Artifact
 from bioimage_mcp.registry.dynamic.adapters import BaseAdapter
 from bioimage_mcp.registry.dynamic.introspection import Introspector
 from bioimage_mcp.registry.dynamic.models import FunctionMetadata, IOPattern
+from bioimage_mcp.registry.dynamic.object_cache import OBJECT_CACHE
 
 try:
     import tifffile
@@ -228,6 +229,12 @@ class SkimageAdapter(BaseAdapter):
             path = getattr(artifact, "path", None)
             fmt = getattr(artifact, "format", None)
             metadata = getattr(artifact, "metadata", {}) or {}
+
+        # Handle ObjectRef input (obj:// URIs are memory-backed)
+        if uri and str(uri).startswith("obj://"):
+            if uri not in OBJECT_CACHE:
+                raise ValueError(f"Object with URI {uri} not found in memory cache")
+            return OBJECT_CACHE[uri]
 
         if not uri and not path:
             raise ValueError(f"Artifact missing both URI and path: {artifact}")
