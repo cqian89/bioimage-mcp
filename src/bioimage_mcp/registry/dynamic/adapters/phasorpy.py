@@ -475,22 +475,32 @@ class PhasorPyAdapter:
 
                 matplotlib.use("Agg")  # T020: Use Agg backend for headless plot capture
 
-                # Check for ax/axes in params that should be passed through via **kwargs
+                # Check for ax/axes in params and resolve from cache
                 for ax_name in ("ax", "axes"):
-                    if ax_name in params and ax_name not in kw_args:
+                    if ax_name in params:
                         ax_ref = params[ax_name]
+                        resolved_ax = None
                         # Resolve ObjectRef/AxesRef from cache
                         if isinstance(ax_ref, dict) and ax_ref.get("uri", "").startswith("obj://"):
                             uri = ax_ref["uri"]
                             if uri in OBJECT_CACHE:
-                                kw_args["ax"] = OBJECT_CACHE[uri]
+                                resolved_ax = OBJECT_CACHE[uri]
                             else:
                                 raise ValueError(
                                     f"AxesRef with URI '{uri}' not found in object cache"
                                 )
                         elif ax_ref is not None and not isinstance(ax_ref, dict):
                             # Already a matplotlib axes object (shouldn't happen in MCP but handle it)
-                            kw_args["ax"] = ax_ref
+                            resolved_ax = ax_ref
+
+                        if resolved_ax is not None:
+                            # Force parameter name to 'ax' as per PhasorPy convention
+                            kw_args["ax"] = resolved_ax
+
+                            # Clean up: if 'axes' was the param name and exists unresolved, remove it
+                            if ax_name == "axes" and "axes" in kw_args:
+                                del kw_args["axes"]
+                            break  # Found and resolved, no need to check other names
 
             result = target_fn(*pos_args, **kw_args)
 
