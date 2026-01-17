@@ -1,9 +1,10 @@
-import pytest
-import numpy as np
-import os
 import json
-from pathlib import Path
+import os
 from unittest.mock import MagicMock, patch
+
+import numpy as np
+import pytest
+
 from bioimage_mcp.registry.dynamic.adapters.phasorpy import PhasorPyAdapter
 from bioimage_mcp.registry.dynamic.object_cache import OBJECT_CACHE
 
@@ -96,9 +97,11 @@ def test_load_image_bioimage_call(mock_bioimage):
 def test_load_image_objectref_bypasses_allowlist():
     """Verify obj:// URIs do NOT trigger filesystem allowlist validation."""
     from unittest.mock import patch
+
+    import numpy as np
+
     from bioimage_mcp.registry.dynamic.adapters.phasorpy import PhasorPyAdapter
     from bioimage_mcp.registry.dynamic.object_cache import OBJECT_CACHE
-    import numpy as np
 
     adapter = PhasorPyAdapter()
     test_uri = "obj://default/base/test-bypass-123"
