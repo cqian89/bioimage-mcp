@@ -1,12 +1,11 @@
 import os
-import shutil
 from pathlib import Path
 import pytest
 from bioimage_mcp_base.ops import io as io_ops
 
 
 @pytest.mark.integration
-def test_export_plotref_to_path(tmp_path):
+def test_export_plotref_to_path(tmp_path, monkeypatch):
     """Verify PlotRef can be exported to a user-specified destination."""
     # 1. Create a dummy PNG file to simulate a plot source
     source_dir = tmp_path / "source"
@@ -27,7 +26,7 @@ def test_export_plotref_to_path(tmp_path):
     dest_path = tmp_path / "exported_plot.png"
 
     # Setup environment for allowed write paths
-    os.environ["BIOIMAGE_MCP_FS_ALLOWLIST_WRITE"] = f'["{tmp_path}"]'
+    monkeypatch.setenv("BIOIMAGE_MCP_FS_ALLOWLIST_WRITE", f'["{tmp_path}"]')
 
     # 4. Call export function (expect it to fail or not support PlotRef yet)
     # We call it via the ops module directly
@@ -46,7 +45,7 @@ def test_export_plotref_to_path(tmp_path):
 
 
 @pytest.mark.integration
-def test_export_plotref_preserves_content(tmp_path):
+def test_export_plotref_preserves_content(tmp_path, monkeypatch):
     """Verify exported file is identical to source."""
     source_file = tmp_path / "src.png"
     content = os.urandom(1024)
@@ -61,7 +60,7 @@ def test_export_plotref_preserves_content(tmp_path):
     }
 
     dest_path = tmp_path / "dest.png"
-    os.environ["BIOIMAGE_MCP_FS_ALLOWLIST_WRITE"] = f'["{tmp_path}"]'
+    monkeypatch.setenv("BIOIMAGE_MCP_FS_ALLOWLIST_WRITE", f'["{tmp_path}"]')
 
     io_ops.export(inputs={"artifact": plot_ref}, params={"path": str(dest_path)}, work_dir=tmp_path)
 
@@ -69,7 +68,7 @@ def test_export_plotref_preserves_content(tmp_path):
 
 
 @pytest.mark.integration
-def test_export_plotref_missing_source_raises(tmp_path):
+def test_export_plotref_missing_source_raises(tmp_path, monkeypatch):
     """Verify export raises clear error if source file doesn't exist."""
     plot_ref = {
         "type": "PlotRef",
@@ -80,7 +79,7 @@ def test_export_plotref_missing_source_raises(tmp_path):
     }
 
     dest_path = tmp_path / "fail.png"
-    os.environ["BIOIMAGE_MCP_FS_ALLOWLIST_WRITE"] = f'["{tmp_path}"]'
+    monkeypatch.setenv("BIOIMAGE_MCP_FS_ALLOWLIST_WRITE", f'["{tmp_path}"]')
 
     with pytest.raises(Exception) as excinfo:
         io_ops.export(
