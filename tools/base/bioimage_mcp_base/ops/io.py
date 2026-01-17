@@ -1053,8 +1053,12 @@ def export(*, inputs: dict[str, Any], params: dict[str, Any], work_dir: Path) ->
         if not source_path_str:
             # Try to extract from URI
             uri = artifact.get("uri", "")
-            if uri.startswith("file://"):
-                source_path_str = unquote(urlparse(uri).path)
+            try:
+                from bioimage_mcp_base.utils import uri_to_path
+
+                source_path_str = str(uri_to_path(uri))
+            except Exception:
+                pass
 
         if not source_path_str:
             raise ValueError("PlotRef missing source path and URI")
@@ -1064,8 +1068,8 @@ def export(*, inputs: dict[str, Any], params: dict[str, Any], work_dir: Path) ->
             raise FileNotFoundIOError(str(source_path))
 
         if dest_path is None:
-            dest_path = work_dir / f"exported_plot_{uuid.uuid4().hex[:8]}.png"
-            dest_path = validate_write_path(str(dest_path))
+            suffix = source_path.suffix if source_path.suffix else ".png"
+            dest_path = work_dir / f"exported_plot_{uuid.uuid4().hex[:8]}{suffix}"
 
         # Copy the file
         shutil.copy2(source_path, dest_path)
