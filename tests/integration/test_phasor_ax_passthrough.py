@@ -99,6 +99,7 @@ def test_subplots_plot_phasor_savefig_workflow(adapter, phasor_inputs, tmp_path)
     OBJECT_CACHE[ax_uri] = ax
 
     # 2. Call plot_phasor with ax
+    initial_children = len(ax.get_children())
     adapter.execute(
         fn_id="phasorpy.plot.plot_phasor",
         inputs=[
@@ -109,19 +110,15 @@ def test_subplots_plot_phasor_savefig_workflow(adapter, phasor_inputs, tmp_path)
         work_dir=tmp_path,
     )
 
-    # 3. Save figure to verify content
+    # 3. Assert new content was added to our axes
+    assert len(ax.get_children()) > initial_children, (
+        "Phasor plot was not drawn on the provided axes"
+    )
+
+    # 4. Save figure to verify file exists
     plot_path = tmp_path / "final_plot.png"
     fig.savefig(str(plot_path))
     plt.close(fig)
 
-    # 4. Verify image content
+    # 5. Verify file can be saved
     assert plot_path.exists()
-
-    img = Image.open(plot_path).convert("L")
-    data = np.array(img)
-
-    # A blank matplotlib figure (Agg backend) is usually all white (255)
-    # If something was plotted, variance should be > 0
-    assert np.var(data) > 0.1, (
-        "Saved image appears to be blank (white). The plot was likely drawn on a different axes."
-    )
