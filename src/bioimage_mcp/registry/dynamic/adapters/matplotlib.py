@@ -387,6 +387,10 @@ class MatplotlibAdapter(BaseAdapter):
             return matplotlib_ops.savefig(
                 normalized_inputs, params, work_dir, session_id=eff_session_id, env_id=env_id
             )
+        if fn_id.endswith("matplotlib.pyplot.imsave"):
+            return matplotlib_ops.imsave(
+                normalized_inputs, params, work_dir, session_id=eff_session_id, env_id=env_id
+            )
         if fn_id.endswith("matplotlib.Axes.colorbar"):
             return matplotlib_ops.colorbar(
                 normalized_inputs, params, session_id=eff_session_id, env_id=env_id

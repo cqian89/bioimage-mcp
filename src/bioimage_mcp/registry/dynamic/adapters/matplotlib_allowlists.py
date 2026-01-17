@@ -166,7 +166,41 @@ MATPLOTLIB_PYPLOT_ALLOWLIST = {
     "get_figlabels": {"summary": "Get figure labels.", "io_pattern": "PURE_CONSTRUCTOR"},
     "get_scale_names": {"summary": "Get scale names.", "io_pattern": "PURE_CONSTRUCTOR"},
     "imread": {"summary": "Read image.", "io_pattern": "PURE_CONSTRUCTOR"},
-    "imsave": {"summary": "Save image.", "io_pattern": "OBJECTREF_CHAIN"},
+    "imsave": {
+        "summary": "Save an array as an image file.",
+        "io_pattern": "PLOT",
+        "params": {
+            "fname": {
+                "type": "string",
+                "description": "Output file path. If omitted, auto-generated in work directory.",
+            },
+            "vmin": {
+                "type": "number",
+                "description": "Minimum value for colormap normalization",
+            },
+            "vmax": {
+                "type": "number",
+                "description": "Maximum value for colormap normalization",
+            },
+            "cmap": {
+                "type": "string",
+                "description": "Colormap name (e.g. 'gray', 'viridis')",
+            },
+            "format": {
+                "type": "string",
+                "description": "Image format (e.g. 'png', 'jpeg')",
+            },
+            "origin": {
+                "type": "string",
+                "description": "Place [0,0] at 'upper' or 'lower' left corner",
+            },
+            "dpi": {
+                "type": "number",
+                "description": "Resolution in dots per inch",
+                "default": 150,
+            },
+        },
+    },
     "locator_params": {"summary": "Set locator params.", "io_pattern": "OBJECTREF_CHAIN"},
     "plotting": {"summary": "Plotting module.", "io_pattern": "PURE_CONSTRUCTOR"},
     "rgrids": {"summary": "Set radial grids.", "io_pattern": "OBJECTREF_CHAIN"},
@@ -185,6 +219,10 @@ MATPLOTLIB_FIGURE_ALLOWLIST = {
         "summary": "Save the current figure.",
         "io_pattern": "PLOT",
         "params": {
+            "fname": {
+                "type": "string",
+                "description": "Output file path. If omitted, auto-generated in work directory.",
+            },
             "format": {
                 "type": "string",
                 "description": "The file format (e.g. 'png', 'pdf', 'svg')",

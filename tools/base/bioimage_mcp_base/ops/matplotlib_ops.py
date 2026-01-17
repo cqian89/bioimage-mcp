@@ -716,6 +716,44 @@ def set_title(inputs: list[Any], params: dict[str, Any]) -> list[dict]:
     return generic_op(inputs, params, "set_title")
 
 
+def _load_image_data(artifact: Any) -> np.ndarray | None:
+    """Load image data from artifact (ObjectRef, BioImageRef, or array)."""
+    if isinstance(artifact, np.ndarray):
+        return artifact
+
+    if isinstance(artifact, dict):
+        uri = artifact.get("uri")
+        path = artifact.get("path")
+    else:
+        uri = getattr(artifact, "uri", None)
+        path = getattr(artifact, "path", None)
+
+    # ObjectRef in memory cache
+    if uri and uri.startswith("obj://"):
+        if uri in OBJECT_CACHE:
+            obj = OBJECT_CACHE[uri]
+            if isinstance(obj, np.ndarray):
+                return obj
+            # Could be xarray DataArray
+            if hasattr(obj, "values"):
+                return obj.values
+        raise ValueError(f"ObjectRef with URI '{uri}' not found in cache")
+
+    # BioImageRef - load from file
+    if path or (uri and not uri.startswith("obj://")):
+        if not path and uri:
+            parsed = urlparse(str(uri))
+            path = unquote(parsed.path)
+            if path.startswith("/") and len(path) > 2 and path[2] == ":":
+                path = path[1:]
+
+        if path:
+            img = BioImage(path)
+            return np.squeeze(img.data)
+
+    return None
+
+
 def savefig(
     inputs: list[Any],
     params: dict[str, Any],
@@ -739,11 +777,24 @@ def savefig(
         work_dir = Path(tempfile.gettempdir())
     work_dir.mkdir(parents=True, exist_ok=True)
 
+    # Handle user-provided fname
+    user_fname = params.pop("fname", None)
+
     fmt = params.get("format", "png").lower()
     if fmt == "jpg":
         fmt = "jpeg"
 
-    out_path = work_dir / f"plot_{uuid.uuid4().hex}.{fmt}"
+    if user_fname:
+        out_path = Path(user_fname)
+        # Infer format from extension if not explicitly provided
+        if "format" not in params and out_path.suffix:
+            ext = out_path.suffix.lstrip(".").lower()
+            if ext == "jpg":
+                ext = "jpeg"
+            fmt = ext
+            params["format"] = fmt
+    else:
+        out_path = work_dir / f"plot_{uuid.uuid4().hex}.{fmt}"
 
     dpi = params.get("dpi", fig.dpi)
     w_inch, h_inch = fig.get_size_inches()
@@ -770,6 +821,67 @@ def savefig(
                 "dpi": int(dpi),
                 "plot_type": "matplotlib",
                 "output_name": "plot",
+            },
+        }
+    ]
+
+
+def imsave(
+    inputs: list[Any],
+    params: dict[str, Any],
+    work_dir: Path | None = None,
+    session_id: str = "default",
+    env_id: str = "base",
+) -> list[dict]:
+    """Save array as image file using matplotlib.pyplot.imsave."""
+    # Load image data from input
+    arr = None
+    for name, value in inputs:
+        if name in ("image", "arr"):
+            arr = _load_image_data(value)
+            break
+    if arr is None and inputs:
+        arr = _load_image_data(inputs[0][1])
+
+    if arr is None:
+        raise ValueError("Missing 'image' or 'arr' input for imsave")
+
+    if work_dir is None:
+        work_dir = Path(tempfile.gettempdir())
+    work_dir.mkdir(parents=True, exist_ok=True)
+
+    # Handle user-provided fname
+    user_fname = params.pop("fname", None)
+
+    fmt = params.get("format", "png").lower()
+    if fmt == "jpg":
+        fmt = "jpeg"
+
+    if user_fname:
+        out_path = Path(user_fname)
+        # Infer format from extension if not explicitly provided
+        if "format" not in params and out_path.suffix:
+            ext = out_path.suffix.lstrip(".").lower()
+            if ext == "jpg":
+                ext = "jpeg"
+            fmt = ext
+    else:
+        out_path = work_dir / f"image_{uuid.uuid4().hex}.{fmt}"
+
+    # Call matplotlib imsave
+    plt.imsave(str(out_path), arr, **params)
+
+    return [
+        {
+            "type": "PlotRef",
+            "format": fmt.upper(),
+            "uri": out_path.absolute().as_uri(),
+            "path": str(out_path.absolute()),
+            "metadata": {
+                "width_px": arr.shape[1] if arr.ndim >= 2 else arr.shape[0],
+                "height_px": arr.shape[0] if arr.ndim >= 2 else 1,
+                "plot_type": "imsave",
+                "output_name": "output",
             },
         }
     ]
