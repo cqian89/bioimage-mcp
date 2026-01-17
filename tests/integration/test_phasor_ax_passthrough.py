@@ -120,5 +120,77 @@ def test_subplots_plot_phasor_savefig_workflow(adapter, phasor_inputs, tmp_path)
     fig.savefig(str(plot_path))
     plt.close(fig)
 
-    # 5. Verify file can be saved
+    # 5. Verify file can be saved and has content
     assert plot_path.exists()
+
+    # Check for substantial pixel variation (not just blank axes)
+    img = Image.open(plot_path).convert("L")  # Grayscale
+    data = np.array(img)
+    variance = np.var(data)
+    unique_values = len(np.unique(data))
+
+    # A blank plot with just axes has lower variance than a plot with phasor cloud
+    # Threshold determined empirically: blank axes ~400-600, with phasor cloud ~2000+
+    assert variance > 1000, f"Plot appears blank (variance={variance})"
+    assert unique_values > 50, f"Plot lacks detail (only {unique_values} unique values)"
+
+
+@pytest.mark.slow
+@pytest.mark.integration
+def test_phasor_plot_content_regression(adapter, tmp_path):
+    """Regression test: Saved phasor plot must contain plotted content, not just axes.
+
+    This guards against the bug where plot_phasor drew on an internal figure
+    but we saved a different (blank) figure.
+    """
+    import uuid
+
+    # 1. Create real phasor data (not zeros - use realistic values)
+    # Using specific ranges to ensure visible cloud
+    real_data = np.random.uniform(0.2, 0.8, (100, 100)).astype(np.float32)
+    imag_data = np.random.uniform(0.1, 0.5, (100, 100)).astype(np.float32)
+
+    real_path = tmp_path / "reg_real.ome.tiff"
+    imag_path = tmp_path / "reg_imag.ome.tiff"
+    OmeTiffWriter.save(real_data, str(real_path), dim_order="YX")
+    OmeTiffWriter.save(imag_data, str(imag_path), dim_order="YX")
+
+    real_art = create_mock_artifact("reg_real", real_path)
+    imag_art = create_mock_artifact("reg_imag", imag_path)
+
+    # 2. Create figure/axes like subplots would
+    fig, ax = plt.subplots()
+
+    # 3. Store axes in OBJECT_CACHE
+    ax_uri = f"obj://test/{uuid.uuid4()}"
+    OBJECT_CACHE[ax_uri] = ax
+
+    # 4. Create input artifacts and call plot_phasor with ax
+    adapter.execute(
+        fn_id="phasorpy.plot.plot_phasor",
+        inputs=[
+            ("real", real_art),
+            ("imag", imag_art),
+        ],
+        params={"ax": {"type": "AxesRef", "uri": ax_uri, "ref_id": "ax1"}},
+        work_dir=tmp_path,
+    )
+
+    # 5. Save the figure (the original figure, not gcf())
+    plot_path = tmp_path / "regression_plot.png"
+    fig.savefig(str(plot_path))
+    plt.close(fig)
+
+    # 6. Verify content: Load image and check for substantial pixel variation
+    img = Image.open(plot_path).convert("L")  # Grayscale
+    data = np.array(img)
+
+    variance = np.var(data)
+    unique_values = len(np.unique(data))
+
+    # A blank plot with just axes has lower variance than a plot with phasor cloud
+    # Threshold determined empirically: blank axes ~400-600, with phasor cloud ~2000+
+    assert variance > 1000, f"Plot appears blank (variance={variance})"
+
+    # Also verify we have multiple distinct intensity levels
+    assert unique_values > 50, f"Plot lacks detail (only {unique_values} unique values)"
