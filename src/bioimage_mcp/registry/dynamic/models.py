@@ -22,6 +22,7 @@ class IOPattern(str, Enum):
     PHASOR_TO_SCALAR = "phasor_to_scalar"
     SCALAR_TO_PHASOR = "scalar_to_phasor"
     PLOT = "plot"
+    PHASOR_PLOT = "phasor_plot"  # (real, imag) -> PlotRef
     ARRAY_TO_ARRAY = "array_to_array"
     ARRAY_TO_SCALAR = "array_to_scalar"
     FILE_TO_SIGNAL = "file_to_signal"

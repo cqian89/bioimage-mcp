@@ -178,6 +178,10 @@ class PhasorPyAdapter:
         Returns:
             Categorized I/O pattern
         """
+        # PHASOR_PLOT: plot_phasor needs real/imag inputs
+        if func_name == "plot_phasor":
+            return IOPattern.PHASOR_PLOT
+
         # PLOT: functions in phasorpy.plot module or with "plot" in name
         if "phasorpy.plot" in module_name or "plot" in func_name.lower():
             return IOPattern.PLOT

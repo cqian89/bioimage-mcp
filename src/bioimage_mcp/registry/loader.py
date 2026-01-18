@@ -114,6 +114,13 @@ def _map_io_pattern_to_ports(pattern: IOPattern) -> tuple[list[Port], list[Port]
     elif pattern == IOPattern.PLOT:
         inputs = [Port(name="figure", artifact_type="ObjectRef")]
         outputs = [Port(name="plot", artifact_type="PlotRef")]
+    elif pattern == IOPattern.PHASOR_PLOT:
+        # plot_phasor, plot_phasor_image: (real, imag) -> PlotRef
+        inputs = [
+            Port(name="real", artifact_type="BioImageRef"),
+            Port(name="imag", artifact_type="BioImageRef"),
+        ]
+        outputs = [Port(name="plot", artifact_type="PlotRef")]
     elif pattern == IOPattern.PHASOR_TO_SCALAR:
         # phasor_to_apparent_lifetime, phasor_to_polar: (real, imag) -> output
         inputs = [

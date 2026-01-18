@@ -74,7 +74,10 @@ def test_plot_functions_return_plot_pattern():
     assert len(plot_fns) > 0, "No plot functions discovered"
 
     for fn in plot_fns:
-        assert fn.io_pattern == IOPattern.PLOT, f"Function {fn.name} should have PLOT pattern"
+        if fn.name == "plot_phasor":
+            assert fn.io_pattern == IOPattern.PHASOR_PLOT
+        else:
+            assert fn.io_pattern == IOPattern.PLOT, f"Function {fn.name} should have PLOT pattern"
 
 
 def test_phasor_calibrate_returns_calibrate_pattern():
@@ -119,3 +122,36 @@ def test_artifact_params_filtered():
     fn = discovered[0]
     assert "real" not in fn.parameters
     assert "imag" not in fn.parameters
+
+
+def test_plot_phasor_has_real_imag_inputs():
+    """Verify plot_phasor schema declares real and imag as required inputs."""
+    adapter = PhasorPyAdapter()
+    module_config = {"modules": ["phasorpy.plot"], "include": ["plot_phasor"]}
+
+    discovered = adapter.discover(module_config)
+    assert len(discovered) == 1
+
+    meta = discovered[0]
+    assert meta.io_pattern == IOPattern.PHASOR_PLOT
+
+    # The inputs should be mapped by the loader, but we can check
+    # that real/imag are NOT in params (filtered out)
+    assert "real" not in meta.parameters
+    assert "imag" not in meta.parameters
+
+
+def test_plot_phasor_schema_has_real_imag_inputs():
+    """End-to-end: verify plot_phasor function schema has real and imag inputs."""
+    from bioimage_mcp.registry.dynamic.models import IOPattern
+    from bioimage_mcp.registry.loader import _map_io_pattern_to_ports
+
+    inputs, outputs = _map_io_pattern_to_ports(IOPattern.PHASOR_PLOT)
+
+    input_names = {p.name for p in inputs}
+    assert "real" in input_names, f"Expected 'real' in inputs, got {input_names}"
+    assert "imag" in input_names, f"Expected 'imag' in inputs, got {input_names}"
+    assert "figure" not in input_names, "Should not have figure input"
+
+    output_names = {p.name for p in outputs}
+    assert "plot" in output_names
