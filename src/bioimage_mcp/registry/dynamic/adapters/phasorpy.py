@@ -470,6 +470,10 @@ class PhasorPyAdapter:
 
             # Prepare execution environment for plots
             is_plot = "phasorpy.plot" in module_name or "plot" in func_name.lower()
+            ax_from_params = False
+            ax_from_figure = False
+            fig_from_inputs = None
+
             if is_plot:
                 import matplotlib
 
@@ -496,11 +500,42 @@ class PhasorPyAdapter:
                         if resolved_ax is not None:
                             # Force parameter name to 'ax' as per PhasorPy convention
                             kw_args["ax"] = resolved_ax
+                            ax_from_params = True
 
                             # Clean up: if 'axes' was the param name and exists unresolved, remove it
                             if ax_name == "axes" and "axes" in kw_args:
                                 del kw_args["axes"]
                             break  # Found and resolved, no need to check other names
+
+                # Compatibility: base.phasorpy.plot.plot_phasor is declared with a required
+                # 'figure' input in our manifest/registry ports. Historically this input was
+                # ignored, causing plot_phasor to create its own internal figure.
+                #
+                # That breaks the common workflow:
+                # subplots() -> plot_phasor() -> Figure.savefig() (blank axes-only output).
+                #
+                # If no explicit ax/axes param was provided, but a FigureRef/ObjectRef was
+                # provided as an input named 'figure', plot on its first axes.
+                if func_name == "plot_phasor" and not ax_from_params and "ax" not in kw_args:
+                    fig_obj = bound_args.get("figure") or bound_args.get("fig")
+                    if fig_obj is not None:
+                        try:
+                            from matplotlib.figure import Figure
+
+                            if isinstance(fig_obj, Figure):
+                                fig_from_inputs = fig_obj
+                                if fig_obj.axes:
+                                    kw_args["ax"] = fig_obj.axes[0]
+                                else:
+                                    kw_args["ax"] = fig_obj.add_subplot(1, 1, 1)
+                                ax_from_figure = True
+                                logger.debug(
+                                    "plot_phasor called without ax; using axes from provided figure input"
+                                )
+                        except Exception:  # noqa: BLE001
+                            # If anything goes wrong, fall back to phasorpy's default behavior
+                            # (create an internal figure).
+                            pass
 
             result = target_fn(*pos_args, **kw_args)
 
@@ -570,20 +605,40 @@ class PhasorPyAdapter:
 
                 from bioimage_mcp.artifacts.store import write_plot
 
-                # Check if user provided their own axes via params
-                # If so, we drew on their axes and should NOT save/close the figure
-                # The user will call savefig themselves later
-                user_provided_ax = "ax" in kw_args
+                # plot_phasor can be used in two modes:
+                # 1) No axes provided -> phasorpy creates an internal figure -> we save it.
+                # 2) Axes provided (either explicitly via params, or implicitly via a provided
+                #    figure input) -> the caller controls figure lifecycle and will call savefig.
+                user_provided_ax = ax_from_params or ax_from_figure
 
                 if user_provided_ax:
-                    # User provided axes - they control the figure lifecycle
-                    # Return empty outputs; the plot content is on their axes
-                    logger.debug(
-                        "plot_phasor called with user-provided ax; "
-                        "skipping automatic figure save (user will call savefig)"
-                    )
+                    # If we plotted onto a figure explicitly provided in inputs, we can still
+                    # save it here to satisfy the PLOT io_pattern (PlotRef output) while also
+                    # making sure that Figure.savefig on the same FigureRef isn't blank.
+                    if fig_from_inputs is not None and not ax_from_params:
+                        fig = fig_from_inputs
+                        ext = ".png"
+                        if work_dir:
+                            path = work_dir / f"{func_name}-plot{ext}"
+                        else:
+                            fd, path_str = tempfile.mkstemp(suffix=ext)
+                            import os
+
+                            os.close(fd)
+                            path = Path(path_str)
+
+                        plot_ref = write_plot(fig, path, dpi=100, plot_type=func_name)
+                        plot_dict = plot_ref.model_dump()
+                        plot_dict["path"] = str(path.absolute())
+                        plot_dict["uri"] = path.absolute().as_uri()
+                        outputs.append(plot_dict)
+                    else:
+                        logger.debug(
+                            "plot_phasor drew on a caller-controlled figure; "
+                            "skipping automatic figure save (caller will call savefig)"
+                        )
                 else:
-                    # No user axes - we created an internal figure, save it
+                    # No axes provided -> we created an internal figure, save it
                     fig = plt.gcf()
                     if fig:
                         ext = ".png"

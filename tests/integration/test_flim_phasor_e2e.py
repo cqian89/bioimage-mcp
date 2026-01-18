@@ -96,16 +96,11 @@ def test_flim_phasor_e2e(tmp_path: Path) -> None:
     assert status1["status"] == "success"
 
     outputs1 = status1["outputs"]
-    # phasorpy.phasor.phasor_from_signal returns (mean, real, imag)
-    # The adapter returns them as output, output_1, output_2 or similar
-    # Wait, let's check what the adapter returns.
-    # From PhasorPyAdapter.execute:
-    # outputs.append(ArtifactRef(ref_id="phasor-mean", ...)) -> output
-    # outputs.append(ArtifactRef(ref_id="phasor-real", ...)) -> output_1
-    # outputs.append(ArtifactRef(ref_id="phasor-imag", ...)) -> output_2
+    # base.phasorpy.phasor.phasor_from_signal is declared as SIGNAL_TO_PHASOR and
+    # returns named outputs: mean, real, imag.
 
     # We need the intensity (mean) for segmentation
-    intensity_ref = outputs1["output"]
+    intensity_ref = outputs1["mean"]
 
     seg_input = intensity_ref
     axes = (intensity_ref.get("metadata") or {}).get("axes", "")

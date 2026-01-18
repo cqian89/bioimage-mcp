@@ -598,7 +598,8 @@ def test_plot_phasor_e2e_execution_service(tmp_path: Path) -> None:
         assert status1["status"] == "success"
 
         # Step 2: Plot phasor
-        # phasor_from_signal returns (mean, real, imag) -> (output, output_1, output_2)
+        # base.phasorpy.phasor.phasor_from_signal is declared as SIGNAL_TO_PHASOR and
+        # should return named outputs: mean, real, imag.
         outputs1 = status1["outputs"]
 
         workflow2 = {
@@ -606,8 +607,8 @@ def test_plot_phasor_e2e_execution_service(tmp_path: Path) -> None:
                 {
                     "fn_id": "base.phasorpy.plot.plot_phasor",
                     "inputs": {
-                        "real": outputs1["output_1"],
-                        "imag": outputs1["output_2"],
+                        "real": outputs1["real"],
+                        "imag": outputs1["imag"],
                     },
                     "params": {},
                 }
@@ -620,7 +621,7 @@ def test_plot_phasor_e2e_execution_service(tmp_path: Path) -> None:
         # Verify success and PlotRef output
         assert status2["status"] == "success"
         outputs2 = status2["outputs"]
-        plot_ref = outputs2["output"]
+        plot_ref = outputs2["plot"]
 
         assert plot_ref["type"] == "PlotRef"
         assert plot_ref["format"] == "PNG"
