@@ -570,30 +570,44 @@ class PhasorPyAdapter:
 
                 from bioimage_mcp.artifacts.store import write_plot
 
-                fig = plt.gcf()
-                if fig:
-                    ext = ".png"
-                    if work_dir:
-                        path = work_dir / f"{func_name}-plot{ext}"
-                    else:
-                        fd, path_str = tempfile.mkstemp(suffix=ext)
-                        import os
+                # Check if user provided their own axes via params
+                # If so, we drew on their axes and should NOT save/close the figure
+                # The user will call savefig themselves later
+                user_provided_ax = "ax" in kw_args
 
-                        os.close(fd)
-                        path = Path(path_str)
+                if user_provided_ax:
+                    # User provided axes - they control the figure lifecycle
+                    # Return empty outputs; the plot content is on their axes
+                    logger.debug(
+                        "plot_phasor called with user-provided ax; "
+                        "skipping automatic figure save (user will call savefig)"
+                    )
+                else:
+                    # No user axes - we created an internal figure, save it
+                    fig = plt.gcf()
+                    if fig:
+                        ext = ".png"
+                        if work_dir:
+                            path = work_dir / f"{func_name}-plot{ext}"
+                        else:
+                            fd, path_str = tempfile.mkstemp(suffix=ext)
+                            import os
 
-                    # T022: Connect PlotRef creation to write_plot()
-                    plot_ref = write_plot(fig, path, dpi=100, plot_type=func_name)
+                            os.close(fd)
+                            path = Path(path_str)
 
-                    # Convert to dict for JSON serialization in worker entrypoint
-                    plot_dict = plot_ref.model_dump()
-                    # Ensure we have path and uri for server import
-                    plot_dict["path"] = str(path.absolute())
-                    plot_dict["uri"] = path.absolute().as_uri()
-                    outputs.append(plot_dict)
+                        # T022: Connect PlotRef creation to write_plot()
+                        plot_ref = write_plot(fig, path, dpi=100, plot_type=func_name)
 
-                    # Clean up to avoid figure accumulation
-                    plt.close(fig)
+                        # Convert to dict for JSON serialization in worker entrypoint
+                        plot_dict = plot_ref.model_dump()
+                        # Ensure we have path and uri for server import
+                        plot_dict["path"] = str(path.absolute())
+                        plot_dict["uri"] = path.absolute().as_uri()
+                        outputs.append(plot_dict)
+
+                        # Clean up to avoid figure accumulation
+                        plt.close(fig)
 
             logger.info("Execution successful for %s, produced %d outputs", fn_id, len(outputs))
             return outputs
