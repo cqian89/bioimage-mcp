@@ -4,6 +4,7 @@ import subprocess
 from pathlib import Path
 from urllib.parse import quote
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
@@ -301,8 +302,15 @@ def test_plot_phasor_execution_returns_plotref(adapter, tmp_path):
         work_dir=tmp_path,
     )
 
-    assert len(outputs) == 1
+    assert len(outputs) == 2  # PlotRef + FigureRef (T042 fix for gcf() context)
     plot_ref = outputs[0]
+    fig_ref = outputs[1]
+
+    # Verify FigureRef (new in T042)
+    if isinstance(fig_ref, dict):
+        assert fig_ref["type"] == "FigureRef"
+        assert fig_ref["python_class"] == "matplotlib.figure.Figure"
+        assert fig_ref["uri"].startswith("obj://")
 
     # Adapter returns dict for JSON serialization in worker
     if isinstance(plot_ref, dict):
@@ -444,6 +452,78 @@ def test_plot_artifact_accessibility(adapter, tmp_path):
     with open(path, "rb") as f:
         header = f.read(8)
         assert header == b"\x89PNG\r\n\x1a\n"
+
+
+@pytest.mark.slow
+@pytest.mark.integration
+def test_plot_phasor_returns_figureref_for_gcf_workflow(adapter, tmp_path):
+    """T042: plot_phasor returns FigureRef to enable gcf()/savefig() workflow.
+
+    Fixes: https://github.com/theia-ide/bioimage-mcp/issues/1
+
+    Previously, plot_phasor called plt.close(fig) after saving, which removed
+    the figure from matplotlib's context. Subsequent gcf() calls would return
+    a blank figure instead of the phasor plot.
+
+    Now plot_phasor returns both a PlotRef (saved file) and a FigureRef
+    (in-memory figure) to enable the gcf()/savefig() workflow.
+    """
+    import matplotlib.pyplot as plt
+
+    from bioimage_mcp.registry.dynamic.object_cache import OBJECT_CACHE
+
+    # Create mock real/imag data
+    real = np.random.rand(1, 1, 1, 32, 32).astype(np.float32)
+    imag = np.random.rand(1, 1, 1, 32, 32).astype(np.float32)
+
+    real_path = tmp_path / "real_gcf_test.ome.tiff"
+    imag_path = tmp_path / "imag_gcf_test.ome.tiff"
+    from bioio.writers import OmeTiffWriter
+
+    OmeTiffWriter.save(real, str(real_path), dim_order="TCZYX")
+    OmeTiffWriter.save(imag, str(imag_path), dim_order="TCZYX")
+
+    input_real = create_mock_artifact("real", real_path)
+    input_imag = create_mock_artifact("imag", imag_path)
+
+    outputs = adapter.execute(
+        fn_id="phasorpy.plot.plot_phasor",
+        inputs=[("real", input_real), ("imag", input_imag)],
+        params={},
+        work_dir=tmp_path,
+    )
+
+    # Should return both PlotRef and FigureRef
+    assert len(outputs) == 2
+
+    plot_ref = outputs[0]
+    fig_ref = outputs[1]
+
+    # Verify PlotRef
+    assert plot_ref["type"] == "PlotRef"
+    assert plot_ref["format"] == "PNG"
+
+    # Verify FigureRef
+    assert fig_ref["type"] == "FigureRef"
+    assert fig_ref["python_class"] == "matplotlib.figure.Figure"
+    assert "uri" in fig_ref
+    assert fig_ref["uri"].startswith("obj://")
+
+    # Critical: Verify the figure is in OBJECT_CACHE and can be retrieved
+    fig_uri = fig_ref["uri"]
+    assert fig_uri in OBJECT_CACHE, f"Figure not found in OBJECT_CACHE: {fig_uri}"
+
+    cached_fig = OBJECT_CACHE[fig_uri]
+    assert isinstance(cached_fig, plt.Figure)
+
+    # Verify the figure has axes with data (not blank)
+    assert len(cached_fig.axes) > 0, "Figure should have at least one axes"
+
+    # The figure should have some artists (the phasor points)
+    ax = cached_fig.axes[0]
+    assert len(ax.collections) > 0 or len(ax.lines) > 0 or len(ax.images) > 0, (
+        "Figure axes should have data (not blank)"
+    )
 
 
 @pytest.mark.integration
