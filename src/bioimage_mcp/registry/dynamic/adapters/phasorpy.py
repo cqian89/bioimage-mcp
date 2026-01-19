@@ -476,8 +476,8 @@ class PhasorPyAdapter:
             # Prepare execution environment for plots
             is_plot = "phasorpy.plot" in module_name or "plot" in func_name.lower()
             ax_from_params = False
-            ax_from_figure = False
-            fig_from_inputs = None
+            _ax_from_figure = False
+            _fig_from_inputs = None
 
             if is_plot:
                 import matplotlib
@@ -499,7 +499,8 @@ class PhasorPyAdapter:
                                     f"AxesRef with URI '{uri}' not found in object cache"
                                 )
                         elif ax_ref is not None and not isinstance(ax_ref, dict):
-                            # Already a matplotlib axes object (shouldn't happen in MCP but handle it)
+                            # Already a matplotlib axes object (shouldn't happen in MCP
+                            # but handle it)
                             resolved_ax = ax_ref
 
                         if resolved_ax is not None:
@@ -507,7 +508,8 @@ class PhasorPyAdapter:
                             kw_args["ax"] = resolved_ax
                             ax_from_params = True
 
-                            # Clean up: if 'axes' was the param name and exists unresolved, remove it
+                            # Clean up: if 'axes' was the param name and exists
+                            # unresolved, remove it
                             if ax_name == "axes" and "axes" in kw_args:
                                 del kw_args["axes"]
                             break  # Found and resolved, no need to check other names
@@ -528,14 +530,15 @@ class PhasorPyAdapter:
                             from matplotlib.figure import Figure
 
                             if isinstance(fig_obj, Figure):
-                                fig_from_inputs = fig_obj
+                                _fig_from_inputs = fig_obj
                                 if fig_obj.axes:
                                     kw_args["ax"] = fig_obj.axes[0]
                                 else:
                                     kw_args["ax"] = fig_obj.add_subplot(1, 1, 1)
-                                ax_from_figure = True
+                                _ax_from_figure = True
                                 logger.debug(
-                                    "plot_phasor called without ax; using axes from provided figure input"
+                                    "plot_phasor called without ax; "
+                                    "using axes from provided figure input"
                                 )
                         except Exception:  # noqa: BLE001
                             # If anything goes wrong, fall back to phasorpy's default behavior
@@ -605,90 +608,47 @@ class PhasorPyAdapter:
                     )
                 )
             elif is_plot:
-                # Handle plot functions - they might return a figure or axis
                 import matplotlib.pyplot as plt
 
-                from bioimage_mcp.artifacts.store import write_plot
+                # Get the current figure (phasorpy draws on it)
+                fig = plt.gcf()
 
-                # plot_phasor can be used in two modes:
-                # 1) No axes provided -> phasorpy creates an internal figure -> we save it.
-                # 2) Axes provided (either explicitly via params, or implicitly via a provided
-                #    figure input) -> the caller controls figure lifecycle and will call savefig.
-                user_provided_ax = ax_from_params or ax_from_figure
+                # Generate FigureRef
+                fig_id = str(uuid.uuid4())
+                session_id = "default"  # Could be passed in via context
+                env_id = "base"
+                fig_uri = f"obj://{session_id}/{env_id}/{fig_id}"
 
-                if user_provided_ax:
-                    # If we plotted onto a figure explicitly provided in inputs, we can still
-                    # save it here to satisfy the PLOT io_pattern (PlotRef output) while also
-                    # making sure that Figure.savefig on the same FigureRef isn't blank.
-                    if fig_from_inputs is not None and not ax_from_params:
-                        fig = fig_from_inputs
-                        ext = ".png"
-                        if work_dir:
-                            path = work_dir / f"{func_name}-plot{ext}"
-                        else:
-                            fd, path_str = tempfile.mkstemp(suffix=ext)
-                            import os
+                fig._mcp_ref_id = fig_id
+                OBJECT_CACHE[fig_uri] = fig
 
-                            os.close(fd)
-                            path = Path(path_str)
+                # Detect if figure is empty (no content drawn)
+                has_content = False
+                for ax in fig.axes:
+                    if ax.lines or ax.collections or ax.images or ax.patches or ax.texts:
+                        has_content = True
+                        break
 
-                        plot_ref = write_plot(fig, path, dpi=100, plot_type=func_name)
-                        plot_dict = plot_ref.model_dump()
-                        plot_dict["path"] = str(path.absolute())
-                        plot_dict["uri"] = path.absolute().as_uri()
-                        outputs.append(plot_dict)
-                    else:
-                        logger.debug(
-                            "plot_phasor drew on a caller-controlled figure; "
-                            "skipping automatic figure save (caller will call savefig)"
-                        )
-                else:
-                    # No axes provided -> we created an internal figure, save it
-                    fig = plt.gcf()
-                    if fig:
-                        ext = ".png"
-                        if work_dir:
-                            path = work_dir / f"{func_name}-plot{ext}"
-                        else:
-                            fd, path_str = tempfile.mkstemp(suffix=ext)
-                            import os
+                fig_metadata = {
+                    "output_name": "figure",
+                    "figsize": fig.get_size_inches().tolist(),
+                    "dpi": int(fig.get_dpi()),
+                    "axes_count": len(fig.axes),
+                    "is_empty": not has_content,
+                }
 
-                            os.close(fd)
-                            path = Path(path_str)
+                if not has_content:
+                    fig_metadata["warning"] = "Figure appears empty - no data was plotted"
 
-                        # T022: Connect PlotRef creation to write_plot()
-                        plot_ref = write_plot(fig, path, dpi=100, plot_type=func_name)
-
-                        # Convert to dict for JSON serialization in worker entrypoint
-                        plot_dict = plot_ref.model_dump()
-                        # Ensure we have path and uri for server import
-                        plot_dict["path"] = str(path.absolute())
-                        plot_dict["uri"] = path.absolute().as_uri()
-                        outputs.append(plot_dict)
-
-                        # Store in OBJECT_CACHE and return FigureRef (T042)
-                        fig_id = str(uuid.uuid4())
-                        session_id = "default"  # Could be passed in via context in future
-                        env_id = "base"
-                        fig_uri = f"obj://{session_id}/{env_id}/{fig_id}"
-
-                        fig._mcp_ref_id = fig_id
-                        OBJECT_CACHE[fig_uri] = fig
-
-                        fig_ref = {
-                            "ref_id": fig_id,
-                            "type": "FigureRef",
-                            "python_class": "matplotlib.figure.Figure",
-                            "uri": fig_uri,
-                            "storage_type": "memory",
-                            "metadata": {
-                                "output_name": "figure",
-                                "figsize": fig.get_size_inches().tolist(),
-                                "dpi": int(fig.get_dpi()),
-                                "axes_count": len(fig.axes),
-                            },
-                        }
-                        outputs.append(fig_ref)
+                fig_ref = {
+                    "ref_id": fig_id,
+                    "type": "FigureRef",
+                    "python_class": "matplotlib.figure.Figure",
+                    "uri": fig_uri,
+                    "storage_type": "memory",
+                    "metadata": fig_metadata,
+                }
+                outputs.append(fig_ref)
 
             logger.info("Execution successful for %s, produced %d outputs", fn_id, len(outputs))
             return outputs

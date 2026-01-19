@@ -279,8 +279,12 @@ def test_allowlist_enforcement_negative(tmp_path: Path) -> None:
 
 @pytest.mark.slow
 @pytest.mark.integration
-def test_plot_phasor_execution_returns_plotref(adapter, tmp_path):
-    """T018: plot_phasor execution returns a PlotRef with metadata."""
+def test_plot_phasor_execution_returns_figureref(adapter, tmp_path):
+    """T018: plot_phasor execution returns a FigureRef for subsequent savefig.
+
+    With Approach 2, plot functions return FigureRef (in-memory) instead of
+    auto-saving to disk. User calls savefig() explicitly to materialize.
+    """
     # Create mock real/imag data
     real = np.random.rand(1, 1, 1, 32, 32).astype(np.float32)
     imag = np.random.rand(1, 1, 1, 32, 32).astype(np.float32)
@@ -302,32 +306,23 @@ def test_plot_phasor_execution_returns_plotref(adapter, tmp_path):
         work_dir=tmp_path,
     )
 
-    assert len(outputs) == 2  # PlotRef + FigureRef (T042 fix for gcf() context)
-    plot_ref = outputs[0]
-    fig_ref = outputs[1]
+    # Now returns only FigureRef (no auto-save to disk)
+    assert len(outputs) == 1
+    fig_ref = outputs[0]
 
-    # Verify FigureRef (new in T042)
-    if isinstance(fig_ref, dict):
-        assert fig_ref["type"] == "FigureRef"
-        assert fig_ref["python_class"] == "matplotlib.figure.Figure"
-        assert fig_ref["uri"].startswith("obj://")
+    assert isinstance(fig_ref, dict)
+    assert fig_ref["type"] == "FigureRef"
+    assert fig_ref["python_class"] == "matplotlib.figure.Figure"
+    assert fig_ref["uri"].startswith("obj://")
+    assert fig_ref["storage_type"] == "memory"
 
-    # Adapter returns dict for JSON serialization in worker
-    if isinstance(plot_ref, dict):
-        assert plot_ref["type"] == "PlotRef"
-        assert plot_ref["format"] == "PNG"
-        assert "path" in plot_ref
-        assert plot_ref["metadata"]["width_px"] > 0
-        assert plot_ref["metadata"]["height_px"] > 0
-        assert plot_ref["metadata"]["dpi"] == 100
-    else:
-        assert isinstance(plot_ref, PlotRef)
-        assert plot_ref.type == "PlotRef"
-        assert plot_ref.format == "PNG"
-        assert isinstance(plot_ref.metadata, PlotMetadata)
-        assert plot_ref.metadata.width_px > 0
-        assert plot_ref.metadata.height_px > 0
-        assert plot_ref.metadata.dpi == 100
+    # Check metadata
+    metadata = fig_ref["metadata"]
+    assert "figsize" in metadata
+    assert "dpi" in metadata
+    assert "axes_count" in metadata
+    assert "is_empty" in metadata
+    assert metadata["is_empty"] is False  # Should have content
 
 
 @pytest.mark.slow
@@ -414,7 +409,10 @@ def test_metadata_preservation(adapter, tmp_path):
 @pytest.mark.slow
 @pytest.mark.integration
 def test_plot_artifact_accessibility(adapter, tmp_path):
-    """T019: PlotRef artifact is accessible and readable as a PNG image."""
+    """T019: PlotRef artifact is accessible and readable as a PNG image.
+
+    Requires plot_phasor + savefig workflow.
+    """
     # Create mock real/imag data
     real = np.random.rand(1, 1, 1, 16, 16).astype(np.float32)
     imag = np.random.rand(1, 1, 1, 16, 16).astype(np.float32)
@@ -429,14 +427,26 @@ def test_plot_artifact_accessibility(adapter, tmp_path):
     input_real = create_mock_artifact("real", real_path)
     input_imag = create_mock_artifact("imag", imag_path)
 
+    # 1. Call plot_phasor -> get FigureRef
     outputs = adapter.execute(
         fn_id="phasorpy.plot.plot_phasor",
         inputs=[input_real, input_imag],
         params={},
         work_dir=tmp_path,
     )
+    fig_ref = outputs[0]
 
-    plot_ref = outputs[0]
+    # 2. Call savefig with the FigureRef -> get PlotRef
+    # Use matplotlib_ops.savefig directly since we're testing the workflow
+    from bioimage_mcp_base.ops.matplotlib_ops import savefig as mpl_savefig
+
+    outputs_save = mpl_savefig(
+        inputs=[("figure", fig_ref)],
+        params={},
+        work_dir=tmp_path,
+    )
+
+    plot_ref = outputs_save[0]
     from urllib.parse import urlparse
 
     uri = plot_ref["uri"] if isinstance(plot_ref, dict) else plot_ref.uri
@@ -456,17 +466,13 @@ def test_plot_artifact_accessibility(adapter, tmp_path):
 
 @pytest.mark.slow
 @pytest.mark.integration
-def test_plot_phasor_returns_figureref_for_gcf_workflow(adapter, tmp_path):
-    """T042: plot_phasor returns FigureRef to enable gcf()/savefig() workflow.
+def test_plot_phasor_figureref_can_be_used_with_savefig(adapter, tmp_path):
+    """T042: plot_phasor returns FigureRef to enable savefig() workflow.
 
     Fixes: https://github.com/theia-ide/bioimage-mcp/issues/1
 
-    Previously, plot_phasor called plt.close(fig) after saving, which removed
-    the figure from matplotlib's context. Subsequent gcf() calls would return
-    a blank figure instead of the phasor plot.
-
-    Now plot_phasor returns both a PlotRef (saved file) and a FigureRef
-    (in-memory figure) to enable the gcf()/savefig() workflow.
+    With Approach 2, plot functions return FigureRef (in-memory) instead of
+    auto-saving to disk. User calls savefig() explicitly to materialize.
     """
     import matplotlib.pyplot as plt
 
@@ -486,6 +492,7 @@ def test_plot_phasor_returns_figureref_for_gcf_workflow(adapter, tmp_path):
     input_real = create_mock_artifact("real", real_path)
     input_imag = create_mock_artifact("imag", imag_path)
 
+    # 1. Call plot_phasor -> get FigureRef
     outputs = adapter.execute(
         fn_id="phasorpy.plot.plot_phasor",
         inputs=[("real", input_real), ("imag", input_imag)],
@@ -493,15 +500,9 @@ def test_plot_phasor_returns_figureref_for_gcf_workflow(adapter, tmp_path):
         work_dir=tmp_path,
     )
 
-    # Should return both PlotRef and FigureRef
-    assert len(outputs) == 2
-
-    plot_ref = outputs[0]
-    fig_ref = outputs[1]
-
-    # Verify PlotRef
-    assert plot_ref["type"] == "PlotRef"
-    assert plot_ref["format"] == "PNG"
+    # Now returns only FigureRef
+    assert len(outputs) == 1
+    fig_ref = outputs[0]
 
     # Verify FigureRef
     assert fig_ref["type"] == "FigureRef"
@@ -516,14 +517,33 @@ def test_plot_phasor_returns_figureref_for_gcf_workflow(adapter, tmp_path):
     cached_fig = OBJECT_CACHE[fig_uri]
     assert isinstance(cached_fig, plt.Figure)
 
-    # Verify the figure has axes with data (not blank)
-    assert len(cached_fig.axes) > 0, "Figure should have at least one axes"
+    # 2. Call savefig with the FigureRef -> get PlotRef
+    # Use matplotlib_ops.savefig directly
+    from bioimage_mcp_base.ops.matplotlib_ops import savefig as mpl_savefig
 
-    # The figure should have some artists (the phasor points)
-    ax = cached_fig.axes[0]
-    assert len(ax.collections) > 0 or len(ax.lines) > 0 or len(ax.images) > 0, (
-        "Figure axes should have data (not blank)"
+    outputs_save = mpl_savefig(
+        inputs=[("figure", fig_ref)],
+        params={},
+        work_dir=tmp_path,
     )
+
+    assert len(outputs_save) == 1
+    plot_ref = outputs_save[0]
+
+    # 4. Verify PlotRef points to a valid PNG file
+    assert plot_ref["type"] == "PlotRef"
+    assert plot_ref["format"] == "PNG"
+
+    from urllib.parse import urlparse
+
+    uri = plot_ref["uri"]
+    parsed = urlparse(uri)
+    path = Path(parsed.path)
+    if str(path).startswith("/") and len(str(path)) > 2 and str(path)[2] == ":":
+        path = Path(str(path)[1:])
+
+    assert path.exists()
+    assert path.suffix == ".png"
 
 
 @pytest.mark.integration
@@ -682,7 +702,8 @@ def test_plot_phasor_e2e_execution_service(tmp_path: Path) -> None:
         # should return named outputs: mean, real, imag.
         outputs1 = status1["outputs"]
 
-        workflow2 = {
+        # Step 2a: Plot phasor (split workflow due to v0.0 1-step limit)
+        workflow2a = {
             "steps": [
                 {
                     "fn_id": "base.phasorpy.plot.plot_phasor",
@@ -694,15 +715,51 @@ def test_plot_phasor_e2e_execution_service(tmp_path: Path) -> None:
                 }
             ]
         }
+        run2a = execution.run_workflow(workflow2a, skip_validation=True)
+        status2a = execution.get_run_status(run2a["run_id"])
+        assert status2a["status"] == "success"
+
+        # Step 2b: Save plot
+        # The output of plot_phasor is a FigureRef, which should be keyed by "figure"
+        # or its index in the outputs dict.
+        fig_ref = status2a["outputs"].get("figure")
+        if fig_ref is None:
+            # Fallback to finding by type
+            for out in status2a["outputs"].values():
+                if isinstance(out, dict) and out.get("type") == "FigureRef":
+                    fig_ref = out
+                    break
+
+        assert fig_ref is not None, f"Could not find FigureRef in outputs: {status2a['outputs']}"
+
+        workflow2b = {
+            "steps": [
+                {
+                    "fn_id": "base.matplotlib.Figure.savefig",
+                    "inputs": {
+                        "figure": fig_ref,
+                    },
+                    "params": {"fname": str(tmp_path / "phasor_plot.png")},
+                }
+            ]
+        }
         # skip_validation=True because we might not have all schemas loaded in this test setup
-        run2 = execution.run_workflow(workflow2, skip_validation=True)
+        run2 = execution.run_workflow(workflow2b, skip_validation=True)
         status2 = execution.get_run_status(run2["run_id"])
 
         # Verify success and PlotRef output
         assert status2["status"] == "success"
         outputs2 = status2["outputs"]
-        plot_ref = outputs2["plot"]
 
+        # Output of savefig should be a PlotRef
+        plot_ref = outputs2.get("plot")
+        if plot_ref is None:
+            for out in outputs2.values():
+                if isinstance(out, dict) and out.get("type") == "PlotRef":
+                    plot_ref = out
+                    break
+
+        assert plot_ref is not None, f"Could not find PlotRef in outputs: {outputs2}"
         assert plot_ref["type"] == "PlotRef"
         assert plot_ref["format"] == "PNG"
 

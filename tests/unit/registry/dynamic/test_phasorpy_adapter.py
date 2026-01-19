@@ -22,15 +22,23 @@ def test_plot_phasor_serialization():
     mock_plot = MagicMock()
 
     mock_plt = MagicMock(name="plt")
-    mock_plt.gcf.return_value.get_size_inches.return_value.tolist.return_value = [8.0, 6.0]
-    mock_plt.gcf.return_value.get_dpi.return_value = 100
+    mock_fig = MagicMock(name="fig")
+    mock_plt.gcf.return_value = mock_fig
+
+    # Configure fig mock to return serializable values
+    mock_fig.get_size_inches.return_value.tolist.return_value = [8.0, 6.0]
+    mock_fig.get_dpi.return_value = 100
+    mock_fig.axes = []  # Empty list is serializable
+
+    mock_matplotlib = MagicMock(name="matplotlib")
+    mock_matplotlib.pyplot = mock_plt
 
     with patch.dict(
         sys.modules,
         {
             "phasorpy": mock_phasorpy,
             "phasorpy.plot": mock_plot,
-            "matplotlib": MagicMock(),
+            "matplotlib": mock_matplotlib,
             "matplotlib.pyplot": mock_plt,
         },
     ):
@@ -71,27 +79,22 @@ def test_plot_phasor_serialization():
             )
 
             # Assertions
-            assert len(outputs) == 2  # PlotRef + FigureRef (fix for gcf() context loss)
+            assert len(outputs) == 1  # Only FigureRef (Approach 2)
 
-            # Check PlotRef (first output)
-            plot_output = outputs[0]
-            assert isinstance(plot_output, dict), f"Expected dict, got {type(plot_output)}"
-            assert plot_output.get("type") == "PlotRef"
-            assert "path" in plot_output
-            assert plot_output["path"] == str(test_path)
-
-            # Check FigureRef (second output)
-            fig_output = outputs[1]
+            # Check FigureRef
+            fig_output = outputs[0]
             assert isinstance(fig_output, dict), f"Expected dict, got {type(fig_output)}"
             assert fig_output.get("type") == "FigureRef"
+            assert fig_output.get("python_class") == "matplotlib.figure.Figure"
+            assert fig_output["uri"].startswith("obj://")
 
-            # Check JSON serializability of PlotRef (as requested)
+            # Check JSON serializability
             try:
-                json_str = json.dumps(plot_output)
-                assert "PlotRef" in json_str
-                assert "path" in json_str
+                json_str = json.dumps(fig_output)
+                assert "FigureRef" in json_str
+                assert "obj://" in json_str
             except TypeError as e:
-                pytest.fail(f"PlotRef is not JSON serializable: {e}")
+                pytest.fail(f"FigureRef is not JSON serializable: {e}")
 
             # FigureRef might have mocks in metadata if not configured perfectly,
             # but we've verified its presence and type.

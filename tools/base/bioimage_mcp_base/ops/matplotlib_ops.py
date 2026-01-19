@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shutil
 import tempfile
 import uuid
 from pathlib import Path
@@ -675,6 +676,72 @@ def pyplot_op(
     ]
 
 
+def gcf(session_id: str = "default", env_id: str = "base") -> list[dict]:
+    """Get current figure and return as FigureRef with empty-figure detection.
+
+    This enhanced version of gcf() detects if the figure has any content
+    and adds appropriate metadata/warnings.
+    """
+    fig = plt.gcf()
+
+    # Check if figure already has a ref_id (was created by us)
+    existing_ref_id = getattr(fig, "_mcp_ref_id", None)
+    if existing_ref_id:
+        # Find existing URI
+        for _uri, cached in OBJECT_CACHE.items():
+            if cached is fig:
+                # Update and return existing ref
+                break
+        else:
+            # Not in cache, re-add it
+            existing_ref_id = None
+
+    if existing_ref_id:
+        fig_id = existing_ref_id
+        fig_uri = f"obj://{session_id}/{env_id}/{fig_id}"
+        # Ensure it's in cache
+        if fig_uri not in OBJECT_CACHE:
+            OBJECT_CACHE[fig_uri] = fig
+    else:
+        fig_id = str(uuid.uuid4())
+        fig_uri = _build_obj_uri(session_id, env_id, fig_id)
+        OBJECT_CACHE[fig_uri] = fig
+        fig._mcp_ref_id = fig_id
+
+    # Detect if figure is empty (no content drawn)
+    has_content = False
+    for ax in fig.axes:
+        # Check various artist types that indicate content
+        if ax.lines or ax.collections or ax.images or ax.patches or len(ax.texts) > 0:
+            has_content = True
+            break
+
+    fig_metadata = {
+        "output_name": "figure",
+        "figsize": fig.get_size_inches().tolist(),
+        "dpi": int(fig.get_dpi()),
+        "axes_count": len(fig.axes),
+        "is_empty": not has_content,
+    }
+
+    if not has_content:
+        if len(fig.axes) == 0:
+            fig_metadata["warning"] = "Figure has no axes - this may be a new empty figure"
+        else:
+            fig_metadata["warning"] = "Figure axes have no visible content - no data was plotted"
+
+    return [
+        {
+            "ref_id": fig_id,
+            "type": "FigureRef",
+            "python_class": "matplotlib.figure.Figure",
+            "uri": fig_uri,
+            "storage_type": "memory",
+            "metadata": fig_metadata,
+        }
+    ]
+
+
 def patch_op(
     params: dict[str, Any], class_name: str, session_id: str = "default", env_id: str = "base"
 ) -> list[dict]:
@@ -761,7 +828,14 @@ def savefig(
     session_id: str = "default",
     env_id: str = "base",
 ) -> list[dict]:
-    """Save figure to file."""
+    """Save figure to artifact store and optionally to a user-specified path.
+
+    The figure is always saved to the artifact store (work_dir). If the user
+    provides a 'fname' parameter, the file is also copied to that destination.
+
+    Returns:
+        PlotRef pointing to the artifact store location
+    """
     fig = None
     for name, value in inputs:
         if name == "figure":
@@ -777,53 +851,65 @@ def savefig(
         work_dir = Path(tempfile.gettempdir())
     work_dir.mkdir(parents=True, exist_ok=True)
 
-    # Handle user-provided fname
+    # Extract user destination path if provided
     user_fname = params.pop("fname", None)
+    user_dest_path = Path(user_fname) if user_fname else None
 
+    # Determine format
     fmt = params.get("format", "png").lower()
     if fmt == "jpg":
         fmt = "jpeg"
 
-    if user_fname:
-        out_path = Path(user_fname)
-        # Infer format from extension if not explicitly provided
-        if "format" not in params and out_path.suffix:
-            ext = out_path.suffix.lstrip(".").lower()
-            if ext == "jpg":
-                ext = "jpeg"
-            fmt = ext
-            params["format"] = fmt
-    else:
-        out_path = work_dir / f"plot_{uuid.uuid4().hex}.{fmt}"
+    # If user provided a path with extension, infer format from it
+    if user_dest_path and "format" not in params and user_dest_path.suffix:
+        ext = user_dest_path.suffix.lstrip(".").lower()
+        if ext == "jpg":
+            ext = "jpeg"
+        fmt = ext
+        params["format"] = fmt
+
+    # Always save to artifact store location first
+    artifact_path = work_dir / f"plot_{uuid.uuid4().hex}.{fmt}"
 
     dpi = params.get("dpi", fig.dpi)
     w_inch, h_inch = fig.get_size_inches()
 
-    fig.savefig(str(out_path), **params)
+    fig.savefig(str(artifact_path), **params)
+
+    # Copy to user destination if provided
+    if user_dest_path:
+        user_dest_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(str(artifact_path), str(user_dest_path))
+
+    # Clean up figure from memory
     plt.close(fig)
 
-    # Clean up OBJECT_CACHE (T045: Verify that figures are being closed after savefig)
+    # Clean up OBJECT_CACHE
     for uri, cached_fig in list(OBJECT_CACHE.items()):
         if cached_fig is fig:
             del OBJECT_CACHE[uri]
 
     plot_ref_fmt = "JPG" if fmt == "jpeg" else fmt.upper()
 
-    return [
-        {
-            "type": "PlotRef",
-            "format": plot_ref_fmt,
-            "uri": out_path.absolute().as_uri(),
-            "path": str(out_path.absolute()),
-            "metadata": {
-                "width_px": int(w_inch * dpi),
-                "height_px": int(h_inch * dpi),
-                "dpi": int(dpi),
-                "plot_type": "matplotlib",
-                "output_name": "plot",
-            },
-        }
-    ]
+    result = {
+        "type": "PlotRef",
+        "format": plot_ref_fmt,
+        "uri": artifact_path.absolute().as_uri(),
+        "path": str(artifact_path.absolute()),
+        "metadata": {
+            "width_px": int(w_inch * dpi),
+            "height_px": int(h_inch * dpi),
+            "dpi": int(dpi),
+            "plot_type": "matplotlib",
+            "output_name": "plot",
+        },
+    }
+
+    # Add user destination info to metadata if provided
+    if user_dest_path:
+        result["metadata"]["user_dest_path"] = str(user_dest_path.absolute())
+
+    return [result]
 
 
 def imsave(
