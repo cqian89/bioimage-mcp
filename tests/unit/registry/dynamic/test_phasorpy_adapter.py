@@ -21,18 +21,21 @@ def test_plot_phasor_serialization():
     mock_phasorpy.__version__ = "0.1.0"
     mock_plot = MagicMock()
 
+    mock_plt = MagicMock(name="plt")
+    mock_plt.gcf.return_value.get_size_inches.return_value.tolist.return_value = [8.0, 6.0]
+    mock_plt.gcf.return_value.get_dpi.return_value = 100
+
     with patch.dict(
         sys.modules,
         {
             "phasorpy": mock_phasorpy,
             "phasorpy.plot": mock_plot,
             "matplotlib": MagicMock(),
-            "matplotlib.pyplot": MagicMock(),
+            "matplotlib.pyplot": mock_plt,
         },
     ):
         with (
             patch("inspect.signature") as mock_sig,
-            patch("matplotlib.pyplot.gcf") as mock_gcf,
             patch("matplotlib.pyplot.close"),
             patch("bioimage_mcp.artifacts.store.write_plot") as mock_write_plot,
             patch("pathlib.Path.absolute") as mock_abs,
@@ -43,9 +46,6 @@ def test_plot_phasor_serialization():
 
             # Mock signature to accept anything
             mock_sig.return_value = MagicMock(parameters={})
-
-            mock_fig = MagicMock()
-            mock_gcf.return_value = mock_fig
 
             test_path = Path("/tmp/test-plot.png")
             mock_abs.return_value = test_path
@@ -71,23 +71,30 @@ def test_plot_phasor_serialization():
             )
 
             # Assertions
-            assert len(outputs) == 1
-            output = outputs[0]
+            assert len(outputs) == 2  # PlotRef + FigureRef (fix for gcf() context loss)
 
-            # It SHOULD be a dict, but currently it is a PlotRef (this should FAIL)
-            assert isinstance(output, dict), f"Expected dict, got {type(output)}"
+            # Check PlotRef (first output)
+            plot_output = outputs[0]
+            assert isinstance(plot_output, dict), f"Expected dict, got {type(plot_output)}"
+            assert plot_output.get("type") == "PlotRef"
+            assert "path" in plot_output
+            assert plot_output["path"] == str(test_path)
 
-            # It should have a "path" key for the server to import it
-            assert "path" in output
-            assert output["path"] == str(test_path)
+            # Check FigureRef (second output)
+            fig_output = outputs[1]
+            assert isinstance(fig_output, dict), f"Expected dict, got {type(fig_output)}"
+            assert fig_output.get("type") == "FigureRef"
 
-            # It should be JSON serializable
+            # Check JSON serializability of PlotRef (as requested)
             try:
-                json_str = json.dumps(output)
+                json_str = json.dumps(plot_output)
                 assert "PlotRef" in json_str
                 assert "path" in json_str
             except TypeError as e:
-                pytest.fail(f"Output is not JSON serializable: {e}")
+                pytest.fail(f"PlotRef is not JSON serializable: {e}")
+
+            # FigureRef might have mocks in metadata if not configured perfectly,
+            # but we've verified its presence and type.
 
 
 def test_load_image_fallback():

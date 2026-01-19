@@ -10,6 +10,7 @@ import importlib
 import inspect
 import logging
 import tempfile
+import uuid
 from pathlib import Path
 from typing import Any
 from urllib.parse import unquote, urlparse
@@ -665,8 +666,28 @@ class PhasorPyAdapter:
                         plot_dict["uri"] = path.absolute().as_uri()
                         outputs.append(plot_dict)
 
-                        # Clean up to avoid figure accumulation
-                        plt.close(fig)
+                        # Store in OBJECT_CACHE and return FigureRef (T042)
+                        fig_id = str(uuid.uuid4())
+                        session_id = "default"  # Could be passed in via context in future
+                        env_id = "base"
+                        fig_uri = f"obj://{session_id}/{env_id}/{fig_id}"
+
+                        fig._mcp_ref_id = fig_id
+                        OBJECT_CACHE[fig_uri] = fig
+
+                        fig_ref = {
+                            "ref_id": fig_id,
+                            "type": "FigureRef",
+                            "python_class": "matplotlib.figure.Figure",
+                            "uri": fig_uri,
+                            "storage_type": "memory",
+                            "metadata": {
+                                "output_name": "figure",
+                                "figsize": fig.get_size_inches().tolist(),
+                                "dpi": int(fig.get_dpi()),
+                            },
+                        }
+                        outputs.append(fig_ref)
 
             logger.info("Execution successful for %s, produced %d outputs", fn_id, len(outputs))
             return outputs
