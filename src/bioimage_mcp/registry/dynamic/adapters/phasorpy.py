@@ -685,6 +685,7 @@ class PhasorPyAdapter:
                                 "output_name": "figure",
                                 "figsize": fig.get_size_inches().tolist(),
                                 "dpi": int(fig.get_dpi()),
+                                "axes_count": len(fig.axes),
                             },
                         }
                         outputs.append(fig_ref)
