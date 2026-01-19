@@ -1,11 +1,11 @@
 <!--
 Sync Impact Report
-- Version change: 0.9.0 -> 1.0.0 (MAJOR bump - breaking MCP API changes)
-- Principles updated: Section I (Stable MCP Surface) redesigned; Architecture Constraints (API naming, Error model).
+- Version change: 1.0.0 -> 1.0.1 (PATCH bump - clarification)
+- Principles updated: None
+- Architecture constraints updated: Canonical artifact types list includes PlotRef
 - Added sections: None
 - Removed sections: None
 - Templates requiring updates: None
-- Note: Breaking change: MCP tool surface reduced from 12+ to 8 tools.
 -->
 
 # Bioimage-MCP Constitution
@@ -165,7 +165,7 @@ stabilization.
 - **Platform support**: Cross-platform (Linux, macOS, Windows) from the start; document
   platform-specific behavior where it differs (e.g., Java/Fiji, ML wheel availability).
 - **Artifact types**: Canonical types are `BioImageRef`, `LabelImageRef`, `TableRef`,
-  `ScalarRef`, `ModelRef`, and `LogRef` (defined in Architecture document).
+  `ScalarRef`, `ModelRef`, `LogRef`, and `PlotRef` (defined in Architecture document).
 - **Bootstrap CLI**: `bioimage-mcp install`, `doctor`, `configure`, and `serve` commands
   provide installation and runtime lifecycle (defined in PRD §6.6).
 - **Reference implementation**: `MicroscopyLM` (`../MicroscopyLM/`) provides reference
@@ -212,4 +212,4 @@ Compliance expectations:
 - Exceptions MUST be documented in the plan with rationale and mitigation, and MUST
   be approved in review.
 
-**Version**: 1.0.0 | **Ratified**: 2025-12-26 | **Last Amended**: 2026-01-05
+**Version**: 1.0.1 | **Ratified**: 2025-12-26 | **Last Amended**: 2026-01-19
