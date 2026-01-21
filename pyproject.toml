@@ -25,6 +25,9 @@ test = [
   "pytest>=8",
   "pytest-asyncio>=0.23",
   "pytest-timeout>=2.0",
+  "scipy",
+  "pandas",
+  "pillow",
 ]
 dev = [
   "pytest>=8",
@@ -32,6 +35,9 @@ dev = [
   "pytest-timeout>=2.0",
   "ruff>=0.6",
   "conda-lock>=4.0.0",
+  "scipy",
+  "pandas",
+  "pillow",
 ]
 
 [project.scripts]
