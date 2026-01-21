@@ -1,8 +1,11 @@
 from __future__ import annotations
 from pathlib import Path
 
+import pytest
 
-def test_smoke_directories_exist():
+
+@pytest.mark.smoke_minimal
+def test_smoke_directories_exist() -> None:
     """Assert required smoke test directories exist."""
     smoke_dir = Path(__file__).parent
 
@@ -13,7 +16,8 @@ def test_smoke_directories_exist():
     assert utils_dir.is_dir(), f"Missing directory: {utils_dir}"
 
 
-def test_smoke_init_files_exist():
+@pytest.mark.smoke_minimal
+def test_smoke_init_files_exist() -> None:
     """Assert __init__.py files exist in smoke test directories."""
     smoke_dir = Path(__file__).parent
 
