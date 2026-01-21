@@ -158,7 +158,7 @@ Test signatures should align with the following versions:
 
 ### Phase 0: Prerequisites
 - Fix `ScipyNdimageAdapter` to use `bioio.writers.OmeTiffWriter` instead of `tifffile.imwrite` to ensure project-wide I/O consistency.
-- Ensure all datasets in `datasets/` have verified Git LFS presence or provide synthetic fallbacks.
+- Ensure all datasets in `datasets/` have verified Git LFS presence.
 
 ### Phase 1: Infrastructure
 - Create `tests/smoke/utils/data_equivalence.py` with segmentation (IoU) and semantic (plot) comparison helpers.

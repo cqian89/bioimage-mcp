@@ -21,6 +21,7 @@ Expand smoke tests to cover all implemented libraries (PhasorPy, Cellpose, Sciki
 - [x] **Safety + debuggability**: Tests persist logs; all equivalence tests added with proper markers
 
 ## Phases & Gates
+- **Phase 0 (Prerequisites)**: Fix ScipyNdimageAdapter I/O + verify dataset LFS status. See `phase0-prerequisites.md`.
 - Phase 1 (Setup): Create directories + LFS skip utility.
 - Phase 2 (Foundation): Implement NativeExecutor + DataEquivalenceHelper.
 - Phase 3 (US1): Add per-library baseline scripts + equivalence tests.
@@ -39,7 +40,8 @@ Quality gates:
 ```text
 specs/027-smoke-test-expansion/
 ├── plan.md              # This file
-├── research.md          # Phase 0 output
+├── phase0-prerequisites.md  # Phase 0 implementation guidance
+├── research.md          # Research output
 ├── data-model.md        # Phase 1 output
 ├── quickstart.md        # Phase 1 output
 └── contracts/           # Phase 1 output

@@ -12,6 +12,21 @@
 
 ---
 
+## Phase 0: Prerequisites (Blocking)
+
+**Purpose**: Fix known issues that would cause equivalence tests to fail or produce misleading results.
+
+**⚠️ CRITICAL**: These tasks MUST be completed before any smoke test work begins.
+
+**Reference**: See `phase0-prerequisites.md` for detailed implementation guidance.
+
+- [ ] T000a Migrate `ScipyNdimageAdapter._save_image()` in `src/bioimage_mcp/registry/dynamic/adapters/scipy_ndimage.py` to use `bioio.writers.OmeTiffWriter` following the pattern in `skimage.py`. Changes: (1) extension to `.ome.tiff`, (2) dtype handling for int64/uint64, (3) OmeTiffWriter with tifffile fallback, (4) add `axes` to metadata. Verify with `pytest tests/contract/test_scipy_adapter.py tests/unit/adapters/test_scipy_ndimage_objectref.py -v`
+- [ ] T000b Verify dataset LFS configuration: (1) confirm `.gitattributes` tracks `datasets/**`, (2) verify each dataset folder has README with provenance, (3) test LFS pointer detection pattern works, (4) update `phase0-prerequisites.md` dataset inventory if new datasets are added
+
+**Checkpoint**: Prerequisites complete - I/O consistency ensured and datasets verified.
+
+---
+
 ## Phase 1: Setup (Shared Infrastructure)
 
 **Purpose**: Project initialization and basic structure
@@ -114,7 +129,8 @@
 
 ### Phase Dependencies
 
-- **Setup (Phase 1)**: No dependencies - can start immediately.
+- **Prerequisites (Phase 0)**: No dependencies - MUST complete first. Blocks ALL other phases.
+- **Setup (Phase 1)**: Depends on Phase 0 completion.
 - **Foundational (Phase 2)**: Depends on Setup completion - BLOCKS all user stories.
 - **User Stories (Phase 3+)**: All depend on Foundational phase completion.
   - User stories can then proceed in parallel (if staffed).
