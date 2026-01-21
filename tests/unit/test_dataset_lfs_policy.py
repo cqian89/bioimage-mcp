@@ -30,6 +30,15 @@ def test_dataset_folders_have_readme():
         assert readme.exists(), (
             f"Missing README.md in {d}. Every dataset folder must have a provenance README."
         )
+        assert not is_lfs_pointer(readme), (
+            f"README.md in {d} is an LFS pointer. Markdown files should be plain text."
+        )
+
+        license_file = d / "LICENSE"
+        if license_file.exists():
+            assert not is_lfs_pointer(license_file), (
+                f"LICENSE in {d} is an LFS pointer. License files should be plain text."
+            )
 
 
 def test_lfs_pointer_detection_logic(tmp_path: Path):

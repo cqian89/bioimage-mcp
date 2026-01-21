@@ -1,3 +1,13 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:dffbc990e259af91520cf3bae36257711d9ded2f4c3b9571756a8dfb77233e1c
-size 319
+# Synthetic Dataset
+
+This directory contains synthetic image data for testing and validation of the bioimage-mcp workflows.
+
+## File List
+- `test.tif`: Standard test image
+- `test_dims.tif`: Test image with specific dimensions for edge case testing
+
+## Provenance
+[TODO: Add provenance]
+
+## License
+[TODO: Add license]

@@ -1,3 +1,16 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:49f7411ee7ff1f323e2c909ab0e18c07f5abf393f08c08d75b2d0a5cca0e1684
-size 618
+# Sample SPC Data
+
+This directory contains sample TCSPC (Time-Correlated Single Photon Counting) data files in Becker & Hickl SPC/SET format.
+
+## File List
+- `01_HEKn_before_720nm_63xWI_10dbm_m1.set`: Metadata for SPC measurement 1
+- `01_HEKn_before_720nm_63xWI_10dbm_m1.spc`: Photon data for measurement 1
+- `01_HEKn_before_720nm_63xWI_10dbm_m1G.tif`: Reference/Intensity image for measurement 1
+- `01_HEKn_before_720nm_63xWI_10dbm_m2.set`: Metadata for SPC measurement 2
+- `01_HEKn_before_720nm_63xWI_10dbm_m2.spc`: Photon data for measurement 2
+
+## Provenance
+[TODO: Add provenance]
+
+## License
+[TODO: Add license]
