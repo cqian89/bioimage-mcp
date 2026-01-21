@@ -33,7 +33,7 @@ As a developer, I need to detect when the MCP-exposed function schema diverges f
 
 **Acceptance Scenarios**:
 
-1. **Given** a function exposed via MCP, **When** I compare the server's `describe(fn_id)` output with the tool runtime's `meta.describe` output (after applying the canonicalization rules in FR-006), **Then** parameter names, types, and defaults match exactly.
+1. **Given** a function exposed via MCP that is included in the schema test vector, **When** I compare the server's `describe(fn_id)` output with the tool runtime's `meta.describe` output (after applying the canonicalization rules in FR-006), **Then** parameter names, types, and defaults match exactly.
 2. **Given** a schema mismatch is detected, **When** the test runs, **Then** it clearly reports which fields differ between server and runtime views.
 
 ---
@@ -97,6 +97,7 @@ Note: These constraints are restatements of constitution-aligned requirements fo
 - **FR-001**: System MUST provide equivalence tests for each implemented library (PhasorPy, Cellpose, Scikit-image, SciPy, Matplotlib, Xarray, Pandas).
 - **FR-002**: System MUST execute native reference scripts using `conda run -n <env>` to ensure correct library isolation.
 - **FR-003**: System MUST compare array outputs after normalizing shapes.
+  - Shape normalization MUST be deterministic and conservative: remove length-1 axes from both sides (e.g., `np.squeeze`) and require shapes to match exactly after normalization.
   - Float arrays: compare with numerical tolerance (rtol=1e-5, atol=1e-8).
   - Integer/bool arrays: compare with exact equality.
 - **FR-004**: System MUST compare label images using segmentation metrics (IoU/Dice > threshold) instead of exact equality.
@@ -105,18 +106,31 @@ Note: These constraints are restatements of constitution-aligned requirements fo
 - **FR-006**: System MUST provide schema self-consistency tests comparing `describe(fn_id)` against tool runtime `meta.describe` output.
   - Runtime schema acquisition MUST be implemented via a per-environment reference script (executed with `conda run -n <env>`) that emits canonicalized JSON to stdout.
   - Canonicalization MUST (at minimum): sort keys, normalize ordering of lists where order is not semantically meaningful, and ignore documentation-only fields (e.g., title/description/examples) while preserving all runtime-relevant fields.
+  - Schema comparison scope MUST be defined by an explicit, curated "schema test vector" (function ids grouped by environment) stored in the repo (e.g., `tests/smoke/schema_vectors.py`).
+  - Schema test vector selection rules MUST be documented in the vector file and follow these minimum constraints:
+    - Each tool environment under test MUST contribute at least 2 function ids.
+    - The per-environment set MUST include at least one function with non-trivial params (defaults, optional fields, lists/enums/unions) to exercise canonicalization.
+    - If the environment exposes any functions with artifact inputs/outputs, the set MUST include at least one such function.
+    - The vector MUST be deterministic (stable ordering; additions/removals require a brief rationale in code comments).
   - These tests MAY run in `smoke_minimal` mode as they are lightweight.
 - **FR-007**: System MUST use synthetic or minimal test data to minimize CI resource usage; real datasets gated behind `smoke_full` marker.
   - “Minimal” MUST be defined per library test (shape/dtype/dims) and stored as a reusable fixture.
   - Each equivalence test MUST declare whether it uses minimal data only, or requires an LFS dataset.
+    - Mechanism: each equivalence test MUST include exactly one of the following pytest markers:
+      - `@pytest.mark.uses_minimal_data`
+      - `@pytest.mark.requires_lfs_dataset("datasets/<path>")`
   - Minimal-data tests MUST be runnable in `smoke_minimal` mode; equivalence tests remain `smoke_full`.
 - **FR-008**: System MUST detect Git LFS pointer files and skip tests gracefully when real datasets are unavailable.
 - **FR-009**: System MUST mark all equivalence tests with `@pytest.mark.smoke_full` marker.
-  - Additionally, equivalence tests SHOULD be marked with `@pytest.mark.requires_env("bioimage-mcp-...")` when a specific tool env is required, and MUST skip with a clear message if the env is not installed.
+  - Additionally, equivalence tests MUST be marked with `@pytest.mark.requires_env("bioimage-mcp-...")` (including base env tests), and MUST skip with a clear message if the env is not installed.
 - **FR-010**: System MUST provide helper utilities for data equivalence comparison (array, label, plot semantic, and table).
   - Helpers MUST encode the “exact vs tolerance” policy for images/arrays (integer/bool exact, float tolerance) to avoid per-test drift.
 - **FR-011**: System MUST ensure all tool adapters produce artifacts compatible with BioImage reading (valid OME-TIFF or OME-Zarr format).
   - Scope for this feature: the equivalence tests MUST demonstrate BioImage readability for each artifact type exercised (BioImageRef, LabelImageRef, TableRef, PlotRef) and MUST fail with actionable diagnostics if an artifact is unreadable.
+
+- **FR-012**: System MUST validate metadata preservation for structured data types.
+  - Xarray: dimension names and coordinates MUST match between MCP and native execution.
+  - Pandas: column names and index values MUST match between MCP and native execution.
 
 ### Key Entities
 
@@ -131,9 +145,10 @@ Note: These constraints are restatements of constitution-aligned requirements fo
 ### Measurable Outcomes
 
 - **SC-001**: All equivalence tests pass within defined tolerances for all seven libraries (PhasorPy, Cellpose, Scikit-image, SciPy, Matplotlib, Xarray, Pandas) and all are marked `smoke_full`.
-- **SC-002**: Schema self-consistency tests pass for all exposed functions (no drift between server and runtime metadata).
+- **SC-002**: Schema self-consistency tests pass for every function in the curated schema test vector (no drift between server and runtime metadata for the representative set).
 - **SC-003**: Tests correctly skip when datasets are unavailable (Git LFS not fetched), with informative skip messages.
 - **SC-004**: Native execution correctly uses isolated environments via `conda run`, verified by successful execution in environments different from the test runner.
 - **SC-005**: Minimal CI runs (`smoke_minimal`) complete within time budget; equivalence tests run only in `smoke_full` mode. Schema self-consistency tests may run in `smoke_minimal` as they require no heavy computation.
 - **SC-006**: Cellpose equivalence achieves mean IoU >= 0.95 between MCP and native label outputs (with explicit determinism controls where possible).
 - **SC-007**: Matplotlib equivalence validates artifact existence and basic semantic properties without false failures from rendering differences.
+- **SC-008**: Xarray/Pandas equivalence asserts metadata preservation (dims/coords for Xarray; columns/index for Pandas).
