@@ -105,6 +105,7 @@ def _save_image(self, array: np.ndarray, work_dir: Path | None = None, axes: str
 | `datasets/tttr-data/` | 109 MB | LFS | tttrlib integration tests |
 | `datasets/sample_czi/` | 42 MB | LFS | CZI format validation |
 | `datasets/sample_data/*.csv` | <1 MB | In repo | Pandas equivalence tests |
+| `datasets/samples/` | Empty | N/A | Future sample images |
 
 ### LFS Configuration
 - All files under `datasets/**` are tracked by Git LFS (see `.gitattributes`)
@@ -170,8 +171,8 @@ If adding new datasets:
 
 ### T000b: Verify Dataset LFS Status
 **Checklist**:
-- [ ] Confirm `.gitattributes` tracks `datasets/**`
-- [ ] Document all datasets in this inventory
-- [ ] Verify each dataset folder has README with provenance
-- [ ] Add missing LICENSE files where needed
-- [ ] Test LFS pointer detection works correctly
+- [x] Confirm `.gitattributes` tracks `datasets/**`
+- [x] Document all datasets in this inventory
+- [x] Verify each dataset folder has README with provenance
+- [x] Add missing LICENSE files where needed
+- [x] Test LFS pointer detection works correctly
