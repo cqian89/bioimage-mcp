@@ -157,15 +157,40 @@ class ScipyNdimageAdapter(BaseAdapter):
             data = data.compute()
         return data
 
-    def _save_image(self, array: np.ndarray, work_dir: Path | None = None) -> dict:
-        """Save image array to file and return artifact reference dict."""
-        if tifffile is None:
-            raise RuntimeError("tifffile is required for saving images")
+    def _extract_axes(self, artifact: Artifact) -> str:
+        metadata: dict[str, Any] = {}
+        if isinstance(artifact, dict):
+            metadata = artifact.get("metadata") or {}
+        else:
+            metadata = getattr(artifact, "metadata", {}) or {}
+        return str(metadata.get("axes") or "")
 
-        # Create temp file
+    def _infer_axes(self, array: np.ndarray) -> str:
+        axes_map = {
+            2: "YX",
+            3: "ZYX",
+            4: "CZYX",
+            5: "TCZYX",
+        }
+        return axes_map.get(array.ndim, "")
+
+    def _save_image(
+        self,
+        array: np.ndarray,
+        work_dir: Path | None = None,
+        axes: str | None = None,
+    ) -> dict:
+        """Save image array to file and return artifact reference dict."""
+        # Use .ome.tiff extension for better compatibility
+        ext = ".ome.tiff"
+
+        if array.dtype == np.int64 or array.dtype == np.uint64:
+            # OME-TIFF/tifffile doesn't support 64-bit ints in OME-XML
+            array = array.astype(np.uint32)
+
         if work_dir is None:
             # Use system temp directory
-            fd, path_str = tempfile.mkstemp(suffix=".tif")
+            fd, path_str = tempfile.mkstemp(suffix=ext)
             import os
 
             os.close(fd)
@@ -173,31 +198,46 @@ class ScipyNdimageAdapter(BaseAdapter):
         else:
             # Use provided work directory
             work_dir.mkdir(parents=True, exist_ok=True)
-            path = work_dir / "output.tif"
+            path = work_dir / f"output{ext}"
 
-        # Save image
-        tifffile.imwrite(path, array)
+        # Only use passed axes if they match the output array dimensions
+        if axes and len(axes) == array.ndim:
+            inferred_axes = axes
+        else:
+            inferred_axes = self._infer_axes(array)
 
-        # Infer dimension labels based on array dimensionality
-        inferred_dims = (
-            list("TCZYX"[-array.ndim :])
-            if array.ndim <= 5
-            else [f"d{i}" for i in range(array.ndim)]
-        )
+        # Save image using OmeTiffWriter for consistency
+        saved = False
+        try:
+            from bioio.writers import OmeTiffWriter
+
+            if len(inferred_axes) == array.ndim:
+                OmeTiffWriter.save(array, str(path), dim_order=inferred_axes)
+                saved = True
+        except Exception:
+            pass
+
+        if not saved:
+            if tifffile is None:
+                raise RuntimeError("tifffile is required for saving images")
+            metadata = {"axes": inferred_axes} if inferred_axes else None
+            tifffile.imwrite(path, array, metadata=metadata, photometric="minisblack")
 
         # Return artifact reference as dict (compatible with entrypoint protocol)
-        return {
+        ref = {
             "type": "BioImageRef",
             "format": "OME-TIFF",
             "uri": path.absolute().as_uri(),
             "path": str(path.absolute()),
             "metadata": {
-                "shape": list(array.shape),
-                "dims": inferred_dims,
+                "axes": inferred_axes,
+                "dims": list(inferred_axes) if inferred_axes else [],
                 "ndim": array.ndim,
+                "shape": list(array.shape),
                 "dtype": str(array.dtype),
             },
         }
+        return ref
 
     def execute(
         self,
@@ -227,16 +267,18 @@ class ScipyNdimageAdapter(BaseAdapter):
             for art in normalized_inputs
             if not (isinstance(art, str) and (" " in art or len(art) > 64))
         ]
+        axes = ""
         if normalized_inputs:
             # Load the first input as numpy array
             image_data = self._load_image(normalized_inputs[0])
             args.append(image_data)
+            axes = self._extract_axes(normalized_inputs[0])
 
         # Execute function
         result = func(*args, **params)
 
         # Save result and create artifact reference dict
-        output_ref = self._save_image(result, work_dir=work_dir)
+        output_ref = self._save_image(result, work_dir=work_dir, axes=axes)
 
         return [output_ref]
 
