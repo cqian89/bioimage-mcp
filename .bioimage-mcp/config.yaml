@@ -3,6 +3,7 @@ tool_manifest_roots:
 - /home/qianchen/.bioimage-mcp/tools
 - /mnt/c/Users/meqia/bioimage-mcp/tools/base
 - /mnt/c/Users/meqia/bioimage-mcp/tools/cellpose
+- /mnt/c/Users/meqia/bioimage-mcp/tools/tttrlib
 fs_allowlist_read:
 - /mnt/c/Users/meqia/bioimage-mcp/datasets
 - /home/qianchen/.bioimage-mcp/artifacts
