@@ -12,22 +12,22 @@ This roadmap structures the development of `bioimage-mcp` into 4 coherent phases
 ## Phase Structure
 
 ### Phase 1: Core Runtime
-**Status:** Complete (with minor gaps) (~90%)
+**Status:** Complete (100%)
 **Goal:** System can reliably spawn and manage persistent worker processes in isolated environments.
 **Focus:** Process lifecycle, IPC, GPU detection.
 
 | Requirement | Description | Status |
 |-------------|-------------|--------|
 | **CORE-01** | System executes tools in isolated Conda environments | ✅ |
-| **CORE-02** | System passes through local GPU (CUDA/MPS) availability | ⚠️ |
+| **CORE-02** | System passes through local GPU (CUDA/MPS) availability | ✅ |
 | **CORE-03** | Core server communicates via NDJSON over stdio | ✅ |
 | **CORE-04** | System handles process lifecycle (no zombies) | ✅ |
 
 **Notes:**
-- CORE-02: NVIDIA GPU detection implemented; MPS (Apple Silicon) detection is a known gap.
+- CORE-02: Unified GPU detection for NVIDIA (CUDA) and Apple Silicon (MPS) implemented.
 
 **Plans:** 1 plan (Wave 1)
-- [ ] 01-01-PLAN.md — Add MPS (Apple Silicon) GPU detection to complete CORE-02
+- [x] 01-01-PLAN.md — Add MPS (Apple Silicon) GPU detection to complete CORE-02
 
 ### Phase 2: Tool Management
 **Status:** Complete (100%)

@@ -2,15 +2,15 @@
 
 **Project:** Bioimage-MCP
 **Core Value:** Enables AI agents to safely and reproducibly execute bioimage analysis tools without dependency conflicts.
-**Current Focus:** Phase 2: Tool Management & CLI Completion
+**Current Focus:** Phase 1 & 2 Cleanup
 
-## Overall Progress (~91% complete)
+## Overall Progress (~95% complete)
 
-- **Phase 1: Core Runtime** (~90% complete)
+- **Phase 1: Core Runtime** (100% complete) - **PHASE COMPLETE**
   - ✅ Conda isolation (`persistent.py`, `executor.py`)
   - ✅ NDJSON IPC (`worker_ipc.py`)
   - ✅ Process lifecycle (`PersistentWorkerManager`)
-  - ⚠️ GPU detection partial (NVIDIA only, no MPS)
+  - ✅ Unified GPU detection (NVIDIA CUDA + Apple Silicon MPS)
 
 - **Phase 2: Tool Management** (100% complete) - **PHASE COMPLETE**
   - ✅ `doctor` command complete
@@ -29,12 +29,12 @@
 
 ## Current Position
 
-Phase: 2 of 4 (Tool Management)
-Plan: 4 of 4 in current phase
+Phase: 1 of 4 (Core Runtime)
+Plan: 1 of 1 in current phase
 Status: Phase complete
-Last activity: 2026-01-22 - Completed 02-04-PLAN.md (Gap Closure)
+Last activity: 2026-01-22 - Completed 01-01-PLAN.md (MPS Detection)
 
-Progress: ██████████ 100% (Phase 2)
+Progress: ██████████ 100% (Phases 1 & 2)
 
 ## Context & Memory
 
@@ -48,15 +48,16 @@ Progress: ██████████ 100% (Phase 2)
 - **Active Worker Safety**: (Phase 2-03) Tool removal is blocked if an active worker process is detected, preventing disruption of running sessions.
 - **Base Environment Protection**: (Phase 2-03) The 'base' environment is protected from removal as it contains core server components.
 - **Filesystem-over-Database Priority**: (Phase 2-04) The `list` command was refactored to read manifests directly from disk, ensuring consistency with `doctor` and avoiding reliance on a potentially stale SQLite registry.
+- **Unified GPU Detection**: (Phase 1-01) Single 'gpu' check reports both CUDA and MPS status using dependency-free system probing.
 
 ### Blockers
 - None.
 
 ### Next Steps
-- Plan and execute Phase 4: Reproducibility
+- Plan and execute Phase 4: Reproducibility (Validation & Production-readiness)
 
 ## Session Continuity
 
-Last session: 2026-01-22T12:50:00Z
-Stopped at: Completed 02-04-PLAN.md
+Last session: 2026-01-22T13:15:00Z
+Stopped at: Completed 01-01-PLAN.md
 Resume file: None
