@@ -13,13 +13,23 @@ def _build_parser() -> argparse.ArgumentParser:
 
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    install = subparsers.add_parser("install", help="Install base environments")
-    install.add_argument("--profile", choices=["cpu", "gpu"], default="cpu")
+    install = subparsers.add_parser("install", help="Install tool environments")
+    install.add_argument(
+        "tools", nargs="*", help="Specific tools to install (e.g., cellpose tttrlib)"
+    )
+    install.add_argument(
+        "--profile", choices=["cpu", "gpu", "minimal"], help="Install a predefined profile"
+    )
+    install.add_argument("--force", action="store_true", help="Reinstall even if already exists")
     install.set_defaults(_handler=_handle_install)
 
     doctor = subparsers.add_parser("doctor", help="Check local readiness")
     doctor.add_argument("--json", action="store_true", help="Output machine-readable JSON")
     doctor.set_defaults(_handler=_handle_doctor)
+
+    list_cmd = subparsers.add_parser("list", help="List installed tools and their status")
+    list_cmd.add_argument("--json", action="store_true", help="Output machine-readable JSON")
+    list_cmd.set_defaults(_handler=_handle_list)
 
     configure = subparsers.add_parser("configure", help="Write starter configuration")
     configure.set_defaults(_handler=_handle_configure)
@@ -27,6 +37,11 @@ def _build_parser() -> argparse.ArgumentParser:
     serve = subparsers.add_parser("serve", help="Start the MCP server")
     serve.add_argument("--stdio", action="store_true", help="Use stdio transport")
     serve.set_defaults(_handler=_handle_serve)
+
+    remove = subparsers.add_parser("remove", help="Remove a tool environment")
+    remove.add_argument("tool", help="Tool to remove (e.g., cellpose)")
+    remove.add_argument("--yes", "-y", action="store_true", help="Skip confirmation")
+    remove.set_defaults(_handler=_handle_remove)
 
     return parser
 
@@ -40,13 +55,27 @@ def _print_error(code: str, message: str, *, details: object | None, debug: bool
 def _handle_install(args: argparse.Namespace) -> int:
     from bioimage_mcp.bootstrap.install import install
 
-    return install(profile=args.profile)
+    if args.tools and args.profile:
+        print("Error: tools and --profile are mutually exclusive", file=sys.stderr)
+        return 1
+
+    return install(
+        tools=args.tools if args.tools else None,
+        profile=args.profile,
+        force=args.force,
+    )
 
 
 def _handle_doctor(args: argparse.Namespace) -> int:
     from bioimage_mcp.bootstrap.doctor import doctor
 
     return doctor(json_output=args.json)
+
+
+def _handle_list(args: argparse.Namespace) -> int:
+    from bioimage_mcp.bootstrap.list import list_tools
+
+    return list_tools(json_output=args.json)
 
 
 def _handle_configure(args: argparse.Namespace) -> int:
@@ -59,6 +88,12 @@ def _handle_serve(args: argparse.Namespace) -> int:
     from bioimage_mcp.bootstrap.serve import serve
 
     return serve(stdio=args.stdio)
+
+
+def _handle_remove(args: argparse.Namespace) -> int:
+    from bioimage_mcp.bootstrap.remove import remove_tool
+
+    return remove_tool(args.tool, yes=args.yes)
 
 
 def main(argv: list[str] | None = None) -> int:
