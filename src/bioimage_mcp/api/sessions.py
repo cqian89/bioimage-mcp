@@ -316,6 +316,26 @@ class SessionService:
 
         record = WorkflowRecord(**record_data)
 
+        # Validate overrides against tool schemas (T-override-validation)
+        if request.params_overrides or request.step_overrides:
+            override_errors = self._validate_overrides(
+                params_overrides=request.params_overrides,
+                step_overrides=request.step_overrides,
+                record=record,
+            )
+            if override_errors:
+                return SessionReplayResponse(
+                    run_id="none",
+                    session_id="none",
+                    status="validation_failed",
+                    workflow_ref=request.workflow_ref,
+                    error=StructuredError(
+                        code="VALIDATION_FAILED",
+                        message=f"Override validation failed: {len(override_errors)} error(s)",
+                        details=override_errors,
+                    ),
+                )
+
         # Pre-validate all functions exist (T114)
         missing_functions = []
         for idx, step in enumerate(record.steps):

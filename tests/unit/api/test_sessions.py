@@ -91,3 +91,39 @@ def test_validate_step_overrides_invalid(session_service):
     # Assert
     assert len(errors) == 1
     assert errors[0].path == "/step_overrides/step:0/params/diameter"
+
+
+def test_replay_session_validation_failed(session_service):
+    # Setup
+    from bioimage_mcp.artifacts.models import ArtifactRef
+
+    workflow_ref = ArtifactRef(ref_id="wf-123", type="TableRef", uri="")
+    record = WorkflowRecord(
+        session_id="old-session",
+        external_inputs={},
+        steps=[
+            WorkflowStep(index=0, id="test.fn", inputs={}, params={}, outputs={}, status="success")
+        ],
+    )
+
+    session_service.artifact_store.parse_native_output.return_value = record.model_dump(mode="json")
+
+    params_schema = {"type": "object", "properties": {"diameter": {"type": "number"}}}
+    mock_descriptor = MagicMock()
+    mock_descriptor.params_schema = params_schema
+    session_service.discovery_service.describe_function.return_value = mock_descriptor
+
+    from bioimage_mcp.api.schemas import SessionReplayRequest
+
+    request = SessionReplayRequest(
+        workflow_ref=workflow_ref, inputs={}, params_overrides={"test.fn": {"diameter": "invalid"}}
+    )
+
+    # Act
+    response = session_service.replay_session(request)
+
+    # Assert
+    assert response.status == "validation_failed"
+    assert response.error.code == "VALIDATION_FAILED"
+    assert len(response.error.details) == 1
+    assert response.error.details[0].path == "/params_overrides/test.fn/diameter"
