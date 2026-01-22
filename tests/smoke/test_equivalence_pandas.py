@@ -71,6 +71,7 @@ async def test_pandas_equivalence(live_server, helper, executor, sample_csv, tmp
     table_ref = load_res["outputs"]["table"]
 
     # 2b. Convert to DataFrame (ObjectRef)
+    # Note: pandas adapter expects ref_id string, not full artifact dict
     to_df_res = await live_server.call_tool(
         "run",
         {
@@ -78,18 +79,8 @@ async def test_pandas_equivalence(live_server, helper, executor, sample_csv, tmp
             "inputs": {"image": table_ref["ref_id"]},
         },
     )
-    if to_df_res.get("status") != "success":
-        # Try another way: just pass the whole ref but maybe the server is picky about the tool
-        to_df_res = await live_server.call_tool(
-            "run",
-            {
-                "fn_id": "base.pandas.DataFrame",
-                "inputs": {"image": table_ref},
-            },
-        )
-
     assert to_df_res.get("status") == "success", f"Conversion failed: {to_df_res}"
-    df_ref = to_df_res["outputs"].get("da") or to_df_res["outputs"].get("output")
+    df_ref = to_df_res["outputs"]["output"]
 
     # 2c. Describe
     describe_res = await live_server.call_tool(
@@ -130,7 +121,9 @@ async def test_pandas_equivalence(live_server, helper, executor, sample_csv, tmp
         # We'll use a unique name to avoid collisions
         import uuid
 
-        dest_path = Path(f"/home/qianchen/.bioimage-mcp/artifacts/{name}_{uuid.uuid4()}.csv")
+        dest_path = Path.home() / ".bioimage-mcp" / "artifacts" / f"{name}_{uuid.uuid4()}.csv"
+        # Ensure parent exists
+        dest_path.parent.mkdir(parents=True, exist_ok=True)
         export_res = await live_server.call_tool(
             "run",
             {

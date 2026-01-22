@@ -26,7 +26,7 @@ async def test_phasorpy_equivalence(live_server):
     env_name = "bioimage-mcp-base"
 
     # Use a directory that is in the server's allowlist for both read and write
-    test_dir = Path("/home/qianchen/.bioimage-mcp/artifacts/test_tmp")
+    test_dir = Path.home() / ".bioimage-mcp" / "artifacts" / "test_tmp"
     test_dir.mkdir(parents=True, exist_ok=True)
 
     try:
@@ -52,8 +52,8 @@ async def test_phasorpy_equivalence(live_server):
         image_artifact = load_result["outputs"]["image"]
 
         # Try to find the phase axis (size 16)
-        image_metadata = image_artifact.get("metadata", {})
-        image_shape = image_metadata.get("shape", [])
+        # Note: RunResponseSerializer flattens dimension fields to top-level
+        image_shape = image_artifact.get("shape", [])
         try:
             mcp_axis = image_shape.index(16)
         except ValueError:

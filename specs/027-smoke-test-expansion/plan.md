@@ -9,12 +9,12 @@ Expand smoke tests to cover all implemented libraries (PhasorPy, Cellpose, Sciki
 - **Tool-env Dependencies (via conda run)**: bioio (+ readers/writers), library under test (e.g., cellpose)
 - **Testing**: pytest with smoke_minimal and smoke_full markers
 - **Target Platform**: Cross-platform (Linux/macOS/Windows)
-- **Project Type**: Test suite expansion (no MCP API changes)
+- **Project Type**: Test suite expansion (adds optional `verbosity` parameter to MCP `run` for token-safe responses; backward-compatible, defaults to `minimal`)
 - **Key Libraries**: PhasorPy, Cellpose, Scikit-image, SciPy, Matplotlib, Xarray, Pandas
 - **Constraints**: Tests run in core env but spawn isolated subprocesses via conda run
 
 ## Constitution Check
-- [x] **Stable MCP surface**: No MCP API changes - tests only consume existing describe() and run()
+- [x] **Stable MCP surface**: Adds optional `verbosity` parameter to `run` (defaults to `minimal`); backward-compatible with existing clients. `RunResponseSerializer` reduces token bloat in responses.
 - [x] **Tool execution isolated**: Native scripts run via conda run -n <env>
 - [x] **Artifact references only**: Tests validate BioImageRef/LabelImageRef/PlotRef/TableRef artifacts
 - [x] **Reproducibility**: Tests use explicit tolerances and document nondeterminism limits

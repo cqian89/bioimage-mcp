@@ -530,7 +530,9 @@ def table_export(
         raise ValueError(f"Unsupported artifact type for table export: {artifact_type}")
 
     # T039: Preserve float precision (15 significant digits)
-    df.to_csv(dest_path, sep=sep, index=False, float_format="%.15g")
+    # Include index if it's not a default RangeIndex or if it has a name
+    include_index = not isinstance(df.index, pd.RangeIndex) or df.index.name is not None
+    df.to_csv(dest_path, sep=sep, index=include_index, float_format="%.15g")
 
     # Create TableRef output
     ref_id = uuid.uuid4().hex

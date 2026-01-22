@@ -374,13 +374,18 @@ class PandasAdapterForRegistry(BaseAdapter):
             ]
         elif "groupby" in str(type(result)).lower():
             artifact_id = str(uuid.uuid4())
-            uri = f"obj://default/pandas/groupby/{artifact_id}"
+            uri = f"obj://default/pandas/groupby-{artifact_id}"
             OBJECT_CACHE[uri] = result
 
             # Extract metadata for GroupByRef
+            # Use result.keys (stable API) instead of deprecated result.grouper.names
             grouped_by = []
-            if hasattr(result, "grouper") and hasattr(result.grouper, "names"):
-                grouped_by = [str(n) for n in result.grouper.names if n is not None]
+            if hasattr(result, "keys"):
+                keys = result.keys
+                if isinstance(keys, list):
+                    grouped_by = [str(k) for k in keys if k is not None]
+                elif keys is not None:
+                    grouped_by = [str(keys)]
 
             groups_count = 0
             if hasattr(result, "ngroups"):
@@ -414,7 +419,8 @@ class PandasAdapterForRegistry(BaseAdapter):
 
         if format == "csv":
             out_path = work_dir / f"{name}.csv"
-            df.to_csv(out_path, index=False)
+            include_index = not isinstance(df.index, pd.RangeIndex) or df.index.name is not None
+            df.to_csv(out_path, index=include_index)
         else:
             out_path = work_dir / f"{name}.parquet"
             df.to_parquet(out_path)

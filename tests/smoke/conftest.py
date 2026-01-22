@@ -85,13 +85,19 @@ def log_dir(smoke_config, smoke_record):
     return smoke_config.log_dir
 
 
-@pytest.fixture
-def interaction_logger(request, log_dir, smoke_record, live_server):
+@pytest.fixture(autouse=True)
+def interaction_logger(request, log_dir, smoke_record):
     """Per-test interaction logger that saves on completion."""
     logger = InteractionLogger()
+    live_server = None
+    if smoke_record:
+        live_server = request.getfixturevalue("live_server")
+        live_server._logger = logger
+
     yield logger
 
     if smoke_record:
+        live_server._logger = None
         test_name = request.node.name
         timestamp = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d_%H%M%S")
 

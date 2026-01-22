@@ -68,6 +68,12 @@ class RunResponseSerializer:
         if workflow_record and verbosity == "full":
             serialized["workflow_record"] = workflow_record
 
+        # error and hints (SC-001) - always include if status is failed
+        if result.get("error"):
+            serialized["error"] = result["error"]
+        if result.get("hints"):
+            serialized["hints"] = result["hints"]
+
         return serialized
 
     def _sanitize_artifact(self, ref_dict: dict[str, Any]) -> dict[str, Any]:
