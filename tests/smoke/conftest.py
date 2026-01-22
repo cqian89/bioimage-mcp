@@ -188,3 +188,70 @@ def sample_image(request, smoke_config):
     if not path.exists():
         pytest.skip(f"Dataset missing: {path}")
     return path
+
+
+@pytest.fixture
+def helper():
+    """Provide DataEquivalenceHelper for smoke tests."""
+    from tests.smoke.utils.data_equivalence import DataEquivalenceHelper
+
+    return DataEquivalenceHelper()
+
+
+@pytest.fixture
+def native_executor():
+    """Provide NativeExecutor for smoke tests."""
+    from tests.smoke.utils.native_executor import NativeExecutor
+
+    return NativeExecutor()
+
+
+@pytest.fixture
+def synthetic_image():
+    """Small synthetic image (64x64 float32)."""
+    import numpy as np
+
+    return np.random.rand(64, 64).astype(np.float32)
+
+
+@pytest.fixture
+def synthetic_labels():
+    """Small synthetic labels (64x64 uint16)."""
+    import numpy as np
+
+    labels = np.zeros((64, 64), dtype=np.uint16)
+    # Add a few "cells"
+    labels[10:20, 10:20] = 1
+    labels[30:40, 30:40] = 2
+    labels[50:60, 50:60] = 3
+    return labels
+
+
+@pytest.fixture
+def synthetic_dataframe():
+    """Small synthetic pandas DataFrame."""
+    import pandas as pd
+
+    return pd.DataFrame(
+        {
+            "id": [1, 2, 3],
+            "area": [100.5, 200.0, 150.2],
+            "label": ["cell1", "cell2", "cell3"],
+        }
+    )
+
+
+@pytest.fixture
+def synthetic_xarray():
+    """Small synthetic xarray DataArray."""
+    import numpy as np
+    import xarray as xr
+
+    data = np.random.rand(4, 64, 64).astype(np.float32)
+    return xr.DataArray(
+        data,
+        dims=("c", "y", "x"),
+        coords={"c": ["ch1", "ch2", "ch3", "ch4"]},
+        name="test_data",
+        attrs={"units": "counts"},
+    )
