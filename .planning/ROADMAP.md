@@ -26,6 +26,9 @@ This roadmap structures the development of `bioimage-mcp` into 4 coherent phases
 **Notes:**
 - CORE-02: NVIDIA GPU detection implemented; MPS (Apple Silicon) detection is a known gap.
 
+**Plans:** 1 plan (Wave 1)
+- [ ] 01-01-PLAN.md — Add MPS (Apple Silicon) GPU detection to complete CORE-02
+
 ### Phase 2: Tool Management
 **Status:** Complete (100%)
 **Goal:** User can manage the lifecycle of tool environments via CLI.
