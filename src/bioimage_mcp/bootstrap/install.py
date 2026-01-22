@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 import subprocess
+import sys
 from pathlib import Path
 
 import yaml
@@ -8,6 +10,27 @@ import yaml
 from bioimage_mcp.bootstrap.configure import configure
 from bioimage_mcp.bootstrap.env_manager import detect_env_manager
 from bioimage_mcp.config.loader import find_repo_root
+
+PROFILES = {
+    "cpu": ["base", "cellpose"],  # Default CPU profile
+    "gpu": ["base", "cellpose"],  # GPU adds CUDA post-install
+    "minimal": ["base"],  # Just the base
+}
+
+
+def discover_available_tools() -> dict[str, Path]:
+    """Return {tool_name: env_yaml_path} for all tools in envs/ directory."""
+    repo_root = find_repo_root()
+    base_dir = repo_root if repo_root else Path.cwd()
+    envs_dir = base_dir / "envs"
+
+    tools = {}
+    if envs_dir.exists():
+        for f in envs_dir.glob("bioimage-mcp-*.yaml"):
+            # bioimage-mcp-cellpose.yaml -> cellpose
+            tool_name = f.stem.replace("bioimage-mcp-", "")
+            tools[tool_name] = f
+    return tools
 
 
 def _ensure_tool_manifest_roots() -> None:
@@ -47,59 +70,145 @@ def _ensure_tool_manifest_roots() -> None:
     config_path.write_text(yaml.safe_dump(data, sort_keys=False))
 
 
-def install(*, profile: str) -> int:
+def _env_exists(exe: str, env_name: str) -> bool:
+    """Check if a conda/micromamba environment exists."""
+    try:
+        proc = subprocess.run(
+            [exe, "env", "list", "--json"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if proc.returncode != 0:
+            return False
+        data = json.loads(proc.stdout)
+        envs = data.get("envs", [])
+        for env in envs:
+            if Path(env).name == env_name:
+                return True
+        return False
+    except Exception:
+        return False
+
+
+def _install_env(exe: str, manager: str, env_name: str, env_file: Path) -> bool:
+    """Install or update a conda/micromamba environment."""
+    # Try update first
+    cmd = [exe, "env", "update", "-n", env_name, "-f", str(env_file)]
+    if manager != "micromamba":
+        cmd.append("--prune")
+
+    result = subprocess.run(cmd, check=False)
+    if result.returncode == 0:
+        return True
+
+    # If update fails, try create
+    if manager == "micromamba":
+        create_cmd = [exe, "create", "-n", env_name, "-f", str(env_file), "-y"]
+    else:
+        create_cmd = [exe, "env", "create", "-n", env_name, "-f", str(env_file), "-y"]
+
+    result = subprocess.run(create_cmd, check=False)
+    return result.returncode == 0
+
+
+def _gpu_post_install(exe: str, env_name: str) -> None:
+    """Configure GPU support (specifically for cellpose/pytorch)."""
+    print(f"Configuring GPU support for {env_name}...")
+    subprocess.run(
+        [exe, "remove", "-n", env_name, "-y", "cpuonly"],
+        check=False,
+    )
+    subprocess.run(
+        [
+            exe,
+            "install",
+            "-n",
+            env_name,
+            "-y",
+            "-c",
+            "nvidia",
+            "pytorch-cuda=11.8",
+        ],
+        check=False,
+    )
+
+
+def install(
+    *,
+    tools: list[str] | None = None,
+    profile: str | None = None,
+    force: bool = False,
+) -> int:
     """Install/update the base and tool environments."""
-
-    if profile not in {"cpu", "gpu"}:
-        raise ValueError("profile must be cpu or gpu")
-
     detected = detect_env_manager()
     if not detected:
-        raise RuntimeError("No micromamba/conda/mamba found on PATH")
+        print("Error: No micromamba/conda/mamba found on PATH", file=sys.stderr)
+        return 1
 
     manager, exe, _version = detected
+    available_tools = discover_available_tools()
 
-    env_specs = [
-        ("bioimage-mcp-base", Path.cwd() / "envs" / "bioimage-mcp-base.yaml"),
-        ("bioimage-mcp-cellpose", Path.cwd() / "envs" / "bioimage-mcp-cellpose.yaml"),
-    ]
+    # Resolve tool list
+    if profile:
+        if profile not in PROFILES:
+            choices = ", ".join(PROFILES.keys())
+            print(f"Error: Invalid profile '{profile}'. Choices: {choices}", file=sys.stderr)
+            return 1
+        tool_names = list(PROFILES[profile])
+    elif tools:
+        tool_names = list(tools)
+    else:
+        # Default to cpu profile
+        profile = "cpu"
+        tool_names = list(PROFILES[profile])
 
-    for _env_name, env_file in env_specs:
-        if not env_file.exists():
-            raise FileNotFoundError(f"Missing env spec: {env_file}")
+    # Always prepend "base" if not in list (base is required)
+    if "base" not in tool_names:
+        tool_names.insert(0, "base")
 
-    for env_name, env_file in env_specs:
-        cmd = [exe, "env", "update", "-n", env_name, "-f", str(env_file)]
-        if manager != "micromamba":
-            cmd.append("--prune")
-        result = subprocess.run(cmd, check=False)
-        if result.returncode != 0:
-            if manager == "micromamba":
-                create_cmd = [exe, "create", "-n", env_name, "-f", str(env_file), "-y"]
-            else:
-                create_cmd = [exe, "env", "create", "-n", env_name, "-f", str(env_file), "-y"]
-            subprocess.run(create_cmd, check=False)
+    # Validate tools exist
+    for name in tool_names:
+        if name not in available_tools:
+            print(f"Error: Tool '{name}' not found in envs/ directory.", file=sys.stderr)
+            return 1
 
-    if profile == "gpu":
-        subprocess.run(
-            [exe, "remove", "-n", "bioimage-mcp-cellpose", "-y", "cpuonly"],
-            check=False,
-        )
-        subprocess.run(
-            [
-                exe,
-                "install",
-                "-n",
-                "bioimage-mcp-cellpose",
-                "-y",
-                "-c",
-                "nvidia",
-                "pytorch-cuda=11.8",
-            ],
-            check=False,
-        )
+    stats = {"installed": 0, "skipped": 0, "failed": 0}
 
-    _ensure_tool_manifest_roots()
+    for name in tool_names:
+        env_name = f"bioimage-mcp-{name}"
+        env_file = available_tools[name]
 
-    print("Next: run `bioimage-mcp doctor`")
-    return 0
+        # Check if exists
+        exists = _env_exists(exe, env_name)
+        if exists and not force:
+            print(f"{name} already installed (use --force to reinstall)")
+            stats["skipped"] += 1
+            continue
+
+        print(f"Installing {name}...")
+
+        # Install logic
+        success = _install_env(exe, manager, env_name, env_file)
+        if not success:
+            print(f"Failed to install {name}")
+            stats["failed"] += 1
+            continue
+
+        # GPU post-install for cellpose
+        if profile == "gpu" and name == "cellpose":
+            _gpu_post_install(exe, env_name)
+
+        stats["installed"] += 1
+
+    summary = (
+        f"\nSummary: Installed: {stats['installed']}, "
+        f"Skipped: {stats['skipped']}, Failed: {stats['failed']}"
+    )
+    print(summary)
+
+    if stats["failed"] == 0:
+        _ensure_tool_manifest_roots()
+        print("Next: run `bioimage-mcp doctor`")
+        return 0
+    return 1
