@@ -174,3 +174,83 @@ def test_version_mismatch_warning_helper():
     assert len(error.details) == 1
     assert error.details[0].expected == "old"
     assert error.details[0].actual == "new"
+
+
+def test_replay_session_environment_missing(session_service):
+    # Setup
+    from bioimage_mcp.artifacts.models import ArtifactRef
+    from unittest.mock import patch, MagicMock
+
+    workflow_ref = ArtifactRef(ref_id="wf-123", type="TableRef", uri="")
+    record = WorkflowRecord(
+        session_id="old-session",
+        external_inputs={},
+        steps=[
+            WorkflowStep(
+                index=0, id="missing-env.fn", inputs={}, params={}, outputs={}, status="success"
+            )
+        ],
+    )
+
+    session_service.artifact_store.parse_native_output.return_value = record.model_dump(mode="json")
+
+    from bioimage_mcp.api.schemas import SessionReplayRequest
+
+    request = SessionReplayRequest(workflow_ref=workflow_ref, inputs={})
+
+    # Mock subprocess.run to simulate missing environment
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=1)
+
+        # Act
+        response = session_service.replay_session(request)
+
+        # Assert
+        assert response.status == "validation_failed"
+        assert response.error.code == "ENVIRONMENT_MISSING"
+        assert response.installable is not None
+        assert response.installable.env_name == "missing-env"
+        assert "bioimage-mcp install missing-env" in response.installable.command
+
+
+def test_replay_session_function_not_found(session_service):
+    # Setup
+    from bioimage_mcp.artifacts.models import ArtifactRef
+    from unittest.mock import patch, MagicMock
+
+    workflow_ref = ArtifactRef(ref_id="wf-123", type="TableRef", uri="")
+    record = WorkflowRecord(
+        session_id="old-session",
+        external_inputs={},
+        steps=[
+            WorkflowStep(
+                index=0,
+                id="existing-env.missing-fn",
+                inputs={},
+                params={},
+                outputs={},
+                status="success",
+            )
+        ],
+    )
+
+    session_service.artifact_store.parse_native_output.return_value = record.model_dump(mode="json")
+
+    from bioimage_mcp.api.schemas import SessionReplayRequest
+
+    request = SessionReplayRequest(workflow_ref=workflow_ref, inputs={})
+
+    # Mock subprocess.run to simulate existing environment
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0)
+
+        # Mock _function_exists to return False
+        session_service._function_exists = MagicMock(return_value=False)
+
+        # Act
+        response = session_service.replay_session(request)
+
+        # Assert
+        assert response.status == "validation_failed"
+        assert response.error.code == "NOT_FOUND"
+        assert "Function 'existing-env.missing-fn' not found" in response.error.message

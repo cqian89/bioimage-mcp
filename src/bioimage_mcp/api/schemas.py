@@ -75,6 +75,14 @@ class SuggestedFix(BaseModel):
     explanation: str
 
 
+class InstallOffer(BaseModel):
+    """Structured offer for environment auto-install."""
+
+    env_name: str
+    command: str  # e.g., "bioimage-mcp install cellpose"
+    estimated_time: str | None = None  # e.g., "2-5 minutes"
+
+
 class SuccessHints(BaseModel):
     """Hints returned on successful execution."""
 
@@ -439,6 +447,7 @@ class SessionReplayResponse(BaseModel):
     workflow_ref: ArtifactRef
     log_ref: ArtifactRef | None = None
     error: StructuredError | None = None
+    installable: InstallOffer | None = None  # Present when ENVIRONMENT_MISSING error
 
 
 # Workflow Models

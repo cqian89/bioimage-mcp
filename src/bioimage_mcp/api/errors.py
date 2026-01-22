@@ -15,6 +15,7 @@ EXECUTION_FAILED = "EXECUTION_FAILED"  # Tool execution error
 PERMISSION_DENIED = "PERMISSION_DENIED"  # Filesystem access denied
 SCHEMA_MISMATCH = "SCHEMA_MISMATCH"  # Workflow record schema incompatibility
 VERSION_MISMATCH = "VERSION_MISMATCH"  # Tool version differs from recorded
+ENVIRONMENT_MISSING = "ENVIRONMENT_MISSING"  # Required tool environment not installed
 
 
 def validation_error(
@@ -53,13 +54,33 @@ def version_mismatch_warning(
 ) -> StructuredError:
     """Create a VERSION_MISMATCH warning for provenance differences."""
     detail = ErrorDetail(
-        path=f"/steps/*/provenance/lock_hash",
+        path="/steps/*/provenance/lock_hash",
         expected=recorded_hash,
         actual=current_hash,
         hint=hint,
     )
     return StructuredError(
         code=VERSION_MISMATCH,
+        message=message,
+        details=[detail],
+    )
+
+
+def environment_missing_error(
+    message: str,
+    env_name: str,
+    fn_id: str,
+    hint: str = "",
+) -> StructuredError:
+    """Create an ENVIRONMENT_MISSING error with install suggestion."""
+    detail = ErrorDetail(
+        path="/steps/*/id",
+        expected=f"installed environment: {env_name}",
+        actual="not installed",
+        hint=hint or f"Run 'bioimage-mcp install {env_name}' to install this environment",
+    )
+    return StructuredError(
+        code=ENVIRONMENT_MISSING,
         message=message,
         details=[detail],
     )

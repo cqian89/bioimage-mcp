@@ -5,6 +5,7 @@ Includes support for session export and replay for reproducibility.
 
 import json
 import logging
+import subprocess
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
@@ -13,11 +14,16 @@ from typing import Any, cast
 from jsonschema import ValidationError, validate
 
 from bioimage_mcp.api.discovery import DiscoveryService
+from bioimage_mcp.api.errors import (
+    environment_missing_error,
+    not_found_error,
+)
 from bioimage_mcp.api.execution import ExecutionService
 from bioimage_mcp.api.schemas import (
     ErrorDetail,
     ExternalInput,
     InputSource,
+    InstallOffer,
     SessionExportRequest,
     SessionExportResponse,
     SessionReplayRequest,
@@ -360,38 +366,67 @@ class SessionService:
                     ),
                 )
 
-        # Pre-validate all functions exist (T114)
-        missing_functions = []
+        # Pre-validate all functions exist and environments are installed (T114)
         for idx, step in enumerate(record.steps):
-            if not self._function_exists(step.id):
-                missing_functions.append((idx, step.id))
+            fn_id = step.id
+            env_name = fn_id.split(".")[0]
 
-        if missing_functions:
-            return SessionReplayResponse(
-                run_id="none",
-                session_id="none",
-                status="validation_failed",
-                workflow_ref=request.workflow_ref,
-                error=StructuredError(
-                    code="VALIDATION_FAILED",
-                    message=(
-                        f"Referenced function(s) not found: "
-                        f"{', '.join(fn_id for _, fn_id in missing_functions)}"
+            # Check if conda environment is installed
+            try:
+                env_installed = (
+                    subprocess.run(
+                        [
+                            "conda",
+                            "run",
+                            "-n",
+                            f"bioimage-mcp-{env_name}",
+                            "--dry-run",
+                            "python",
+                            "-c",
+                            "print('ok')",
+                        ],
+                        capture_output=True,
+                    ).returncode
+                    == 0
+                )
+            except Exception:
+                env_installed = False
+
+            if not env_installed:
+                install_offer = InstallOffer(
+                    env_name=env_name,
+                    command=f"bioimage-mcp install {env_name}",
+                )
+                return SessionReplayResponse(
+                    run_id="none",
+                    session_id="none",
+                    status="validation_failed",
+                    workflow_ref=request.workflow_ref,
+                    error=environment_missing_error(
+                        message=f"Environment '{env_name}' not installed",
+                        env_name=env_name,
+                        fn_id=fn_id,
                     ),
-                    details=[
-                        ErrorDetail(
-                            path=f"/steps/{idx}/id",
-                            expected="valid function ID",
-                            actual=fn_id,
-                            hint=(
-                                "Function may have been removed or renamed. "
-                                "Use 'list' or 'search' to find valid functions."
-                            ),
-                        )
-                        for idx, fn_id in missing_functions
-                    ],
-                ),
-            )
+                    installable=install_offer,
+                )
+
+            # Environment exists, now check if function exists in it
+            if not self._function_exists(fn_id):
+                return SessionReplayResponse(
+                    run_id="none",
+                    session_id="none",
+                    status="validation_failed",
+                    workflow_ref=request.workflow_ref,
+                    error=not_found_error(
+                        message=f"Function '{fn_id}' not found in environment '{env_name}'",
+                        path=f"/steps/{idx}/id",
+                        expected="installed function",
+                        hint=(
+                            "Function may have been removed or renamed. "
+                            "Use 'list' or 'search' to find valid functions."
+                        ),
+                    ),
+                )
 
         # Validate external input bindings (T097, T088)
         mapped_inputs: dict[str, str] = {}
