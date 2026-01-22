@@ -312,7 +312,7 @@ class SessionService:
             else:
                 record_data = self.artifact_store.parse_native_output(request.workflow_ref.ref_id)
         except Exception as e:
-            raise ValueError(f"Failed to load workflow record: {e}")
+            raise ValueError(f"Failed to load workflow record: {e}") from e
 
         record = WorkflowRecord(**record_data)
 
@@ -350,13 +350,19 @@ class SessionService:
                 workflow_ref=request.workflow_ref,
                 error=StructuredError(
                     code="VALIDATION_FAILED",
-                    message=f"Referenced function(s) not found: {', '.join(fn_id for _, fn_id in missing_functions)}",
+                    message=(
+                        f"Referenced function(s) not found: "
+                        f"{', '.join(fn_id for _, fn_id in missing_functions)}"
+                    ),
                     details=[
                         ErrorDetail(
                             path=f"/steps/{idx}/id",
                             expected="valid function ID",
                             actual=fn_id,
-                            hint="Function may have been removed or renamed. Use 'list' or 'search' to find valid functions.",
+                            hint=(
+                                "Function may have been removed or renamed. "
+                                "Use 'list' or 'search' to find valid functions."
+                            ),
                         )
                         for idx, fn_id in missing_functions
                     ],
@@ -401,13 +407,15 @@ class SessionService:
                     source_step = record.steps[source.step_index]
                     original_art_ref = source_step.outputs.get(source.port)
 
-                # Build input with available metadata to enable lazy reconstruction in execution service
+                # Build input with available metadata to enable lazy
+                # reconstruction in execution service
                 resolved_input = {"ref_id": ref_id}
                 if original_art_ref:
                     original_data = original_art_ref.model_dump(exclude_none=True)
                     if source.source == "step":
                         # For step dependencies, we MUST use the new ref_id and uri
-                        # produced by the replay. Overwriting with original would break cache lookup.
+                        # produced by the replay. Overwriting with original
+                        # would break cache lookup.
                         original_data.pop("ref_id", None)
                         original_data.pop("uri", None)
                     resolved_input.update(original_data)
