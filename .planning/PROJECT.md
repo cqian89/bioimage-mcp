@@ -15,15 +15,20 @@ Enables AI agents to safely and reproducibly execute bioimage analysis tools wit
 - ✓ Core server infrastructure (Python) — existing
 - ✓ Basic tool definition structure (`tools/`) — existing
 - ✓ Conda environment management (micromamba/conda) — existing
+- ✓ **CLI Tool Manager (partial)**: Install and doctor commands work (`bioimage-mcp install`, `bioimage-mcp doctor`)
+- ✓ **Workflow Recording**: Session recording with provenance capture implemented
+- ✓ **Artifact-based I/O**: File and memory artifacts fully operational
 
 ### Active
 
-- [ ] **CLI Tool Manager**: Install/List/Remove tools via CLI (`bioimage-mcp install`).
-- [ ] **Plugin System**: Support for external tool repositories/packages.
-- [ ] **Workflow Recording**: Capture inputs/outputs for replay.
-- [ ] **Interactive Mode**: Support tools asking users for input.
-- [ ] **GPU Passthrough**: Configure environments to use local GPU.
-- [ ] **Cross-platform Support**: CI/CD and testing for Linux/Mac/Win.
+- [ ] **CLI List/Remove**: `bioimage-mcp list` and `bioimage-mcp remove` not yet exposed
+- [ ] **Extensible Install**: Install command hardcoded to base/cellpose; needs manifest-driven installation
+- [ ] **Plugin System**: Support for external tool repositories/packages
+- [ ] **Workflow Replay Validation**: session_replay implemented but needs validation before production use
+- [ ] **Interactive Mode**: Support tools asking users for input during execution
+- [ ] **GPU Passthrough (MPS)**: NVIDIA detection works; Apple Silicon MPS detection missing
+- [ ] **Streaming Progress**: Real-time progress streaming (currently polling only)
+- [ ] **Cross-platform CI/CD**: Testing for Linux/Mac/Win
 
 ### Out of Scope
 
@@ -46,10 +51,12 @@ Developing a "standard library" for bioimage AI. Building on top of the `mcp` Py
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| **Hybrid Plugin Model** | Allows curated core tools + community extensions | — Pending |
-| **Artifact I/O** | JSON is too slow/limited for images; pass paths | — Pending |
-| **Native GPU** | Docker GPU support is complex for end-users | — Pending |
-| **Interactive Mode** | Agents need human feedback for ambiguous analysis | — Pending |
+| **Hub-and-Spoke Architecture** | Persistent workers for performance | ✓ Implemented |
+| **Artifact I/O** | JSON too slow for images; pass paths | ✓ Implemented |
+| **Native GPU** | Docker GPU support complex for end-users | ⚠️ Partial (NVIDIA only) |
+| **Interactive Mode** | Agents need human feedback | — Pending |
+| **NDJSON over stdio** | Robust, streamable IPC | ✓ Implemented |
+| **SQLite persistence** | Lightweight, file-based storage | ✓ Implemented |
 
 ---
-*Last updated: Thu Jan 22 2026 after initialization*
+*Last updated: Thu Jan 22 2026*
