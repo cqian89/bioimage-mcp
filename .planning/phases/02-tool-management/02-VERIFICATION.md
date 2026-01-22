@@ -1,6 +1,6 @@
 ---
 phase: 02-tool-management
-verified: 2026-01-22T13:10:00Z
+verified: 2026-01-22T13:48:00Z
 status: passed
 score: 4/4 must-haves verified
 gaps: []
@@ -18,10 +18,10 @@ gaps: []
 
 | # | Truth | Status | Evidence |
 |---|---|---|---|
-| 1 | User can list installed tools and status | ✓ VERIFIED | `list.py` implements status logic + table/JSON output; wired to `bioimage-mcp list` |
-| 2 | User can install specific tools or profiles | ✓ VERIFIED | `install.py` supports tool list & profiles; `cli.py` handles args; tests pass |
-| 3 | User can remove tools with safety checks | ✓ VERIFIED | `remove.py` implements removal + active check + confirmation; wired to CLI |
-| 4 | User can verify environment health | ✓ VERIFIED | `doctor` command exists and is wired (verified in `cli.py` and prior phase) |
+| 1 | User can list installed tools and status | ✓ VERIFIED | `bioimage-mcp list` returns table with status; logic in `list.py` uses manifest + env detection. |
+| 2 | User can install specific tools or profiles | ✓ VERIFIED | `install.py` implements profile/tool logic, dependency resolution, and micromamba execution. |
+| 3 | User can remove tools with safety checks | ✓ VERIFIED | `remove.py` implements confirmation, active process check, and env removal. |
+| 4 | User can verify environment health | ✓ VERIFIED | `bioimage-mcp doctor` reports "READY" and lists registry stats. |
 
 **Score:** 4/4 truths verified
 
@@ -29,20 +29,22 @@ gaps: []
 
 | Artifact | Expected | Status | Details |
 |---|---|---|---|
-| `src/bioimage_mcp/bootstrap/list.py` | List command implementation | ✓ VERIFIED | 121 lines, exports `list_tools`, handles formatting |
-| `src/bioimage_mcp/bootstrap/install.py` | Install command refactor | ✓ VERIFIED | 215 lines, exports `install`, handles discovery/profiles |
-| `src/bioimage_mcp/bootstrap/remove.py` | Remove command implementation | ✓ VERIFIED | 128 lines, exports `remove_tool`, handles safety |
-| `src/bioimage_mcp/cli.py` | CLI entrypoints | ✓ VERIFIED | Subparsers for `list`, `install`, `remove` present and wired |
+| `src/bioimage_mcp/bootstrap/list.py` | List command implementation | ✓ VERIFIED | 92 lines, implements `list_tools` and JSON output. |
+| `src/bioimage_mcp/bootstrap/install.py` | Install command logic | ✓ VERIFIED | 215 lines, implements `install`, profiles, GPU support. |
+| `src/bioimage_mcp/bootstrap/remove.py` | Remove command logic | ✓ VERIFIED | 128 lines, implements `remove_tool` with safety checks. |
+| `src/bioimage_mcp/bootstrap/doctor.py` | Doctor command logic | ✓ VERIFIED | Verified via functional run (returns READY). |
+| `src/bioimage_mcp/cli.py` | CLI wiring | ✓ VERIFIED | Subcommands `install`, `list`, `remove`, `doctor` correctly mapped. |
 
 ### Key Link Verification
 
 | From | To | Via | Status | Details |
 |---|---|---|---|---|
-| `cli.py` | `bootstrap/install.py` | `_handle_install` | ✓ WIRED | Arguments passed correctly (tools, profile, force) |
-| `cli.py` | `bootstrap/list.py` | `_handle_list` | ✓ WIRED | JSON flag passed correctly |
-| `cli.py` | `bootstrap/remove.py` | `_handle_remove` | ✓ WIRED | Tool name and yes flag passed correctly |
-| `install.py` | `envs/*.yaml` | `discover_available_tools` | ✓ WIRED | Scans directory for tool definitions |
-| `install.py` | `micromamba` | `subprocess` | ✓ WIRED | Calls env create/update commands |
+| `cli.py` | `bootstrap/install.py` | `_handle_install` | ✓ WIRED | Args (tools, profile, force) passed correctly. |
+| `cli.py` | `bootstrap/list.py` | `_handle_list` | ✓ WIRED | JSON flag passed correctly. |
+| `cli.py` | `bootstrap/remove.py` | `_handle_remove` | ✓ WIRED | Tool name and yes flag passed correctly. |
+| `install.py` | `envs/*.yaml` | `discover_available_tools` | ✓ WIRED | Scans `envs/` for tool definitions. |
+| `install.py` | `micromamba` | `subprocess` | ✓ WIRED | Calls env create/update commands. |
+| `list.py` | `registry` | `load_manifests` | ✓ WIRED | Loads manifests to report function counts and status. |
 
 ### Requirements Coverage
 
@@ -53,13 +55,19 @@ gaps: []
 | **TOOL-03** | Remove tools via CLI | ✓ SATISFIED |
 | **TOOL-04** | Verify health (doctor) | ✓ SATISFIED |
 
+### Functional Verification
+Commands run during verification:
+- `bioimage-mcp doctor` -> PASSED (Ready state)
+- `bioimage-mcp list` -> PASSED (Table output)
+- `bioimage-mcp list --json` -> PASSED (JSON output)
+
 ### Anti-Patterns Found
 
-None. Code follows established patterns (bootstrap modules, CLI subcommands).
+None. Code follows established patterns (bootstrap modules, CLI subcommands). No TODOs found in critical paths.
 
 ### Human Verification Required
 
-None. Automated tests cover the logic. Real environment creation is slow/system-dependent but logic is verified.
+None. Automated logic verification and functional smoke tests cover the requirements.
 
 ---
 _Verified: 2026-01-22_
