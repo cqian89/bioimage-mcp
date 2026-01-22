@@ -16,6 +16,8 @@ from jsonschema import ValidationError, validate
 from bioimage_mcp.api.discovery import DiscoveryService
 from bioimage_mcp.api.errors import (
     environment_missing_error,
+    format_error_summary,
+    input_missing_error,
     not_found_error,
 )
 from bioimage_mcp.api.execution import ExecutionService
@@ -373,15 +375,19 @@ class SessionService:
                 record=record,
             )
             if override_errors:
+                error = StructuredError(
+                    code="VALIDATION_FAILED",
+                    message=f"Override validation failed: {len(override_errors)} error(s)",
+                    details=override_errors,
+                )
                 return SessionReplayResponse(
                     run_id="none",
                     session_id="none",
                     status="validation_failed",
                     workflow_ref=request.workflow_ref,
-                    error=StructuredError(
-                        code="VALIDATION_FAILED",
-                        message=f"Override validation failed: {len(override_errors)} error(s)",
-                        details=override_errors,
+                    error=error,
+                    human_summary=(
+                        f"Replay status: VALIDATION_FAILED\n{format_error_summary(error)}"
                     ),
                 )
 
@@ -416,34 +422,42 @@ class SessionService:
                     env_name=env_name,
                     command=f"bioimage-mcp install {env_name}",
                 )
+                error = environment_missing_error(
+                    message=f"Environment '{env_name}' not installed",
+                    env_name=env_name,
+                    fn_id=fn_id,
+                )
                 return SessionReplayResponse(
                     run_id="none",
                     session_id="none",
                     status="validation_failed",
                     workflow_ref=request.workflow_ref,
-                    error=environment_missing_error(
-                        message=f"Environment '{env_name}' not installed",
-                        env_name=env_name,
-                        fn_id=fn_id,
-                    ),
+                    error=error,
                     installable=install_offer,
+                    human_summary=(
+                        f"Replay status: VALIDATION_FAILED\n{format_error_summary(error)}"
+                    ),
                 )
 
             # Environment exists, now check if function exists in it
             if not self._function_exists(fn_id):
+                error = not_found_error(
+                    message=f"Function '{fn_id}' not found in environment '{env_name}'",
+                    path=f"/steps/{idx}/id",
+                    expected="installed function",
+                    hint=(
+                        "Function may have been removed or renamed. "
+                        "Use 'list' or 'search' to find valid functions."
+                    ),
+                )
                 return SessionReplayResponse(
                     run_id="none",
                     session_id="none",
                     status="validation_failed",
                     workflow_ref=request.workflow_ref,
-                    error=not_found_error(
-                        message=f"Function '{fn_id}' not found in environment '{env_name}'",
-                        path=f"/steps/{idx}/id",
-                        expected="installed function",
-                        hint=(
-                            "Function may have been removed or renamed. "
-                            "Use 'list' or 'search' to find valid functions."
-                        ),
+                    error=error,
+                    human_summary=(
+                        f"Replay status: VALIDATION_FAILED\n{format_error_summary(error)}"
                     ),
                 )
 
@@ -466,21 +480,88 @@ class SessionService:
                 workflow_ref=request.workflow_ref,
                 step_progress=step_progress,
                 warnings=replay_warnings,
+                human_summary=(
+                    f"Replay status: READY\n"
+                    f"Dry-run successful. Ready to replay {len(record.steps)} steps."
+                ),
             )
 
         # Validate external input bindings (T097, T088)
         mapped_inputs: dict[str, str] = {}
+        missing_inputs = []
         for key in record.external_inputs:
             if key not in request.inputs:
-                raise ValueError(f"Missing external input: {key}")
-            mapped_inputs[key] = request.inputs[key]
+                missing_inputs.append(key)
+            else:
+                mapped_inputs[key] = request.inputs[key]
+
+        if missing_inputs:
+            error = input_missing_error(
+                message=f"Missing {len(missing_inputs)} required external input(s)",
+                missing_inputs=missing_inputs,
+            )
+            return SessionReplayResponse(
+                run_id="none",
+                session_id="none",
+                status="validation_failed",
+                workflow_ref=request.workflow_ref,
+                error=error,
+                human_summary=(f"Replay status: VALIDATION_FAILED\n{format_error_summary(error)}"),
+            )
 
         # Execute the replayed workflow step by step
-        replay_session_id = str(uuid.uuid4())
+        replay_session_id = request.resume_session_id or str(uuid.uuid4())
         # Ensure the replay session exists in the store (T101)
         self.session_manager.ensure_session(replay_session_id)
 
+        start_step_idx = 0
+        if request.resume_from_step is not None:
+            start_step_idx = request.resume_from_step
+        elif request.resume_session_id:
+            # Auto-detect last successful step
+            existing_steps = self.session_manager.store.list_step_attempts(replay_session_id)
+            successful_ordinals = {
+                s.ordinal
+                for s in existing_steps
+                if s.canonical and s.status in ("success", "succeeded")
+            }
+            if successful_ordinals:
+                start_step_idx = max(successful_ordinals) + 1
+
         step_outputs: dict[tuple[int, str], str] = {}  # (step_index, port_name) -> ref_id
+
+        # Populate outputs from previous steps and progress if resuming
+        if start_step_idx > 0:
+            existing_steps = self.session_manager.store.list_step_attempts(replay_session_id)
+            for s in existing_steps:
+                if (
+                    s.ordinal < start_step_idx
+                    and s.canonical
+                    and s.status in ("success", "succeeded")
+                ):
+                    if s.outputs:
+                        for port, out_ref in s.outputs.items():
+                            ref_id = (
+                                out_ref.get("ref_id")
+                                if isinstance(out_ref, dict)
+                                else out_ref.ref_id
+                            )
+                            step_outputs[(s.ordinal, port)] = ref_id
+
+            # Add skipped steps to progress
+            for i in range(start_step_idx):
+                if i < len(record.steps):
+                    step_progress.append(
+                        StepProgress(
+                            step_index=i,
+                            fn_id=record.steps[i].id,
+                            status="skipped",
+                            message=(
+                                f"Step {i + 1}/{len(record.steps)}: Skipped (already completed)"
+                            ),
+                        )
+                    )
+
         final_outputs: dict[str, ArtifactRef] = {}
         last_result: dict[str, Any] = {
             "status": "success",
@@ -489,6 +570,10 @@ class SessionService:
         }
 
         for idx, step in enumerate(record.steps):
+            # Skip steps already completed
+            if idx < start_step_idx:
+                continue
+
             # 1. Resolve inputs for this step
             inputs = {}
             for port, source in step.inputs.items():
@@ -652,14 +737,46 @@ class SessionService:
         else:
             resp_status = "failed"
 
+        # On failure, include resume info
+        resume_info = None
+        if resp_status == "failed":
+            resume_info = {
+                "resume_session_id": replay_session_id,
+                "resume_from_step": len(
+                    [p for p in step_progress if p.status in ("success", "skipped")]
+                ),
+                "hint": "Fix the reported error and call replay again with these resume parameters",
+            }
+
+        # Generate human-readable summary
+        error_info = last_result.get("error")
+        error_obj = (
+            StructuredError(**error_info)
+            if error_info and isinstance(error_info, dict)
+            else error_info
+        )
+
+        human_summary = f"Replay status: {resp_status.upper()}\n"
+        if resp_status == "completed":
+            human_summary += f"Successfully replayed {len(record.steps)} steps."
+        elif resp_status == "ready":
+            human_summary += f"Dry-run successful. Ready to replay {len(record.steps)} steps."
+        else:
+            completed_count = len([p for p in step_progress if p.status in ("success", "skipped")])
+            human_summary += f"Replay stopped after {completed_count} steps.\n"
+            if error_obj:
+                human_summary += format_error_summary(error_obj)
+
         return SessionReplayResponse(
             run_id=last_result.get("run_id", "none"),
             session_id=replay_session_id,
             status=cast(Any, resp_status),
             workflow_ref=request.workflow_ref,
             log_ref=ArtifactRef(**last_result["log_ref"]) if last_result.get("log_ref") else None,
-            error=StructuredError(**last_result["error"]) if last_result.get("error") else None,
+            error=error_obj,
             step_progress=step_progress,
             warnings=replay_warnings,
             outputs=final_outputs,
+            resume_info=resume_info,
+            human_summary=human_summary,
         )

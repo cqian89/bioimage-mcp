@@ -11,6 +11,7 @@ from bioimage_mcp.api.schemas import ErrorDetail, StructuredError
 VALIDATION_FAILED = "VALIDATION_FAILED"  # Request validation error
 NOT_FOUND = "NOT_FOUND"  # Catalog node or artifact not found
 ARTIFACT_NOT_FOUND = "ARTIFACT_NOT_FOUND"  # Specific artifact missing from store or cache
+INPUT_MISSING = "INPUT_MISSING"  # External input missing for replay
 EXECUTION_FAILED = "EXECUTION_FAILED"  # Tool execution error
 PERMISSION_DENIED = "PERMISSION_DENIED"  # Filesystem access denied
 SCHEMA_MISMATCH = "SCHEMA_MISMATCH"  # Workflow record schema incompatibility
@@ -229,3 +230,48 @@ def schema_mismatch_error(
         message=message,
         details=[detail],
     )
+
+
+def input_missing_error(
+    message: str,
+    missing_inputs: list[str],
+) -> StructuredError:
+    """Create an INPUT_MISSING error for missing replay inputs.
+
+    Args:
+        message: Human-readable summary
+        missing_inputs: List of missing input keys (ref_ids)
+
+    Returns:
+        StructuredError with code INPUT_MISSING
+    """
+    details = [
+        ErrorDetail(
+            path=f"/inputs/{key}",
+            expected="artifact reference",
+            actual="missing",
+            hint=f"Provide a valid artifact ID for '{key}' in the inputs dictionary",
+        )
+        for key in missing_inputs
+    ]
+    return StructuredError(
+        code=INPUT_MISSING,
+        message=message,
+        details=details,
+    )
+
+
+def format_error_summary(error: StructuredError) -> str:
+    """Format a StructuredError into human-readable text."""
+    lines = [f"Error [{error.code}]: {error.message}"]
+    for detail in error.details:
+        prefix = f"  - {detail.path}: " if detail.path else "  - "
+        if detail.expected and detail.actual:
+            lines.append(f"{prefix}Expected {detail.expected}, but got {detail.actual}")
+        elif detail.expected:
+            lines.append(f"{prefix}Missing {detail.expected}")
+
+        if detail.hint:
+            lines.append(f"    Hint: {detail.hint}")
+
+    return "\n".join(lines)

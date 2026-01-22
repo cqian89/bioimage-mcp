@@ -371,3 +371,101 @@ def test_replay_session_tool_warnings(session_service):
         assert len(response.warnings) == 1
         assert response.warnings[0].source == "tool"
         assert "Low contrast" in response.warnings[0].message
+
+
+def test_replay_session_missing_inputs(session_service):
+    # Setup
+    from bioimage_mcp.artifacts.models import ArtifactRef
+    from bioimage_mcp.api.schemas import SessionReplayRequest, ExternalInput
+    from unittest.mock import patch, MagicMock
+
+    workflow_ref = ArtifactRef(ref_id="wf-123", type="TableRef", uri="")
+    record = WorkflowRecord(
+        session_id="old-session",
+        external_inputs={
+            "input-1": ExternalInput(type="BioImageRef", first_seen={"step": 0, "port": "image"})
+        },
+        steps=[
+            WorkflowStep(index=0, id="test.fn1", inputs={}, params={}, outputs={}, status="success")
+        ],
+    )
+
+    session_service.artifact_store.parse_native_output.return_value = record.model_dump(mode="json")
+    session_service._function_exists = MagicMock(return_value=True)
+
+    # Request with missing 'input-1'
+    request = SessionReplayRequest(workflow_ref=workflow_ref, inputs={})
+
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0)
+
+        # Act
+        response = session_service.replay_session(request)
+
+        # Assert
+        assert response.status == "validation_failed"
+        assert response.error.code == "INPUT_MISSING"
+        assert len(response.error.details) == 1
+        assert response.error.details[0].path == "/inputs/input-1"
+        assert "input-1" in response.human_summary
+
+
+def test_replay_session_resume(session_service):
+    # Setup
+    from bioimage_mcp.artifacts.models import ArtifactRef
+    from bioimage_mcp.api.schemas import SessionReplayRequest
+    from bioimage_mcp.sessions.models import SessionStep
+    from unittest.mock import patch, MagicMock
+
+    workflow_ref = ArtifactRef(ref_id="wf-123", type="TableRef", uri="")
+    record = WorkflowRecord(
+        session_id="old-session",
+        external_inputs={},
+        steps=[
+            WorkflowStep(
+                index=0, id="test.fn1", inputs={}, params={}, outputs={}, status="success"
+            ),
+            WorkflowStep(
+                index=1, id="test.fn2", inputs={}, params={}, outputs={}, status="success"
+            ),
+        ],
+    )
+
+    session_service.artifact_store.parse_native_output.return_value = record.model_dump(mode="json")
+    session_service._function_exists = MagicMock(return_value=True)
+
+    # Mock existing session with step 0 completed
+    replay_session_id = "existing-session"
+    mock_step_0 = MagicMock(spec=SessionStep)
+    mock_step_0.ordinal = 0
+    mock_step_0.fn_id = "test.fn1"
+    mock_step_0.status = "success"
+    mock_step_0.canonical = True
+    mock_step_0.outputs = {"out": {"ref_id": "art-0"}}
+
+    session_service.session_manager.store.list_step_attempts.return_value = [mock_step_0]
+    session_service.execution_service.run_workflow.return_value = {
+        "status": "success",
+        "run_id": "run-456",
+        "outputs": {"final": ArtifactRef(ref_id="art-1", type="BioImageRef", uri="")},
+    }
+
+    request = SessionReplayRequest(
+        workflow_ref=workflow_ref, inputs={}, resume_session_id=replay_session_id
+    )
+
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0)
+
+        # Act
+        response = session_service.replay_session(request)
+
+        # Assert
+        assert response.status == "completed"
+        assert len(response.step_progress) == 2
+        assert response.step_progress[0].status == "skipped"
+        assert response.step_progress[1].status == "success"
+        assert response.step_progress[1].fn_id == "test.fn2"
+
+        # Verify execution_service.run_workflow was only called once (for step 1)
+        assert session_service.execution_service.run_workflow.call_count == 1
