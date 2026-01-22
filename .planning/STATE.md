@@ -4,7 +4,7 @@
 **Core Value:** Enables AI agents to safely and reproducibly execute bioimage analysis tools without dependency conflicts.
 **Current Focus:** Phase 2: Tool Management & CLI Completion
 
-## Overall Progress (~75% complete)
+## Overall Progress (~78% complete)
 
 - **Phase 1: Core Runtime** (~90% complete)
   - ✅ Conda isolation (`persistent.py`, `executor.py`)
@@ -12,9 +12,9 @@
   - ✅ Process lifecycle (`PersistentWorkerManager`)
   - ⚠️ GPU detection partial (NVIDIA only, no MPS)
 
-- **Phase 2: Tool Management** (~60% complete) - **CURRENT FOCUS**
+- **Phase 2: Tool Management** (~75% complete) - **CURRENT FOCUS**
   - ✅ `doctor` command complete
-  - ⚠️ `install` command exists but hardcoded to base/cellpose
+  - ✅ `install` command refactored and extensible
   - ❌ `list` CLI not exposed (API exists)
   - ❌ `remove` CLI not implemented
 
@@ -31,12 +31,14 @@
   - ⚠️ `session_export` works
   - ⚠️ `session_replay` implemented but lacks validation
 
-## Immediate Plan
+## Current Position
 
-1. **Complete Phase 2 CLI gaps**: Expose `list` and implement `remove` commands.
-2. **Refactor `install`**: Make the command extensible and not hardcoded to specific tool packs.
-3. **Enhance GPU detection**: Add MPS support for Apple Silicon.
-4. **Stabilize Reproducibility**: Validate and harden `session_replay` for production use.
+Phase: 2 of 5 (Tool Management)
+Plan: 1 of 3 in current phase
+Status: In progress
+Last activity: 2026-01-22 - Completed 02-02-PLAN.md
+
+Progress: ████████░░ 78%
 
 ## Context & Memory
 
@@ -45,9 +47,18 @@
 - **NDJSON IPC**: Using NDJSON over stdio for reliable, language-agnostic communication.
 - **Artifact-based I/O**: Core server handles metadata; tool packs read/write actual data via artifacts. No raw arrays in core.
 - **SQLite Registry**: Using SQLite for tool registry and session persistence.
+- **Dynamic Tool Discovery**: (Phase 2-02) Tools are discovered from `envs/bioimage-mcp-*.yaml` files, enabling easy addition of new tool packs.
+- **Installation Profiles**: (Phase 2-02) Support for `cpu`, `gpu`, and `minimal` profiles to simplify environment setup.
 
 ### Blockers
 - None.
 
 ### Next Steps
-- Implement `bioimage-mcp list` and `bioimage-mcp remove` CLI commands.
+- Implement `bioimage-mcp list` (02-01-PLAN.md)
+- Implement `bioimage-mcp remove` (02-03-PLAN.md)
+
+## Session Continuity
+
+Last session: 2026-01-22T12:08:44Z
+Stopped at: Completed 02-02-PLAN.md
+Resume file: None
