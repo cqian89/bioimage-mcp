@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import platform
 import shutil
 import socket
+import subprocess
 import sys
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -160,15 +162,55 @@ def check_tool_consolidation() -> CheckResult:
 
 
 def check_gpu() -> CheckResult:
-    nvidia_smi = shutil.which("nvidia-smi")
-    available = nvidia_smi is not None
+    # 1. Detect CUDA
+    nvidia_smi_path = shutil.which("nvidia-smi")
+    cuda_available = nvidia_smi_path is not None
 
-    details: dict[str, object] = {"gpu_available": available}
-    if available:
-        details["detector"] = "nvidia-smi"
-        details["nvidia_smi"] = nvidia_smi
-    else:
-        details["note"] = "nvidia-smi not found; GPU acceleration will be unavailable"
+    cuda_details: dict[str, object] = {"available": cuda_available}
+    if cuda_available:
+        cuda_details["detector"] = "nvidia-smi"
+        cuda_details["nvidia_smi"] = nvidia_smi_path
+
+        # Try to get additional info
+        try:
+            cmd = ["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader"]
+            proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
+            if proc.returncode == 0:
+                parts = [p.strip() for p in proc.stdout.split(",")]
+                if len(parts) >= 2:
+                    cuda_details["model"] = parts[0]
+                    cuda_details["memory"] = parts[1]
+        except Exception:  # noqa: BLE001
+            pass
+
+    # 2. Detect MPS (Apple Silicon)
+    mps_available = False
+    is_darwin = platform.system() == "Darwin"
+    if is_darwin:
+        try:
+            # Check for ARM64 (Apple Silicon)
+            proc = subprocess.run(
+                ["sysctl", "-n", "hw.optional.arm64"], capture_output=True, text=True, check=False
+            )
+            if proc.returncode == 0 and proc.stdout.strip() == "1":
+                mps_available = True
+        except Exception:  # noqa: BLE001
+            pass
+
+    mps_details: dict[str, object] = {
+        "available": mps_available,
+        "detector": "sysctl" if is_darwin else None,
+        "apple_silicon": is_darwin and mps_available,
+    }
+
+    details: dict[str, object] = {
+        "gpu_available": cuda_available or mps_available,
+        "cuda": cuda_details,
+        "mps": mps_details,
+    }
+
+    if not (cuda_available or mps_available):
+        details["note"] = "No GPU (CUDA or MPS) detected; GPU acceleration will be unavailable"
 
     return CheckResult(name="gpu", ok=True, remediation=[], details=details)
 
