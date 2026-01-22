@@ -459,6 +459,8 @@ class SessionReplayRequest(BaseModel):
     step_overrides: dict[str, dict[str, Any]] | None = None
     mode: Literal["strict", "lenient"] = "strict"
     dry_run: bool = False
+    resume_session_id: str | None = None
+    resume_from_step: int | None = None
 
 
 class SessionReplayResponse(BaseModel):
@@ -472,6 +474,8 @@ class SessionReplayResponse(BaseModel):
     step_progress: list[StepProgress] = Field(default_factory=list)
     warnings: list[ReplayWarning] = Field(default_factory=list)
     outputs: dict[str, ArtifactRef] = Field(default_factory=dict)
+    resume_info: dict[str, Any] | None = None
+    human_summary: str | None = None
 
 
 # Workflow Models
