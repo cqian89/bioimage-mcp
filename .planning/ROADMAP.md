@@ -83,7 +83,7 @@ This roadmap structures the development of `bioimage-mcp` into 4 coherent phases
 
 | Phase | Goal | Status |
 |-------|------|--------|
-| **1 - Core Runtime** | Spawn/Manage Workers | **Complete** |
+| **1 - Core Runtime** | Spawn/Manage Workers | **Complete** ✓ |
 | **2 - Tool Management** | Install/List Tools | **Complete** |
 | **3 - Data & Artifacts** | Zero-copy I/O | **Complete** |
 | **4 - Reproducibility** | Record/Export | **Mostly Complete** |
