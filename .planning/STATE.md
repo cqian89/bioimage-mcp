@@ -30,11 +30,11 @@
 ## Current Position
 
 Phase: 4 of 4 (Reproducibility)
-Plan: 2 of 4 in current phase
+Plan: 3 of 4 in current phase
 Status: In progress
-Last activity: 2026-01-22 - Completed 04-02-PLAN.md (Version & Environment Validation)
+Last activity: 2026-01-22 - Completed 04-03-PLAN.md (Progress Reporting & Warning Surfacing)
 
-Progress: ███████░░░ 77%
+Progress: █████████░ 88%
 
 ## Context & Memory
 
@@ -51,15 +51,17 @@ Progress: ███████░░░ 77%
 - **Unified GPU Detection**: (Phase 1-01) Single 'gpu' check reports both CUDA and MPS status using dependency-free system probing.
 - **Pre-execution Replay Validation**: (Phase 4-01) Validate parameter overrides against tool schemas before starting replay to fail fast on invalid inputs.
 - **Environment & Version Pre-flight**: (Phase 4-02) Verify environment installation and warn about tool version mismatches before session replay, offering auto-install hints.
+- **Replay Progress History**: (Phase 4-03) Include a complete step-by-step progress log in the final replay response to provide retrospective observability for AI agents.
+- **Dry-run Workflow Preview**: (Phase 4-03) Support dry-run mode that validates all overrides and inputs, returning a 'pending' progress list to show the intended execution plan.
 
 ### Blockers
 - None.
 
 ### Next Steps
-- Plan and execute Phase 4: Reproducibility (Validation & Production-readiness)
+- Plan and execute Phase 4: Reproducibility (Resume Capability & Missing Inputs)
 
 ## Session Continuity
 
-Last session: 2026-01-22T18:00:53Z
-Stopped at: Completed 04-02-PLAN.md
+Last session: 2026-01-22T17:55:00Z
+Stopped at: Completed 04-03-PLAN.md
 Resume file: None
