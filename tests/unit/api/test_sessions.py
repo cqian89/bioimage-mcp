@@ -254,3 +254,120 @@ def test_replay_session_function_not_found(session_service):
         assert response.status == "validation_failed"
         assert response.error.code == "NOT_FOUND"
         assert "Function 'existing-env.missing-fn' not found" in response.error.message
+
+
+def test_replay_session_progress(session_service):
+    # Setup
+    from bioimage_mcp.artifacts.models import ArtifactRef
+    from unittest.mock import patch, MagicMock
+    from bioimage_mcp.api.schemas import SessionReplayRequest
+
+    workflow_ref = ArtifactRef(ref_id="wf-123", type="TableRef", uri="")
+    record = WorkflowRecord(
+        session_id="old-session",
+        external_inputs={},
+        steps=[
+            WorkflowStep(
+                index=0, id="test.fn1", inputs={}, params={}, outputs={}, status="success"
+            ),
+            WorkflowStep(
+                index=1, id="test.fn2", inputs={}, params={}, outputs={}, status="success"
+            ),
+        ],
+    )
+
+    session_service.artifact_store.parse_native_output.return_value = record.model_dump(mode="json")
+    session_service.execution_service.run_workflow.return_value = {
+        "status": "success",
+        "run_id": "run-123",
+        "outputs": {"output": ArtifactRef(ref_id="art-1", type="BioImageRef", uri="")},
+    }
+    session_service._function_exists = MagicMock(return_value=True)
+
+    request = SessionReplayRequest(workflow_ref=workflow_ref, inputs={})
+
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0)
+
+        # Act
+        response = session_service.replay_session(request)
+
+        # Assert
+        assert response.status == "completed"
+        assert len(response.step_progress) == 2
+        assert response.step_progress[0].step_index == 0
+        assert response.step_progress[0].status == "success"
+        assert response.step_progress[1].step_index == 1
+        assert response.step_progress[1].status == "success"
+        assert "art-1" in response.outputs["output"].ref_id
+
+
+def test_replay_session_dry_run(session_service):
+    # Setup
+    from bioimage_mcp.artifacts.models import ArtifactRef
+    from unittest.mock import patch, MagicMock
+    from bioimage_mcp.api.schemas import SessionReplayRequest
+
+    workflow_ref = ArtifactRef(ref_id="wf-123", type="TableRef", uri="")
+    record = WorkflowRecord(
+        session_id="old-session",
+        external_inputs={},
+        steps=[
+            WorkflowStep(index=0, id="test.fn1", inputs={}, params={}, outputs={}, status="success")
+        ],
+    )
+
+    session_service.artifact_store.parse_native_output.return_value = record.model_dump(mode="json")
+    session_service._function_exists = MagicMock(return_value=True)
+
+    request = SessionReplayRequest(workflow_ref=workflow_ref, inputs={}, dry_run=True)
+
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0)
+
+        # Act
+        response = session_service.replay_session(request)
+
+        # Assert
+        assert response.status == "ready"
+        assert len(response.step_progress) == 1
+        assert response.step_progress[0].status == "pending"
+        # Verify no execution occurred
+        session_service.execution_service.run_workflow.assert_not_called()
+
+
+def test_replay_session_tool_warnings(session_service):
+    # Setup
+    from bioimage_mcp.artifacts.models import ArtifactRef
+    from unittest.mock import patch, MagicMock
+    from bioimage_mcp.api.schemas import SessionReplayRequest
+
+    workflow_ref = ArtifactRef(ref_id="wf-123", type="TableRef", uri="")
+    record = WorkflowRecord(
+        session_id="old-session",
+        external_inputs={},
+        steps=[
+            WorkflowStep(index=0, id="test.fn1", inputs={}, params={}, outputs={}, status="success")
+        ],
+    )
+
+    session_service.artifact_store.parse_native_output.return_value = record.model_dump(mode="json")
+    session_service.execution_service.run_workflow.return_value = {
+        "status": "success",
+        "run_id": "run-123",
+        "warnings": ["Low contrast detected"],
+    }
+    session_service._function_exists = MagicMock(return_value=True)
+
+    request = SessionReplayRequest(workflow_ref=workflow_ref, inputs={})
+
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0)
+
+        # Act
+        response = session_service.replay_session(request)
+
+        # Assert
+        assert len(response.warnings) == 1
+        assert response.warnings[0].source == "tool"
+        assert "Low contrast" in response.warnings[0].message

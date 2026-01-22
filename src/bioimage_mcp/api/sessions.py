@@ -24,10 +24,12 @@ from bioimage_mcp.api.schemas import (
     ExternalInput,
     InputSource,
     InstallOffer,
+    ReplayWarning,
     SessionExportRequest,
     SessionExportResponse,
     SessionReplayRequest,
     SessionReplayResponse,
+    StepProgress,
     StepProvenance,
     StructuredError,
     WorkflowRecord,
@@ -343,8 +345,25 @@ class SessionService:
 
         record = WorkflowRecord(**record_data)
 
-        # Check for version mismatches (surfacing happens in 04-03)
-        self._check_version_mismatches(record)
+        # Initialize tracking (T04-03-02)
+        step_progress: list[StepProgress] = []
+        replay_warnings: list[ReplayWarning] = []
+
+        # Check for version mismatches (T04-02-01)
+        version_mismatches = self._check_version_mismatches(record)
+        for mismatch in version_mismatches:
+            replay_warnings.append(
+                ReplayWarning(
+                    level="warning",
+                    source="version_check",
+                    step_index=mismatch["step_index"],
+                    fn_id=mismatch["fn_id"],
+                    message=(
+                        f"Tool version changed: recorded lock_hash={mismatch['recorded'][:8]}..., "
+                        f"current={mismatch['current'][:8]}..."
+                    ),
+                )
+            )
 
         # Validate overrides against tool schemas (T-override-validation)
         if request.params_overrides or request.step_overrides:
@@ -428,6 +447,27 @@ class SessionService:
                     ),
                 )
 
+        # Handle dry-run (T04-03-03)
+        if request.dry_run:
+            for idx, step in enumerate(record.steps):
+                step_progress.append(
+                    StepProgress(
+                        step_index=idx,
+                        fn_id=step.id,
+                        status="pending",
+                        message=f"Step {idx + 1}/{len(record.steps)}: Would run {step.id}",
+                    )
+                )
+
+            return SessionReplayResponse(
+                run_id="dry-run",
+                session_id="dry-run",
+                status="ready",
+                workflow_ref=request.workflow_ref,
+                step_progress=step_progress,
+                warnings=replay_warnings,
+            )
+
         # Validate external input bindings (T097, T088)
         mapped_inputs: dict[str, str] = {}
         for key in record.external_inputs:
@@ -441,6 +481,7 @@ class SessionService:
         self.session_manager.ensure_session(replay_session_id)
 
         step_outputs: dict[tuple[int, str], str] = {}  # (step_index, port_name) -> ref_id
+        final_outputs: dict[str, ArtifactRef] = {}
         last_result: dict[str, Any] = {
             "status": "success",
             "run_id": "none",
@@ -516,14 +557,24 @@ class SessionService:
 
             step_spec = {"steps": [{"fn_id": step.id, "inputs": inputs, "params": params}]}
 
-            # 3. Execute step
+            # 3. Update progress (T04-03-02)
             started_at = datetime.now(UTC).isoformat()
+            progress = StepProgress(
+                step_index=idx,
+                fn_id=step.id,
+                status="running",
+                started_at=started_at,
+                message=f"Step {idx + 1}/{len(record.steps)}: Running {step.id}",
+            )
+            step_progress.append(progress)
+
+            # 4. Execute step
             result = self.execution_service.run_workflow(
                 step_spec, session_id=replay_session_id, dry_run=request.dry_run
             )
             last_result = result
 
-            # 4. Integrate with session tracking (T101)
+            # 5. Integrate with session tracking (T101)
             run_id = result.get("run_id", "none")
             api_status = result.get("status", "failed")
             db_status = "succeeded" if api_status == "success" else api_status
@@ -532,25 +583,49 @@ class SessionService:
             error = result.get("error")
             log_ref_id = (result.get("log_ref") or {}).get("ref_id")
 
-            if not request.dry_run:
-                self.session_manager.store.add_step_attempt(
-                    session_id=replay_session_id,
-                    step_id=f"replay-{uuid.uuid4().hex[:8]}",
-                    ordinal=idx,
-                    fn_id=step.id,
-                    inputs=inputs,
-                    params=params,
-                    status=cast(Any, db_status),
-                    started_at=started_at,
-                    ended_at=datetime.now(UTC).isoformat(),
-                    run_id=run_id,
-                    outputs=outputs,
-                    error=error,
-                    log_ref_id=log_ref_id,
-                    canonical=(api_status == "success"),
-                )
+            self.session_manager.store.add_step_attempt(
+                session_id=replay_session_id,
+                step_id=f"replay-{uuid.uuid4().hex[:8]}",
+                ordinal=idx,
+                fn_id=step.id,
+                inputs=inputs,
+                params=params,
+                status=cast(Any, db_status),
+                started_at=started_at,
+                ended_at=datetime.now(UTC).isoformat(),
+                run_id=run_id,
+                outputs=outputs,
+                error=error,
+                log_ref_id=log_ref_id,
+                canonical=(api_status == "success"),
+            )
 
-            # 5. Record outputs for dependent steps
+            # Update the progress entry (T04-03-02)
+            step_progress[-1] = step_progress[-1].model_copy(
+                update={
+                    "status": "success" if api_status == "success" else "failed",
+                    "ended_at": datetime.now(UTC).isoformat(),
+                    "message": (
+                        f"Step {idx + 1}/{len(record.steps)}: "
+                        f"{'Completed' if api_status == 'success' else 'Failed'} {step.id}"
+                    ),
+                }
+            )
+
+            # Extract warnings from tool execution result (T04-03-02)
+            if "warnings" in result and result["warnings"]:
+                for warning_msg in result["warnings"]:
+                    replay_warnings.append(
+                        ReplayWarning(
+                            level="warning",
+                            source="tool",
+                            step_index=idx,
+                            fn_id=step.id,
+                            message=warning_msg,
+                        )
+                    )
+
+            # 6. Record outputs for dependent steps and final response (T04-03-02)
             if api_status in ("success", "succeeded") and "outputs" in result:
                 if result.get("outputs"):
                     # Normal execution - use actual outputs
@@ -559,28 +634,32 @@ class SessionService:
                             out_ref.get("ref_id") if isinstance(out_ref, dict) else out_ref.ref_id
                         )
                         step_outputs[(idx, port)] = ref_id
-                elif request.dry_run and step.outputs:
-                    # Dry-run mode - use virtual references from workflow record
-                    for port in step.outputs.keys():
-                        step_outputs[(idx, port)] = f"dry-run-{idx}-{port}"
 
-            # 6. Stop on failure
+                    final_outputs = {
+                        k: ArtifactRef(**(v if isinstance(v, dict) else v.model_dump()))
+                        for k, v in result["outputs"].items()
+                    }
+
+            # 7. Stop on failure
             if api_status in ("failed", "validation_failed"):
                 break
 
         # Map status to allowed values for SessionReplayResponse
         if last_result.get("status") == "validation_failed":
             resp_status = "validation_failed"
-        elif request.dry_run:
-            resp_status = "ready"
+        elif last_result.get("status") == "success":
+            resp_status = "completed"
         else:
-            resp_status = "running"
+            resp_status = "failed"
 
         return SessionReplayResponse(
             run_id=last_result.get("run_id", "none"),
-            session_id=last_result.get("session_id", "none"),
+            session_id=replay_session_id,
             status=cast(Any, resp_status),
             workflow_ref=request.workflow_ref,
             log_ref=ArtifactRef(**last_result["log_ref"]) if last_result.get("log_ref") else None,
             error=StructuredError(**last_result["error"]) if last_result.get("error") else None,
+            step_progress=step_progress,
+            warnings=replay_warnings,
+            outputs=final_outputs,
         )
