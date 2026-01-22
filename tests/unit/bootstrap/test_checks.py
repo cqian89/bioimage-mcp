@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import subprocess
 from dataclasses import dataclass
 
 from bioimage_mcp.bootstrap.checks import (
@@ -87,10 +88,82 @@ def test_check_base_env_requires_manager(monkeypatch) -> None:
 
 def test_check_gpu_is_graceful(monkeypatch) -> None:
     monkeypatch.setattr("bioimage_mcp.bootstrap.checks.shutil.which", lambda _n: None)
+    monkeypatch.setattr("platform.system", lambda: "Linux")
     result = check_gpu()
     assert result.ok is True
     assert result.details["gpu_available"] is False
     assert "note" in result.details
+
+
+def test_check_gpu_mps_detection_on_apple_silicon(monkeypatch) -> None:
+    # Mock no nvidia-smi
+    monkeypatch.setattr("shutil.which", lambda _n: None)
+    # Mock Darwin
+    monkeypatch.setattr("platform.system", lambda: "Darwin")
+
+    # Mock subprocess.run for sysctl
+    def mock_run(cmd, **kwargs):
+        if cmd == ["sysctl", "-n", "hw.optional.arm64"]:
+            return subprocess.CompletedProcess(cmd, returncode=0, stdout="1")
+        return subprocess.CompletedProcess(cmd, returncode=1)
+
+    monkeypatch.setattr("subprocess.run", mock_run)
+
+    result = check_gpu()
+    assert result.ok is True
+    assert result.details["gpu_available"] is True
+    assert result.details["mps"]["available"] is True
+    assert result.details["mps"]["apple_silicon"] is True
+    assert result.details["cuda"]["available"] is False
+
+
+def test_check_gpu_mps_not_available_on_linux(monkeypatch) -> None:
+    monkeypatch.setattr("shutil.which", lambda _n: None)
+    monkeypatch.setattr("platform.system", lambda: "Linux")
+
+    result = check_gpu()
+    assert result.details["mps"]["available"] is False
+
+
+def test_check_gpu_cuda_and_mps_both_detected(monkeypatch) -> None:
+    # Mock nvidia-smi present
+    monkeypatch.setattr(
+        "shutil.which", lambda _n: "/usr/bin/nvidia-smi" if _n == "nvidia-smi" else None
+    )
+    # Mock Darwin
+    monkeypatch.setattr("platform.system", lambda: "Darwin")
+
+    # Mock subprocess.run
+    def mock_run(cmd, **kwargs):
+        if cmd == ["sysctl", "-n", "hw.optional.arm64"]:
+            return subprocess.CompletedProcess(cmd, returncode=0, stdout="1")
+        if "nvidia-smi" in cmd[0]:
+            return subprocess.CompletedProcess(cmd, returncode=0, stdout="NVIDIA A100, 40GB")
+        return subprocess.CompletedProcess(cmd, returncode=1)
+
+    monkeypatch.setattr("subprocess.run", mock_run)
+
+    result = check_gpu()
+    assert result.details["gpu_available"] is True
+    assert result.details["cuda"]["available"] is True
+    assert result.details["mps"]["available"] is True
+    assert result.details["cuda"]["model"] == "NVIDIA A100"
+
+
+def test_check_gpu_nvidia_smi_query_failure_graceful(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "shutil.which", lambda _n: "/usr/bin/nvidia-smi" if _n == "nvidia-smi" else None
+    )
+
+    # Mock nvidia-smi query failure
+    def mock_run(cmd, **kwargs):
+        return subprocess.CompletedProcess(cmd, returncode=1)
+
+    monkeypatch.setattr("subprocess.run", mock_run)
+
+    result = check_gpu()
+    assert result.details["cuda"]["available"] is True
+    assert "model" not in result.details["cuda"]
 
 
 def test_check_conda_lock_missing_fails(monkeypatch) -> None:
