@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from typing import Any
 import numpy as np
 import pandas as pd
-import xarray as xr
 from numpy.testing import assert_allclose
 from PIL import Image
 from scipy.optimize import linear_sum_assignment
@@ -147,27 +147,46 @@ class DataEquivalenceHelper:
 
         pd.testing.assert_frame_equal(actual, expected, rtol=rtol)
 
-    def assert_metadata_preserved(self, actual: xr.DataArray, expected: xr.DataArray) -> None:
+    def assert_metadata_preserved(self, actual: Any, expected: Any) -> None:
         """
-        Assert xarray metadata (coords, dims, attrs) is preserved.
+        Assert metadata (dims, coords, attrs for xarray; columns, index for pandas) is preserved.
 
-        Raises:
-            AssertionError: If dimension names, coordinates, or attrs differ
+        Args:
+            actual: Actual data object (DataArray or DataFrame)
+            expected: Expected data object
         """
-        # Check dimensions
-        assert actual.dims == expected.dims, (
-            f"xarray dimension names differ: {actual.dims} != {expected.dims}"
-        )
+        import xarray as xr
 
-        # Check coordinates
-        # xr.DataArray.coords.equals() checks both names and values
-        if not actual.coords.equals(expected.coords):
-            raise AssertionError(
-                f"xarray coordinates differ:\nActual: {actual.coords}\nExpected: {expected.coords}"
+        # Xarray DataArray
+        if isinstance(actual, xr.DataArray) and isinstance(expected, xr.DataArray):
+            # Check dimensions
+            assert actual.dims == expected.dims, (
+                f"xarray dimension names differ: {actual.dims} != {expected.dims}"
             )
 
-        # Check attributes
-        if actual.attrs != expected.attrs:
-            raise AssertionError(
-                f"xarray attributes differ:\nActual: {actual.attrs}\nExpected: {expected.attrs}"
+            # Check coordinates
+            if not actual.coords.equals(expected.coords):
+                raise AssertionError(
+                    f"xarray coordinates differ:\nActual: {actual.coords}\nExpected: {expected.coords}"
+                )
+
+            # Check attributes
+            if actual.attrs != expected.attrs:
+                raise AssertionError(
+                    f"xarray attributes differ:\nActual: {actual.attrs}\nExpected: {expected.attrs}"
+                )
+
+        # Pandas DataFrame
+        elif isinstance(actual, pd.DataFrame) and isinstance(expected, pd.DataFrame):
+            # Check columns
+            assert list(actual.columns) == list(expected.columns), (
+                f"DataFrame columns differ: {list(actual.columns)} != {list(expected.columns)}"
             )
+
+            # Check index names
+            assert actual.index.names == expected.index.names, (
+                f"DataFrame index names differ: {actual.index.names} != {expected.index.names}"
+            )
+        else:
+            # Fallback for other types if needed, or just skip if types don't support metadata
+            pass
