@@ -16,7 +16,7 @@
   - ✅ `doctor` command complete
   - ✅ `install` command refactored and extensible
   - ❌ `list` CLI not exposed (API exists)
-  - ❌ `remove` CLI not implemented
+  - ✅ `remove` CLI implemented
 
 - **Phase 3: Data & Artifacts** (~95% complete)
   - ✅ File artifacts fully operational
@@ -34,11 +34,11 @@
 ## Current Position
 
 Phase: 2 of 5 (Tool Management)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: In progress
-Last activity: 2026-01-22 - Completed 02-02-PLAN.md
+Last activity: 2026-01-22 - Completed 02-03-PLAN.md
 
-Progress: ████████░░ 78%
+Progress: █████████░ 85%
 
 ## Context & Memory
 
@@ -49,16 +49,17 @@ Progress: ████████░░ 78%
 - **SQLite Registry**: Using SQLite for tool registry and session persistence.
 - **Dynamic Tool Discovery**: (Phase 2-02) Tools are discovered from `envs/bioimage-mcp-*.yaml` files, enabling easy addition of new tool packs.
 - **Installation Profiles**: (Phase 2-02) Support for `cpu`, `gpu`, and `minimal` profiles to simplify environment setup.
+- **Active Worker Safety**: (Phase 2-03) Tool removal is blocked if an active worker process is detected, preventing disruption of running sessions.
+- **Base Environment Protection**: (Phase 2-03) The 'base' environment is protected from removal as it contains core server components.
 
 ### Blockers
 - None.
 
 ### Next Steps
 - Implement `bioimage-mcp list` (02-01-PLAN.md)
-- Implement `bioimage-mcp remove` (02-03-PLAN.md)
 
 ## Session Continuity
 
-Last session: 2026-01-22T12:08:44Z
-Stopped at: Completed 02-02-PLAN.md
+Last session: 2026-01-22T12:09:12Z
+Stopped at: Completed 02-03-PLAN.md
 Resume file: None
