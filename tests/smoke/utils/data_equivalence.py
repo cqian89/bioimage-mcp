@@ -5,6 +5,7 @@ from typing import Optional
 
 import numpy as np
 import pandas as pd
+import xarray as xr
 from numpy.testing import assert_allclose
 from scipy.optimize import linear_sum_assignment
 from PIL import Image
@@ -68,7 +69,12 @@ class DataEquivalenceHelper:
         min_size: int = 1000,
         expected_width: Optional[int] = None,
         expected_height: Optional[int] = None,
+        dimension_tolerance: int = 0,
         min_variance: float = 1.0,
+        min_mean: Optional[float] = None,
+        max_mean: Optional[float] = None,
+        min_std: Optional[float] = None,
+        max_std: Optional[float] = None,
     ) -> None:
         """Semantic validation of plot artifact."""
         assert path.exists(), f"Plot file {path} does not exist"
@@ -78,12 +84,12 @@ class DataEquivalenceHelper:
 
         with Image.open(path) as img:
             if expected_width is not None:
-                assert img.width == expected_width, (
-                    f"Expected width {expected_width}, got {img.width}"
+                assert abs(img.width - expected_width) <= dimension_tolerance, (
+                    f"Expected width {expected_width} (±{dimension_tolerance}), got {img.width}"
                 )
             if expected_height is not None:
-                assert img.height == expected_height, (
-                    f"Expected height {expected_height}, got {img.height}"
+                assert abs(img.height - expected_height) <= dimension_tolerance, (
+                    f"Expected height {expected_height} (±{dimension_tolerance}), got {img.height}"
                 )
 
             # Check for non-blank content
@@ -93,6 +99,40 @@ class DataEquivalenceHelper:
             assert variance >= min_variance, (
                 f"Plot {path} appears blank (variance {variance:.4f} < {min_variance})"
             )
+
+            # Optional intensity statistics validation
+            if (
+                min_mean is not None
+                or max_mean is not None
+                or min_std is not None
+                or max_std is not None
+            ):
+                mean = np.mean(data)
+                std = np.std(data)
+                if min_mean is not None:
+                    assert mean >= min_mean, f"Plot {path} mean {mean:.4f} < {min_mean}"
+                if max_mean is not None:
+                    assert mean <= max_mean, f"Plot {path} mean {mean:.4f} > {max_mean}"
+                if min_std is not None:
+                    assert std >= min_std, f"Plot {path} std {std:.4f} < {min_std}"
+                if max_std is not None:
+                    assert std <= max_std, f"Plot {path} std {std:.4f} > {max_std}"
+
+    def assert_files_similar_size(self, path1: Path, path2: Path, max_ratio: float = 2.0) -> None:
+        """Check that two files have similar sizes (within a ratio)."""
+        size1 = path1.stat().st_size
+        size2 = path2.stat().st_size
+
+        if size1 == 0 or size2 == 0:
+            assert size1 == size2, f"One file is empty: {size1} vs {size2} bytes"
+            return
+
+        ratio = max(size1, size2) / min(size1, size2)
+
+        assert ratio <= max_ratio, (
+            f"File sizes differ too much: {path1.name} ({size1} bytes) vs "
+            f"{path2.name} ({size2} bytes). Ratio {ratio:.2f} > {max_ratio}"
+        )
 
     def assert_table_equivalent(
         self,
@@ -107,3 +147,28 @@ class DataEquivalenceHelper:
             expected = expected.reindex(columns=sorted(expected.columns))
 
         pd.testing.assert_frame_equal(actual, expected, rtol=rtol)
+
+    def assert_metadata_preserved(self, actual: xr.DataArray, expected: xr.DataArray) -> None:
+        """
+        Assert xarray metadata (coords, dims, attrs) is preserved.
+
+        Raises:
+            AssertionError: If dimension names, coordinates, or attrs differ
+        """
+        # Check dimensions
+        assert actual.dims == expected.dims, (
+            f"xarray dimension names differ: {actual.dims} != {expected.dims}"
+        )
+
+        # Check coordinates
+        # xr.DataArray.coords.equals() checks both names and values
+        if not actual.coords.equals(expected.coords):
+            raise AssertionError(
+                f"xarray coordinates differ:\nActual: {actual.coords}\nExpected: {expected.coords}"
+            )
+
+        # Check attributes
+        if actual.attrs != expected.attrs:
+            raise AssertionError(
+                f"xarray attributes differ:\nActual: {actual.attrs}\nExpected: {expected.attrs}"
+            )
