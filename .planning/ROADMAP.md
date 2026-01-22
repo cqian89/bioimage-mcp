@@ -80,7 +80,7 @@ This roadmap structures the development of `bioimage-mcp` into 4 coherent phases
 - REPR-02: Export works; replay needs validation, error handling, progress, and resume.
 
 **Plans:** 4 plans (Waves 1-4 sequential)
-- [ ] 04-01-PLAN.md — Add override validation using jsonschema
+- [x] 04-01-PLAN.md — Add override validation using jsonschema
 - [ ] 04-02-PLAN.md — Add version mismatch warnings and environment checks
 - [ ] 04-03-PLAN.md — Add step progress reporting and tool message surfacing
 - [ ] 04-04-PLAN.md — Add missing input handling, resume capability, and error summaries

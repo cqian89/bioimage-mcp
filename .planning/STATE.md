@@ -29,12 +29,12 @@
 
 ## Current Position
 
-Phase: 1 of 4 (Core Runtime)
-Plan: 1 of 1 in current phase
-Status: Phase complete
-Last activity: 2026-01-22 - Completed 01-01-PLAN.md (MPS Detection)
+Phase: 4 of 4 (Reproducibility)
+Plan: 1 of 4 in current phase
+Status: In progress
+Last activity: 2026-01-22 - Completed 04-01-PLAN.md (Override Validation)
 
-Progress: ██████████ 100% (Phases 1 & 2)
+Progress: ██████░░░░ 66%
 
 ## Context & Memory
 
@@ -49,6 +49,7 @@ Progress: ██████████ 100% (Phases 1 & 2)
 - **Base Environment Protection**: (Phase 2-03) The 'base' environment is protected from removal as it contains core server components.
 - **Filesystem-over-Database Priority**: (Phase 2-04) The `list` command was refactored to read manifests directly from disk, ensuring consistency with `doctor` and avoiding reliance on a potentially stale SQLite registry.
 - **Unified GPU Detection**: (Phase 1-01) Single 'gpu' check reports both CUDA and MPS status using dependency-free system probing.
+- **Pre-execution Replay Validation**: (Phase 4-01) Validate parameter overrides against tool schemas before starting replay to fail fast on invalid inputs.
 
 ### Blockers
 - None.
@@ -58,6 +59,6 @@ Progress: ██████████ 100% (Phases 1 & 2)
 
 ## Session Continuity
 
-Last session: 2026-01-22T13:15:00Z
-Stopped at: Completed 01-01-PLAN.md
+Last session: 2026-01-22T17:40:00Z
+Stopped at: Completed 04-01-PLAN.md
 Resume file: None
