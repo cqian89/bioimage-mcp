@@ -22,19 +22,19 @@
   - ✅ File artifacts fully operational
   - ✅ `mem://` protocol implemented
 
-- **Phase 4: Reproducibility** (~80% complete)
+- **Phase 4: Reproducibility** (100% complete) - **PHASE COMPLETE**
   - ✅ Session recording complete with provenance
-  - ⚠️ `session_export` works
-  - ⚠️ `session_replay` implemented but lacks validation
+  - ✅ `session_export` works
+  - ✅ `session_replay` implemented with validation, resume, and error handling
 
 ## Current Position
 
 Phase: 4 of 4 (Reproducibility)
-Plan: 3 of 4 in current phase
-Status: In progress
-Last activity: 2026-01-22 - Completed 04-03-PLAN.md (Progress Reporting & Warning Surfacing)
+Plan: 4 of 4 in current phase
+Status: Phase complete
+Last activity: 2026-01-22 - Completed 04-04-PLAN.md (Resume Capability & Error Handling)
 
-Progress: █████████░ 88%
+Progress: ██████████ 100%
 
 ## Context & Memory
 
@@ -53,15 +53,18 @@ Progress: █████████░ 88%
 - **Environment & Version Pre-flight**: (Phase 4-02) Verify environment installation and warn about tool version mismatches before session replay, offering auto-install hints.
 - **Replay Progress History**: (Phase 4-03) Include a complete step-by-step progress log in the final replay response to provide retrospective observability for AI agents.
 - **Dry-run Workflow Preview**: (Phase 4-03) Support dry-run mode that validates all overrides and inputs, returning a 'pending' progress list to show the intended execution plan.
+- **Ordinal-based Resume**: (Phase 4-04) Support resuming replays from a specific step, skipping already successful steps and restoring intermediate outputs.
+- **Structured Missing Input Hints**: (Phase 4-04) Return structured error details with JSON Pointers for missing external inputs during replay.
+- **Human-readable Error Summaries**: (Phase 4-04) Generate formatted error summaries in replay responses to make failures actionable for users and agents.
 
 ### Blockers
 - None.
 
 ### Next Steps
-- Plan and execute Phase 4: Reproducibility (Resume Capability & Missing Inputs)
+- Finalize documentation and prepare for release.
 
 ## Session Continuity
 
-Last session: 2026-01-22T17:55:00Z
-Stopped at: Completed 04-03-PLAN.md
+Last session: 2026-01-22T18:22:00Z
+Stopped at: Completed 04-04-PLAN.md
 Resume file: None
