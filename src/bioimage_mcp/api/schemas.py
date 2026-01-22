@@ -83,6 +83,27 @@ class InstallOffer(BaseModel):
     estimated_time: str | None = None  # e.g., "2-5 minutes"
 
 
+class StepProgress(BaseModel):
+    """Progress report for a single replay step."""
+
+    step_index: int
+    fn_id: str
+    status: Literal["pending", "running", "success", "failed", "skipped"]
+    started_at: str | None = None
+    ended_at: str | None = None
+    message: str | None = None  # e.g., "Step 2/5: Running cellpose.base.segment"
+
+
+class ReplayWarning(BaseModel):
+    """Warning or info message from replay execution."""
+
+    level: Literal["info", "warning"]
+    source: str  # "version_check", "tool", "system"
+    step_index: int | None = None  # None for global warnings
+    fn_id: str | None = None
+    message: str
+
+
 class SuccessHints(BaseModel):
     """Hints returned on successful execution."""
 
@@ -443,11 +464,14 @@ class SessionReplayRequest(BaseModel):
 class SessionReplayResponse(BaseModel):
     run_id: str
     session_id: str
-    status: Literal["running", "ready", "validation_failed"]
+    status: Literal["running", "ready", "validation_failed", "completed", "failed"]
     workflow_ref: ArtifactRef
     log_ref: ArtifactRef | None = None
     error: StructuredError | None = None
     installable: InstallOffer | None = None  # Present when ENVIRONMENT_MISSING error
+    step_progress: list[StepProgress] = Field(default_factory=list)
+    warnings: list[ReplayWarning] = Field(default_factory=list)
+    outputs: dict[str, ArtifactRef] = Field(default_factory=dict)
 
 
 # Workflow Models
