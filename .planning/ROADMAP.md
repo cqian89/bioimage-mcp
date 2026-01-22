@@ -81,7 +81,7 @@ This roadmap structures the development of `bioimage-mcp` into 4 coherent phases
 
 **Plans:** 4 plans (Waves 1-4 sequential)
 - [x] 04-01-PLAN.md — Add override validation using jsonschema
-- [ ] 04-02-PLAN.md — Add version mismatch warnings and environment checks
+- [x] 04-02-PLAN.md — Add version mismatch warnings and environment checks
 - [ ] 04-03-PLAN.md — Add step progress reporting and tool message surfacing
 - [ ] 04-04-PLAN.md — Add missing input handling, resume capability, and error summaries
 

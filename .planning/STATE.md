@@ -30,11 +30,11 @@
 ## Current Position
 
 Phase: 4 of 4 (Reproducibility)
-Plan: 1 of 4 in current phase
+Plan: 2 of 4 in current phase
 Status: In progress
-Last activity: 2026-01-22 - Completed 04-01-PLAN.md (Override Validation)
+Last activity: 2026-01-22 - Completed 04-02-PLAN.md (Version & Environment Validation)
 
-Progress: ██████░░░░ 66%
+Progress: ███████░░░ 77%
 
 ## Context & Memory
 
@@ -50,6 +50,7 @@ Progress: ██████░░░░ 66%
 - **Filesystem-over-Database Priority**: (Phase 2-04) The `list` command was refactored to read manifests directly from disk, ensuring consistency with `doctor` and avoiding reliance on a potentially stale SQLite registry.
 - **Unified GPU Detection**: (Phase 1-01) Single 'gpu' check reports both CUDA and MPS status using dependency-free system probing.
 - **Pre-execution Replay Validation**: (Phase 4-01) Validate parameter overrides against tool schemas before starting replay to fail fast on invalid inputs.
+- **Environment & Version Pre-flight**: (Phase 4-02) Verify environment installation and warn about tool version mismatches before session replay, offering auto-install hints.
 
 ### Blockers
 - None.
@@ -59,6 +60,6 @@ Progress: ██████░░░░ 66%
 
 ## Session Continuity
 
-Last session: 2026-01-22T17:40:00Z
-Stopped at: Completed 04-01-PLAN.md
+Last session: 2026-01-22T18:00:53Z
+Stopped at: Completed 04-02-PLAN.md
 Resume file: None
