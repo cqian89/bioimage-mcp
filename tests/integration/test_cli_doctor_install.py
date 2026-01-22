@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import yaml
+import pytest
 
 from bioimage_mcp import cli
 
@@ -57,14 +58,82 @@ def test_cli_wires_doctor(monkeypatch) -> None:
 
 
 def test_cli_wires_install(monkeypatch) -> None:
-    called = {"install": False}
+    called = {"install": None}
 
-    def fake_install(*, profile: str) -> int:
-        called["install"] = True
-        assert profile == "cpu"
+    def fake_install(
+        *, tools: list[str] | None = None, profile: str | None = None, force: bool = False
+    ) -> int:
+        called["install"] = (tools, profile, force)
         return 0
 
     monkeypatch.setattr("bioimage_mcp.bootstrap.install.install", fake_install)
 
-    assert cli.main(["install", "--profile", "cpu"]) == 0
-    assert called["install"] is True
+    # Test profile
+    assert cli.main(["install", "--profile", "gpu"]) == 0
+    assert called["install"] == (None, "gpu", False)
+
+    # Test tools
+    assert cli.main(["install", "cellpose", "tttrlib"]) == 0
+    assert called["install"] == (["cellpose", "tttrlib"], None, False)
+
+    # Test force
+    assert cli.main(["install", "--force"]) == 0
+    assert called["install"] == (None, None, True)
+
+    # Test mutual exclusivity
+    assert cli.main(["install", "cellpose", "--profile", "cpu"]) == 1
+
+
+def test_discover_available_tools(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    envs_dir = tmp_path / "envs"
+    envs_dir.mkdir()
+    (envs_dir / "bioimage-mcp-base.yaml").write_text("name: base")
+    (envs_dir / "bioimage-mcp-cellpose.yaml").write_text("name: cellpose")
+    (envs_dir / "not-a-tool.yaml").write_text("name: not-a-tool")
+
+    from bioimage_mcp.bootstrap.install import discover_available_tools
+
+    tools = discover_available_tools()
+
+    assert "base" in tools
+    assert "cellpose" in tools
+    assert "not-a-tool" not in tools
+    assert tools["base"] == envs_dir / "bioimage-mcp-base.yaml"
+
+
+def test_install_logic_skips_existing(tmp_path: Path, monkeypatch, capsys) -> None:
+    monkeypatch.chdir(tmp_path)
+    envs_dir = tmp_path / "envs"
+    envs_dir.mkdir()
+    (envs_dir / "bioimage-mcp-base.yaml").write_text("name: base")
+
+    # Mock env manager
+    monkeypatch.setattr(
+        "bioimage_mcp.bootstrap.install.detect_env_manager", lambda: ("conda", "conda", "1.0")
+    )
+
+    # Mock _env_exists to return True
+    monkeypatch.setattr("bioimage_mcp.bootstrap.install._env_exists", lambda exe, name: True)
+
+    from bioimage_mcp.bootstrap.install import install
+
+    # Install without force
+    result = install(profile="minimal")
+    assert result == 0
+    captured = capsys.readouterr()
+    assert "base already installed" in captured.out
+
+    # Install with force
+    called_install = []
+
+    def fake_install_env(exe, manager, name, file):
+        called_install.append(name)
+        return True
+
+    monkeypatch.setattr("bioimage_mcp.bootstrap.install._install_env", fake_install_env)
+    monkeypatch.setattr("bioimage_mcp.bootstrap.install._ensure_tool_manifest_roots", lambda: None)
+
+    result = install(profile="minimal", force=True)
+    assert result == 0
+    assert "bioimage-mcp-base" in called_install
