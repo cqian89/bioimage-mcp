@@ -7,7 +7,7 @@
 
 ## Overview
 
-This roadmap structures the development of `bioimage-mcp` into 5 coherent phases. Each phase delivers a standalone verifiable capability, moving from core infrastructure to advanced interaction and reproducibility. The strategy prioritizes the "Hub-and-Spoke" architecture immediately to resolve the primary technical risk (dependency isolation).
+This roadmap structures the development of `bioimage-mcp` into 4 coherent phases. Each phase delivers a standalone verifiable capability, moving from core infrastructure to advanced interaction and reproducibility. The strategy prioritizes the "Hub-and-Spoke" architecture immediately to resolve the primary technical risk (dependency isolation).
 
 ## Phase Structure
 
@@ -62,20 +62,7 @@ This roadmap structures the development of `bioimage-mcp` into 5 coherent phases
 **Notes:**
 - DATA-02: Currently in file-simulated phase, ready for zero-copy upgrade.
 
-### Phase 4: Interactive Execution
-**Status:** Pending (partial foundation) (~40%)
-**Goal:** Tools can execute interactively and report real-time status.
-**Focus:** User input, progress bars, sampling.
-
-| Requirement | Description | Status |
-|-------------|-------------|--------|
-| **INTR-01** | Tools can request user input during execution | ❌ |
-| **INTR-02** | Tools report execution progress to MCP client | ⚠️ |
-
-**Notes:**
-- INTR-02: Status polling exists, but real-time streaming is not implemented.
-
-### Phase 5: Reproducibility
+### Phase 4: Reproducibility
 **Status:** Mostly Complete (~80%)
 **Goal:** Users can record and reproduce analysis sessions.
 **Focus:** Session recording, workflow export.
@@ -96,5 +83,4 @@ This roadmap structures the development of `bioimage-mcp` into 5 coherent phases
 | **1 - Core Runtime** | Spawn/Manage Workers | **Complete** |
 | **2 - Tool Management** | Install/List Tools | **Complete** |
 | **3 - Data & Artifacts** | Zero-copy I/O | **Complete** |
-| **4 - Interactive Execution** | Input/Progress | Pending |
-| **5 - Reproducibility** | Record/Export | **Mostly Complete** |
+| **4 - Reproducibility** | Record/Export | **Mostly Complete** |
