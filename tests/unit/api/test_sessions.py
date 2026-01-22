@@ -127,3 +127,50 @@ def test_replay_session_validation_failed(session_service):
     assert response.error.code == "VALIDATION_FAILED"
     assert len(response.error.details) == 1
     assert response.error.details[0].path == "/params_overrides/test.fn/diameter"
+
+
+def test_check_version_mismatches(session_service):
+    # Setup
+    from bioimage_mcp.api.schemas import StepProvenance
+
+    recorded_hash = "old-hash"
+    current_hash = "new-hash"
+
+    step = WorkflowStep(
+        index=0,
+        id="test.fn",
+        inputs={},
+        params={},
+        outputs={},
+        status="success",
+        provenance=StepProvenance(
+            tool_pack_id="test-pack", tool_pack_version="1.0.0", lock_hash=recorded_hash
+        ),
+    )
+    record = WorkflowRecord(session_id="test-session", external_inputs={}, steps=[step])
+
+    session_service.session_manager.get_function_provenance.return_value = {
+        "lock_hash": current_hash
+    }
+
+    # Act
+    mismatches = session_service._check_version_mismatches(record)
+
+    # Assert
+    assert len(mismatches) == 1
+    assert mismatches[0]["fn_id"] == "test.fn"
+    assert mismatches[0]["recorded"] == recorded_hash
+    assert mismatches[0]["current"] == current_hash
+
+
+def test_version_mismatch_warning_helper():
+    from bioimage_mcp.api.errors import version_mismatch_warning
+
+    error = version_mismatch_warning(
+        message="Version mismatch", fn_id="test.fn", recorded_hash="old", current_hash="new"
+    )
+
+    assert error.code == "VERSION_MISMATCH"
+    assert len(error.details) == 1
+    assert error.details[0].expected == "old"
+    assert error.details[0].actual == "new"

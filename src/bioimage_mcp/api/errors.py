@@ -14,6 +14,7 @@ ARTIFACT_NOT_FOUND = "ARTIFACT_NOT_FOUND"  # Specific artifact missing from stor
 EXECUTION_FAILED = "EXECUTION_FAILED"  # Tool execution error
 PERMISSION_DENIED = "PERMISSION_DENIED"  # Filesystem access denied
 SCHEMA_MISMATCH = "SCHEMA_MISMATCH"  # Workflow record schema incompatibility
+VERSION_MISMATCH = "VERSION_MISMATCH"  # Tool version differs from recorded
 
 
 def validation_error(
@@ -38,6 +39,27 @@ def validation_error(
     detail = ErrorDetail(path=path, expected=expected, actual=actual, hint=hint)
     return StructuredError(
         code=VALIDATION_FAILED,
+        message=message,
+        details=[detail],
+    )
+
+
+def version_mismatch_warning(
+    message: str,
+    fn_id: str,
+    recorded_hash: str,
+    current_hash: str,
+    hint: str = "Results may differ from original run",
+) -> StructuredError:
+    """Create a VERSION_MISMATCH warning for provenance differences."""
+    detail = ErrorDetail(
+        path=f"/steps/*/provenance/lock_hash",
+        expected=recorded_hash,
+        actual=current_hash,
+        hint=hint,
+    )
+    return StructuredError(
+        code=VERSION_MISMATCH,
         message=message,
         details=[detail],
     )

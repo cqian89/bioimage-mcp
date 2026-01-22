@@ -153,6 +153,27 @@ class SessionService:
 
         return errors
 
+    def _check_version_mismatches(self, record: WorkflowRecord) -> list[dict]:
+        """Check for version mismatches between recorded and current tool versions."""
+        mismatches = []
+        for step in record.steps:
+            if not step.provenance or not step.provenance.lock_hash:
+                continue
+
+            current_prov = self.session_manager.get_function_provenance(step.id)
+            current_hash = current_prov.get("lock_hash")
+
+            if step.provenance.lock_hash != current_hash:
+                mismatches.append(
+                    {
+                        "fn_id": step.id,
+                        "step_index": step.index,
+                        "recorded": step.provenance.lock_hash,
+                        "current": current_hash,
+                    }
+                )
+        return mismatches
+
     def export_session(self, request: SessionExportRequest) -> SessionExportResponse:
         """Export session to a reproducible workflow record (T093)."""
         session_id = request.session_id
@@ -315,6 +336,9 @@ class SessionService:
             raise ValueError(f"Failed to load workflow record: {e}") from e
 
         record = WorkflowRecord(**record_data)
+
+        # Check for version mismatches (surfacing happens in 04-03)
+        self._check_version_mismatches(record)
 
         # Validate overrides against tool schemas (T-override-validation)
         if request.params_overrides or request.step_overrides:
