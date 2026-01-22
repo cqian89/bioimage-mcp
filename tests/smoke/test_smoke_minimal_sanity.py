@@ -88,6 +88,7 @@ def test_data_equivalence_xarray(helper, synthetic_xarray):
 
 
 @pytest.mark.smoke_minimal
+@pytest.mark.uses_minimal_data
 def test_synthetic_data_fixtures(
     synthetic_image, synthetic_labels, synthetic_dataframe, synthetic_xarray
 ):
