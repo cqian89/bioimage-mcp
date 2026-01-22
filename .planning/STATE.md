@@ -12,10 +12,10 @@
   - ✅ Process lifecycle (`PersistentWorkerManager`)
   - ⚠️ GPU detection partial (NVIDIA only, no MPS)
 
-- **Phase 2: Tool Management** (~75% complete) - **CURRENT FOCUS**
+- **Phase 2: Tool Management** (100% complete) - **PHASE COMPLETE**
   - ✅ `doctor` command complete
   - ✅ `install` command refactored and extensible
-  - ❌ `list` CLI not exposed (API exists)
+  - ✅ `list` command implemented
   - ✅ `remove` CLI implemented
 
 - **Phase 3: Data & Artifacts** (~95% complete)
@@ -34,11 +34,11 @@
 ## Current Position
 
 Phase: 2 of 5 (Tool Management)
-Plan: 2 of 3 in current phase
-Status: In progress
-Last activity: 2026-01-22 - Completed 02-03-PLAN.md
+Plan: 3 of 3 in current phase
+Status: Phase complete
+Last activity: 2026-01-22 - Completed 02-01-PLAN.md
 
-Progress: █████████░ 85%
+Progress: ██████████ 100% (Phase 2)
 
 ## Context & Memory
 

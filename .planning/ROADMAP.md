@@ -27,26 +27,26 @@ This roadmap structures the development of `bioimage-mcp` into 5 coherent phases
 - CORE-02: NVIDIA GPU detection implemented; MPS (Apple Silicon) detection is a known gap.
 
 ### Phase 2: Tool Management
-**Status:** In Progress (~60%)
+**Status:** Complete (100%)
 **Goal:** User can manage the lifecycle of tool environments via CLI.
 **Focus:** Installation, verification, removal.
 
 | Requirement | Description | Status |
 |-------------|-------------|--------|
 | **TOOL-01** | User can install tools via `bioimage-mcp install` | ✅ |
-| **TOOL-02** | User can list installed tools and status | ❌ |
-| **TOOL-03** | User can remove tools via `bioimage-mcp remove` | ❌ |
+| **TOOL-02** | User can list installed tools and status | ✅ |
+| **TOOL-03** | User can remove tools via `bioimage-mcp remove` | ✅ |
 | **TOOL-04** | User can verify environment health via `doctor` | ✅ |
 
 **Notes:**
-- TOOL-01: `install` exists but is currently hardcoded to base/cellpose envs.
-- TOOL-02: CLI not exposed; logic exists in `DiscoveryService`.
-- TOOL-03: Not implemented.
+- TOOL-01: `install` refactored for dynamic tool discovery.
+- TOOL-02: `list` command implemented with table and JSON output.
+- TOOL-03: `remove` command implemented with safety checks.
 
 **Plans:** 3 plans (Wave 1 - all parallel)
-- [ ] 02-01-PLAN.md — Implement `list` CLI command
+- [x] 02-01-PLAN.md — Implement `list` CLI command
 - [x] 02-02-PLAN.md — Refactor `install` CLI command
-- [ ] 02-03-PLAN.md — Implement `remove` CLI command
+- [x] 02-03-PLAN.md — Implement `remove` CLI command
 
 ### Phase 3: Data & Artifacts
 **Status:** Complete (~95%)
