@@ -43,6 +43,11 @@ This roadmap structures the development of `bioimage-mcp` into 5 coherent phases
 - TOOL-02: CLI not exposed; logic exists in `DiscoveryService`.
 - TOOL-03: Not implemented.
 
+**Plans:** 3 plans (Wave 1 - all parallel)
+- [ ] 02-01-PLAN.md — Implement `list` CLI command
+- [ ] 02-02-PLAN.md — Refactor `install` CLI command
+- [ ] 02-03-PLAN.md — Implement `remove` CLI command
+
 ### Phase 3: Data & Artifacts
 **Status:** Complete (~95%)
 **Goal:** System enables zero-copy data passing and artifact management.
