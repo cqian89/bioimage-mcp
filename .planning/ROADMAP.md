@@ -2,8 +2,8 @@
 
 **Project:** Bioimage-MCP
 **Mission:** Enable AI agents to safely and reproducibly execute bioimage analysis tools.
-**Status:** Active
-**Current Phase:** Phase 2 (Tool Management)
+**Status:** Complete
+**Current Phase:** All phases complete
 
 ## Overview
 
@@ -53,7 +53,7 @@ This roadmap structures the development of `bioimage-mcp` into 4 coherent phases
 - [x] 02-04-PLAN.md — Refactor `list` for filesystem discovery
 
 ### Phase 3: Data & Artifacts
-**Status:** Complete (~95%)
+**Status:** Complete (100%)
 **Goal:** System enables zero-copy data passing and artifact management.
 **Focus:** File paths, `mem://` protocol, `bioio` integration.
 
@@ -66,18 +66,18 @@ This roadmap structures the development of `bioimage-mcp` into 4 coherent phases
 - DATA-02: Currently in file-simulated phase, ready for zero-copy upgrade.
 
 ### Phase 4: Reproducibility
-**Status:** Planning Complete (~80%)
+**Status:** Complete (100%)
 **Goal:** Users can record and reproduce analysis sessions with validation, error handling, and resume capability.
 **Focus:** Session recording, workflow export, production-ready replay.
 
 | Requirement | Description | Status |
 |-------------|-------------|--------|
 | **REPR-01** | System records all tool inputs/outputs/versions | ✅ |
-| **REPR-02** | User can export session to reproducible workflow | ⚠️ |
+| **REPR-02** | User can export session to reproducible workflow | ✅ |
 
 **Notes:**
 - REPR-01: Implemented using `SessionStep` and provenance tracking with `lock_hash`.
-- REPR-02: Export works; replay needs validation, error handling, progress, and resume.
+- REPR-02: Export and replay complete with validation, error handling, progress, and resume.
 
 **Plans:** 4 plans (Waves 1-4 sequential)
 - [x] 04-01-PLAN.md — Add override validation using jsonschema
