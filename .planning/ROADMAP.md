@@ -43,10 +43,11 @@ This roadmap structures the development of `bioimage-mcp` into 5 coherent phases
 - TOOL-02: `list` command implemented with table and JSON output.
 - TOOL-03: `remove` command implemented with safety checks.
 
-**Plans:** 3 plans (Wave 1 - all parallel)
+**Plans:** 4 plans (Wave 1 - all parallel)
 - [x] 02-01-PLAN.md — Implement `list` CLI command
 - [x] 02-02-PLAN.md — Refactor `install` CLI command
 - [x] 02-03-PLAN.md — Implement `remove` CLI command
+- [x] 02-04-PLAN.md — Refactor `list` for filesystem discovery
 
 ### Phase 3: Data & Artifacts
 **Status:** Complete (~95%)

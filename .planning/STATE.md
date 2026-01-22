@@ -34,9 +34,9 @@
 ## Current Position
 
 Phase: 2 of 5 (Tool Management)
-Plan: 3 of 3 in current phase
+Plan: 4 of 4 in current phase
 Status: Phase complete
-Last activity: 2026-01-22 - Completed 02-01-PLAN.md
+Last activity: 2026-01-22 - Completed 02-04-PLAN.md (Gap Closure)
 
 Progress: ██████████ 100% (Phase 2)
 
@@ -51,6 +51,7 @@ Progress: ██████████ 100% (Phase 2)
 - **Installation Profiles**: (Phase 2-02) Support for `cpu`, `gpu`, and `minimal` profiles to simplify environment setup.
 - **Active Worker Safety**: (Phase 2-03) Tool removal is blocked if an active worker process is detected, preventing disruption of running sessions.
 - **Base Environment Protection**: (Phase 2-03) The 'base' environment is protected from removal as it contains core server components.
+- **Filesystem-over-Database Priority**: (Phase 2-04) The `list` command was refactored to read manifests directly from disk, ensuring consistency with `doctor` and avoiding reliance on a potentially stale SQLite registry.
 
 ### Blockers
 - None.
@@ -60,6 +61,6 @@ Progress: ██████████ 100% (Phase 2)
 
 ## Session Continuity
 
-Last session: 2026-01-22T13:15:00Z
-Stopped at: Phase 2 complete and verified
+Last session: 2026-01-22T12:50:00Z
+Stopped at: Completed 02-04-PLAN.md
 Resume file: None
