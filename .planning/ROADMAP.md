@@ -66,9 +66,9 @@ This roadmap structures the development of `bioimage-mcp` into 4 coherent phases
 - DATA-02: Currently in file-simulated phase, ready for zero-copy upgrade.
 
 ### Phase 4: Reproducibility
-**Status:** Mostly Complete (~80%)
-**Goal:** Users can record and reproduce analysis sessions.
-**Focus:** Session recording, workflow export.
+**Status:** Planning Complete (~80%)
+**Goal:** Users can record and reproduce analysis sessions with validation, error handling, and resume capability.
+**Focus:** Session recording, workflow export, production-ready replay.
 
 | Requirement | Description | Status |
 |-------------|-------------|--------|
@@ -77,7 +77,13 @@ This roadmap structures the development of `bioimage-mcp` into 4 coherent phases
 
 **Notes:**
 - REPR-01: Implemented using `SessionStep` and provenance tracking with `lock_hash`.
-- REPR-02: Export works; replay is implemented but lacks validation and is not yet production-ready.
+- REPR-02: Export works; replay needs validation, error handling, progress, and resume.
+
+**Plans:** 4 plans (Waves 1-4 sequential)
+- [ ] 04-01-PLAN.md — Add override validation using jsonschema
+- [ ] 04-02-PLAN.md — Add version mismatch warnings and environment checks
+- [ ] 04-03-PLAN.md — Add step progress reporting and tool message surfacing
+- [ ] 04-04-PLAN.md — Add missing input handling, resume capability, and error summaries
 
 ## Progress
 

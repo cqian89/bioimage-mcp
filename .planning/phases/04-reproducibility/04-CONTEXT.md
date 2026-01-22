@@ -22,7 +22,7 @@ Users can record analysis sessions and replay them later. Session recording and 
 ### Replay error handling
 - Step failure: Fail fast - stop immediately and report which step failed
 - Partial outputs: Keep artifacts from successful steps for debugging
-- Resume capability: Allow resuming from the failed step with a resume mechanism
+- Resume capability: Allow resuming from the failed step with a resume mechanism. Allow modifying parameters on resume attempt.
 - Error reporting: Both formats - structured error report internally, human-readable summary shown to user
 
 ### Override behavior
