@@ -10,6 +10,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
 
+from jsonschema import ValidationError, validate
+
 from bioimage_mcp.api.discovery import DiscoveryService
 from bioimage_mcp.api.execution import ExecutionService
 from bioimage_mcp.api.schemas import (
@@ -64,6 +66,92 @@ class SessionService:
         # Use discovery service to check registry
         result = self.discovery_service.describe_function(fn_id=fn_id)
         return "error" not in result
+
+    def _validate_overrides(
+        self,
+        params_overrides: dict[str, dict[str, Any]] | None,
+        step_overrides: dict[str, dict[str, Any]] | None,
+        record: WorkflowRecord,
+    ) -> list[ErrorDetail]:
+        """Validate parameter and step overrides against tool schemas."""
+        errors: list[ErrorDetail] = []
+        if not self.discovery_service:
+            return errors
+
+        # 1. Validate params_overrides (by fn_id)
+        if params_overrides:
+            for fn_id, override_params in params_overrides.items():
+                result = self.discovery_service.describe_function(fn_id=fn_id)
+                if isinstance(result, dict) and "error" in result:
+                    continue
+
+                # Result is likely a FunctionDescriptor or a dict
+                params_schema = (
+                    result.params_schema
+                    if hasattr(result, "params_schema")
+                    else result.get("params_schema", {})
+                )
+                try:
+                    validate(instance=override_params, schema=params_schema)
+                except ValidationError as e:
+                    path = (
+                        f"/params_overrides/{fn_id}/{'.'.join(str(p) for p in e.path)}"
+                        if e.path
+                        else f"/params_overrides/{fn_id}"
+                    )
+                    errors.append(
+                        ErrorDetail(
+                            path=path,
+                            expected=str(e.validator_value),
+                            actual=str(e.instance),
+                            hint=e.message,
+                        )
+                    )
+
+        # 2. Validate step_overrides (by step:{idx})
+        if step_overrides:
+            for step_key, overrides in step_overrides.items():
+                if not step_key.startswith("step:"):
+                    continue
+                try:
+                    idx = int(step_key.split(":")[1])
+                    if idx < 0 or idx >= len(record.steps):
+                        continue
+                except (ValueError, IndexError):
+                    continue
+
+                step = record.steps[idx]
+                override_params = overrides.get("params")
+                if not override_params:
+                    continue
+
+                result = self.discovery_service.describe_function(fn_id=step.id)
+                if isinstance(result, dict) and "error" in result:
+                    continue
+
+                params_schema = (
+                    result.params_schema
+                    if hasattr(result, "params_schema")
+                    else result.get("params_schema", {})
+                )
+                try:
+                    validate(instance=override_params, schema=params_schema)
+                except ValidationError as e:
+                    path = (
+                        f"/step_overrides/{step_key}/params/{'.'.join(str(p) for p in e.path)}"
+                        if e.path
+                        else f"/step_overrides/{step_key}/params"
+                    )
+                    errors.append(
+                        ErrorDetail(
+                            path=path,
+                            expected=str(e.validator_value),
+                            actual=str(e.instance),
+                            hint=e.message,
+                        )
+                    )
+
+        return errors
 
     def export_session(self, request: SessionExportRequest) -> SessionExportResponse:
         """Export session to a reproducible workflow record (T093)."""
