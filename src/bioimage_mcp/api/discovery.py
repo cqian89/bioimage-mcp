@@ -203,9 +203,15 @@ class DiscoveryService:
             return {
                 "results": [],
                 "error": validation_error(
-                    message="At least one search criterion required (query, keywords, io_in, io_out, or tags)",
+                    message=(
+                        "At least one search criterion required "
+                        "(query, keywords, io_in, io_out, or tags)"
+                    ),
                     path="query",
-                    hint="Provide 'query' (string), 'keywords' (list), or filter by 'io_in', 'io_out', or 'tags'.",
+                    hint=(
+                        "Provide 'query' (string), 'keywords' (list), "
+                        "or filter by 'io_in', 'io_out', or 'tags'."
+                    ),
                 ).model_dump(),
             }
 
