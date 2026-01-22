@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import pandas as pd
 import xarray as xr
 from numpy.testing import assert_allclose
-from scipy.optimize import linear_sum_assignment
 from PIL import Image
+from scipy.optimize import linear_sum_assignment
 
 
 class DataEquivalenceHelper:
@@ -67,14 +66,14 @@ class DataEquivalenceHelper:
         self,
         path: Path,
         min_size: int = 1000,
-        expected_width: Optional[int] = None,
-        expected_height: Optional[int] = None,
+        expected_width: int | None = None,
+        expected_height: int | None = None,
         dimension_tolerance: int = 0,
         min_variance: float = 1.0,
-        min_mean: Optional[float] = None,
-        max_mean: Optional[float] = None,
-        min_std: Optional[float] = None,
-        max_std: Optional[float] = None,
+        min_mean: float | None = None,
+        max_mean: float | None = None,
+        min_std: float | None = None,
+        max_std: float | None = None,
     ) -> None:
         """Semantic validation of plot artifact."""
         assert path.exists(), f"Plot file {path} does not exist"
