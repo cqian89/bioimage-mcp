@@ -43,8 +43,10 @@ def list_tools(*, json_output: bool) -> int:
             print(json.dumps({"tools": []}))
         else:
             print(
-                "No tools registered. Run 'bioimage-mcp install' or start the server to index tools."
+                "No tools registered. Run 'bioimage-mcp install' "
+                "or start the server to index tools."
             )
+
         return 0
 
     conn = sqlite3.connect(db_path)
