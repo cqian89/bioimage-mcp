@@ -37,9 +37,9 @@
 ## Current Position
 
 Phase: 5 of 5 (Trackpy Integration)
-Plan: 3 of 3 in current phase
+Plan: 4 of 4 in current phase
 Status: Milestone complete
-Last activity: 2026-01-23 - Phase 5 verified and complete
+Last activity: 2026-01-23 - Completed 05-04-PLAN.md (Stability Fixes)
 
 Progress: ██████████ 100%
 
@@ -72,6 +72,8 @@ Progress: ██████████ 100%
 - **Input Name Mapping**: (Phase 5-03) Mapped generic `image` and `table` inputs to trackpy-specific names like `raw_image` or `f` in the worker entrypoint to allow flexible MCP signatures while maintaining library compatibility.
 - **URI-to-Path Resolution**: (Phase 5-03) Added robust URI parsing in the worker entrypoint to handle artifacts where the `path` field is missing but `uri` (file://) is present.
 - **Tolerance-based Equivalence**: (Phase 5-03) Used 1e-3 relative tolerance for trackpy equivalence tests to handle environment-specific numeric variations.
+- **Strict Worker Termination**: (Phase 5-04) Decided to kill worker processes immediately upon any communication error (JSON error, ordinal mismatch, unexpected EOF) to prevent state desync and ensure clean recovery.
+- **Robust JSON extraction**: (Phase 5-04) Switched to searching for the first '{' in subprocess output to avoid parsing failures caused by non-JSON warnings during environment discovery.
 
 ### Blockers
 - None.
@@ -86,6 +88,6 @@ Progress: ██████████ 100%
 
 ## Session Continuity
 
-Last session: 2026-01-23T19:30:00Z
-Stopped at: Phase 5 complete - Milestone v1 complete
+Last session: 2026-01-23T22:24:44Z
+Stopped at: Completed 05-04-PLAN.md
 Resume file: None
