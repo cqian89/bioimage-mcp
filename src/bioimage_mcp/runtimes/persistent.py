@@ -379,16 +379,82 @@ class WorkerProcess:
                         raise TimeoutError(f"Operation exceeded timeout of {timeout_seconds}s")
 
                     if error:
+                        # Communication error - kill worker
+                        logger.error(
+                            "Worker read error (session=%s env=%s ordinal=%s): %s",
+                            self.session_id,
+                            self.env_id,
+                            ordinal,
+                            error,
+                        )
+                        self._process.kill()
+                        self._process.wait()
+                        with self._lock:
+                            self.state = WorkerState.TERMINATED
                         raise error
 
                     if not response_line:
+                        # Unexpected EOF - kill worker
+                        logger.error(
+                            "Worker closed stdout without response (session=%s env=%s ordinal=%s)",
+                            self.session_id,
+                            self.env_id,
+                            ordinal,
+                        )
+                        self._process.kill()
+                        self._process.wait()
+                        with self._lock:
+                            self.state = WorkerState.TERMINATED
                         raise RuntimeError("Worker closed stdout without response")
                 else:
-                    response_line = self._process.stdout.readline()
+                    try:
+                        response_line = self._process.stdout.readline()
+                    except Exception as e:
+                        # Communication error - kill worker
+                        logger.error(
+                            "Worker read error (session=%s env=%s ordinal=%s): %s",
+                            self.session_id,
+                            self.env_id,
+                            ordinal,
+                            e,
+                        )
+                        self._process.kill()
+                        self._process.wait()
+                        with self._lock:
+                            self.state = WorkerState.TERMINATED
+                        raise
+
                     if not response_line:
+                        # Unexpected EOF - kill worker
+                        logger.error(
+                            "Worker closed stdout without response (session=%s env=%s ordinal=%s)",
+                            self.session_id,
+                            self.env_id,
+                            ordinal,
+                        )
+                        self._process.kill()
+                        self._process.wait()
+                        with self._lock:
+                            self.state = WorkerState.TERMINATED
                         raise RuntimeError("Worker closed stdout without response")
 
-                response_dict = decode_message(response_line)
+                try:
+                    response_dict = decode_message(response_line)
+                except Exception as e:
+                    # T057: Protocol violation (e.g. junk stdout) - kill worker
+                    logger.error(
+                        "Worker protocol violation (session=%s env=%s ordinal=%s): %s. Stdout: %r",
+                        self.session_id,
+                        self.env_id,
+                        ordinal,
+                        e,
+                        response_line,
+                    )
+                    self._process.kill()
+                    self._process.wait()
+                    with self._lock:
+                        self.state = WorkerState.TERMINATED
+                    raise RuntimeError(f"Worker protocol violation: {e}") from e
 
                 # Append stderr to log for error responses (T111)
                 if not response_dict.get("ok", True):
@@ -404,11 +470,19 @@ class WorkerProcess:
 
                 # Validate response
                 if response_dict.get("command") != "execute_result":
+                    self._process.kill()
+                    self._process.wait()
+                    with self._lock:
+                        self.state = WorkerState.TERMINATED
                     raise RuntimeError(
                         f"Expected execute_result, got {response_dict.get('command')}"
                     )
 
                 if response_dict.get("ordinal") != ordinal:
+                    self._process.kill()
+                    self._process.wait()
+                    with self._lock:
+                        self.state = WorkerState.TERMINATED
                     raise RuntimeError(
                         f"Ordinal mismatch: expected {ordinal}, got {response_dict.get('ordinal')}"
                     )
@@ -474,17 +548,68 @@ class WorkerProcess:
 
             # Read response
             assert self._process.stdout is not None
-            response_line = self._process.stdout.readline()
+            try:
+                response_line = self._process.stdout.readline()
+            except Exception as e:
+                # Communication error - kill worker
+                logger.error(
+                    "Worker read error (session=%s env=%s ordinal=%s): %s",
+                    self.session_id,
+                    self.env_id,
+                    ordinal,
+                    e,
+                )
+                self._process.kill()
+                self._process.wait()
+                with self._lock:
+                    self.state = WorkerState.TERMINATED
+                raise
+
             if not response_line:
+                # Unexpected EOF - kill worker
+                logger.error(
+                    "Worker closed stdout without response (session=%s env=%s ordinal=%s)",
+                    self.session_id,
+                    self.env_id,
+                    ordinal,
+                )
+                self._process.kill()
+                self._process.wait()
+                with self._lock:
+                    self.state = WorkerState.TERMINATED
                 raise RuntimeError("Worker closed stdout without response")
 
-            response_dict = decode_message(response_line)
+            try:
+                response_dict = decode_message(response_line)
+            except Exception as e:
+                # T057: Protocol violation (e.g. junk stdout) - kill worker
+                logger.error(
+                    "Worker protocol violation (session=%s env=%s ordinal=%s): %s. Stdout: %r",
+                    self.session_id,
+                    self.env_id,
+                    ordinal,
+                    e,
+                    response_line,
+                )
+                self._process.kill()
+                self._process.wait()
+                with self._lock:
+                    self.state = WorkerState.TERMINATED
+                raise RuntimeError(f"Worker protocol violation: {e}") from e
 
             # Validate response
             if response_dict.get("command") != "evict_result":
+                self._process.kill()
+                self._process.wait()
+                with self._lock:
+                    self.state = WorkerState.TERMINATED
                 raise RuntimeError(f"Expected evict_result, got {response_dict.get('command')}")
 
             if response_dict.get("ordinal") != ordinal:
+                self._process.kill()
+                self._process.wait()
+                with self._lock:
+                    self.state = WorkerState.TERMINATED
                 raise RuntimeError(
                     f"Ordinal mismatch: expected {ordinal}, got {response_dict.get('ordinal')}"
                 )
@@ -553,19 +678,70 @@ class WorkerProcess:
 
             # Read response
             assert self._process.stdout is not None
-            response_line = self._process.stdout.readline()
+            try:
+                response_line = self._process.stdout.readline()
+            except Exception as e:
+                # Communication error - kill worker
+                logger.error(
+                    "Worker read error (session=%s env=%s ordinal=%s): %s",
+                    self.session_id,
+                    self.env_id,
+                    ordinal,
+                    e,
+                )
+                self._process.kill()
+                self._process.wait()
+                with self._lock:
+                    self.state = WorkerState.TERMINATED
+                raise
+
             if not response_line:
+                # Unexpected EOF - kill worker
+                logger.error(
+                    "Worker closed stdout without response (session=%s env=%s ordinal=%s)",
+                    self.session_id,
+                    self.env_id,
+                    ordinal,
+                )
+                self._process.kill()
+                self._process.wait()
+                with self._lock:
+                    self.state = WorkerState.TERMINATED
                 raise RuntimeError("Worker closed stdout without response")
 
-            response_dict = decode_message(response_line)
+            try:
+                response_dict = decode_message(response_line)
+            except Exception as e:
+                # T057: Protocol violation (e.g. junk stdout) - kill worker
+                logger.error(
+                    "Worker protocol violation (session=%s env=%s ordinal=%s): %s. Stdout: %r",
+                    self.session_id,
+                    self.env_id,
+                    ordinal,
+                    e,
+                    response_line,
+                )
+                self._process.kill()
+                self._process.wait()
+                with self._lock:
+                    self.state = WorkerState.TERMINATED
+                raise RuntimeError(f"Worker protocol violation: {e}") from e
 
             # Validate response
             if response_dict.get("command") != "materialize_result":
+                self._process.kill()
+                self._process.wait()
+                with self._lock:
+                    self.state = WorkerState.TERMINATED
                 raise RuntimeError(
                     f"Expected materialize_result, got {response_dict.get('command')}"
                 )
 
             if response_dict.get("ordinal") != ordinal:
+                self._process.kill()
+                self._process.wait()
+                with self._lock:
+                    self.state = WorkerState.TERMINATED
                 raise RuntimeError(
                     f"Ordinal mismatch: expected {ordinal}, got {response_dict.get('ordinal')}"
                 )
