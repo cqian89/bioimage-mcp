@@ -112,8 +112,8 @@ This roadmap structures the development of `bioimage-mcp` into 4 coherent phases
 - [x] 05-01-PLAN.md — Create trackpy tool pack skeleton (env, manifest, entrypoint)
 - [x] 05-02-PLAN.md — Implement TrackpyAdapter for dynamic introspection
 - [x] 05-03-PLAN.md — Add smoke tests with synthetic data fixtures
-- [ ] 05-04-PLAN.md — Fix core stability issues (install, worker runtime) (Gap Closure)
-- [ ] 05-05-PLAN.md — Fix tool entrypoints (Cellpose meta.list, Trackpy stdout) (Gap Closure)
+- [x] 05-04-PLAN.md — Fix core stability issues (install, worker runtime) (Gap Closure)
+- [x] 05-05-PLAN.md — Fix tool entrypoints (Cellpose meta.list, Trackpy stdout) (Gap Closure)
 
 ## Progress
 
