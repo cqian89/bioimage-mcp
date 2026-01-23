@@ -27,23 +27,23 @@
   - ✅ `session_export` works
   - ✅ `session_replay` implemented with validation, resume, and error handling
 
-- **Phase 5: Trackpy Integration** (33% complete) - **IN PROGRESS**
+- **Phase 5: Trackpy Integration** (66% complete) - **IN PROGRESS**
   - ✅ Environment determination (base vs. separate) (05-01)
-  - ⬜ Dynamic introspection for function signatures
-  - ⬜ Full API coverage from trackpy v0.7
+  - ✅ Dynamic introspection for function signatures (05-02)
+  - ✅ Full API coverage from trackpy v0.7 (05-02)
   - ⬜ Test data from trackpy repo/docs
   - ⬜ Live smoke test matching reference output
 
 ## Current Position
 
 Phase: 5 of 5 (Trackpy Integration)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: In progress
-Last activity: 2026-01-23 - Completed 05-01-PLAN.md
+Last activity: 2026-01-23 - Completed 05-02-PLAN.md
 
-Progress: █████████░ 86%
+Progress: ██████████ 93%
 
-**Next Phase:** Phase 5 - Trackpy Integration (Plan 2)
+**Next Phase:** Phase 5 - Trackpy Integration (Plan 3)
 
 ## Context & Memory
 
@@ -67,6 +67,8 @@ Progress: █████████░ 86%
 - **Human-readable Error Summaries**: (Phase 4-04) Generate formatted error summaries in replay responses to make failures actionable for users and agents.
 - **Out-of-process discovery**: (Phase 5-01) Decided to use a specialized `meta.list` command in the worker entrypoint to discover functions, as trackpy cannot be safely imported in the server's Python 3.13 process.
 - **Dual-mode Worker Entrypoint**: (Phase 5-01) Entrypoint supports both legacy single-request JSON and persistent-worker NDJSON protocols for backward compatibility and performance.
+- **Subprocess Discovery Fallback**: (Phase 5-02) The registry loader now automatically falls back to out-of-process discovery via the tool's entrypoint if the required adapter is missing or if in-process import fails.
+- **TableRef for DataFrames**: (Phase 5-02) Trackpy results (features, trajectories) are serialized as CSV files and returned as `TableRef` artifacts to ensure cross-environment portability.
 
 ### Blockers
 - None.

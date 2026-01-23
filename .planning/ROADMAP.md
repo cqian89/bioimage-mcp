@@ -86,16 +86,16 @@ This roadmap structures the development of `bioimage-mcp` into 4 coherent phases
 - [x] 04-04-PLAN.md — Add missing input handling, resume capability, and error summaries
 
 ### Phase 5: Trackpy Integration
-**Status:** In Progress (33%)
+**Status:** In Progress (66%)
 **Goal:** Integrate trackpy particle tracking library as a tool pack with full API coverage and live smoke tests.
 **Depends on:** Phase 4
 **Focus:** Dynamic introspection, API coverage, test data, smoke testing.
 
 | Requirement | Description | Status |
 |-------------|-------------|--------|
-| **TRACK-01** | Trackpy functions discoverable via dynamic introspection | Pending |
+| **TRACK-01** | Trackpy functions discoverable via dynamic introspection | ✅ |
 | **TRACK-02** | Determine correct environment (base vs. separate) | ✅ |
-| **TRACK-03** | Full API coverage from trackpy v0.7 | Pending |
+| **TRACK-03** | Full API coverage from trackpy v0.7 | ✅ |
 | **TRACK-04** | Test data sourced from trackpy repo/docs | Pending |
 | **TRACK-05** | Live smoke test matching reference script output | Pending |
 
@@ -104,10 +104,11 @@ This roadmap structures the development of `bioimage-mcp` into 4 coherent phases
 - API reference: https://soft-matter.github.io/trackpy/v0.7/api.html
 - Function signatures via dynamic introspection (not manual definitions)
 - Exclusions from API should have documented justification
+- TRACK-01 & TRACK-03: Implemented via out-of-process discovery (meta.list/meta.describe)
 
 **Plans:** 3 plans (Waves 1-3 sequential)
 - [x] 05-01-PLAN.md — Create trackpy tool pack skeleton (env, manifest, entrypoint)
-- [ ] 05-02-PLAN.md — Implement TrackpyAdapter for dynamic introspection
+- [x] 05-02-PLAN.md — Implement TrackpyAdapter for dynamic introspection
 - [ ] 05-03-PLAN.md — Add smoke tests with synthetic data fixtures
 
 **Details:**
