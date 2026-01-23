@@ -7,7 +7,8 @@ import pytest
 import numpy as np
 
 
-def test_stdout_purity_and_capture():
+@pytest.mark.parametrize("fn_id", ["trackpy.locate", "trackpy.batch"])
+def test_stdout_purity_and_capture(fn_id):
     """Verify that trackpy execution doesn't leak to stdout and logs are captured."""
     # Path to entrypoint
     entrypoint = Path("tools/trackpy/bioimage_mcp_trackpy/entrypoint.py").absolute()
@@ -23,24 +24,16 @@ def test_stdout_purity_and_capture():
     test_dir.mkdir(parents=True, exist_ok=True)
     img_path = test_dir / "test_img.ome.tif"
 
-    # Simple OME-TIFF write using tifffile to avoid heavy bioio dep in test script if possible
-    # but we are in the base env which has bioio.
-    try:
-        from bioio_ome_tiff import Writer
+    # Simple OME-TIFF write
+    from bioio.writers import OmeTiffWriter
 
-        img_data = np.zeros((1, 1, 1, 10, 10), dtype=np.uint16)
-        img_data[0, 0, 0, 5, 5] = 1000
-        Writer.save(img_data, img_path)
-    except ImportError:
-        import tifffile
-
-        img_data = np.zeros((10, 10), dtype=np.uint16)
-        img_data[5, 5] = 1000
-        tifffile.imwrite(img_path, img_data)
+    img_data = np.zeros((1, 1, 1, 10, 10), dtype=np.uint16)
+    img_data[0, 0, 0, 5, 5] = 1000
+    OmeTiffWriter.save(img_data, img_path, dim_order="TCZYX")
 
     request = {
         "command": "execute",
-        "fn_id": "trackpy.locate",
+        "fn_id": fn_id,
         "params": {"diameter": 3},
         "inputs": {"image": {"type": "BioImageRef", "uri": f"file://{img_path}"}},
         "work_dir": str(test_dir),
@@ -62,13 +55,10 @@ def test_stdout_purity_and_capture():
         try:
             json.loads(line)
         except json.JSONDecodeError:
-            pytest.fail(f"Non-JSON output detected in stdout: {line!r}")
+            pytest.fail(f"Non-JSON output detected in stdout for {fn_id}: {line!r}")
 
     # The last line should be the execute_result
     result = json.loads(output_lines[-1])
-    assert result.get("ok") is True, f"Execution failed: {result.get('error')}"
+    assert result.get("ok") is True, f"Execution of {fn_id} failed: {result.get('error')}"
     assert "_meta" in result
     assert "log" in result["_meta"]
-    # We verified every line is JSON, so stdout is pure.
-    # The log content might be empty if trackpy didn't log anything,
-    # but the structure is correct.
