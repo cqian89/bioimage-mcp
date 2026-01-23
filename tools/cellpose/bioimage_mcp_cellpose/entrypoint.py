@@ -659,8 +659,55 @@ def handle_train_seg(
     }
 
 
+def handle_meta_list(
+    inputs: dict[str, Any],
+    params: dict[str, Any],
+    work_dir: Path,
+) -> dict[str, Any]:
+    """Return list of functions supported by Cellpose tool pack."""
+    functions = [
+        {
+            "fn_id": "cellpose.models.CellposeModel",
+            "name": "CellposeModel",
+            "summary": "Initialize Cellpose model",
+        },
+        {
+            "fn_id": "cellpose.models.CellposeModel.eval",
+            "name": "CellposeModel.eval",
+            "summary": "Run segmentation with model",
+        },
+        {
+            "fn_id": "cellpose.denoise.DenoiseModel",
+            "name": "DenoiseModel",
+            "summary": "Initialize Denoise model",
+        },
+        {
+            "fn_id": "cellpose.denoise.DenoiseModel.eval",
+            "name": "DenoiseModel.eval",
+            "summary": "Run denoising with model",
+        },
+        {
+            "fn_id": "cellpose.train.train_seg",
+            "name": "train_seg",
+            "summary": "Train a new model",
+        },
+        {
+            "fn_id": "cellpose.metrics.average_precision",
+            "name": "average_precision",
+            "summary": "Compute segmentation metrics",
+        },
+        {
+            "fn_id": "cellpose.cache.clear",
+            "name": "cache.clear",
+            "summary": "Clear cached models from memory",
+        },
+    ]
+    return {"ok": True, "result": {"functions": functions}}
+
+
 # Function dispatch table
 FUNCTION_HANDLERS = {
+    "meta.list": handle_meta_list,
     "cellpose.models.CellposeModel": handle_model_init,
     "cellpose.models.CellposeModel.eval": handle_segment,
     "cellpose.denoise.DenoiseModel": handle_denoise_init,
