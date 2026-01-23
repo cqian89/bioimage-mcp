@@ -81,7 +81,13 @@ def _env_exists(exe: str, env_name: str) -> bool:
         )
         if proc.returncode != 0:
             return False
-        data = json.loads(proc.stdout)
+
+        output = proc.stdout
+        json_start = output.find("{")
+        if json_start == -1:
+            return False
+
+        data = json.loads(output[json_start:])
         envs = data.get("envs", [])
         for env in envs:
             if Path(env).name == env_name:
