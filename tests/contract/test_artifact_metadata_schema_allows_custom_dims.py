@@ -1,6 +1,6 @@
 """Contract test: artifact metadata schema accepts custom single-char axis names.
 
-Per spec 026-zarr-artifact, the schema must allow single-character custom axis names 
+Per spec 026-zarr-artifact, the schema must allow single-character custom axis names
 like 'B' (microtime bins) and 'H' (harmonics) in the dims array.
 """
 

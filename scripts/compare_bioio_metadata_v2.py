@@ -16,36 +16,40 @@ except Exception as e:
 
 print("\n--- 1. Metadata Comparison ---")
 
+
 def compare_attr(attr_name):
     wrapper_val = getattr(img, attr_name, "N/A")
     try:
         reader_val = getattr(img.reader, attr_name, "N/A")
     except Exception:
         reader_val = "Error accessing"
-    
+
     # Handle huge metadata output
     wrapper_str = str(wrapper_val)
     if len(wrapper_str) > 100:
         wrapper_str = wrapper_str[:100] + "... [truncated]"
-        
+
     reader_str = str(reader_val)
     if len(reader_str) > 100:
         reader_str = reader_str[:100] + "... [truncated]"
-    
+
     print(f"\nProperty: {attr_name}")
     print(f"  BioImage wrapper: {wrapper_str}")
     print(f"  Reader object:    {reader_str}")
-    
+
     # Check identity/equality if feasible
     try:
         print(f"  Same object?      {wrapper_val is reader_val}")
         # Equality might fail for arrays or complex objects
-        if isinstance(wrapper_val, (np.ndarray, list, tuple)) or isinstance(reader_val, (np.ndarray, list, tuple)):
+        if isinstance(wrapper_val, (np.ndarray, list, tuple)) or isinstance(
+            reader_val, (np.ndarray, list, tuple)
+        ):
             print("  Equal value?      (Skipped for complex types)")
         else:
             print(f"  Equal value?      {wrapper_val == reader_val}")
     except:
         pass
+
 
 attrs_to_check = [
     "physical_pixel_sizes",
@@ -102,5 +106,4 @@ reader_time = time.time() - start_time
 print(f"img.reader.data access time: {reader_time:.6f}s")
 print(f"img.reader.data shape: {d2.shape}")
 
-print(f"\nSpeedup/Slowdown factor (wrapper/reader): {wrapper_time/reader_time:.2f}x")
-
+print(f"\nSpeedup/Slowdown factor (wrapper/reader): {wrapper_time / reader_time:.2f}x")

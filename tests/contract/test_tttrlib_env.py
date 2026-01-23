@@ -69,8 +69,7 @@ class TestTTTRLibEnvContract:
 
         dependencies = env_def.get("dependencies", [])
         bioio_ome_zarr_found = any(
-            isinstance(dep, str) and "bioio-ome-zarr" in dep
-            for dep in dependencies
+            isinstance(dep, str) and "bioio-ome-zarr" in dep for dep in dependencies
         )
 
         assert bioio_ome_zarr_found, (

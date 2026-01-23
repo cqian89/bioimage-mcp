@@ -77,6 +77,27 @@ class SessionService:
         result = self.discovery_service.describe_function(fn_id=fn_id)
         return "error" not in result
 
+    def _env_installed(self, env_name: str) -> bool:
+        """Check if a conda environment is installed."""
+        try:
+            return (
+                subprocess.run(
+                    [
+                        "conda",
+                        "run",
+                        "-n",
+                        f"bioimage-mcp-{env_name}",
+                        "python",
+                        "-c",
+                        "print('ok')",
+                    ],
+                    capture_output=True,
+                ).returncode
+                == 0
+            )
+        except Exception:
+            return False
+
     def _validate_overrides(
         self,
         params_overrides: dict[str, dict[str, Any]] | None,
@@ -397,25 +418,7 @@ class SessionService:
             env_name = fn_id.split(".")[0]
 
             # Check if conda environment is installed
-            try:
-                env_installed = (
-                    subprocess.run(
-                        [
-                            "conda",
-                            "run",
-                            "-n",
-                            f"bioimage-mcp-{env_name}",
-                            "--dry-run",
-                            "python",
-                            "-c",
-                            "print('ok')",
-                        ],
-                        capture_output=True,
-                    ).returncode
-                    == 0
-                )
-            except Exception:
-                env_installed = False
+            env_installed = self._env_installed(env_name)
 
             if not env_installed:
                 install_offer = InstallOffer(

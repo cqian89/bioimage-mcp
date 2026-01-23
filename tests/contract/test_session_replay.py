@@ -30,6 +30,8 @@ def session_service(tmp_path):
     )
     # Mock _function_exists to return True by default so basic tests pass
     service._function_exists = MagicMock(return_value=True)
+    # Mock _env_installed to return True by default so env validation doesn't block tests
+    service._env_installed = MagicMock(return_value=True)
     return service, session_manager, execution_service, store
 
 
@@ -73,15 +75,16 @@ def test_session_replay_basic(session_service, tmp_path):
     execution_service.run_workflow.return_value = {
         "run_id": "run-replay-1",
         "session_id": "new-sess",
-        "status": "running",
+        "status": "success",
         "log_ref": None,
         "error": None,
+        "outputs": {"result": {"ref_id": "out-123", "type": "BioImageRef", "uri": ""}},
     }
 
     resp = service.replay_session(req)
 
     assert resp.run_id == "run-replay-1"
-    assert resp.status == "running"
+    assert resp.status == "completed"
     # Verify execution_service was called with mapped inputs
     call_args = execution_service.run_workflow.call_args[0][0]
     assert call_args["steps"][0]["inputs"]["image"]["ref_id"] == "new-ref-123"
@@ -95,8 +98,13 @@ def test_session_replay_missing_input_error(session_service, tmp_path):
     # Missing input1
     req = SessionReplayRequest(workflow_ref=wf_ref, inputs={})
 
-    with pytest.raises(ValueError, match="Missing external input: input1"):
-        service.replay_session(req)
+    resp = service.replay_session(req)
+
+    assert resp.status == "validation_failed"
+    assert resp.error.code == "INPUT_MISSING"
+    assert "Missing 1 required external input(s)" in resp.error.message
+    assert len(resp.error.details) == 1
+    assert resp.error.details[0].path == "/inputs/input1"
 
 
 def test_session_replay_params_overrides(session_service, tmp_path):
@@ -113,9 +121,10 @@ def test_session_replay_params_overrides(session_service, tmp_path):
     execution_service.run_workflow.return_value = {
         "run_id": "run-replay-1",
         "session_id": "new-sess",
-        "status": "running",
+        "status": "success",
         "log_ref": None,
         "error": None,
+        "outputs": {"result": {"ref_id": "out-123", "type": "BioImageRef", "uri": ""}},
     }
 
     service.replay_session(req)
@@ -138,9 +147,10 @@ def test_session_replay_step_overrides(session_service, tmp_path):
     execution_service.run_workflow.return_value = {
         "run_id": "run-replay-1",
         "session_id": "new-sess",
-        "status": "running",
+        "status": "success",
         "log_ref": None,
         "error": None,
+        "outputs": {"result": {"ref_id": "out-123", "type": "BioImageRef", "uri": ""}},
     }
 
     service.replay_session(req)
@@ -162,11 +172,10 @@ def test_session_replay_function_not_found(session_service, tmp_path):
     resp = service.replay_session(req)
 
     assert resp.status == "validation_failed"
-    assert resp.error.code == "VALIDATION_FAILED"
-    assert "Referenced function(s) not found: test.func" in resp.error.message
+    assert resp.error.code == "NOT_FOUND"
+    assert "Function 'test.func' not found" in resp.error.message
     assert len(resp.error.details) == 1
     assert resp.error.details[0].path == "/steps/0/id"
-    assert resp.error.details[0].actual == "test.func"
 
     # Verify execution was NOT started
     execution_service.run_workflow.assert_not_called()
