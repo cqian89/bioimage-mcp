@@ -207,7 +207,7 @@ def _save_table_artifact(df: pd.DataFrame, name_hint: str) -> dict:
     path = _WORK_DIR / filename
     df.to_csv(path, index=False)
     return {
-        "ref_type": "TableRef",
+        "type": "TableRef",
         "ref_id": ref_id,
         "path": str(path),
         "format": "csv",
@@ -229,7 +229,7 @@ def _save_image_artifact(arr: np.ndarray, name_hint: str) -> dict:
     Writer.save(arr, path)
 
     return {
-        "ref_type": "BioImageRef",
+        "type": "BioImageRef",
         "ref_id": ref_id,
         "path": str(path),
         "format": "ome.tif",
