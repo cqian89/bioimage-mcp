@@ -186,8 +186,8 @@ def _determine_io_pattern(module_name: str, func_name: str) -> str:
         return "table_to_table"
     # plots -> image_to_image (roughly, as they produce plots)
     if func_name in ("annotate", "plot_traj", "annotate3d"):
-        return "IMAGE_TO_IMAGE"
-    return "GENERIC"
+        return "image_to_image"
+    return "generic"
 
 
 def _map_type_to_json_schema(annotation: Any, default_value: Any = None) -> str:

@@ -42,7 +42,7 @@ async def test_trackpy_locate_equivalence(
     Uses vendored docs data (TRACK-04).
     """
     diameter = 11
-    minmass = 10000.0
+    minmass = 100.0
     invert = True  # bulk_water has dark particles on light background
 
     # 1. Run MCP Trackpy
@@ -63,12 +63,13 @@ async def test_trackpy_locate_equivalence(
         "run",
         {
             "fn_id": "trackpy.locate",
-            "inputs": {"raw_image": img_ref},
-            "params": {"diameter": str(diameter), "minmass": str(minmass), "invert": invert},
+            "inputs": {"image": img_ref},
+            "params": {"diameter": diameter, "minmass": minmass, "invert": invert},
         },
     )
+
     assert mcp_result.get("status") == "success", f"MCP run failed: {mcp_result}"
-    mcp_output_ref = mcp_result["outputs"]["features"]
+    mcp_output_ref = mcp_result["outputs"]["table"]
 
     # 2. Run Native Baseline
     baseline_script = Path(__file__).parent / "reference_scripts" / "trackpy_baseline.py"
@@ -92,7 +93,9 @@ async def test_trackpy_locate_equivalence(
     assert baseline_result["status"] == "success", f"Baseline failed: {baseline_result}"
 
     # 3. Compare Results
-    mcp_path = Path(mcp_output_ref["path"])
+    mcp_uri = mcp_output_ref["uri"]
+    assert mcp_uri.startswith("file://")
+    mcp_path = Path(mcp_uri.replace("file://", ""))
 
     # Load both result sets
     mcp_df = pd.read_csv(mcp_path)
