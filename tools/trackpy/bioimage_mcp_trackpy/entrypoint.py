@@ -119,6 +119,13 @@ def _execute_trackpy_function(fn_id: str, params: dict, inputs: dict) -> dict:
         import logging
 
         tp_logger = logging.getLogger("trackpy")
+        old_propagate = tp_logger.propagate
+        old_handlers = tp_logger.handlers[:]
+
+        tp_logger.propagate = False
+        for h in old_handlers:
+            tp_logger.removeHandler(h)
+
         log_handler = logging.StreamHandler(capture)
         tp_logger.addHandler(log_handler)
         try:
@@ -126,6 +133,9 @@ def _execute_trackpy_function(fn_id: str, params: dict, inputs: dict) -> dict:
                 result = func(**call_kwargs)
         finally:
             tp_logger.removeHandler(log_handler)
+            for h in old_handlers:
+                tp_logger.addHandler(h)
+            tp_logger.propagate = old_propagate
 
         # Serialize outputs
         outputs = {}
