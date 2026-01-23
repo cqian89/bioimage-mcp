@@ -87,9 +87,20 @@ def get_tool_definition(func):
     }
 ```
 
+### Pattern 2: Multi-Ref Plotting (PlotRef + AxesRef)
+**What:** Plotting functions return both a file-backed `PlotRef` for immediate viewing and a memory-backed `AxesRef` for further composition.
+**When to use:** All `trackpy.plotting` functions.
+**Mechanism:**
+1. Check if `axes` input is provided (as `AxesRef`).
+2. If provided, retrieve from `OBJECT_CACHE`.
+3. Call `trackpy.plotting` function.
+4. Save figure to a temporary file, return `PlotRef`.
+5. Return the same `AxesRef` (updated) so the LLM can layer more annotations.
+
 ### Anti-Patterns to Avoid
 - **Hard-coding all functions:** Do not manually write `manifest.yaml` entries for every `trackpy` function. It will break when `trackpy` updates.
 - **Returning raw DataFrames:** Always wrap results in `TableRef` artifacts. Raw NDJSON of large tracking results will overwhelm MCP transport.
+- **Closing figures prematurely:** In the `plotting.py` wrapper, do not call `plt.close()` if returning an `AxesRef`, as it invalidates the memory object for subsequent steps in the same session.
 
 ## Don't Hand-Roll
 
@@ -156,15 +167,11 @@ trajectories = tp.link(features, search_range=5, memory=3, predictor=pred)
 
 Things that couldn't be fully resolved:
 
-1. **Matplotlib Backend in Headless Workers**
-   - What we know: `Agg` is the standard headless backend.
-   - What's unclear: Does `bioimage-mcp`'s display protocol support returning `png` artifacts from matplotlib?
-   - Recommendation: The `plotting.py` wrapper should save plots to temporary files and return `ImageRef` artifacts.
+1. **[RESOLVED] Matplotlib Backend in Headless Workers**
+   - Recommendation: Return both `PlotRef` (file) and `AxesRef` (memory). The `PlotRef` allows the LLM to see the result, while `AxesRef` allows layering. Use `matplotlib.use("Agg")`.
 
-2. **Upstream Reference Data Access**
-   - What we know: `trackpy` has a `trackpy-examples` repo.
-   - What's unclear: Are these datasets licensed for redistribution?
-   - Recommendation: Use the "Brownian motion" synthetic generator for smoke tests if licenses are unclear.
+2. **[RESOLVED] Upstream Reference Data Access**
+   - Recommendation: `trackpy` and `trackpy-examples` are BSD/CC-BY licensed. We can legally vendor them in `datasets/05-trackpy/`. Additionally, use `trackpy.artificial` for zero-asset synthetic data generation in smoke tests.
 
 ## Sources
 
@@ -172,10 +179,13 @@ Things that couldn't be fully resolved:
 - `/soft-matter/trackpy` (Context7) - API structure, usage patterns.
 - https://github.com/soft-matter/trackpy/releases - Version 0.7 specifics.
 - https://soft-matter.github.io/trackpy/stable/api.html - Function lists.
+- https://github.com/soft-matter/trackpy/blob/master/LICENSE - BSD 3-Clause license.
+- https://github.com/soft-matter/trackpy-examples/blob/master/LICENSE - Dual BSD/CC-BY license for examples/data.
 
 ### Secondary (MEDIUM confidence)
 - `neuroconv` source code - Dynamic schema generation patterns.
 - `smolagents` source code - Tool definition extraction.
+- `trackpy.artificial` source code - Synthetic data generation capabilities.
 
 ### Tertiary (LOW confidence)
 - Community blog posts on "Pixel locking in trackpy" - Pitfall verification.
