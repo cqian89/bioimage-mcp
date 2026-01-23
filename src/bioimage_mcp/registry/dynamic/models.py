@@ -33,6 +33,8 @@ class IOPattern(str, Enum):
     MULTI_TABLE_INPUT = "multi_table_input"  # Multiple TableRef/ObjectRef in, ObjectRef out
     BINARY = "binary"  # Two BioImageRef in, BioImageRef out
     OBJECT_TO_IMAGE = "object_to_image"  # ObjectRef/BioImageRef in, BioImageRef out
+    IMAGE_TO_TABLE = "image_to_table"
+    TABLE_TO_TABLE = "table_to_table"
     PURE_CONSTRUCTOR = "pure_constructor"  # No artifact inputs, ObjectRef out
     MATPLOTLIB_SUBPLOTS = "matplotlib_subplots"  # No inputs, FigureRef + AxesRef out
     MATPLOTLIB_AXES_OP = "matplotlib_axes_op"  # AxesRef (+ optional data) in, AxesRef out

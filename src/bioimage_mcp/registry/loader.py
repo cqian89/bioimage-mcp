@@ -3,13 +3,22 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path
 
+import logging
 import yaml
 
 from bioimage_mcp.registry.diagnostics import ManifestDiagnostic
 from bioimage_mcp.registry.dynamic.adapters import ADAPTER_REGISTRY
 from bioimage_mcp.registry.dynamic.discovery import discover_functions
-from bioimage_mcp.registry.dynamic.models import IOPattern, ParameterSchema
-from bioimage_mcp.registry.manifest_schema import Function, FunctionOverlay, Port, ToolManifest
+from bioimage_mcp.registry.dynamic.models import FunctionMetadata, IOPattern, ParameterSchema
+from bioimage_mcp.registry.manifest_schema import (
+    Function,
+    FunctionOverlay,
+    Port,
+    ToolManifest,
+)
+from bioimage_mcp.runtimes.executor import execute_tool
+
+logger = logging.getLogger(__name__)
 
 
 def _sha256_bytes(data: bytes) -> str:
@@ -96,6 +105,12 @@ def _map_io_pattern_to_ports(pattern: IOPattern) -> tuple[list[Port], list[Port]
     elif pattern == IOPattern.OBJECT_TO_IMAGE:
         inputs = [Port(name="image", artifact_type=["BioImageRef", "ObjectRef"])]
         outputs = [Port(name="output", artifact_type="BioImageRef")]
+    elif pattern == IOPattern.IMAGE_TO_TABLE:
+        inputs = [Port(name="image", artifact_type="BioImageRef")]
+        outputs = [Port(name="table", artifact_type="TableRef")]
+    elif pattern == IOPattern.TABLE_TO_TABLE:
+        inputs = [Port(name="table", artifact_type="TableRef")]
+        outputs = [Port(name="table", artifact_type="TableRef")]
     elif pattern == IOPattern.PURE_CONSTRUCTOR:
         inputs = []
         outputs = [Port(name="output", artifact_type="ObjectRef")]
@@ -286,6 +301,59 @@ def _env_prefix_from_tool_id(tool_id: str | None) -> str | None:
     return tool_id
 
 
+def _discover_via_subprocess(manifest: ToolManifest) -> list[FunctionMetadata]:
+    """Discover functions via out-of-process meta.list call.
+
+    Used when tool env has different Python version or dependencies
+    that cannot be imported in the server process.
+    """
+    entrypoint = manifest.entrypoint
+    entry_path = Path(entrypoint)
+    if not entry_path.is_absolute():
+        candidate = manifest.manifest_path.parent / entry_path
+        if candidate.exists():
+            entrypoint = str(candidate)
+
+    request = {
+        "fn_id": "meta.list",
+        "command": "execute",
+        "params": {},
+        "inputs": {},
+        "ordinal": 0,
+    }
+
+    try:
+        response, log_text, exit_code = execute_tool(
+            entrypoint=entrypoint,
+            request=request,
+            env_id=manifest.env_id,
+            timeout_seconds=60,
+        )
+
+        if not response.get("ok"):
+            logger.warning("meta.list failed for %s: %s", manifest.tool_id, response)
+            return []
+
+        result = response.get("outputs", {}).get("result", {})
+        functions = result.get("functions", [])
+
+        return [
+            FunctionMetadata(
+                fn_id=f["fn_id"],
+                name=f["name"],
+                qualified_name=f["fn_id"],
+                description=f.get("summary", ""),
+                module=f.get("module", ""),
+                io_pattern=IOPattern(f.get("io_pattern", "generic")),
+                source_adapter="subprocess",
+            )
+            for f in functions
+        ]
+    except Exception as e:
+        logger.warning("Out-of-process discovery failed for %s: %s", manifest.tool_id, e)
+        return []
+
+
 def load_manifest_file(path: Path) -> tuple[ToolManifest | None, ManifestDiagnostic | None]:
     try:
         raw = path.read_bytes()
@@ -323,9 +391,23 @@ def load_manifest_file(path: Path) -> tuple[ToolManifest | None, ManifestDiagnos
     # Discover functions from dynamic sources if present
     if manifest.dynamic_sources:
         try:
-            discovered_metadata = discover_functions(manifest, ADAPTER_REGISTRY)
+            # Try in-process discovery first
+            discovered_metadata = []
+            try:
+                discovered_metadata = discover_functions(manifest, ADAPTER_REGISTRY)
+            except ValueError as e:
+                # Fallback to subprocess discovery if adapter unknown or fails
+                if "Unknown adapter" in str(e) or "ImportError" in str(e):
+                    discovered_metadata = _discover_via_subprocess(manifest)
+                else:
+                    raise
+
+            # If in-process returned nothing, also try subprocess
+            if not discovered_metadata:
+                discovered_metadata = _discover_via_subprocess(manifest)
 
             # Convert FunctionMetadata to Function objects
+
             for meta in discovered_metadata:
                 inputs, outputs = _map_io_pattern_to_ports(meta.io_pattern)
 
