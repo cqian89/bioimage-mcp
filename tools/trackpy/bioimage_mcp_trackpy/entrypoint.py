@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import importlib
+import inspect
 import json
 import os
 import sys
@@ -78,15 +79,37 @@ def _execute_trackpy_function(fn_id: str, params: dict, inputs: dict) -> dict:
     """Execute a trackpy function with artifact resolution."""
     try:
         func = _resolve_callable(fn_id)
+        sig = inspect.signature(func)
+        param_names = list(sig.parameters.keys())
 
         # Resolve artifact inputs
         resolved_inputs = {}
         for key, value in inputs.items():
-            resolved_inputs[key] = _load_input_artifact(value)
+            resolved_val = _load_input_artifact(value)
+            # Map generic input names back to trackpy-specific ones
+            if key == "image":
+                if "raw_image" in param_names:
+                    resolved_inputs["raw_image"] = resolved_val
+                elif "image" in param_names:
+                    resolved_inputs["image"] = resolved_val
+                elif "frames" in param_names:
+                    resolved_inputs["frames"] = resolved_val
+                elif param_names:
+                    # Fallback: use first parameter if it's likely an image
+                    resolved_inputs[param_names[0]] = resolved_val
+            elif key == "table":
+                if "f" in param_names:
+                    resolved_inputs["f"] = resolved_val
+                elif "t" in param_names:
+                    resolved_inputs["t"] = resolved_val
+                elif "features" in param_names:
+                    resolved_inputs["features"] = resolved_val
+                elif "traj" in param_names:
+                    resolved_inputs["traj"] = resolved_val
+            else:
+                resolved_inputs[key] = resolved_val
 
         # Combine params and resolved inputs
-        # Note: trackpy functions often take 'image' or 'f' as first arg
-        # We try to map common names
         call_kwargs = {**params, **resolved_inputs}
 
         # Execute
@@ -120,9 +143,18 @@ def _resolve_callable(fn_id: str) -> Any:
 
 def _load_input_artifact(artifact_ref: dict) -> Any:
     """Load artifact to in-memory object (numpy/pandas)."""
-    ref_type = artifact_ref.get("ref_type")
+    ref_type = artifact_ref.get("type") or artifact_ref.get("ref_type")
     # File-backed
     path = artifact_ref.get("path")
+    if not path:
+        uri = artifact_ref.get("uri")
+        if uri and uri.startswith("file://"):
+            from urllib.parse import unquote, urlparse
+
+            path = unquote(urlparse(uri).path)
+            if os.name == "nt" and path.startswith("/") and len(path) > 2 and path[2] == ":":
+                path = path[1:]
+
     if not path:
         # Check memory
         ref_id = artifact_ref.get("ref_id")
@@ -195,11 +227,17 @@ def _make_json_serializable(value: Any) -> Any:
 
 def _handle_request(request: dict) -> dict:
     """Route requests to handlers."""
+    global _WORK_DIR
     command = request.get("command")
     params = request.get("params", {})
     inputs = request.get("inputs", {})
     fn_id = request.get("fn_id")
     ordinal = request.get("ordinal")
+    work_dir = request.get("work_dir")
+
+    if work_dir:
+        _WORK_DIR = Path(work_dir)
+        _WORK_DIR.mkdir(parents=True, exist_ok=True)
 
     try:
         if command == "execute":
