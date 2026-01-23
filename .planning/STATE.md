@@ -2,9 +2,9 @@
 
 **Project:** Bioimage-MCP
 **Core Value:** Enables AI agents to safely and reproducibly execute bioimage analysis tools without dependency conflicts.
-**Current Focus:** Milestone Complete
+**Current Focus:** Phase 5 - Trackpy Integration
 
-## Overall Progress (100% complete)
+## Overall Progress (86% complete)
 
 - **Phase 1: Core Runtime** (100% complete) - **PHASE COMPLETE**
   - ✅ Conda isolation (`persistent.py`, `executor.py`)
@@ -27,14 +27,23 @@
   - ✅ `session_export` works
   - ✅ `session_replay` implemented with validation, resume, and error handling
 
+- **Phase 5: Trackpy Integration** (33% complete) - **IN PROGRESS**
+  - ✅ Environment determination (base vs. separate) (05-01)
+  - ⬜ Dynamic introspection for function signatures
+  - ⬜ Full API coverage from trackpy v0.7
+  - ⬜ Test data from trackpy repo/docs
+  - ⬜ Live smoke test matching reference output
+
 ## Current Position
 
-Phase: 4 of 4 (Reproducibility)
-Plan: 4 of 4 in current phase
-Status: Phase complete
-Last activity: 2026-01-22 - Completed 04-04-PLAN.md (Resume Capability & Error Handling)
+Phase: 5 of 5 (Trackpy Integration)
+Plan: 1 of 3 in current phase
+Status: In progress
+Last activity: 2026-01-23 - Completed 05-01-PLAN.md
 
-Progress: ██████████ 100%
+Progress: █████████░ 86%
+
+**Next Phase:** Phase 5 - Trackpy Integration (Plan 2)
 
 ## Context & Memory
 
@@ -56,15 +65,22 @@ Progress: ██████████ 100%
 - **Ordinal-based Resume**: (Phase 4-04) Support resuming replays from a specific step, skipping already successful steps and restoring intermediate outputs.
 - **Structured Missing Input Hints**: (Phase 4-04) Return structured error details with JSON Pointers for missing external inputs during replay.
 - **Human-readable Error Summaries**: (Phase 4-04) Generate formatted error summaries in replay responses to make failures actionable for users and agents.
+- **Out-of-process discovery**: (Phase 5-01) Decided to use a specialized `meta.list` command in the worker entrypoint to discover functions, as trackpy cannot be safely imported in the server's Python 3.13 process.
+- **Dual-mode Worker Entrypoint**: (Phase 5-01) Entrypoint supports both legacy single-request JSON and persistent-worker NDJSON protocols for backward compatibility and performance.
 
 ### Blockers
 - None.
 
 ### Next Steps
-- Finalize documentation and prepare for release.
+- Implement TrackpyAdapter for dynamic introspection (05-02-PLAN.md)
+- Research trackpy API and dependencies
+- Determine environment strategy
+
+### Roadmap Evolution
+- Phase 5 added: Trackpy Integration - Integrate trackpy particle tracking library as a tool pack with full API coverage and live smoke tests
 
 ## Session Continuity
 
-Last session: 2026-01-22T18:22:00Z
-Stopped at: Completed 04-04-PLAN.md
+Last session: 2026-01-23T17:23:00Z
+Stopped at: Completed 05-01-PLAN.md
 Resume file: None
