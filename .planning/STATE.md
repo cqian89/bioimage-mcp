@@ -4,7 +4,7 @@
 **Core Value:** Enables AI agents to safely and reproducibly execute bioimage analysis tools without dependency conflicts.
 **Current Focus:** Phase 5 - Trackpy Integration
 
-## Overall Progress (86% complete)
+## Overall Progress (100% complete)
 
 - **Phase 1: Core Runtime** (100% complete) - **PHASE COMPLETE**
   - ✅ Conda isolation (`persistent.py`, `executor.py`)
@@ -33,17 +33,18 @@
   - ✅ Full API coverage from trackpy v0.7 (05-02)
   - ✅ Test data from trackpy repo/docs (05-03)
   - ✅ Live smoke test matching reference output (05-03)
+  - ✅ End-to-end E2E smoke tests (05-06)
 
 ## Current Position
 
 Phase: 5 of 5 (Trackpy Integration)
-Plan: 5 of 5 in current phase
-Status: Milestone complete
-Last activity: 2026-01-23 - Completed 05-05-PLAN.md (Gap Closure)
+Plan: 6 of 6 in current phase
+Status: Phase complete
+Last activity: 2026-01-23 - Completed 05-06-PLAN.md (E2E Verification)
 
 Progress: ██████████ 100%
 
-**Next:** Milestone audit or archive
+**Next:** Milestone transition or archive
 
 ## Context & Memory
 
@@ -74,6 +75,7 @@ Progress: ██████████ 100%
 - **Tolerance-based Equivalence**: (Phase 5-03) Used 1e-3 relative tolerance for trackpy equivalence tests to handle environment-specific numeric variations.
 - **Strict Worker Termination**: (Phase 5-04) Decided to kill worker processes immediately upon any communication error (JSON error, ordinal mismatch, unexpected EOF) to prevent state desync and ensure clean recovery.
 - **Robust JSON extraction**: (Phase 5-04) Switched to searching for the first '{' in subprocess output to avoid parsing failures caused by non-JSON warnings during environment discovery.
+- **Full Verbosity for E2E**: (Phase 5-06) Used `verbosity='full'` in E2E tests to verify rich metadata (columns, row_count) for `TableRef` artifacts, as default `minimal` verbosity strips these fields.
 
 ### Blockers
 - None.
@@ -88,6 +90,6 @@ Progress: ██████████ 100%
 
 ## Session Continuity
 
-Last session: 2026-01-23T22:36:44Z
-Stopped at: Completed 05-05-PLAN.md
+Last session: 2026-01-23T23:15:04Z
+Stopped at: Completed 05-06-PLAN.md
 Resume file: None

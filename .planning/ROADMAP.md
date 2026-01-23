@@ -108,12 +108,13 @@ This roadmap structures the development of `bioimage-mcp` into 4 coherent phases
 - TRACK-04: Vendored frame 0 from soft-matter/trackpy-examples.
 - TRACK-05: Implemented numerical equivalence smoke tests using live_server fixture.
 
-**Plans:** 5 plans (Waves 1-3 sequential, Wave 1 parallel gap closure)
+**Plans:** 6 plans (Waves 1-4 sequential, Wave 1 parallel gap closure)
 - [x] 05-01-PLAN.md — Create trackpy tool pack skeleton (env, manifest, entrypoint)
 - [x] 05-02-PLAN.md — Implement TrackpyAdapter for dynamic introspection
 - [x] 05-03-PLAN.md — Add smoke tests with synthetic data fixtures
 - [x] 05-04-PLAN.md — Fix core stability issues (install, worker runtime) (Gap Closure)
 - [x] 05-05-PLAN.md — Fix tool entrypoints (Cellpose meta.list, Trackpy stdout) (Gap Closure)
+- [x] 05-06-PLAN.md — End-to-end verification via smoke tests
 
 ## Progress
 
