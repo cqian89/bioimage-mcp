@@ -707,7 +707,6 @@ def handle_meta_list(
 
 # Function dispatch table
 FUNCTION_HANDLERS = {
-    "meta.list": handle_meta_list,
     "cellpose.models.CellposeModel": handle_model_init,
     "cellpose.models.CellposeModel.eval": handle_segment,
     "cellpose.denoise.DenoiseModel": handle_denoise_init,
@@ -810,8 +809,12 @@ def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
         inputs = _convert_memory_inputs_to_files(inputs, work_dir)
         if fn_id == "core.reconstruct":
             return handle_reconstruct(request)
-        if fn_id == "meta.describe":
-            result_response = handle_meta_describe(params)
+        if fn_id in ("meta.describe", "meta.list"):
+            if fn_id == "meta.describe":
+                result_response = handle_meta_describe(params)
+            else:
+                result_response = handle_meta_list(inputs, params, work_dir)
+
             if result_response.get("ok"):
                 response = {
                     "command": "execute_result",
