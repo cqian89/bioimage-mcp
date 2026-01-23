@@ -1,0 +1,35 @@
+manifest_version: "1.0"
+tool_id: tools.trackpy
+tool_version: "0.1.0"
+name: Trackpy Particle Tracking Toolkit
+description: Particle tracking and trajectory analysis using trackpy library.
+
+env_id: bioimage-mcp-trackpy
+entrypoint: bioimage_mcp_trackpy/entrypoint.py
+python_version: "3.12"
+platforms_supported:
+  - linux-64
+
+# Note: envs/bioimage-mcp-trackpy.yaml currently targets linux-64 only.
+# Expand this list only when the env definition is validated on other platforms.
+
+# Dynamic sources configured for out-of-process discovery via meta.list
+dynamic_sources:
+  - adapter: trackpy
+    prefix: trackpy
+    modules:
+      - trackpy
+      - trackpy.linking
+      - trackpy.motion
+      - trackpy.predict
+      - trackpy.filtering
+      - trackpy.plots
+      - trackpy.diag
+      - trackpy.feature
+      - trackpy.refine
+      - trackpy.masks
+      - trackpy.preprocessing
+      - trackpy.artificial
+
+# Explicit functions will be minimal - most come from dynamic discovery
+functions: []
