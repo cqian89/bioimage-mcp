@@ -27,23 +27,23 @@
   - ✅ `session_export` works
   - ✅ `session_replay` implemented with validation, resume, and error handling
 
-- **Phase 5: Trackpy Integration** (66% complete) - **IN PROGRESS**
+- **Phase 5: Trackpy Integration** (100% complete) - **PHASE COMPLETE**
   - ✅ Environment determination (base vs. separate) (05-01)
   - ✅ Dynamic introspection for function signatures (05-02)
   - ✅ Full API coverage from trackpy v0.7 (05-02)
-  - ⬜ Test data from trackpy repo/docs
-  - ⬜ Live smoke test matching reference output
+  - ✅ Test data from trackpy repo/docs (05-03)
+  - ✅ Live smoke test matching reference output (05-03)
 
 ## Current Position
 
 Phase: 5 of 5 (Trackpy Integration)
-Plan: 2 of 3 in current phase
-Status: In progress
-Last activity: 2026-01-23 - Completed 05-02-PLAN.md
+Plan: 3 of 3 in current phase
+Status: Phase complete
+Last activity: 2026-01-23 - Completed 05-03-PLAN.md
 
-Progress: ██████████ 93%
+Progress: ██████████ 100%
 
-**Next Phase:** Phase 5 - Trackpy Integration (Plan 3)
+**Next Phase:** Project Complete / Maintenance
 
 ## Context & Memory
 
@@ -69,6 +69,9 @@ Progress: ██████████ 93%
 - **Dual-mode Worker Entrypoint**: (Phase 5-01) Entrypoint supports both legacy single-request JSON and persistent-worker NDJSON protocols for backward compatibility and performance.
 - **Subprocess Discovery Fallback**: (Phase 5-02) The registry loader now automatically falls back to out-of-process discovery via the tool's entrypoint if the required adapter is missing or if in-process import fails.
 - **TableRef for DataFrames**: (Phase 5-02) Trackpy results (features, trajectories) are serialized as CSV files and returned as `TableRef` artifacts to ensure cross-environment portability.
+- **Input Name Mapping**: (Phase 5-03) Mapped generic `image` and `table` inputs to trackpy-specific names like `raw_image` or `f` in the worker entrypoint to allow flexible MCP signatures while maintaining library compatibility.
+- **URI-to-Path Resolution**: (Phase 5-03) Added robust URI parsing in the worker entrypoint to handle artifacts where the `path` field is missing but `uri` (file://) is present.
+- **Tolerance-based Equivalence**: (Phase 5-03) Used 1e-3 relative tolerance for trackpy equivalence tests to handle environment-specific numeric variations.
 
 ### Blockers
 - None.

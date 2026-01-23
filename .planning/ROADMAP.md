@@ -86,7 +86,7 @@ This roadmap structures the development of `bioimage-mcp` into 4 coherent phases
 - [x] 04-04-PLAN.md — Add missing input handling, resume capability, and error summaries
 
 ### Phase 5: Trackpy Integration
-**Status:** In Progress (66%)
+**Status:** Complete (100%)
 **Goal:** Integrate trackpy particle tracking library as a tool pack with full API coverage and live smoke tests.
 **Depends on:** Phase 4
 **Focus:** Dynamic introspection, API coverage, test data, smoke testing.
@@ -96,8 +96,8 @@ This roadmap structures the development of `bioimage-mcp` into 4 coherent phases
 | **TRACK-01** | Trackpy functions discoverable via dynamic introspection | ✅ |
 | **TRACK-02** | Determine correct environment (base vs. separate) | ✅ |
 | **TRACK-03** | Full API coverage from trackpy v0.7 | ✅ |
-| **TRACK-04** | Test data sourced from trackpy repo/docs | Pending |
-| **TRACK-05** | Live smoke test matching reference script output | Pending |
+| **TRACK-04** | Test data sourced from trackpy repo/docs | ✅ |
+| **TRACK-05** | Live smoke test matching reference script output | ✅ |
 
 **Notes:**
 - Integration approach similar to skimage, xarray packages
@@ -105,16 +105,13 @@ This roadmap structures the development of `bioimage-mcp` into 4 coherent phases
 - Function signatures via dynamic introspection (not manual definitions)
 - Exclusions from API should have documented justification
 - TRACK-01 & TRACK-03: Implemented via out-of-process discovery (meta.list/meta.describe)
+- TRACK-04: Vendored frame 0 from soft-matter/trackpy-examples.
+- TRACK-05: Implemented numerical equivalence smoke tests using live_server fixture.
 
 **Plans:** 3 plans (Waves 1-3 sequential)
 - [x] 05-01-PLAN.md — Create trackpy tool pack skeleton (env, manifest, entrypoint)
 - [x] 05-02-PLAN.md — Implement TrackpyAdapter for dynamic introspection
-- [ ] 05-03-PLAN.md — Add smoke tests with synthetic data fixtures
-
-**Details:**
-- Wave 1: Environment + tool pack skeleton (TRACK-02 foundation)
-- Wave 2: TrackpyAdapter with dynamic discovery (TRACK-01, TRACK-03)
-- Wave 3: Smoke tests with tolerance-based validation (TRACK-04, TRACK-05)
+- [x] 05-03-PLAN.md — Add smoke tests with synthetic data fixtures
 
 ## Progress
 
@@ -124,4 +121,5 @@ This roadmap structures the development of `bioimage-mcp` into 4 coherent phases
 | **2 - Tool Management** | Install/List Tools | **Complete** ✓ |
 | **3 - Data & Artifacts** | Zero-copy I/O | **Complete** ✓ |
 | **4 - Reproducibility** | Record/Export | **Complete** ✓ |
-| **5 - Trackpy Integration** | Particle Tracking | **In Progress** |
+| **5 - Trackpy Integration** | Particle Tracking | **Complete** ✓ |
+
