@@ -8,101 +8,196 @@ import json
 import os
 import sys
 import traceback
-import uuid
 from pathlib import Path
 from typing import Any
 
-# Path setup: add tools/ to sys.path for local imports
-# Tool packs must NOT depend on src/ (core server)
+import numpy as np
+import pandas as pd
+from bioio import BioImage
+
+# Path setup: add tools/trackpy/ to sys.path for local imports
 BASE_DIR = Path(__file__).resolve().parent
-TOOLS_ROOT = BASE_DIR.parent.parent
-if str(TOOLS_ROOT) not in sys.path:
-    sys.path.insert(0, str(TOOLS_ROOT))
+TRACKPY_TOOL_ROOT = BASE_DIR.parent
+if str(TRACKPY_TOOL_ROOT) not in sys.path:
+    sys.path.insert(0, str(TRACKPY_TOOL_ROOT))
+
+
+from bioimage_mcp_trackpy.introspect import (
+    introspect_module,
+    introspect_function,
+    TRACKPY_MODULES,
+    ARTIFACT_INPUT_PARAMS,
+)
 
 TOOL_VERSION = "0.1.0"
 TOOL_ENV_NAME = "bioimage-mcp-trackpy"
-
-TRACKPY_MODULES = [
-    "trackpy",
-    "trackpy.linking",
-    "trackpy.motion",
-    "trackpy.predict",
-    "trackpy.filtering",
-    "trackpy.plots",
-    "trackpy.diag",
-    "trackpy.feature",
-    "trackpy.refine",
-    "trackpy.masks",
-    "trackpy.preprocessing",
-    "trackpy.artificial",
-]
 
 # Global memory artifact storage
 _MEMORY_ARTIFACTS: dict[str, Any] = {}
 _SESSION_ID: str | None = None
 _ENV_ID: str | None = None
-
-# Static function map (initially minimal)
-FN_MAP: dict[str, tuple[Any, dict]] = {}
+_WORK_DIR: Path = Path.cwd()
 
 
-def _initialize_worker(session_id: str, env_id: str) -> None:
+def _initialize_worker(session_id: str, env_id: str, work_dir: str | None = None) -> None:
     """Initialize worker identity."""
-    global _SESSION_ID, _ENV_ID
+    global _SESSION_ID, _ENV_ID, _WORK_DIR
     _SESSION_ID = session_id
     _ENV_ID = env_id
+    if work_dir:
+        _WORK_DIR = Path(work_dir)
+    else:
+        _WORK_DIR = Path(os.environ.get("BIOIMAGE_MCP_WORK_DIR", Path.cwd()))
+    _WORK_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def handle_meta_list(params: dict) -> dict:
     """Out-of-process function discovery for trackpy."""
     functions = []
     for module_name in TRACKPY_MODULES:
-        try:
-            module = importlib.import_module(module_name)
-        except ImportError:
-            continue
-
-        for name in dir(module):
-            if name.startswith("_"):
-                continue
-            obj = getattr(module, name)
-            if not callable(obj) or not hasattr(obj, "__doc__"):
-                continue
-
-            fn_id = f"{module_name}.{name}"
-            doc = obj.__doc__ or ""
-            summary = doc.split("\n")[0] if doc else ""
-
-            functions.append(
-                {
-                    "fn_id": fn_id,
-                    "name": name,
-                    "summary": summary,
-                    "module": module_name,
-                }
-            )
+        module_funcs = introspect_module(module_name)
+        functions.extend(module_funcs)
 
     return {"ok": True, "result": {"functions": functions}}
 
 
 def handle_meta_describe(params: dict) -> dict:
-    """Detailed schema introspection (minimal implementation for now)."""
-    target_fn = params.get("target_fn", "")
-    # In the future, this will use numpydoc to parse signatures
+    """Detailed schema introspection using numpydoc."""
+    target_fn = params.get("target_fn")
+    if not target_fn:
+        return {"ok": False, "error": {"message": "target_fn required"}}
+
+    try:
+        result = introspect_function(target_fn)
+        return {"ok": True, "result": result}
+    except Exception as e:
+        return {"ok": False, "error": {"message": f"Introspection failed: {e}"}}
+
+
+def _execute_trackpy_function(fn_id: str, params: dict, inputs: dict) -> dict:
+    """Execute a trackpy function with artifact resolution."""
+    try:
+        func = _resolve_callable(fn_id)
+
+        # Resolve artifact inputs
+        resolved_inputs = {}
+        for key, value in inputs.items():
+            resolved_inputs[key] = _load_input_artifact(value)
+
+        # Combine params and resolved inputs
+        # Note: trackpy functions often take 'image' or 'f' as first arg
+        # We try to map common names
+        call_kwargs = {**params, **resolved_inputs}
+
+        # Execute
+        result = func(**call_kwargs)
+
+        # Serialize outputs
+        outputs = {}
+        if isinstance(result, pd.DataFrame):
+            outputs["table"] = _save_table_artifact(result, f"{fn_id.replace('.', '_')}_output")
+        elif isinstance(result, np.ndarray):
+            outputs["image"] = _save_image_artifact(result, f"{fn_id.replace('.', '_')}_output")
+        else:
+            outputs["result"] = _make_json_serializable(result)
+
+        return {"ok": True, "outputs": outputs}
+
+    except Exception as e:
+        return {"ok": False, "error": {"message": str(e)}, "log": traceback.format_exc()}
+
+
+def _resolve_callable(fn_id: str) -> Any:
+    parts = fn_id.rsplit(".", 1)
+    if len(parts) == 2:
+        module_name, func_name = parts
+    else:
+        module_name, func_name = "trackpy", parts[0]
+
+    module = importlib.import_module(module_name)
+    return getattr(module, func_name)
+
+
+def _load_input_artifact(artifact_ref: dict) -> Any:
+    """Load artifact to in-memory object (numpy/pandas)."""
+    ref_type = artifact_ref.get("ref_type")
+    # File-backed
+    path = artifact_ref.get("path")
+    if not path:
+        # Check memory
+        ref_id = artifact_ref.get("ref_id")
+        if ref_id in _MEMORY_ARTIFACTS:
+            return _MEMORY_ARTIFACTS[ref_id]
+        raise ValueError(f"Artifact not found: {artifact_ref}")
+
+    if ref_type == "BioImageRef":
+        img = BioImage(path)
+        return img.get_image_data("ZYX")  # Standard trackpy orientation
+    elif ref_type == "TableRef":
+        return pd.read_csv(path)
+
+    return path  # Fallback to path string
+
+
+def _save_table_artifact(df: pd.DataFrame, name_hint: str) -> dict:
+    import uuid
+
+    ref_id = str(uuid.uuid4())
+    filename = f"{name_hint}_{ref_id[:8]}.csv"
+    path = _WORK_DIR / filename
+    df.to_csv(path, index=False)
     return {
-        "ok": True,
-        "result": {
-            "fn_id": target_fn,
-            "params_schema": {"type": "object", "properties": {}},
-            "tool_version": TOOL_VERSION,
-        },
+        "ref_type": "TableRef",
+        "ref_id": ref_id,
+        "path": str(path),
+        "format": "csv",
+        "shape": list(df.shape),
     }
+
+
+def _save_image_artifact(arr: np.ndarray, name_hint: str) -> dict:
+    import uuid
+    from bioio_ome_tiff import Reader, Writer
+
+    ref_id = str(uuid.uuid4())
+    filename = f"{name_hint}_{ref_id[:8]}.ome.tif"
+    path = _WORK_DIR / filename
+
+    # Simple OME-TIFF write
+    # bioio-ome-tiff Writer expects [T, C, Z, Y, X] or similar
+    # We'll try to be simple for now
+    Writer.save(arr, path)
+
+    return {
+        "ref_type": "BioImageRef",
+        "ref_id": ref_id,
+        "path": str(path),
+        "format": "ome.tif",
+        "shape": list(arr.shape),
+        "dtype": str(arr.dtype),
+    }
+
+
+def _make_json_serializable(value: Any) -> Any:
+    if value is None or isinstance(value, (bool, int, float, str)):
+        return value
+    if isinstance(value, (list, tuple, set, frozenset)):
+        return [_make_json_serializable(x) for x in value]
+    if isinstance(value, dict):
+        return {str(k): _make_json_serializable(v) for k, v in value.items()}
+    if hasattr(value, "tolist") and not isinstance(value, type):
+        try:
+            return value.tolist()
+        except:
+            pass
+    return str(value)
 
 
 def _handle_request(request: dict) -> dict:
     """Route requests to handlers."""
     command = request.get("command")
     params = request.get("params", {})
+    inputs = request.get("inputs", {})
     fn_id = request.get("fn_id")
     ordinal = request.get("ordinal")
 
@@ -112,31 +207,23 @@ def _handle_request(request: dict) -> dict:
                 res = handle_meta_list(params)
             elif fn_id == "meta.describe":
                 res = handle_meta_describe(params)
-            elif fn_id in FN_MAP:
-                func, _ = FN_MAP[fn_id]
-                # Placeholder for actual execution logic
-                res = {"ok": True, "result": "executed"}
             else:
-                return {
-                    "command": "execute_result",
-                    "ok": False,
-                    "ordinal": ordinal,
-                    "error": {"message": f"Unknown function: {fn_id}"},
-                }
+                res = _execute_trackpy_function(fn_id, params, inputs)
 
             if res.get("ok"):
                 return {
                     "command": "execute_result",
                     "ok": True,
                     "ordinal": ordinal,
-                    "outputs": {"result": res.get("result")},
+                    "outputs": res.get("outputs") or {"result": res.get("result")},
                 }
             else:
                 return {
                     "command": "execute_result",
                     "ok": False,
                     "ordinal": ordinal,
-                    "error": {"message": res.get("error", "Unknown error")},
+                    "error": res.get("error", {"message": "Unknown error"}),
+                    "log": res.get("log"),
                 }
 
         elif command == "shutdown":
@@ -194,6 +281,7 @@ def main():
     _initialize_worker(
         os.environ.get("BIOIMAGE_MCP_SESSION_ID", "default"),
         os.environ.get("BIOIMAGE_MCP_ENV_ID", TOOL_ENV_NAME),
+        os.environ.get("BIOIMAGE_MCP_WORK_DIR"),
     )
 
     # Check if stdin is a TTY (usually interactive or spawned persistent)
@@ -219,8 +307,6 @@ def main():
 
                     # Otherwise handle as legacy single request
                     response = _handle_request(request)
-                    # For legacy compatibility, we might want to strip 'command' and 'ordinal'
-                    # but keeping them usually doesn't hurt if the core handles it.
                     print(json.dumps(response), flush=True)
                     return
                 except json.JSONDecodeError:
