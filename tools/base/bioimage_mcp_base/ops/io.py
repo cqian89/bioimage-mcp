@@ -532,6 +532,10 @@ def table_export(
     # T039: Preserve float precision (15 significant digits)
     # Include index if it's not a default RangeIndex or if it has a name
     include_index = not isinstance(df.index, pd.RangeIndex) or df.index.name is not None
+
+    # Ensure parent directory exists before writing
+    dest_path.parent.mkdir(parents=True, exist_ok=True)
+
     df.to_csv(dest_path, sep=sep, index=include_index, float_format="%.15g")
 
     # Create TableRef output
@@ -1161,6 +1165,9 @@ def export(*, inputs: dict[str, Any], params: dict[str, Any], work_dir: Path) ->
     # Handle data types not supported by OME-TIFF (e.g. uint64 from sum)
     if dest_format == "OME-TIFF" and (data.dtype == np.uint64 or data.dtype == np.int64):
         data = data.astype(np.float32)
+
+    # Ensure parent directory exists before writing
+    dest_path.parent.mkdir(parents=True, exist_ok=True)
 
     if dest_format == "PNG":
         _export_png(data, dest_path)
