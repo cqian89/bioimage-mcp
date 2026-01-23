@@ -3,8 +3,10 @@
 
 from __future__ import annotations
 
+import contextlib
 import importlib
 import inspect
+import io
 import json
 import os
 import sys
@@ -77,6 +79,7 @@ def handle_meta_describe(params: dict) -> dict:
 
 def _execute_trackpy_function(fn_id: str, params: dict, inputs: dict) -> dict:
     """Execute a trackpy function with artifact resolution."""
+    capture = io.StringIO()
     try:
         func = _resolve_callable(fn_id)
         sig = inspect.signature(func)
@@ -112,8 +115,17 @@ def _execute_trackpy_function(fn_id: str, params: dict, inputs: dict) -> dict:
         # Combine params and resolved inputs
         call_kwargs = {**params, **resolved_inputs}
 
-        # Execute
-        result = func(**call_kwargs)
+        # Execute with stdout/stderr redirection and logging capture
+        import logging
+
+        tp_logger = logging.getLogger("trackpy")
+        log_handler = logging.StreamHandler(capture)
+        tp_logger.addHandler(log_handler)
+        try:
+            with contextlib.redirect_stdout(capture), contextlib.redirect_stderr(capture):
+                result = func(**call_kwargs)
+        finally:
+            tp_logger.removeHandler(log_handler)
 
         # Serialize outputs
         outputs = {}
@@ -124,10 +136,16 @@ def _execute_trackpy_function(fn_id: str, params: dict, inputs: dict) -> dict:
         else:
             outputs["result"] = _make_json_serializable(result)
 
-        return {"ok": True, "outputs": outputs}
+        log_content = capture.getvalue()
+        return {"ok": True, "outputs": outputs, "_meta": {"log": log_content}}
 
     except Exception as e:
-        return {"ok": False, "error": {"message": str(e)}, "log": traceback.format_exc()}
+        log_content = capture.getvalue()
+        return {
+            "ok": False,
+            "error": {"message": str(e)},
+            "log": f"{log_content}\n{traceback.format_exc()}",
+        }
 
 
 def _resolve_callable(fn_id: str) -> Any:
@@ -249,12 +267,15 @@ def _handle_request(request: dict) -> dict:
                 res = _execute_trackpy_function(fn_id, params, inputs)
 
             if res.get("ok"):
-                return {
+                response = {
                     "command": "execute_result",
                     "ok": True,
                     "ordinal": ordinal,
                     "outputs": res.get("outputs") or {"result": res.get("result")},
                 }
+                if "_meta" in res:
+                    response["_meta"] = res["_meta"]
+                return response
             else:
                 return {
                     "command": "execute_result",
