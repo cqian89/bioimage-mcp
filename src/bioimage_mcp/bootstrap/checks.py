@@ -17,6 +17,7 @@ from bioimage_mcp.registry.loader import load_manifest_file
 class CheckResult:
     name: str
     ok: bool
+    required: bool = True
     remediation: list[str] = field(default_factory=list)
     details: dict[str, object] = field(default_factory=dict)
 
@@ -221,6 +222,7 @@ def check_conda_lock() -> CheckResult:
         return CheckResult(
             name="conda_lock",
             ok=False,
+            required=False,
             remediation=["Install conda-lock>=4.0.0 (used for reproducible env locks)"],
         )
     return CheckResult(name="conda_lock", ok=True, details={"executable": exe})

@@ -42,7 +42,7 @@ def doctor(*, json_output: bool) -> int:
     """Run local readiness checks and print actionable output."""
 
     results = run_checks()
-    ready = all(r.ok for r in results)
+    ready = all(r.ok for r in results if r.required)
     registry = _collect_registry_summary()
 
     if json_output:
@@ -79,14 +79,22 @@ def doctor(*, json_output: bool) -> int:
                 first_error = errors[0] if isinstance(errors, list) and errors else "unknown error"
                 print(f"- {path}: {first_error}")
 
-    if ready:
-        return 0
+    if not ready:
+        for result in results:
+            if result.ok or not result.required:
+                continue
+            print(f"- {result.name}:")
+            for item in result.remediation:
+                print(f"  - {item}")
+        return 1
 
-    for result in results:
-        if result.ok:
-            continue
-        print(f"- {result.name}:")
-        for item in result.remediation:
-            print(f"  - {item}")
+    # Print warnings for failing optional checks
+    optional_failures = [r for r in results if not r.ok and not r.required]
+    if optional_failures:
+        print("\nWARNINGS:")
+        for result in optional_failures:
+            print(f"- {result.name}:")
+            for item in result.remediation:
+                print(f"  - {item}")
 
-    return 1
+    return 0
