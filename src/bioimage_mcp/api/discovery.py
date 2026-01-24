@@ -529,6 +529,8 @@ class DiscoveryService:
                             entrypoint = str(candidate)
 
                     request = {
+                        "command": "execute",
+                        "ordinal": 0,
                         "fn_id": "meta.describe",
                         "params": {"target_fn": fn_id},
                         "inputs": {},
@@ -541,8 +543,14 @@ class DiscoveryService:
                             env_id=manifest.env_id,
                         )
                         if response.get("ok"):
-                            result = response.get("result") or {}
-                            if isinstance(result.get("params_schema"), dict):
+                            # Normalize result extraction (support legacy and worker shapes)
+                            result = response.get("result")
+                            if result is None:
+                                result = response.get("outputs", {}).get("result")
+
+                            if isinstance(result, dict) and isinstance(
+                                result.get("params_schema"), dict
+                            ):
                                 params_schema = result["params_schema"]
                                 introspection_source = str(
                                     result.get("introspection_source") or "manual"
