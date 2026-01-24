@@ -15,19 +15,18 @@ Enables AI agents to safely and reproducibly execute bioimage analysis tools wit
 - ✓ Core server infrastructure (Python) — existing
 - ✓ Basic tool definition structure (`tools/`) — existing
 - ✓ Conda environment management (micromamba/conda) — existing
-- ✓ **CLI Tool Manager (partial)**: Install and doctor commands work (`bioimage-mcp install`, `bioimage-mcp doctor`)
-- ✓ **Workflow Recording**: Session recording with provenance capture implemented
-- ✓ **Artifact-based I/O**: File and memory artifacts fully operational
+- ✓ **CLI Tool Manager**: Full suite (`install`, `list`, `remove`, `doctor`) — v0.2.0
+- ✓ **Workflow Recording**: Session recording with provenance capture — v0.2.0
+- ✓ **Artifact-based I/O**: File and memory artifacts fully operational — v0.2.0
+- ✓ **Workflow Replay**: Validated export and replay engine — v0.2.0
+- ✓ **GPU Passthrough**: NVIDIA (CUDA) and Apple Silicon (MPS) detection — v0.2.0
+- ✓ **Trackpy Integration**: First major tool pack with dynamic introspection — v0.2.0
 
 ### Active
 
-- [ ] **CLI List/Remove**: `bioimage-mcp list` and `bioimage-mcp remove` not yet exposed
-- [ ] **Extensible Install**: Install command hardcoded to base/cellpose; needs manifest-driven installation
-- [ ] **Plugin System**: Support for external tool repositories/packages
-- [ ] **Workflow Replay Validation**: session_replay implemented but needs validation before production use
-- [ ] **Interactive Mode**: Support tools asking users for input during execution
-- [ ] **GPU Passthrough (MPS)**: NVIDIA detection works; Apple Silicon MPS detection missing
-- [ ] **Streaming Progress**: Real-time progress streaming (currently polling only)
+- [ ] **Interactive Mode**: Support tools asking users for input during execution (INTR-01)
+- [ ] **Streaming Progress**: Real-time progress streaming (INTR-02)
+- [ ] **Plugin System**: Support for external tool repositories/packages (ECO-02)
 - [ ] **Cross-platform CI/CD**: Testing for Linux/Mac/Win
 
 ### Out of Scope
@@ -38,6 +37,10 @@ Enables AI agents to safely and reproducibly execute bioimage analysis tools wit
 
 ## Context
 
+Shipped v0.2.0 "Foundation" with ~28k LOC Python.
+Tech stack: Python 3.10+, Conda, MCP.
+Key capabilities: Hub-and-spoke isolation, zero-copy artifacts, reproducible workflows.
+First integration: Trackpy (v0.7).
 Developing a "standard library" for bioimage AI. Building on top of the `mcp` Python SDK. The system must bridge the gap between heavy bioimage dependencies (which often conflict) and the lightweight JSON-based MCP interface.
 
 ## Constraints
@@ -59,4 +62,4 @@ Developing a "standard library" for bioimage AI. Building on top of the `mcp` Py
 | **SQLite persistence** | Lightweight, file-based storage | ✓ Implemented |
 
 ---
-*Last updated: Thu Jan 22 2026*
+*Last updated: 2026-01-25 after v0.2.0 milestone*
