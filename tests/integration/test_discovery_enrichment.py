@@ -74,7 +74,7 @@ def test_describe_function_uses_json_cache(tmp_path: Path, monkeypatch) -> None:
                         "properties": {"sigma": {"type": "number"}},
                         "required": [],
                     },
-                    "tool_version": "0.1.0",
+                    "tool_version": "0.2.0",
                     "introspection_source": "python_api",
                 },
             },
@@ -86,22 +86,64 @@ def test_describe_function_uses_json_cache(tmp_path: Path, monkeypatch) -> None:
 
     fn_id = "base.skimage.filters.gaussian"
     first = service.describe_function(fn_id)
-    assert "schema" in first
-    assert "params_schema" not in first
     assert first["id"] == fn_id
+    assert "params_schema" in first
     assert first["params_schema"]["properties"]["sigma"]["type"] == "number"
     assert len(calls) == 1
+    assert calls[0]["command"] == "execute"
+    assert calls[0]["fn_id"] == "meta.describe"
 
     second = service.describe_function(fn_id)
-    assert "schema" in second
-    assert "params_schema" not in second
     assert second["id"] == fn_id
+    assert "params_schema" in second
     assert second["params_schema"]["properties"]["sigma"]["type"] == "number"
     assert len(calls) == 1
 
     cache_path = tmp_path / "artifacts" / "state" / "schema_cache.json"
     assert cache_path.exists()
     cache_data = json.loads(cache_path.read_text())
-    tool_key = "tools.base@0.1.0"
+    tool_key = "tools.base@0.2.0"
     assert tool_key in cache_data.get("tools", {})
-    assert fn_id in cache_data["items"][tool_key]["results"]
+    assert fn_id in cache_data["tools"][tool_key]["functions"]
+
+
+def test_describe_function_supports_worker_response(tmp_path: Path, monkeypatch) -> None:
+    service = _prepare_discovery(tmp_path, monkeypatch)
+
+    calls = []
+
+    def _fake_execute_tool(
+        *, entrypoint: str, request: dict, env_id: str | None, timeout_seconds=None
+    ):
+        calls.append(request)
+        return (
+            {
+                "ok": True,
+                "outputs": {
+                    "result": {
+                        "params_schema": {
+                            "type": "object",
+                            "properties": {"sigma": {"type": "number"}},
+                            "required": [],
+                        },
+                        "tool_version": "0.2.0",
+                        "introspection_source": "python_api",
+                    }
+                },
+            },
+            "ok",
+            0,
+        )
+
+    monkeypatch.setattr("bioimage_mcp.api.discovery.execute_tool", _fake_execute_tool)
+
+    fn_id = "base.skimage.filters.gaussian"
+    res = service.describe_function(fn_id)
+    assert res["params_schema"]["properties"]["sigma"]["type"] == "number"
+    assert res["introspection_source"] == "python_api"
+    assert len(calls) == 1
+
+    # Verify caching
+    res2 = service.describe_function(fn_id)
+    assert res2["params_schema"]["properties"]["sigma"]["type"] == "number"
+    assert len(calls) == 1
