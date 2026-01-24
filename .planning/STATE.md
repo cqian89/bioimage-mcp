@@ -35,17 +35,18 @@
   - ✅ Live smoke test matching reference output (05-03)
   - ✅ End-to-end E2E smoke tests (05-06)
   - ✅ Optional readiness checks in `doctor` (05-07)
+  - ✅ Fix Trackpy meta.describe schema enrichment (05-08)
 
 ## Current Position
 
 Phase: 5 of 5 (Trackpy Integration)
-Plan: 7 of 8 in current phase
-Status: In progress
-Last activity: 2026-01-24 - Completed 05-07-PLAN.md (Optional Readiness Checks)
+Plan: 8 of 8 in current phase
+Status: Phase complete
+Last activity: 2026-01-24 - Completed 05-08-PLAN.md (Describe Enrichment)
 
 Progress: ██████████ 100%
 
-**Next:** 05-08-PLAN.md (Fix Trackpy meta.describe schema enrichment)
+**Next:** Milestone transition or archive
 
 ## Context & Memory
 
@@ -78,6 +79,7 @@ Progress: ██████████ 100%
 - **Robust JSON extraction**: (Phase 5-04) Switched to searching for the first '{' in subprocess output to avoid parsing failures caused by non-JSON warnings during environment discovery.
 - **Full Verbosity for E2E**: (Phase 5-06) Used `verbosity='full'` in E2E tests to verify rich metadata (columns, row_count) for `TableRef` artifacts, as default `minimal` verbosity strips these fields.
 - **Optional Readiness Checks**: (Phase 5-07) Introduced `required` field to `CheckResult` to allow non-blocking failures (e.g., missing `conda-lock`) to be surfaced as warnings.
+- **Worker-Style meta.describe**: (Phase 5-08) Normalized DiscoveryService to send `command: execute` and handle wrapped `outputs.result` responses, ensuring parameter schemas are correctly enriched for worker-based tool packs.
 
 ### Blockers
 - None.

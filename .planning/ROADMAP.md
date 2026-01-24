@@ -116,7 +116,7 @@ This roadmap structures the development of `bioimage-mcp` into 4 coherent phases
 - [x] 05-05-PLAN.md — Fix tool entrypoints (Cellpose meta.list, Trackpy stdout) (Gap Closure)
 - [x] 05-06-PLAN.md — End-to-end verification via smoke tests
 - [x] 05-07-PLAN.md — Doctor: treat missing conda-lock as warning (Gap Closure)
-- [ ] 05-08-PLAN.md — Describe: fix Trackpy meta.describe schema enrichment (Gap Closure)
+- [x] 05-08-PLAN.md — Describe: fix Trackpy meta.describe schema enrichment (Gap Closure)
 
 ## Progress
 
