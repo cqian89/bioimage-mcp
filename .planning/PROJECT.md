@@ -8,6 +8,15 @@ Bioimage-MCP is a local Python package that exposes bioimage analysis tools to A
 
 Enables AI agents to safely and reproducibly execute bioimage analysis tools without dependency conflicts.
 
+## Current Milestone: v0.3.0 Scipy Integration
+
+**Goal:** Expose Scipy functionality to the MCP server using dynamic discovery, following existing patterns.
+
+**Target features:**
+- Dynamic discovery for Scipy modules
+- Manual schema supplements
+- Broad module coverage (opt-out exclusion)
+
 ## Requirements
 
 ### Validated
@@ -24,6 +33,9 @@ Enables AI agents to safely and reproducibly execute bioimage analysis tools wit
 
 ### Active
 
+<!-- Current scope. Building toward these. -->
+
+- [ ] **Scipy Integration**: Expose Scipy modules via dynamic discovery (v0.3.0)
 - [ ] **Interactive Mode**: Support tools asking users for input during execution (INTR-01)
 - [ ] **Streaming Progress**: Real-time progress streaming (INTR-02)
 - [ ] **Plugin System**: Support for external tool repositories/packages (ECO-02)
@@ -62,4 +74,4 @@ Developing a "standard library" for bioimage AI. Building on top of the `mcp` Py
 | **SQLite persistence** | Lightweight, file-based storage | ✓ Implemented |
 
 ---
-*Last updated: 2026-01-25 after v0.2.0 milestone*
+*Last updated: 2026-01-25 start of v0.3.0 milestone*

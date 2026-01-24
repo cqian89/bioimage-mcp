@@ -2,21 +2,21 @@
 
 **Project:** Bioimage-MCP
 **Core Value:** Enables AI agents to safely and reproducibly execute bioimage analysis tools without dependency conflicts.
-**Current Focus:** Planning next milestone
+**Current Focus:** v0.3.0 Scipy Integration
 
 ## Current Position
 
-Phase: Planning
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-01-25 — v0.2.0 milestone complete
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-01-25 — Milestone v0.3.0 started
 
-Progress: [====================] 100% (v0.2.0)
+Progress: [░░░░░░░░░░░░░░░░░░░░] 0% (v0.3.0)
 
 ## Accumulated Context
 
 - **v0.2.0 Shipped (2026-01-25):** Core runtime, CLI, reproducibility, Trackpy integration.
-- **Next Steps:** Use `/gsd-new-milestone` to start v0.3.0.
+- **Next Steps:** Define requirements for Scipy integration.
 
 ## Project Reference
 
@@ -34,4 +34,4 @@ See: `.planning/PROJECT.md` (updated 2026-01-25)
 ## Roadmap
 
 - ✅ v0.2.0 Foundation (Shipped)
-- 📋 v0.3.0 Next Milestone (Planning)
+- 📋 v0.3.0 Scipy Integration (Defining Requirements)
