@@ -143,6 +143,7 @@ def create_server(
         ordinal: int | None = None,
         dry_run: bool = False,
         verbosity: str = "minimal",
+        timeout_seconds: int | None = None,
         ctx: Context | None = None,
     ) -> dict[str, Any]:
         """Execute a function within a session.
@@ -171,6 +172,7 @@ def create_server(
             params=params,
             ordinal=ordinal,
             dry_run=dry_run,
+            timeout_seconds=timeout_seconds,
         )
 
         # Build base result dict (includes all data from interactive service)

@@ -123,3 +123,23 @@ def test_call_tool_dry_run_validation_failed(tmp_path: Path) -> None:
     assert result["dry_run"] is True
     assert result["error"] == error
     store.close()
+
+
+def test_call_tool_passes_timeout_seconds(tmp_path: Path) -> None:
+    execution = FakeExecutionService(
+        run_result={"run_id": "run-3", "status": "success"},
+        run_status={"status": "success", "outputs": {}},
+    )
+    service, store = _make_service(tmp_path, execution)
+
+    result = service.call_tool(
+        session_id="sess-5",
+        fn_id="fn.test",
+        inputs={},
+        params={},
+        timeout_seconds=123,
+    )
+
+    assert result["status"] == "success"
+    assert execution.last_spec["run_opts"]["timeout_seconds"] == 123
+    store.close()

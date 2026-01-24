@@ -39,6 +39,7 @@ class InteractiveExecutionService:
         params: dict[str, Any],
         ordinal: int | None = None,
         connection_hint: str | None = None,
+        timeout_seconds: int | None = None,
         dry_run: bool = False,
     ) -> dict[str, Any]:
         """Execute a tool call within a session step.
@@ -87,9 +88,11 @@ class InteractiveExecutionService:
                     "params": params,
                 }
             ],
-            # Pass timeout via run_opts if needed, but not exposed in call_tool API yet
             "run_opts": {},
         }
+
+        if timeout_seconds is not None:
+            spec["run_opts"]["timeout_seconds"] = timeout_seconds
 
         # Record start time
         started_at = datetime.now(UTC).isoformat()

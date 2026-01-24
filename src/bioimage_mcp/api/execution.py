@@ -567,7 +567,7 @@ class ExecutionService:
         run_opts = spec.get("run_opts") or {}
         output_mode = run_opts.get("output_mode", "file")
         session_id = run_opts.get("session_id", session_id)
-        timeout_seconds = run_opts.get("timeout_seconds")
+        timeout_seconds = run_opts.get("timeout_seconds", self._config.worker_timeout_seconds)
 
         input_metadata: dict[str, dict] = {}
         for name, inp in inputs.items():
