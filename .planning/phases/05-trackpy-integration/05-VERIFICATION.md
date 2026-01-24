@@ -27,7 +27,7 @@ gaps: []
 | --- | ------------------------------------------- | ---------- | ------------------------------------------------------------------------ |
 | 1   | Trackpy functions discoverable (TRACK-01)   | ✓ VERIFIED | `manifest.yaml` defines dynamic sources; `introspect.py` implements logic |
 | 2   | Correct environment defined (TRACK-02)      | ✓ VERIFIED | `envs/bioimage-mcp-trackpy.yaml` exists and defines isolated env         |
-| 3   | Full API coverage (TRACK-03)                | ✓ VERIFIED | `introspect.py` scans all key modules; `API_COVERAGE.md` exists          |
+| 3   | Full API coverage (TRACK-03)                | ✓ VERIFIED | `introspect.py` scans all key modules; `API_COVERAGE.md` confirms 100%   |
 | 4   | Test data available (TRACK-04)              | ✓ VERIFIED | `datasets/trackpy-examples/bulk_water` vendored from trackpy repo        |
 | 5   | Live smoke tests match reference (TRACK-05) | ✓ VERIFIED | `test_equivalence_trackpy.py` compares MCP vs Native execution           |
 
@@ -41,6 +41,7 @@ gaps: []
 | `tools/trackpy/manifest.yaml`                       | Tool pack manifest         | ✓ VERIFIED | Valid v1.0 manifest, points to entrypoint              |
 | `tools/trackpy/bioimage_mcp_trackpy/entrypoint.py`  | Worker entrypoint          | ✓ VERIFIED | Implements NDJSON worker and introspection wiring      |
 | `tools/trackpy/bioimage_mcp_trackpy/introspect.py`  | Introspection logic        | ✓ VERIFIED | Handles module crawling and docstring parsing          |
+| `tools/trackpy/bioimage_mcp_trackpy/descriptions.py`| Manual overrides           | ✓ VERIFIED | Provides better descriptions for key functions         |
 | `datasets/trackpy-examples/`                        | Test data                  | ✓ VERIFIED | Contains `bulk_water` dataset                          |
 | `tests/smoke/test_equivalence_trackpy.py`           | Equivalence test           | ✓ VERIFIED | Uses `DataEquivalenceHelper` and `NativeExecutor`      |
 
@@ -50,6 +51,7 @@ gaps: []
 | ---------------------------- | ---------------------------- | ---------------------- | ---------- | ------------------------------------------------- |
 | `manifest.yaml`              | `entrypoint.py`              | `entrypoint` field     | ✓ VERIFIED | Correct path configured                           |
 | `entrypoint.py`              | `introspect.py`              | `import`               | ✓ VERIFIED | Introspection used for `meta.list`                |
+| `introspect.py`              | `descriptions.py`            | `import`               | ✓ VERIFIED | Manual descriptions used for schema enrichment    |
 | `test_equivalence_trackpy.py`| `trackpy_baseline.py`        | `subprocess`           | ✓ VERIFIED | Equivalence test calls reference script           |
 
 ### Requirements Coverage

@@ -63,8 +63,8 @@
 | DATA-02 | Phase 3 | Pending |
 | INTR-01 | Phase 4 | Pending |
 | INTR-02 | Phase 4 | Pending |
-| REPR-01 | Phase 5 | Pending |
-| REPR-02 | Phase 5 | Pending |
+| REPR-01 | Phase 5 | Complete |
+| REPR-02 | Phase 5 | Complete |
 
 **Coverage:**
 - v1 requirements: 14 total
