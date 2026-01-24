@@ -107,3 +107,75 @@ functions:
         # Should only have the manual function
         assert len(manifest.functions) == 1
         assert manifest.functions[0].fn_id == "test.manual"
+
+
+def test_load_manifest_preserves_manifest_schema_on_duplicate_dynamic_fn(
+    tmp_path: Path,
+) -> None:
+    """Manifest-defined schema should win when dynamic discovery returns same fn_id."""
+    manifest_path = tmp_path / "manifest.yaml"
+    manifest_path.write_text(
+        """
+manifest_version: "0.0"
+tool_id: tools.cellpose
+tool_version: "0.0.0"
+env_id: bioimage-mcp-test
+entrypoint: test.entrypoint
+platforms_supported: [linux-64]
+functions:
+  - fn_id: cellpose.models.CellposeModel
+    tool_id: tools.cellpose
+    name: CellposeModel
+    description: Manual schema definition
+    tags: []
+    inputs: []
+    outputs: []
+    params_schema:
+      type: object
+      properties:
+        model_type:
+          type: string
+dynamic_sources:
+  - adapter: cellpose
+    prefix: cellpose
+    modules: [cellpose.models]
+""".lstrip()
+    )
+
+    duplicate_meta = FunctionMetadata(
+        fn_id="cellpose.models.CellposeModel",
+        name="CellposeModel",
+        module="cellpose.models",
+        qualified_name="cellpose.models.CellposeModel",
+        source_adapter="python_api",
+        description="Dynamic stub",
+        tags=[],
+    )
+    new_meta = FunctionMetadata(
+        fn_id="cellpose.models.CellposeModel.eval",
+        name="CellposeModel.eval",
+        module="cellpose.models",
+        qualified_name="cellpose.models.CellposeModel.eval",
+        source_adapter="python_api",
+        description="Dynamic eval",
+        tags=[],
+    )
+
+    with patch(
+        "bioimage_mcp.registry.loader.discover_functions",
+        return_value=[duplicate_meta, new_meta],
+    ):
+        manifest, diagnostic = load_manifest_file(manifest_path)
+
+    assert diagnostic is None
+    assert manifest is not None
+    assert len(manifest.functions) == 2
+
+    by_id = {fn.fn_id: fn for fn in manifest.functions}
+    assert "cellpose.models.CellposeModel" in by_id
+    assert "cellpose.models.CellposeModel.eval" in by_id
+    assert (
+        by_id["cellpose.models.CellposeModel"].params_schema.get("properties", {}).get("model_type")
+    ), "Manifest schema should be preserved for duplicate fn_id"
+    assert by_id["cellpose.models.CellposeModel"].introspection_source is None
+    assert by_id["cellpose.models.CellposeModel.eval"].introspection_source == "python_api"

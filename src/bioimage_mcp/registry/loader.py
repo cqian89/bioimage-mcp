@@ -407,6 +407,7 @@ def load_manifest_file(path: Path) -> tuple[ToolManifest | None, ManifestDiagnos
                 discovered_metadata = _discover_via_subprocess(manifest)
 
             # Convert FunctionMetadata to Function objects
+            existing_fn_ids = {fn.fn_id for fn in manifest.functions}
 
             for meta in discovered_metadata:
                 inputs, outputs = _map_io_pattern_to_ports(meta.io_pattern)
@@ -446,7 +447,14 @@ def load_manifest_file(path: Path) -> tuple[ToolManifest | None, ManifestDiagnos
                     hints=meta.hints,
                     introspection_source=meta.source_adapter,
                 )
+                if function.fn_id in existing_fn_ids:
+                    logger.debug(
+                        "Skipping dynamically discovered function %s; manifest already defines it",
+                        function.fn_id,
+                    )
+                    continue
                 manifest.functions.append(function)
+                existing_fn_ids.add(function.fn_id)
         except Exception as e:  # noqa: BLE001
             # If discovery fails (e.g., adapter not registered), continue with
             # manifest loading. This allows manifests to be loaded before adapters
