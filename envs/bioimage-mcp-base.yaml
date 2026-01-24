@@ -34,6 +34,7 @@ dependencies:
     - bioio-tifffile    # Generic TIFF files
     - bioio-tiff-glob   # Multi-file TIFF stacks
     - bioio-bioformats  # Bio-Formats (Java-based, supports 150+ formats)
+    - resource_backed_dask_array  # Required by bioio-bioformats
     # Note: bioio-ome-tiled-tiff is excluded due to dependency conflicts with numpy
     # (requires tifffile<2022.4.22 which needs numpy 1.26.4 built from source)
     # Install bioimage_mcp in editable mode for access to adapters

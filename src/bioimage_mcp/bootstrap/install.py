@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -97,6 +98,53 @@ def _env_exists(exe: str, env_name: str) -> bool:
         return False
 
 
+def _lockfile_for_env(env_file: Path) -> Path:
+    return env_file.with_suffix(".lock.yml")
+
+
+def _install_env_with_lock(
+    conda_lock_exe: str,
+    env_name: str,
+    lockfile: Path,
+) -> bool:
+    result = subprocess.run(
+        [conda_lock_exe, "install", "-n", env_name, str(lockfile)],
+        check=False,
+    )
+    return result.returncode == 0
+
+
+def _collect_pip_deps(env_file: Path) -> list[str]:
+    raw = yaml.safe_load(env_file.read_text())
+    dependencies = raw.get("dependencies", []) if isinstance(raw, dict) else []
+    pip_deps: list[str] = []
+    for dep in dependencies:
+        if isinstance(dep, dict) and "pip" in dep:
+            pip_items = dep["pip"]
+            if isinstance(pip_items, list):
+                pip_deps.extend(pip_items)
+    return pip_deps
+
+
+def _normalize_pip_dep(dep: str, env_file: Path) -> str:
+    if dep.startswith("-e "):
+        rel_path = dep[3:].strip()
+        abs_path = (env_file.parent / rel_path).resolve()
+        return f"-e {abs_path}"
+    return dep
+
+
+def _install_pip_deps(exe: str, env_name: str, env_file: Path) -> bool:
+    pip_deps = _collect_pip_deps(env_file)
+    if not pip_deps:
+        return True
+
+    normalized = [_normalize_pip_dep(dep, env_file) for dep in pip_deps]
+    cmd = [exe, "run", "-n", env_name, "python", "-m", "pip", "install", *normalized]
+    result = subprocess.run(cmd, check=False)
+    return result.returncode == 0
+
+
 def _install_env(exe: str, manager: str, env_name: str, env_file: Path) -> bool:
     """Install or update a conda/micromamba environment."""
     # Try update first
@@ -184,6 +232,8 @@ def install(
     for name in tool_names:
         env_name = f"bioimage-mcp-{name}"
         env_file = available_tools[name]
+        lockfile = _lockfile_for_env(env_file)
+        conda_lock_exe = shutil.which("conda-lock")
 
         # Check if exists
         exists = _env_exists(exe, env_name)
@@ -195,7 +245,12 @@ def install(
         print(f"Installing {name}...")
 
         # Install logic
-        success = _install_env(exe, manager, env_name, env_file)
+        if conda_lock_exe and lockfile.exists():
+            success = _install_env_with_lock(conda_lock_exe, env_name, lockfile)
+        else:
+            success = _install_env(exe, manager, env_name, env_file)
+            if success:
+                success = _install_pip_deps(exe, env_name, env_file)
         if not success:
             print(f"Failed to install {name}")
             stats["failed"] += 1

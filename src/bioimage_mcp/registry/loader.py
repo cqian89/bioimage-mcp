@@ -494,7 +494,15 @@ def discover_manifest_paths(roots: list[Path]) -> list[Path]:
     return unique
 
 
+_MANIFEST_CACHE: dict[tuple[str, ...], tuple[list[ToolManifest], list[ManifestDiagnostic]]] = {}
+
+
 def load_manifests(roots: list[Path]) -> tuple[list[ToolManifest], list[ManifestDiagnostic]]:
+    cache_key = tuple(sorted(str(root.resolve()) for root in roots))
+    if cache_key in _MANIFEST_CACHE:
+        cached_manifests, cached_diagnostics = _MANIFEST_CACHE[cache_key]
+        return list(cached_manifests), list(cached_diagnostics)
+
     manifests: list[ToolManifest] = []
     diagnostics: list[ManifestDiagnostic] = []
 
@@ -505,4 +513,5 @@ def load_manifests(roots: list[Path]) -> tuple[list[ToolManifest], list[Manifest
         elif diag is not None:
             diagnostics.append(diag)
 
+    _MANIFEST_CACHE[cache_key] = (list(manifests), list(diagnostics))
     return manifests, diagnostics

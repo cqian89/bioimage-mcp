@@ -278,7 +278,15 @@ def load(*, inputs: dict[str, Any], params: dict[str, Any], work_dir: Path) -> d
         # Access metadata to validate format
         _ = img.dims
     except Exception as e:
-        raise UnsupportedFormatError(str(resolved_path)) from e
+        # Fallback for TIFF-like formats: try explicit tifffile reader to avoid
+        # slow/broken plugin discovery (e.g., bioio-bioformats dependency issues).
+        try:
+            from bioio_tifffile.reader import Reader as TiffReader
+
+            img = BioImage(resolved_path, reader=TiffReader)
+            _ = img.dims
+        except Exception:
+            raise UnsupportedFormatError(str(resolved_path)) from e
 
     # Use img.reader.dims.order for native axes (not forced TCZYX)
     native_dims = img.reader.dims.order
