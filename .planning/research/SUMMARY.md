@@ -1,137 +1,62 @@
-# Project Research Summary
+# Research Summary: Bioimage-MCP (Scipy Integration)
 
-**Project:** Bioimage-MCP
-**Domain:** Bioimage Analysis / MCP Server
-**Researched:** 2026-01-22
-**Confidence:** HIGH
+**Domain:** Bioimage Analysis / Scientific Computing
+**Researched:** 2026-01-25
+**Overall confidence:** HIGH
 
 ## Executive Summary
 
-The `bioimage-mcp` project aims to build a robust, AI-driven Model Context Protocol (MCP) server specialized for bioimage analysis. Research confirms that the optimal architecture is a **Hub-and-Spoke model** with persistent subprocesses. This design decouples the lightweight core server (Python 3.13) from heavy, conflicting scientific environments (PyTorch, TensorFlow, etc.), ensuring stability and resolving the "dependency hell" endemic to this domain.
+The v0.3.0 milestone for `bioimage-mcp` focuses on the **dynamic integration of the SciPy ecosystem**. By leveraging the established Hub-and-Spoke architecture, we are moving from hardcoded tool wrappers to a **Dynamic Adapter Pattern**. This allows the MCP server to automatically expose hundreds of validated scientific functions from `scipy.ndimage`, `scipy.signal`, `scipy.stats`, and `scipy.spatial` without manual code maintenance.
 
-The recommended approach prioritizes **reproducibility and performance**. Key technical decisions include using `micromamba` for rapid environment management, `NDJSON` over standard streams for IPC, and a strict **Artifact-based I/O** strategy (using `bioio` and OME-TIFF/Zarr) to handle gigapixel images without serialization overhead. This setup allows the server to remain responsive while heavy analysis runs in isolated, GPU-enabled environments.
-
-The most critical risks identified are **lifecycle management failures** (zombie processes) and **data boundary violations** (the "memory:// illusion"). Mitigation strategies heavily influence the roadmap, requiring robust process supervision (heartbeats, `atexit` handlers) and explicit data materialization protocols before implementing advanced features like memory artifacts.
+Research confirms that the existing **Artifact-based I/O** (OME-TIFF/CSV) is sufficient for SciPy integration, provided the `ScipyAdapter` handles dimension alignment (squeezing) and result normalization. The addition of `numpydoc` 1.10.0 enables high-fidelity parameter schema generation, significantly improving the AI agent's ability to use complex scientific functions correctly. The primary architectural challenge is managing the memory-intensive nature of Scipy's multidimensional algorithms on large bioimage datasets.
 
 ## Key Findings
 
-### Recommended Stack
-
-**Summary:** The stack splits into a lightweight Core and heavy Worker environments. Python 3.13 is chosen for the Core for performance, while `micromamba` + `conda-lock` ensures reproducible environments for tools.
-
-**Core technologies:**
-- **Python 3.13**: Core Server Language — Latest stable with performance improvements; keeps core deps light.
-- **Micromamba**: Package Manager — Significantly faster than Conda; essential for responsive user experience.
-- **Subprocess + NDJSON**: Isolation & IPC — Standard, robust isolation without Docker overhead; NDJSON enables streaming.
-- **bioio / OME-TIFF**: Data & I/O — Universal read/write for microscopy formats; avoids re-inventing I/O wrappers.
-
-### Expected Features
-
-**Must have (table stakes):**
-- **Environment Isolation** — Users expect different tools (Cellpose vs. StarDist) to coexist without conflict.
-- **GPU Passthrough** — Deep learning tools must access hardware acceleration transparently.
-- **Progress Reporting** — Long-running bioimage tasks need feedback to the LLM/User.
-- **Cancellation** — Ability to stop expensive zombie processes.
-
-**Should have (competitive):**
-- **Persistent Workers** — Eliminates 5-10s startup penalty per tool call; critical for chat flow.
-- **Memory Artifacts (`mem://`)** — Avoids disk I/O for intermediate steps (e.g., smoothing -> thresholding).
-- **Dynamic Discovery** — Automatically exposes new library features without code changes.
-
-**Defer (v2+):**
-- **Complex DAG execution engine** — Pydra/etc. add too much complexity for MVP.
-- **Advanced Memory Management** — Spilling memory artifacts to disk.
-
-### Architecture Approach
-
-**Hub-and-Spoke with Persistent Subprocesses**: The Core acts as the MCP Server and Orchestrator, while "Spokes" (Workers) are isolated Python processes running specific environments.
-
-**Major components:**
-1. **Core / API** — Handles MCP protocol, session management, and routing.
-2. **Runtime Manager** — Manages worker lifecycle (spawn, kill, heartbeat) and IPC.
-3. **Worker Process** — Runs the actual tool code inside a specific Conda environment, bridging via a "Shim" entrypoint.
-4. **Artifact Store** — Manages file/memory references to prevent passing large data over JSON.
-
-### Critical Pitfalls
-
-1. **Zombie Processes** — Workers staying alive after Core death. **Avoid:** Use `atexit` handlers, stdin polling, and heartbeats.
-2. **The "Memory://" Illusion** — Assuming `mem://` is global. **Avoid:** Explicitly track ownership; auto-materialize to disk when crossing worker boundaries.
-3. **Serialization Overhead** — Passing arrays in JSON. **Avoid:** Strict Artifact-based passing (pointers, not data).
+- **Stack (STACK.md):** Recommends **SciPy 1.17.0** and **NumPy 2.2.2** on **Python 3.13**. **BioIO 3.2.0** is the standard for 5D (TCZYX) artifact I/O. **numpydoc 1.10.0** is essential for dynamic discovery, allowing the `Introspector` to generate tool schemas directly from Scipy's documentation.
+- **Features (FEATURES.md):** Beyond table stakes like N-D filtering and morphology, the integration offers **Dynamic API Discovery** and **Dimension Autocorrection**. High-value differentiators include the **Coordinate-to-Index Bridge** for spatial analysis and a **Serializable "Measure" API**. Explicitly avoids unsafe optimization callbacks and interactive plotting.
+- **Architecture (ARCHITECTURE.md):** Employs the **Dynamic Adapter Pattern**. The `ScipyAdapter` handles four primary data flows: Image-to-Image, Image/Array-to-Scalar, Table-to-Table, and Constructor Pattern (for stateful objects like `KDTree`). Key patterns include **Dimension Squeezing (T203)** and **Result Normalization** to handle heterogeneous Scipy outputs.
+- **Pitfalls (PITFALLS.md):** Identified **Memory Exhaustion (OOM)** and **Implicit Dtype Escalation** (e.g., uint16 to float64) as critical risks. Return type mismatches and the loss of physical metadata (voxel sizes) are moderate risks that require mitigation in the adapter layer.
 
 ## Implications for Roadmap
 
-Based on research, the roadmap should prioritize infrastructure and isolation before tool integration.
+Based on synthesized research, the suggested phase structure for v0.3.0 is:
 
-### Phase 1: Core Architecture & IPC
-**Rationale:** The Hub-and-Spoke model relies entirely on robust process management. Getting this wrong leads to the "Zombie" pitfall immediately.
-**Delivers:** Core server shell, Runtime Manager, IPC protocol (NDJSON), and basic Process Spawning.
-**Addresses:** Table stakes (Environment Isolation fundamentals).
-**Avoids:** Zombie Processes (by implementing lifecycle management first).
-
-### Phase 2: Artifacts & Data I/O
-**Rationale:** Bioimage analysis is useless without data handling. We must solve "how to pass images" before running tools.
-**Delivers:** Artifact Store, `bioio` integration, OME-TIFF/Zarr support, `mem://` vs `file://` abstraction.
-**Uses:** `bioio`, `pydantic`.
-**Avoids:** Serialization Overhead (by enforcing artifact passing early).
-
-### Phase 3: Environment Management & Registry
-**Rationale:** We need environments to run workers *in*.
-**Delivers:** `micromamba` integration, Tool Registry, Manifest parsing, Conda env creation/verification.
-**Uses:** `micromamba`, `conda-lock`.
-**Implements:** Registry component.
-
-### Phase 4: Worker Implementation & Tool Integration
-**Rationale:** Now we have the core, data, and envs. We can build the actual workers.
-**Delivers:** The "Shim" entrypoint script, persistent worker loop, integration of "Base" and "Cellpose" tool packs.
-**Addresses:** GPU Passthrough, Persistent Workers.
-**Avoids:** The "Memory://" Illusion (by implementing the boundary logic here).
-
-### Phase 5: Advanced Control Flow
-**Rationale:** Polish features that rely on a working system.
-**Delivers:** Progress Reporting, Cancellation (SIGTERM/KILL logic), Dynamic Discovery.
-
-### Phase Ordering Rationale
-
-- **Infrastructure First:** We cannot build workers without the IPC and Process Manager (Phase 1).
-- **Data Second:** We cannot run tools without a way to pass input/output data (Phase 2).
-- **Envs Third:** We cannot spawn specific workers without the Registry and Envs (Phase 3).
-- **Integration Fourth:** Bringing it all together.
+1. **Phase 1: Adapter Hardening & Core Compute** — Generalize the `ScipyAdapter` to support `ndimage` and `signal`. Implement float32 forcing and memory-aware slicing to avoid OOM crashes.
+   - *Rationale:* Stabilizes fundamental image-to-image tasks before expansion.
+   - *Deliverables:* Gaussian/Uniform filters, morphology, interpolation.
+2. **Phase 2: Analytic Expansion & Tabular Bridge** — Implement `ARRAY_TO_SCALAR` and `TABLE_TO_TABLE` patterns for `scipy.stats` and `scipy.spatial`.
+   - *Rationale:* Analytical tools rely on the stable data loaders and normalization layers from Phase 1.
+   - *Deliverables:* T-tests, ANOVA, pdist, distance metrics.
+3. **Phase 3: Stateful Objects & Metadata Preservation** — Implement `ObjectRef` handling for `KDTree` and ensure physical units (microns/ms) are propagated through transforms.
+   - *Rationale:* Addresses more advanced spatial analysis needs and ensures biological accuracy.
+   - *Deliverables:* KDTree neighbor analysis, resolution-aware transforms.
+4. **Phase 4: Agent Guidance & Success Hints** — Populate `DimensionRequirement` and `SuccessHints` for the top 50 common functions.
+   - *Rationale:* Refines the agent experience once execution is robust.
 
 ### Research Flags
-
-**Needs Research:**
-- **Phase 2 (Artifacts):** Exact `bioio` API compatibility with `mem://` buffers needs verification.
-- **Phase 5 (Cancellation):** Windows vs. Linux signal handling for subprocesses can be tricky.
-
-**Standard Patterns (Skip Research):**
-- **Phase 1 (IPC):** NDJSON over Stdin/Stdout is a standard pattern.
-- **Phase 3 (Micromamba):** CLI usage is well-documented.
+- **Needs Research:** Phase 3 (Object Persistence) needs a specific design for session-scoped `ObjectCache` cleanup to prevent memory leaks during long-running sessions.
+- **Standard Patterns:** Phase 1 and 2 follow established adapter patterns already proven in the Skimage integration.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | Validated against existing `bioimage-mcp` code and industry standards. |
-| Features | HIGH | Clear distinction between table stakes and differentiators. |
-| Architecture | HIGH | Hub-and-Spoke is the standard solution for Python dependency isolation. |
-| Pitfalls | HIGH | Specific, actionable warnings derived from domain experience. |
-
-**Overall confidence:** HIGH
+| Stack | HIGH | SciPy 1.17.0 and NumPy 2.2.2 are current; BioIO is well-integrated. |
+| Features | HIGH | Clear mapping of SciPy submodules to bioimage needs. |
+| Architecture | HIGH | Follows proven `skimage`/`phasorpy` adapter patterns. |
+| Pitfalls | HIGH | Specific OOM and dtype issues are well-documented and mitigated. |
 
 ### Gaps to Address
-
-- **Windows Path Handling:** While identified as a pitfall, specific testing on Windows CI/CD pipelines is a gap to address during Phase 3/4 implementation.
-- **Memory Eviction:** The research mentions "Complex memory management" as a deferral, but basic eviction for `mem://` in long sessions might be needed sooner.
+- **Dask Parallelization**: Future investigation into `dask-image` is needed for gigapixel volumes exceeding RAM.
+- **Sparse Matrix Support**: Deferred due to lack of standard serializable artifact format.
 
 ## Sources
-
-### Primary (HIGH confidence)
-- **Existing `bioimage-mcp` Codebase** — Verified architectural patterns.
-- **MicroscopyLM** — validated architectural patterns.
-
-### Secondary (MEDIUM confidence)
-- **Community Consensus** — Use of Conda/Micromamba in scientific computing.
+- [PyPI Scipy Release History](https://pypi.org/project/scipy/#history)
+- [Scipy ndimage User Guide](https://docs.scipy.org/doc/scipy/tutorial/ndimage.html)
+- [Bioimage-MCP Adapter Architecture](src/bioimage_mcp/registry/dynamic/adapters/base.py)
+- [Image.sc Forum: Scipy Pitfalls](https://forum.image.sc/search?q=scipy%20pitfalls)
+- [Numpydoc GitHub Releases](https://github.com/numpy/numpydoc/releases)
 
 ---
-*Research completed: 2026-01-22*
-*Ready for roadmap: yes*
+*Research synthesized: 2026-01-25*
+*Status: Ready for roadmap*
