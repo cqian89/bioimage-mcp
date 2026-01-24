@@ -34,17 +34,18 @@
   - ✅ Test data from trackpy repo/docs (05-03)
   - ✅ Live smoke test matching reference output (05-03)
   - ✅ End-to-end E2E smoke tests (05-06)
+  - ✅ Optional readiness checks in `doctor` (05-07)
 
 ## Current Position
 
 Phase: 5 of 5 (Trackpy Integration)
-Plan: 6 of 6 in current phase
-Status: Phase complete
-Last activity: 2026-01-23 - Completed 05-06-PLAN.md (E2E Verification)
+Plan: 7 of 8 in current phase
+Status: In progress
+Last activity: 2026-01-24 - Completed 05-07-PLAN.md (Optional Readiness Checks)
 
 Progress: ██████████ 100%
 
-**Next:** Milestone transition or archive
+**Next:** 05-08-PLAN.md (Fix Trackpy meta.describe schema enrichment)
 
 ## Context & Memory
 
@@ -76,20 +77,19 @@ Progress: ██████████ 100%
 - **Strict Worker Termination**: (Phase 5-04) Decided to kill worker processes immediately upon any communication error (JSON error, ordinal mismatch, unexpected EOF) to prevent state desync and ensure clean recovery.
 - **Robust JSON extraction**: (Phase 5-04) Switched to searching for the first '{' in subprocess output to avoid parsing failures caused by non-JSON warnings during environment discovery.
 - **Full Verbosity for E2E**: (Phase 5-06) Used `verbosity='full'` in E2E tests to verify rich metadata (columns, row_count) for `TableRef` artifacts, as default `minimal` verbosity strips these fields.
+- **Optional Readiness Checks**: (Phase 5-07) Introduced `required` field to `CheckResult` to allow non-blocking failures (e.g., missing `conda-lock`) to be surfaced as warnings.
 
 ### Blockers
 - None.
 
 ### Next Steps
-- Milestone audit: verify cross-phase integration and E2E flows
-- Archive milestone planning artifacts
-- Consider next milestone features (v2 requirements)
+- Implement plan 05-08-PLAN.md to fix meta.describe schema enrichment for Trackpy.
 
 ### Roadmap Evolution
 - Phase 5 added: Trackpy Integration - Integrate trackpy particle tracking library as a tool pack with full API coverage and live smoke tests
 
 ## Session Continuity
 
-Last session: 2026-01-23T23:15:04Z
-Stopped at: Completed 05-06-PLAN.md
+Last session: 2026-01-24T14:55:00Z
+Stopped at: Completed 05-07-PLAN.md
 Resume file: None
