@@ -75,6 +75,7 @@ def discover_functions(
 
         # Convert DynamicSource to dict for adapter
         source_config = source.model_dump()
+        source_config["_manifest_path"] = str(manifest.manifest_path)
 
         # Call adapter's discover method
         discovered = adapter.discover(source_config)
