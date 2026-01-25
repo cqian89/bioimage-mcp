@@ -241,3 +241,80 @@ def test_execute_callable_error(adapter, mock_module, tmp_path):
         adapter.execute(
             fn_id="scipy.ndimage.callable_filter", inputs=inputs, params=params, work_dir=tmp_path
         )
+
+
+def test_execute_metadata_file_persistence(adapter, mock_module, tmp_path):
+    # Setup input data in OBJECT_CACHE
+    data = np.random.rand(10, 10).astype(np.float32)
+    uri = "obj://test_meta_persist"
+    OBJECT_CACHE[uri] = data
+
+    inputs = [
+        (
+            "image",
+            {
+                "uri": uri,
+                "metadata": {
+                    "axes": "YX",
+                    "physical_pixel_sizes": {"Y": 1.0, "X": 2.0},
+                    "channel_names": ["Ch1"],
+                },
+            },
+        )
+    ]
+
+    # Execute
+    results = adapter.execute(
+        fn_id="scipy.ndimage.simple_filter", inputs=inputs, params={"sigma": 1.0}, work_dir=tmp_path
+    )
+
+    out = results[0]
+    out_path = Path(out["path"])
+
+    # Verify file metadata persistence (UAT gap)
+    from bioimage_mcp.artifacts.metadata import extract_image_metadata
+
+    file_meta = extract_image_metadata(out_path)
+    assert file_meta is not None
+
+    # Check physical pixel sizes in the file itself (should fail before fix)
+    pps = file_meta.get("physical_pixel_sizes")
+    assert pps is not None, "Physical pixel sizes missing from written file metadata"
+    assert pps["Y"] == 1.0
+    assert pps["X"] == 2.0
+
+    # Check channel names
+    assert "channel_names" in file_meta
+    assert "Ch1" in file_meta["channel_names"]
+
+
+def test_execute_metadata_list_form_persistence(adapter, mock_module, tmp_path):
+    # Setup input data
+    data = np.random.rand(5, 5).astype(np.float32)
+    uri = "obj://test_meta_list"
+    OBJECT_CACHE[uri] = data
+
+    inputs = [
+        (
+            "image",
+            {
+                "uri": uri,
+                "metadata": {
+                    "axes": "YX",
+                    "physical_pixel_sizes": [0.5, 0.25],  # [Y, X]
+                },
+            },
+        )
+    ]
+
+    results = adapter.execute(
+        fn_id="scipy.ndimage.simple_filter", inputs=inputs, params={"sigma": 1.0}, work_dir=tmp_path
+    )
+
+    from bioimage_mcp.artifacts.metadata import extract_image_metadata
+
+    file_meta = extract_image_metadata(Path(results[0]["path"]))
+    pps = file_meta.get("physical_pixel_sizes")
+    assert pps is not None
+    assert pps["Y"] == 0.5
+    assert pps["X"] == 0.25
