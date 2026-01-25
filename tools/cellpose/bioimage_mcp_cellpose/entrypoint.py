@@ -370,7 +370,9 @@ def _introspect_cellpose_fn(target_fn: str) -> dict[str, Any]:
 
 def handle_meta_describe(params: dict[str, Any]) -> dict[str, Any]:
     """Handle meta.describe requests for Cellpose functions."""
-    target_fn = params.get("target_fn", "")
+    target_fn = params.get("target_fn")
+    if not target_fn:
+        return {"ok": False, "error": "Missing target_fn parameter"}
 
     if target_fn == "cellpose.models.CellposeModel.eval":
         schema = _introspect_cellpose_fn("cellpose.models.CellposeModel.eval")
@@ -670,39 +672,58 @@ def handle_meta_list(
             "fn_id": "cellpose.models.CellposeModel",
             "name": "CellposeModel",
             "summary": "Initialize Cellpose model",
+            "module": "cellpose.models",
+            "io_pattern": "pure_constructor",
         },
         {
             "fn_id": "cellpose.models.CellposeModel.eval",
             "name": "CellposeModel.eval",
             "summary": "Run segmentation with model",
+            "module": "cellpose.models",
+            "io_pattern": "generic",
         },
         {
             "fn_id": "cellpose.denoise.DenoiseModel",
             "name": "DenoiseModel",
             "summary": "Initialize Denoise model",
+            "module": "cellpose.denoise",
+            "io_pattern": "pure_constructor",
         },
         {
             "fn_id": "cellpose.denoise.DenoiseModel.eval",
             "name": "DenoiseModel.eval",
             "summary": "Run denoising with model",
+            "module": "cellpose.denoise",
+            "io_pattern": "generic",
         },
         {
             "fn_id": "cellpose.train.train_seg",
             "name": "train_seg",
             "summary": "Train a new model",
+            "module": "cellpose.train",
+            "io_pattern": "training",
         },
         {
             "fn_id": "cellpose.metrics.average_precision",
             "name": "average_precision",
             "summary": "Compute segmentation metrics",
+            "module": "cellpose.metrics",
+            "io_pattern": "generic",
         },
         {
             "fn_id": "cellpose.cache.clear",
             "name": "cache.clear",
             "summary": "Clear cached models from memory",
+            "module": "cellpose.cache",
+            "io_pattern": "generic",
         },
     ]
-    return {"ok": True, "result": {"functions": functions}}
+    result = {
+        "functions": functions,
+        "tool_version": _get_cellpose_version(),
+        "introspection_source": "manual",
+    }
+    return {"ok": True, "result": result}
 
 
 # Function dispatch table
