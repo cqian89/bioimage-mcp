@@ -49,5 +49,10 @@ skipped: 0
   reason: "User reported: Input image (test_dims.tif) had physical pixel sizes: Y=1.0, X=1.0. Output image ... had physical pixel sizes: Y=None, X=None."
   severity: major
   test: 5
-  artifacts: []
-  missing: []
+  root_cause: "scipy_ndimage adapter writes output OME-TIFFs without passing physical_pixel_sizes to OmeTiffWriter; ArtifactStore then re-extracts metadata from the file (which has nearly empty OME-XML), so physical_pixel_sizes become None in output artifacts."
+  artifacts:
+    - path: "src/bioimage_mcp/registry/dynamic/adapters/scipy_ndimage.py"
+      issue: "_save_image calls OmeTiffWriter.save without physical_pixel_sizes/channel_names, so output OME-XML omits pixel sizes."
+  missing:
+    - "Propagate physical_pixel_sizes (and channel_names) into OmeTiffWriter.save for scipy_ndimage outputs."
+  debug_session: ".planning/debug/scipy-metadata-loss.md"
