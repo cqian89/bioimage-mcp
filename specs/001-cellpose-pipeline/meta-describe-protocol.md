@@ -1,8 +1,10 @@
 # `meta.describe` Protocol Specification
 
 **Date**: 2025-12-19  
-**Status**: Draft  
+**Status**: Superseded by [specs/024-meta-discovery-standardization/spec.md](../024-meta-discovery-standardization/spec.md)  
 **Related**: `specs/001-cellpose-pipeline/research.md` Section 11
+
+See also: [specs/024-meta-discovery-standardization/spec.md](../024-meta-discovery-standardization/spec.md) (canonical meta.list/meta.describe protocol).
 
 This document specifies the `meta.describe` protocol for dynamic parameter schema extraction in bioimage-mcp tool packs.
 
