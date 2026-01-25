@@ -115,6 +115,7 @@ class DynamicSource(BaseModel):
     exclude_patterns: list[str] = Field(default_factory=lambda: ["_*", "test_*"])
     target_class: str | None = None
     class_methods: list[str] | None = None
+    blacklist_path: str | None = None
 
 
 class ToolManifest(BaseModel):
