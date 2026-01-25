@@ -10,10 +10,10 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### General / Infrastructure
 
-- [ ] **GEN-01**: Dynamic Adapter for Scipy module discovery (numpydoc support)
-- [ ] **GEN-02**: Access images via `BioImageRef.reader` (Native dimensions, no auto-squeezing)
-- [ ] **GEN-03**: Explicit `float32` output forcing for memory safety
-- [ ] **GEN-04**: Resolution-aware metadata preservation (pass-through)
+- [x] **GEN-01**: Dynamic Adapter for Scipy module discovery (numpydoc support)
+- [x] **GEN-02**: Access images via `BioImageRef.reader` (Native dimensions, no auto-squeezing)
+- [x] **GEN-03**: Explicit `float32` output forcing for memory safety
+- [x] **GEN-04**: Resolution-aware metadata preservation (pass-through)
 
 ### Testing & Verification
 
@@ -24,8 +24,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### N-D Image Processing (`scipy.ndimage`)
 
-- [ ] **NDIMG-01**: Filters (Gaussian, Uniform, Laplace, Prewitt, Sobel)
-- [ ] **NDIMG-02**: Morphology (Dilation, Erosion, Opening, Closing, Tophat)
+- [x] **NDIMG-01**: Filters (Gaussian, Uniform, Laplace, Prewitt, Sobel)
+- [x] **NDIMG-02**: Morphology (Dilation, Erosion, Opening, Closing, Tophat)
 - [ ] **NDIMG-03**: Interpolation (Zoom, Rotate, Shift, Affine)
 - [ ] **NDIMG-04**: Measurements (Labeling, Center of Mass, Extrema, Sum/Mean)
 - [ ] **NDIMG-05**: Fourier Domain Filters (Fourier Gaussian, Ellipsoid)
@@ -70,16 +70,16 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| GEN-01 | Phase 6 | Pending |
-| GEN-02 | Phase 6 | Pending |
-| GEN-03 | Phase 6 | Pending |
-| GEN-04 | Phase 6 | Pending |
+| GEN-01 | Phase 6 | Complete |
+| GEN-02 | Phase 6 | Complete |
+| GEN-03 | Phase 6 | Complete |
+| GEN-04 | Phase 6 | Complete |
 | TEST-01 | Phase 10 | Pending |
 | TEST-02 | Phase 10 | Pending |
 | TEST-03 | Phase 10 | Pending |
 | TEST-04 | Phase 10 | Pending |
-| NDIMG-01 | Phase 6 | Pending |
-| NDIMG-02 | Phase 6 | Pending |
+| NDIMG-01 | Phase 6 | Complete |
+| NDIMG-02 | Phase 6 | Complete |
 | NDIMG-03 | Phase 7 | Pending |
 | NDIMG-04 | Phase 7 | Pending |
 | NDIMG-05 | Phase 7 | Pending |
