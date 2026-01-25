@@ -7,11 +7,11 @@
 
 ## Current Position
 - **Phase:** 5.1 of 10 (Research Dynamic Discovery Standardization)
-- **Plan:** 3 of 4 in current phase
-- **Status:** In progress
-- **Last activity:** 2026-01-25 - Completed 05.1-02-PLAN.md
+- **Plan:** 4 of 4 in current phase
+- **Status:** Phase complete
+- **Last activity:** 2026-01-25 - Completed 05.1-03-PLAN.md (Wave 2 complete)
 
-Progress: █████████████████░░░ 85%
+Progress: ██████████████████░░ 88%
 
 ## Performance Metrics
 - **Phase Coverage:** 5/10 phases completed
@@ -35,13 +35,15 @@ Progress: █████████████████░░░ 85%
 | 5.1 | Standardized `meta.describe` error shape | Chose string-based `error` to simplify parsing and match existing `cellpose` implementation. |
 | 5.1 | Required `tool_version` in discovery | Critical for reliable `SchemaCache` invalidation when underlying scientific libraries are updated. |
 | 5.1 | Enriched `meta.list` entries | Added `module` and `io_pattern` to enable server-side classification and better search results. |
+| 5.1 | String-only errors in discovery | Standardized all tool-pack meta.* handlers to return string errors for parsing simplicity. |
+| 5.1 | `tool_version` requirement | Required `tool_version` in both `meta.list` and `meta.describe` for reliable cache invalidation. |
 
 ### Session Continuity
 - v0.2.0 "Foundation" complete (Phases 1-5).
 - Scipy research (SUMMARY.md) incorporated into roadmap.
-- Phase 5.1 Plan 1, 2 & 4 complete: Protocol defined, audit finished, core parsers added, and cellpose aligned.
-- Stopped at: Completed 05.1-02-PLAN.md
+- Phase 5.1 Complete: Protocol standardized across trackpy and cellpose, core parsers implemented.
+- Stopped at: Completed 05.1-03-PLAN.md (Wave 2 finished)
 - Resume file: None
 
 ## Next Steps
-1. Execute `05.1-03-PLAN.md` to align trackpy meta.* responses.
+1. Transition to Phase 6 (Infrastructure & N-D Foundation) to implement Scipy dynamic adapter.

@@ -22,7 +22,7 @@ Milestone v0.3.0 integrates the SciPy ecosystem into Bioimage-MCP using a **Dyna
 Plans:
 - [x] 05.1-01-PLAN.md — Define canonical meta.list/meta.describe protocol + audit matrix
 - [x] 05.1-02-PLAN.md — Add core protocol parsers and wire into loader/discovery
-- [ ] 05.1-03-PLAN.md — Align trackpy meta.* responses + hermetic unit tests
+- [x] 05.1-03-PLAN.md — Align trackpy meta.* responses + hermetic unit tests
 - [x] 05.1-04-PLAN.md — Align cellpose meta.* responses + hermetic unit tests
 
 **Details:**
@@ -81,6 +81,7 @@ It seems dynamic discovery is implemmented via different methods in different pa
 | Phase | Milestone | Status | Completed |
 |-------|-----------|--------|-----------|
 | 1-5 | v0.2.0 | ✅ Complete | 2026-01-25 |
+| 5.1 - Discovery | v0.3.0 | ✅ Complete | 2026-01-25 |
 | 6 - Infrastructure | v0.3.0 | 📋 Pending | — |
 | 7 - Transforms | v0.3.0 | 📋 Pending | — |
 | 8 - Statistics | v0.3.0 | 📋 Pending | — |
