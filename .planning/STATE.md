@@ -7,28 +7,15 @@
 
 ## Current Position
 - **Phase:** 5.1
-- **Plan:** 5 of 6 in current phase
-- **Status:** In progress
-- **Last activity:** 2026-01-25 - Completed 05.1-05-PLAN.md
+- **Plan:** 6 of 6 in current phase
+- **Status:** Phase complete
+- **Last activity:** 2026-01-25 - Completed 05.1-06-PLAN.md
 
-Progress: █████████████████░░░ 85%
+Progress: ████████████████████ 92%
 
 ## Performance Metrics
-- **Phase Coverage:** 5/10 phases completed
-- **Requirement Coverage:** 0/21 v1 requirements implemented
-- **Test Health:** N/A (Milestone start)
-
-## Accumulated Context
-
-### Roadmap Evolution
-- Phase 5.1 inserted: Research Dynamic Discovery Standardization (URGENT)
-
-### Key Decisions
-- **Dynamic Adapter Pattern:** Chosen over manual wrappers to minimize maintenance for Scipy's large API surface.
-- **Float32 Forcing:** Standardized for memory safety and consistency in Scipy operations (GEN-03).
-- **Native Dimensions:** Using `BioImageRef.reader` directly to avoid implicit dimension squeezing (GEN-02).
-- **Discovery Protocol:** Standardized on `meta.list` and `meta.describe` with strict metadata requirements (`tool_version`, `introspection_source`).
-
+- **Phase Coverage:** 6/10 phases completed
+...
 ### Decisions table
 | Phase | Decision | Rationale |
 |-------|----------|-----------|
@@ -38,14 +25,15 @@ Progress: █████████████████░░░ 85%
 | 5.1 | String-only errors in discovery | Standardized all tool-pack meta.* handlers to return string errors for parsing simplicity. |
 | 5.1 | `tool_version` requirement | Required `tool_version` in both `meta.list` and `meta.describe` for reliable cache invalidation. |
 | 5.1 | Aggregated introspection_source in CLI | Show provenance of tool metadata in `bioimage-mcp list` for better transparency. |
+| 5.1 | Persisted module/io_pattern in DB | Added columns to functions table to ensure metadata survives server restarts. |
 
 ### Session Continuity
 - v0.2.0 "Foundation" complete (Phases 1-5).
 - Scipy research (SUMMARY.md) incorporated into roadmap.
 - Phase 5.1 Complete: Protocol standardized across trackpy and cellpose, core parsers implemented.
-- Stopped at: Completed 05.1-05-PLAN.md
+- Stopped at: Completed 05.1-06-PLAN.md
 - Resume file: None
 
 ## Next Steps
-1. Complete 05.1-06-PLAN.md to persist module/io_pattern and expose in MCP list.
-2. Transition to Phase 6 (Infrastructure & N-D Foundation).
+1. Transition to Phase 6 (Infrastructure & N-D Foundation).
+
