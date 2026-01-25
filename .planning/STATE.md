@@ -3,30 +3,44 @@
 ## Project Reference
 - **Core Value:** Enables AI agents to safely and reproducibly execute bioimage analysis tools without dependency conflicts.
 - **Current Milestone:** v0.3.0 Scipy Integration
-- **Current Focus:** Phase 6 (Infrastructure & N-D Foundation)
+- **Current Focus:** Phase 5.1 (Discovery Standardization)
 
 ## Current Position
-- **Phase:** 6
-- **Plan:** None (Ready to plan Phase 6)
-- **Status:** INITIALIZING
-- **Progress:** [░░░░░░░░░░░░░░░░░░░░] 0% (v0.3.0)
+- **Phase:** 5.1 of 10 (Research Dynamic Discovery Standardization)
+- **Plan:** 1 of 4 in current phase
+- **Status:** In progress
+- **Last activity:** 2026-01-25 - Completed 05.1-01-PLAN.md
+
+Progress: ████████████░░░░░░░░ 60%
 
 ## Performance Metrics
-- **Phase Coverage:** 0/5 phases completed (v0.3.0)
+- **Phase Coverage:** 5/10 phases completed
 - **Requirement Coverage:** 0/21 v1 requirements implemented
 - **Test Health:** N/A (Milestone start)
 
 ## Accumulated Context
 
+### Roadmap Evolution
+- Phase 5.1 inserted: Research Dynamic Discovery Standardization (URGENT)
+
 ### Key Decisions
 - **Dynamic Adapter Pattern:** Chosen over manual wrappers to minimize maintenance for Scipy's large API surface.
 - **Float32 Forcing:** Standardized for memory safety and consistency in Scipy operations (GEN-03).
 - **Native Dimensions:** Using `BioImageRef.reader` directly to avoid implicit dimension squeezing (GEN-02).
+- **Discovery Protocol:** Standardized on `meta.list` and `meta.describe` with strict metadata requirements (`tool_version`, `introspection_source`).
+
+### Decisions table
+| Phase | Decision | Rationale |
+|-------|----------|-----------|
+| 5.1 | Standardized `meta.describe` error shape | Chose string-based `error` to simplify parsing and match existing `cellpose` implementation. |
+| 5.1 | Required `tool_version` in discovery | Critical for reliable `SchemaCache` invalidation when underlying scientific libraries are updated. |
 
 ### Session Continuity
 - v0.2.0 "Foundation" complete (Phases 1-5).
 - Scipy research (SUMMARY.md) incorporated into roadmap.
-- Initializing Phase 6: Scipy Adapter and ndimage basics.
+- Phase 5.1 Plan 1 complete: Protocol defined and audit finished.
+- Stopped at: Completed 05.1-01-PLAN.md
+- Resume file: None
 
 ## Next Steps
-1. `/gsd-plan-phase 6` to define implementation tasks for Scipy infrastructure.
+1. Execute `05.1-02-PLAN.md` to add core protocol parsers and wire into loader/discovery.
