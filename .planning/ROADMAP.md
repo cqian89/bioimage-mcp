@@ -13,6 +13,21 @@ Milestone v0.3.0 integrates the SciPy ecosystem into Bioimage-MCP using a **Dyna
 
 ## Phases
 
+### Phase 5.1: Research Dynamic Discovery Standardization (INSERTED)
+
+**Goal:** Research and standardize dynamic discovery implementations across packages.
+**Depends on:** Phase 5
+**Plans:** 4 plans
+
+Plans:
+- [ ] 05.1-01-PLAN.md — Define canonical meta.list/meta.describe protocol + audit matrix
+- [ ] 05.1-02-PLAN.md — Add core protocol parsers and wire into loader/discovery
+- [ ] 05.1-03-PLAN.md — Align trackpy meta.* responses + hermetic unit tests
+- [ ] 05.1-04-PLAN.md — Align cellpose meta.* responses + hermetic unit tests
+
+**Details:**
+It seems dynamic discovery is implemmented via different methods in different packages via meta.list and meta.describe. Confirm whether this is the case. Research and Compare the implementations to see the similarities and differences. Consider standardization to an single discovery method.
+
 ### Phase 6: Infrastructure & N-D Foundation
 **Goal:** Establish the Scipy dynamic adapter and enable core image processing filters with native dimension preservation.
 - **Dependencies:** None (v0.2.0 Core)
