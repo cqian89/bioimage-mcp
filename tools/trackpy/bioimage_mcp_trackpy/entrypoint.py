@@ -28,6 +28,7 @@ if str(TRACKPY_TOOL_ROOT) not in sys.path:
 from bioimage_mcp_trackpy.introspect import (
     introspect_module,
     introspect_function,
+    get_trackpy_version,
     TRACKPY_MODULES,
     ARTIFACT_INPUT_PARAMS,
 )
@@ -61,20 +62,27 @@ def handle_meta_list(params: dict) -> dict:
         module_funcs = introspect_module(module_name)
         functions.extend(module_funcs)
 
-    return {"ok": True, "result": {"functions": functions}}
+    return {
+        "ok": True,
+        "result": {
+            "functions": functions,
+            "tool_version": get_trackpy_version(),
+            "introspection_source": "module_scan",
+        },
+    }
 
 
 def handle_meta_describe(params: dict) -> dict:
     """Detailed schema introspection using numpydoc."""
     target_fn = params.get("target_fn")
     if not target_fn:
-        return {"ok": False, "error": {"message": "target_fn required"}}
+        return {"ok": False, "error": "target_fn required"}
 
     try:
         result = introspect_function(target_fn)
         return {"ok": True, "result": result}
     except Exception as e:
-        return {"ok": False, "error": {"message": f"Introspection failed: {e}"}}
+        return {"ok": False, "error": f"Introspection failed: {e}"}
 
 
 def _execute_trackpy_function(fn_id: str, params: dict, inputs: dict) -> dict:
