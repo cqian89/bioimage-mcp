@@ -248,6 +248,59 @@ def _convert_memory_inputs_to_files(inputs: dict[str, Any], work_dir: Path) -> d
     return converted_inputs
 
 
+def handle_meta_list(params: dict[str, Any]) -> dict[str, Any]:
+    """Out-of-process function discovery for base tool pack."""
+    from bioimage_mcp.registry.manifest_schema import ToolManifest
+    from bioimage_mcp.registry.dynamic.discovery import discover_functions
+    from bioimage_mcp.registry.dynamic.adapters import ADAPTER_REGISTRY
+    import yaml
+    import hashlib
+
+    manifest_path = BASE_DIR.parent / "manifest.yaml"
+    try:
+        raw = manifest_path.read_bytes()
+        manifest_data = yaml.safe_load(raw)
+        checksum = hashlib.sha256(raw).hexdigest()
+
+        manifest = ToolManifest.model_validate(
+            {
+                **manifest_data,
+                "manifest_path": manifest_path,
+                "manifest_checksum": checksum,
+            }
+        )
+
+        discovered = discover_functions(manifest, ADAPTER_REGISTRY)
+
+        functions = []
+        for meta in discovered:
+            summary = meta.description.split("\n")[0] if meta.description else ""
+
+            fn_dict = {
+                "fn_id": meta.fn_id,
+                "name": meta.name,
+                "module": meta.module,
+                "summary": summary,
+                "io_pattern": meta.io_pattern.value,
+                "description": meta.description,
+                "parameters": {k: v.model_dump() for k, v in meta.parameters.items()},
+                "returns": meta.returns,
+                "source_adapter": meta.source_adapter,
+            }
+            functions.append(fn_dict)
+
+        return {
+            "ok": True,
+            "result": {
+                "functions": functions,
+                "tool_version": TOOL_VERSION,
+                "introspection_source": "dynamic_discovery",
+            },
+        }
+    except Exception as exc:
+        return {"ok": False, "error": f"Discovery failed: {exc}"}
+
+
 def handle_meta_describe(params: dict[str, Any]) -> dict[str, Any]:
     target_fn = params.get("target_fn", "")
     if target_fn not in FN_MAP:
@@ -606,6 +659,25 @@ def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
         inputs = _convert_memory_inputs_to_files(inputs, work_dir)
         if fn_id == "core.reconstruct":
             return handle_reconstruct(request)
+        if fn_id == "meta.list":
+            result_response = handle_meta_list(params)
+            if result_response.get("ok"):
+                response = {
+                    "command": "execute_result",
+                    "ok": True,
+                    "ordinal": ordinal,
+                    "outputs": {"result": result_response.get("result")},
+                    "log": "ok",
+                }
+            else:
+                response = {
+                    "command": "execute_result",
+                    "ok": False,
+                    "ordinal": ordinal,
+                    "error": {"message": result_response.get("error", "Unknown error")},
+                    "log": f"meta.list failed: {result_response.get('error', 'Unknown error')}",
+                }
+            return response
         if fn_id == "meta.describe":
             result_response = handle_meta_describe(params)
             # handle_meta_describe returns {"ok": bool, "result": ...}

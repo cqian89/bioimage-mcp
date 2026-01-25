@@ -95,11 +95,30 @@ class Introspector:
         if not func.__doc__:
             return {}
 
+        param_info = {}
+
+        # Try docstring-parser first (unified support for Numpydoc, Google, Sphinx)
+        try:
+            import docstring_parser
+
+            doc = docstring_parser.parse(func.__doc__)
+            for param in doc.params:
+                param_info[param.arg_name] = {
+                    "description": param.description or "",
+                    "type": param.type_name or "",
+                }
+            if param_info:
+                return param_info
+        except ImportError:
+            pass
+        except Exception:
+            pass
+
+        # Fallback to numpydoc for NumPy-specific high-fidelity
         try:
             from numpydoc.docscrape import FunctionDoc
 
             doc = FunctionDoc(func)
-            param_info = {}
             for param in doc["Parameters"]:
                 # Parameter name may include type like "image : ndarray"
                 name = param.name.split(":")[0].strip()
