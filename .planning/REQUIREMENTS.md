@@ -70,32 +70,32 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| GEN-01 | — | Pending |
-| GEN-02 | — | Pending |
-| GEN-03 | — | Pending |
-| GEN-04 | — | Pending |
-| TEST-01 | — | Pending |
-| TEST-02 | — | Pending |
-| TEST-03 | — | Pending |
-| TEST-04 | — | Pending |
-| NDIMG-01 | — | Pending |
-| NDIMG-02 | — | Pending |
-| NDIMG-03 | — | Pending |
-| NDIMG-04 | — | Pending |
-| NDIMG-05 | — | Pending |
-| STATS-01 | — | Pending |
-| STATS-02 | — | Pending |
-| STATS-03 | — | Pending |
-| SPATIAL-01 | — | Pending |
-| SPATIAL-02 | — | Pending |
-| SPATIAL-03 | — | Pending |
-| SIGNAL-01 | — | Pending |
-| SIGNAL-02 | — | Pending |
+| GEN-01 | Phase 6 | Pending |
+| GEN-02 | Phase 6 | Pending |
+| GEN-03 | Phase 6 | Pending |
+| GEN-04 | Phase 6 | Pending |
+| TEST-01 | Phase 10 | Pending |
+| TEST-02 | Phase 10 | Pending |
+| TEST-03 | Phase 10 | Pending |
+| TEST-04 | Phase 10 | Pending |
+| NDIMG-01 | Phase 6 | Pending |
+| NDIMG-02 | Phase 6 | Pending |
+| NDIMG-03 | Phase 7 | Pending |
+| NDIMG-04 | Phase 7 | Pending |
+| NDIMG-05 | Phase 7 | Pending |
+| STATS-01 | Phase 8 | Pending |
+| STATS-02 | Phase 8 | Pending |
+| STATS-03 | Phase 8 | Pending |
+| SPATIAL-01 | Phase 9 | Pending |
+| SPATIAL-02 | Phase 9 | Pending |
+| SPATIAL-03 | Phase 9 | Pending |
+| SIGNAL-01 | Phase 9 | Pending |
+| SIGNAL-02 | Phase 9 | Pending |
 
 **Coverage:**
-- v1 requirements: 20 total
-- Mapped to phases: 0
-- Unmapped: 20 ⚠️
+- v1 requirements: 21 total
+- Mapped to phases: 21
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-01-25*
