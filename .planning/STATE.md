@@ -7,11 +7,11 @@
 
 ## Current Position
 - **Phase:** 5.1 of 10 (Research Dynamic Discovery Standardization)
-- **Plan:** 2 of 4 in current phase
+- **Plan:** 3 of 4 in current phase
 - **Status:** In progress
-- **Last activity:** 2026-01-25 - Completed 05.1-04-PLAN.md
+- **Last activity:** 2026-01-25 - Completed 05.1-02-PLAN.md
 
-Progress: ████████████████░░░░ 80%
+Progress: █████████████████░░░ 85%
 
 ## Performance Metrics
 - **Phase Coverage:** 5/10 phases completed
@@ -39,9 +39,9 @@ Progress: ████████████████░░░░ 80%
 ### Session Continuity
 - v0.2.0 "Foundation" complete (Phases 1-5).
 - Scipy research (SUMMARY.md) incorporated into roadmap.
-- Phase 5.1 Plan 1 & 4 complete: Protocol defined, audit finished, and cellpose aligned.
-- Stopped at: Completed 05.1-04-PLAN.md
+- Phase 5.1 Plan 1, 2 & 4 complete: Protocol defined, audit finished, core parsers added, and cellpose aligned.
+- Stopped at: Completed 05.1-02-PLAN.md
 - Resume file: None
 
 ## Next Steps
-1. Execute `05.1-02-PLAN.md` to add core protocol parsers and wire into loader/discovery.
+1. Execute `05.1-03-PLAN.md` to align trackpy meta.* responses.

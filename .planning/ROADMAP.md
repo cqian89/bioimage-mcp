@@ -21,7 +21,7 @@ Milestone v0.3.0 integrates the SciPy ecosystem into Bioimage-MCP using a **Dyna
 
 Plans:
 - [x] 05.1-01-PLAN.md — Define canonical meta.list/meta.describe protocol + audit matrix
-- [ ] 05.1-02-PLAN.md — Add core protocol parsers and wire into loader/discovery
+- [x] 05.1-02-PLAN.md — Add core protocol parsers and wire into loader/discovery
 - [ ] 05.1-03-PLAN.md — Align trackpy meta.* responses + hermetic unit tests
 - [x] 05.1-04-PLAN.md — Align cellpose meta.* responses + hermetic unit tests
 
