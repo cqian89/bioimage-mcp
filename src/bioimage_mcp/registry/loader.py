@@ -338,18 +338,38 @@ def _discover_via_subprocess(manifest: ToolManifest) -> list[FunctionMetadata]:
 
         functions = parse_meta_list_result(response)
 
-        return [
-            FunctionMetadata(
-                fn_id=f["fn_id"],
-                name=f["name"],
-                qualified_name=f["fn_id"],
-                description=f.get("summary", ""),
-                module=f.get("module", ""),
-                io_pattern=IOPattern(f.get("io_pattern", "generic")),
-                source_adapter="subprocess",
+        results = []
+        for f in functions:
+            # Check for rich metadata
+            parameters = {}
+            if "parameters" in f and isinstance(f["parameters"], dict):
+                for p_name, p_dict in f["parameters"].items():
+                    parameters[p_name] = ParameterSchema.model_validate(p_dict)
+
+            description = f.get("description") or f.get("summary", "")
+            returns = f.get("returns")
+
+            # Use tool-provided source adapter if present, otherwise default to subprocess
+            source_adapter = (
+                f.get("source_adapter") or f.get("introspection_source") or "subprocess"
             )
-            for f in functions
-        ]
+            if not source_adapter.startswith("subprocess"):
+                source_adapter = f"subprocess:{source_adapter}"
+
+            results.append(
+                FunctionMetadata(
+                    fn_id=f["fn_id"],
+                    name=f["name"],
+                    qualified_name=f["fn_id"],
+                    description=description,
+                    module=f.get("module", ""),
+                    io_pattern=IOPattern(f.get("io_pattern", "generic")),
+                    source_adapter=source_adapter,
+                    parameters=parameters,
+                    returns=returns,
+                )
+            )
+        return results
     except Exception as e:
         logger.warning("Out-of-process discovery failed for %s: %s", manifest.tool_id, e)
         return []
