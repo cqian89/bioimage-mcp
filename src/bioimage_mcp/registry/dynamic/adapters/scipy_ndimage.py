@@ -9,6 +9,8 @@ import inspect
 import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+
+import yaml
 from urllib.parse import unquote, urlparse
 
 import numpy as np
@@ -39,19 +41,24 @@ class ScipyNdimageAdapter(BaseAdapter):
         """Discover functions from configured modules."""
         module_name = module_config.get("module_name")
         if not module_name and "modules" in module_config:
-            # Handle manifest format where modules is a list
-            # We iterate one at a time, but here we might get called for each?
-            # Or config is one entry from dynamic_sources?
-            # DynamicSource has 'modules' list.
-            # Let's assume module_config is ONE item from modules list if called iteratively,
-            # OR DynamicSource dict.
-            # discovery.py iterates modules.
-            # Let's check discovery.py: it calls adapter.discover(source.model_dump()).
-            # source.model_dump() has "modules": ["scipy.ndimage", ...]
-            # So we iterate here.
             modules = module_config["modules"]
         else:
             modules = [module_name] if module_name else []
+
+        blacklist = set()
+        blacklist_path = module_config.get("blacklist_path")
+        manifest_path = module_config.get("_manifest_path")
+        if blacklist_path and manifest_path:
+            full_blacklist_path = Path(manifest_path).parent / blacklist_path
+            if full_blacklist_path.exists():
+                try:
+                    with open(full_blacklist_path, "r") as f:
+                        data = yaml.safe_load(f)
+                        if data and isinstance(data, dict) and "blacklist" in data:
+                            blacklist = set(data["blacklist"])
+                except Exception:
+                    # Treat missing/invalid files as "no blacklist"
+                    pass
 
         results = []
         for mod_name in modules:
@@ -60,25 +67,23 @@ class ScipyNdimageAdapter(BaseAdapter):
             except ImportError:
                 continue
 
-            # Filter functions (simple logic for now, respecting include/exclude patterns
-            # from config if passed)
-            # For now, just getting public functions
             for name in dir(module):
                 if name.startswith("_"):
                     continue
+
+                if name in blacklist:
+                    continue
+
                 obj = getattr(module, name)
-                # Use inspect to filter only actual functions and builtins
-                # This excludes PytestTester instances, classes, etc.
                 if not (inspect.isfunction(obj) or inspect.isbuiltin(obj)):
                     continue
 
-                # Check inclusion (simple check if 'include' in config)
+                if self._is_deprecated(obj):
+                    continue
+
                 include_patterns = (
                     module_config.get("include_patterns") or module_config.get("include") or ["*"]
                 )
-                # exclude_patterns = module_config.get("exclude_patterns", [])
-
-                # Simple wildcard check
                 if "*" not in include_patterns and name not in include_patterns:
                     continue
 
@@ -94,6 +99,18 @@ class ScipyNdimageAdapter(BaseAdapter):
                 meta.fn_id = f"{mod_name}.{name}"
                 results.append(meta)
         return results
+
+    def _is_deprecated(self, obj: Any) -> bool:
+        """Check if an object is marked as deprecated in its docstring."""
+        doc = inspect.getdoc(obj)
+        if not doc:
+            return False
+        doc_clean = doc.strip()
+        if doc_clean.startswith("Deprecated") or doc_clean.startswith("DEPRECATED"):
+            return True
+        if ".. deprecated::" in doc:
+            return True
+        return False
 
     def determine_io_pattern(self, module_name: str, func_name: str) -> IOPattern:
         """Determine I/O pattern based on module and function name."""

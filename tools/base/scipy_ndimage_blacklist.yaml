@@ -1,0 +1,3 @@
+blacklist:
+  - illustrative_blacklist_entry
+  - stale_function_example

@@ -53,6 +53,7 @@ dynamic_sources:
     exclude_patterns:
       - "_*"
       - "test_*"
+    blacklist_path: scipy_ndimage_blacklist.yaml
 
   - adapter: xarray
     prefix: xarray
