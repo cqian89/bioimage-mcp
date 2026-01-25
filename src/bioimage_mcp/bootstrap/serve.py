@@ -58,6 +58,8 @@ def serve(*, stdio: bool) -> int:
                 outputs=[p.model_dump() for p in fn.outputs],
                 params_schema=fn.params_schema,
                 introspection_source=fn.introspection_source,
+                module=fn.module,
+                io_pattern=fn.io_pattern,
             )
 
     # Prune stale functions and tools that are no longer in manifests

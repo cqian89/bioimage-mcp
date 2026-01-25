@@ -267,6 +267,7 @@ def merge_function_overlay(discovered: Function, overlay: FunctionOverlay) -> Fu
         inputs, outputs = _map_io_pattern_to_ports(overlay.io_pattern)
         result.inputs = inputs
         result.outputs = outputs
+        result.io_pattern = str(overlay.io_pattern.value)
 
     # Deep merge hints
     if overlay.hints is not None:
@@ -446,6 +447,8 @@ def load_manifest_file(path: Path) -> tuple[ToolManifest | None, ManifestDiagnos
                     params_schema=params_schema,
                     hints=meta.hints,
                     introspection_source=meta.source_adapter,
+                    module=meta.module,
+                    io_pattern=str(meta.io_pattern.value),
                 )
                 if function.fn_id in existing_fn_ids:
                     logger.debug(

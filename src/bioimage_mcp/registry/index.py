@@ -406,6 +406,9 @@ class _HierarchyNode:
         summary: str | None = None,
         inputs: list[dict] | None = None,
         outputs: list[dict] | None = None,
+        module: str | None = None,
+        io_pattern: str | None = None,
+        introspection_source: str | None = None,
     ) -> None:
         self.name = name
         self.full_path = full_path
@@ -414,6 +417,9 @@ class _HierarchyNode:
         self.summary = summary
         self.inputs = inputs
         self.outputs = outputs
+        self.module = module
+        self.io_pattern = io_pattern
+        self.introspection_source = introspection_source
         self.children: dict[str, _HierarchyNode] = {}
 
 
@@ -443,6 +449,9 @@ class ToolIndex:
                 fn.get("description"),
                 fn.get("inputs"),
                 fn.get("outputs"),
+                fn.get("module"),
+                fn.get("io_pattern"),
+                fn.get("introspection_source"),
             )
 
     def list_children(
@@ -501,6 +510,9 @@ class ToolIndex:
         summary: str | None,
         inputs: list[dict] | None = None,
         outputs: list[dict] | None = None,
+        module: str | None = None,
+        io_pattern: str | None = None,
+        introspection_source: str | None = None,
     ) -> None:
         node = self._root
         for idx, segment in enumerate(segments):
@@ -518,6 +530,9 @@ class ToolIndex:
                 existing.summary = summary
                 existing.inputs = inputs
                 existing.outputs = outputs
+                existing.module = module
+                existing.io_pattern = io_pattern
+                existing.introspection_source = introspection_source
             node = existing
 
     @staticmethod
@@ -596,6 +611,13 @@ class ToolIndex:
             payload["io"] = {"inputs": inputs, "outputs": outputs}
             # Keep fn_id for backward compatibility if needed, but the new schema uses 'id'
             payload["fn_id"] = node.fn_id or node.full_path
+
+            if node.module:
+                payload["module"] = node.module
+            if node.io_pattern:
+                payload["io_pattern"] = node.io_pattern
+            if node.introspection_source:
+                payload["introspection_source"] = node.introspection_source
 
         # Add full_path for pagination logic in DiscoveryService
         payload["full_path"] = node.full_path

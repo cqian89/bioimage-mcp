@@ -82,6 +82,8 @@ class Function(BaseModel):
             "'python_api', 'argparse', 'manual', or None if from manifest"
         ),
     )
+    module: str | None = None
+    io_pattern: str | None = None
     input_mode: Literal["path", "numpy", "xarray"] = Field(
         default="numpy",
         description=(
