@@ -64,6 +64,8 @@ def list_tools(*, json_output: bool) -> int:
             status = "partial"
             status_char = "⚠"
 
+        sources = sorted({s for s in (fn.introspection_source for fn in m.functions) if s})
+
         tool_details.append(
             {
                 "id": tool_id,
@@ -71,6 +73,8 @@ def list_tools(*, json_output: bool) -> int:
                 "status_char": status_char,
                 "function_count": fn_count,
                 "env_id": env_id,
+                "tool_version": m.tool_version,
+                "introspection_source": sources,
             }
         )
 
@@ -82,10 +86,16 @@ def list_tools(*, json_output: bool) -> int:
         print("No tools found in registry.")
         return 0
 
-    print(f"{'Tool':<30} | {'Status':<12} | {'Functions':<10}")
-    print("-" * 60)
+    print(
+        f"{'Tool':<25} | {'Version':<10} | {'Status':<12} | {'Functions':<10} | {'Introspection':<15}"
+    )
+    print("-" * 85)
     for t in tool_details:
         status_str = f"{t['status_char']} {t['status']}"
-        print(f"{t['id']:<30} | {status_str:<12} | {t['function_count']:<10}")
+        introspection_str = ", ".join(t["introspection_source"])
+        print(
+            f"{t['id']:<25} | {t['tool_version']:<10} | {status_str:<12} | "
+            f"{t['function_count']:<10} | {introspection_str:<15}"
+        )
 
     return 0
