@@ -13,7 +13,7 @@
 version: 1
 metadata:
   content_hash:
-    linux-64: 33f3340521d44257f4918e2fa5f1e094f51fe40d262534ffa4bc6659a5f4f277
+    linux-64: 38e4d64df4523aa2cae8e080849eb0d8b9501ef3bd1539f9bf09a21ae7bb6953
   channels:
   - url: conda-forge
     used_env_vars: []
@@ -1824,7 +1824,7 @@ package:
   category: main
   optional: false
 - name: libarrow
-  version: 22.0.0
+  version: 23.0.0
   manager: conda
   platform: linux-64
   dependencies:
@@ -1851,81 +1851,81 @@ package:
     orc: '>=2.2.2,<2.2.3.0a0'
     snappy: '>=1.2.2,<1.3.0a0'
     zstd: '>=1.5.7,<1.6.0a0'
-  url: https://conda.anaconda.org/conda-forge/linux-64/libarrow-22.0.0-h2c50142_9_cpu.conda
+  url: https://conda.anaconda.org/conda-forge/linux-64/libarrow-23.0.0-h2c50142_0_cpu.conda
   hash:
-    md5: 3d2b1b62646998895a9b0dc18aca6385
-    sha256: 89b1fb49fcdcb6a52e7d2da230b51fa3f21502927ed2eee66ef69cf8ca0d2f56
+    md5: ef47efe8884347ab96f0d26399e83229
+    sha256: 96b32fdc4c597c3d5b5029da7a15aceb055f380255d00e9424f640280fe7ae17
   category: main
   optional: false
 - name: libarrow-acero
-  version: 22.0.0
+  version: 23.0.0
   manager: conda
   platform: linux-64
   dependencies:
     __glibc: '>=2.17,<3.0.a0'
-    libarrow: 22.0.0
-    libarrow-compute: 22.0.0
+    libarrow: 23.0.0
+    libarrow-compute: 23.0.0
     libgcc: '>=14'
     libstdcxx: '>=14'
-  url: https://conda.anaconda.org/conda-forge/linux-64/libarrow-acero-22.0.0-h635bf11_9_cpu.conda
+  url: https://conda.anaconda.org/conda-forge/linux-64/libarrow-acero-23.0.0-h635bf11_0_cpu.conda
   hash:
-    md5: b3d13ac5c229bd094d9a388dd25d71c9
-    sha256: 233461b32a6e07039d560c259861e8771011ee4fbb64ffdfd521bfbf26aedf22
+    md5: 0e1d44a4759116c17c77cdead68bb2d6
+    sha256: bfcd0aac7c9cfdb7896e110898bec17e41e253b851a00f9a4c9f960d2d487d83
   category: main
   optional: false
 - name: libarrow-compute
-  version: 22.0.0
+  version: 23.0.0
   manager: conda
   platform: linux-64
   dependencies:
     __glibc: '>=2.17,<3.0.a0'
-    libarrow: 22.0.0
+    libarrow: 23.0.0
     libgcc: '>=14'
     libre2-11: '>=2025.8.12'
     libstdcxx: '>=14'
     libutf8proc: '>=2.11.3,<2.12.0a0'
     re2: ''
-  url: https://conda.anaconda.org/conda-forge/linux-64/libarrow-compute-22.0.0-h8c2c5c3_9_cpu.conda
+  url: https://conda.anaconda.org/conda-forge/linux-64/libarrow-compute-23.0.0-h8c2c5c3_0_cpu.conda
   hash:
-    md5: 041110eecd503be10351fed1e3568c10
-    sha256: d288e3d7d25662e89f4411bc777ff2afebc8bc9e03f38319a45017286703d38d
+    md5: fa2c484e95ba37950f926bd797c51dc4
+    sha256: 78c8ea0bcc3a0fd730af4be18ee51f96ec83e38f821aec8910cf273e68a4265a
   category: main
   optional: false
 - name: libarrow-dataset
-  version: 22.0.0
+  version: 23.0.0
   manager: conda
   platform: linux-64
   dependencies:
     __glibc: '>=2.17,<3.0.a0'
-    libarrow: 22.0.0
-    libarrow-acero: 22.0.0
-    libarrow-compute: 22.0.0
+    libarrow: 23.0.0
+    libarrow-acero: 23.0.0
+    libarrow-compute: 23.0.0
     libgcc: '>=14'
-    libparquet: 22.0.0
+    libparquet: 23.0.0
     libstdcxx: '>=14'
-  url: https://conda.anaconda.org/conda-forge/linux-64/libarrow-dataset-22.0.0-h635bf11_9_cpu.conda
+  url: https://conda.anaconda.org/conda-forge/linux-64/libarrow-dataset-23.0.0-h635bf11_0_cpu.conda
   hash:
-    md5: d6f78a901dc64c53034b1147c6e941c7
-    sha256: 577709f6f46dee3c0ffa4594016123901db9eb0cd624a7b7b81d2877a91acced
+    md5: a373b33a7a1c9f57ef6273e886e91fe1
+    sha256: 5ba3d5b2422939c8b4f8af28969d80e92f99f523c4383c0cacc3793e9a40b8b6
   category: main
   optional: false
 - name: libarrow-substrait
-  version: 22.0.0
+  version: 23.0.0
   manager: conda
   platform: linux-64
   dependencies:
     __glibc: '>=2.17,<3.0.a0'
     libabseil: '>=20250512.1,<20250513.0a0'
-    libarrow: 22.0.0
-    libarrow-acero: 22.0.0
-    libarrow-dataset: 22.0.0
+    libarrow: 23.0.0
+    libarrow-acero: 23.0.0
+    libarrow-dataset: 23.0.0
     libgcc: '>=14'
     libprotobuf: '>=6.31.1,<6.31.2.0a0'
     libstdcxx: '>=14'
-  url: https://conda.anaconda.org/conda-forge/linux-64/libarrow-substrait-22.0.0-h3f74fd7_9_cpu.conda
+  url: https://conda.anaconda.org/conda-forge/linux-64/libarrow-substrait-23.0.0-h3f74fd7_0_cpu.conda
   hash:
-    md5: e2a7c8fccb09129e9d45eca3b9660a4e
-    sha256: 541a3dfbcab999c7e7a70b2937b69ce11b3f7dd40a931660aa9a2995dcfff900
+    md5: 618c4d7d323f9b3ec4fdb0b3a5e5df1d
+    sha256: 2cb7bd9c1a282fded4b698fdd27fe92cec986a7a84d2968a22645f08dee4417f
   category: main
   optional: false
 - name: libavif16
@@ -2019,10 +2019,10 @@ package:
     libgcc: '>=14'
     libllvm21: '>=21.1.8,<21.2.0a0'
     libstdcxx: '>=14'
-  url: https://conda.anaconda.org/conda-forge/linux-64/libclang-cpp21.1-21.1.8-default_h99862b1_1.conda
+  url: https://conda.anaconda.org/conda-forge/linux-64/libclang-cpp21.1-21.1.8-default_h99862b1_2.conda
   hash:
-    md5: e933f92cedca212eb2916f24823cf90b
-    sha256: fd494cb13a139067a00dab2a641347c692abc149bcae6872502640b14e12dc4d
+    md5: 3c71daed530c0c26671a1b1b7010e746
+    sha256: ee878abf2ecbba378525a900a1ebe773ce2313fffeba6e8aca85f6fc62d0a0e1
   category: main
   optional: false
 - name: libclang13
@@ -2034,10 +2034,10 @@ package:
     libgcc: '>=14'
     libllvm21: '>=21.1.8,<21.2.0a0'
     libstdcxx: '>=14'
-  url: https://conda.anaconda.org/conda-forge/linux-64/libclang13-21.1.8-default_h746c552_1.conda
+  url: https://conda.anaconda.org/conda-forge/linux-64/libclang13-21.1.8-default_h746c552_2.conda
   hash:
-    md5: e00afd65b88a3258212661b32c1469cb
-    sha256: 4507075f64c65b45b049e5b19842186d25c99af4b4922910f231776e46d33799
+    md5: 0ad9019bb10eda915fb0ce5f78fef13b
+    sha256: 77102b261874b35f37a12e79bab2272596e8bfda9e94cf13d1ae480ccd8d2e87
   category: main
   optional: false
 - name: libcrc32c
@@ -2602,20 +2602,20 @@ package:
   category: main
   optional: false
 - name: libparquet
-  version: 22.0.0
+  version: 23.0.0
   manager: conda
   platform: linux-64
   dependencies:
     __glibc: '>=2.17,<3.0.a0'
-    libarrow: 22.0.0
+    libarrow: 23.0.0
     libgcc: '>=14'
     libstdcxx: '>=14'
     libthrift: '>=0.22.0,<0.22.1.0a0'
     openssl: '>=3.5.4,<4.0a0'
-  url: https://conda.anaconda.org/conda-forge/linux-64/libparquet-22.0.0-h7376487_9_cpu.conda
+  url: https://conda.anaconda.org/conda-forge/linux-64/libparquet-23.0.0-h7376487_0_cpu.conda
   hash:
-    md5: b738068adbd9c55eab89e6f044fa33a0
-    sha256: d3fc1d24982a5b2987af625ed730bbcf7b8c66faec689cb9f38f131babb2ccea
+    md5: be2161a27537cb288a5634daf768af00
+    sha256: 95badcfa2b806186071be43e3700435db5dd5c50ffbe33d58aab66fb40846318
   category: main
   optional: false
 - name: libpciaccess
@@ -3103,6 +3103,19 @@ package:
     sha256: b1117aa2c1d11ca70d1704054cdc8801cbcf2dfb846c565531edd417ddd82559
   category: main
   optional: false
+- name: mrc
+  version: 0.3.1
+  manager: conda
+  platform: linux-64
+  dependencies:
+    numpy: ''
+    python: '>=3.7'
+  url: https://conda.anaconda.org/conda-forge/noarch/mrc-0.3.1-pyhd8ed1ab_0.conda
+  hash:
+    md5: 3cf201ed787cb5011057c07aacbd8d70
+    sha256: 99f9116c8553c7a4601dd61dc3da36af385f403656a48ec4ae8102afb607352b
+  category: main
+  optional: false
 - name: msgpack-python
   version: 1.1.2
   manager: conda
@@ -3169,6 +3182,24 @@ package:
   hash:
     md5: 47e340acb35de30501a76c7c799c41d7
     sha256: 3fde293232fa3fca98635e1167de6b7c7fda83caf24b9d6c91ec9eefb4f4d586
+  category: main
+  optional: false
+- name: nd2
+  version: 0.11.1
+  manager: conda
+  platform: linux-64
+  dependencies:
+    imagecodecs: ''
+    numpy: ''
+    ome-types: '>=0.5.1'
+    python: '>=3.10'
+    resource_backed_dask_array: ''
+    tifffile: ''
+    typing-extensions: ''
+  url: https://conda.anaconda.org/conda-forge/noarch/nd2-0.11.1-pyhd8ed1ab_0.conda
+  hash:
+    md5: ff950a978b2dab9cd5add9c6bbd36d02
+    sha256: d9b0377270bd776db68d1267ca5d81b29eb7341d257fb6dd8fd3c06bbdc95a20
   category: main
   optional: false
 - name: networkx
@@ -3698,40 +3729,40 @@ package:
   category: main
   optional: false
 - name: pyarrow
-  version: 22.0.0
+  version: 23.0.0
   manager: conda
   platform: linux-64
   dependencies:
-    libarrow-acero: 22.0.0.*
-    libarrow-dataset: 22.0.0.*
-    libarrow-substrait: 22.0.0.*
-    libparquet: 22.0.0.*
-    pyarrow-core: 22.0.0
+    libarrow-acero: 23.0.0.*
+    libarrow-dataset: 23.0.0.*
+    libarrow-substrait: 23.0.0.*
+    libparquet: 23.0.0.*
+    pyarrow-core: 23.0.0
     python: '>=3.13,<3.14.0a0'
     python_abi: 3.13.*
-  url: https://conda.anaconda.org/conda-forge/linux-64/pyarrow-22.0.0-py313h78bf25f_1.conda
+  url: https://conda.anaconda.org/conda-forge/linux-64/pyarrow-23.0.0-py313h78bf25f_0.conda
   hash:
-    md5: d37f32dc23b9d917205d8fff229d457b
-    sha256: d1ec8cd991be47f64a2a7dd2561187b3fb923912114e70bb3c3c95c2956205a1
+    md5: a6e89cb214f318db9548b791ba27f862
+    sha256: 43636b4ce58c57f3aeab182238b47cb8b860d2cc0544c184612c15ee294be154
   category: main
   optional: false
 - name: pyarrow-core
-  version: 22.0.0
+  version: 23.0.0
   manager: conda
   platform: linux-64
   dependencies:
     __glibc: '>=2.17,<3.0.a0'
-    libarrow: 22.0.0.*
-    libarrow-compute: 22.0.0.*
+    libarrow: 23.0.0.*
+    libarrow-compute: 23.0.0.*
     libgcc: '>=14'
     libstdcxx: '>=14'
     libzlib: '>=1.3.1,<2.0a0'
     python: '>=3.13,<3.14.0a0'
     python_abi: 3.13.*
-  url: https://conda.anaconda.org/conda-forge/linux-64/pyarrow-core-22.0.0-py313he109ebe_1_cpu.conda
+  url: https://conda.anaconda.org/conda-forge/linux-64/pyarrow-core-23.0.0-py313he109ebe_0_cpu.conda
   hash:
-    md5: a192c14c28112e5e61b69c4a320b446e
-    sha256: 5b0f41385aa75801c7af45c041ecc99b7be26cdedd6230eea7b4b797b250ba3e
+    md5: 9120bf253ebbdb0015069b9a25cf4d36
+    sha256: 1914b79fe640a60b7ab240d90548f601c43513ef39bc6bc8517d73f259acfce1
   category: main
   optional: false
 - name: pydantic
@@ -4082,6 +4113,21 @@ package:
   hash:
     md5: c65df89a0b2e321045a9e01d1337b182
     sha256: 7813c38b79ae549504b2c57b3f33394cea4f2ad083f0994d2045c2e24cb538c5
+  category: main
+  optional: false
+- name: resource_backed_dask_array
+  version: 0.1.0
+  manager: conda
+  platform: linux-64
+  dependencies:
+    dask: ''
+    importlib-metadata: '>=1.5.0'
+    python: '>=3.7'
+    typing_extensions: ''
+  url: https://conda.anaconda.org/conda-forge/noarch/resource_backed_dask_array-0.1.0-pyhd8ed1ab_1.tar.bz2
+  hash:
+    md5: 9590d5b3afbb0ec03ec88b46c63e2ebc
+    sha256: 0e9e6629115a18084328817036bb8d3aee137f179e55e4b40fc102712ce18c60
   category: main
   optional: false
 - name: roman-numerals
@@ -5257,7 +5303,7 @@ package:
   category: main
   optional: false
 - name: bioio-nd2
-  version: 1.5.0
+  version: 1.6.0
   manager: pip
   platform: linux-64
   dependencies:
@@ -5268,25 +5314,9 @@ package:
     numpy: '>=1.16'
     pyyaml: '>=6.0'
     xarray: '>=0.16.1'
-  url: https://files.pythonhosted.org/packages/8f/ed/27005dfb73c991262121df3f43adcfb6f1cf4718751e6421651d1aa620d1/bioio_nd2-1.5.0-py3-none-any.whl
+  url: https://files.pythonhosted.org/packages/d7/18/ffffdc089aac80fcfb783127aff76667dde71d88d0f7a859f23c91c940c1/bioio_nd2-1.6.0-py3-none-any.whl
   hash:
-    sha256: 3af58f5c453d9d22baf638a3481ee0f25f275bfab7e8e4228ed28abbd035df2d
-  category: main
-  optional: false
-- name: bioio-sldy
-  version: 1.4.0
-  manager: pip
-  platform: linux-64
-  dependencies:
-    bioio-base: '>=0.3.0'
-    dask: '>=2021.4.1'
-    fsspec: '>=2022.8.0'
-    numpy: '>=1.16,<2'
-    pyyaml: '>=6.0'
-    xarray: '>=0.16.1'
-  url: https://files.pythonhosted.org/packages/44/40/b3cc6186b8cf4bad3aea779a0fa6be4a2acee3279b5bf7e619dd04596ee9/bioio_sldy-1.4.0-py3-none-any.whl
-  hash:
-    sha256: 547e45d5d15e35c4fca18c3b5705c9c10a91abc14bc8ff2852c8bded6ef2d3e2
+    sha256: 66dab9086b49dab1d70a8c04fb100a27b1c770e9222970cb2396b86f64572948
   category: main
   optional: false
 - name: bioio-tiff-glob
@@ -5357,17 +5387,6 @@ package:
     sha256: c7e46fcec401dd990405049d2e2f475e2b397779df2519b544b8aab515195282
   category: main
   optional: false
-- name: mrc
-  version: 0.3.1
-  manager: pip
-  platform: linux-64
-  dependencies:
-    numpy: '*'
-  url: https://files.pythonhosted.org/packages/86/8d/64decec49ec102d06917ca3cff0fa276af1dd872bf2cfb2d04ac07013034/mrc-0.3.1-py3-none-any.whl
-  hash:
-    sha256: ce8e1d099479ce705489e4c62bc9002eca8e8a00278bdb27b416498635fe9270
-  category: main
-  optional: false
 - name: nd2
   version: 0.11.2
   manager: pip
@@ -5385,16 +5404,6 @@ package:
     sha256: 3a4e7f22fbb37dded51eaf102bc581e3897b09b64067c8311eb831f1ddf2316d
   category: main
   optional: false
-- name: numpy
-  version: 1.26.4
-  manager: pip
-  platform: linux-64
-  dependencies: {}
-  url: https://files.pythonhosted.org/packages/65/6e/09db70a523a96d25e115e71cc56a6f9031e7b8cd166c1ac8438307c14058/numpy-1.26.4.tar.gz
-  hash:
-    sha256: 2a02aba9ed12e4ac4eb3ea9421c420301a0c6460d9830d74a9df87efa4912010
-  category: main
-  optional: false
 - name: pylibczirw
   version: 5.1.1
   manager: pip
@@ -5408,18 +5417,6 @@ package:
   url: https://files.pythonhosted.org/packages/f5/b3/82852e2d298d09ed94a56affccd602169882f5ebd0b866895e36d9cd7800/pylibczirw-5.1.1-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
   hash:
     sha256: 5f5392637029b0d2e44597e7aaf56d5702741f72f2b2cf29f9a240975f44fa0c
-  category: main
-  optional: false
-- name: resource-backed-dask-array
-  version: 0.1.0
-  manager: pip
-  platform: linux-64
-  dependencies:
-    dask: '*'
-    typing-extensions: '*'
-  url: https://files.pythonhosted.org/packages/0d/b5/852f619e53fa7fb70d8915fcae66632df3958cac7e926c4ac38458958674/resource_backed_dask_array-0.1.0-py2.py3-none-any.whl
-  hash:
-    sha256: ec457fa72d81f0340a67ea6557a5a5919323a11cccc978a950df29fa69fe5679
   category: main
   optional: false
 - name: validators

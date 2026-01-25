@@ -96,13 +96,32 @@ def _load_image_internal(
 
         # If symlink trick failed or wasn't applicable, try explicit readers as last resort
         path_str = str(path)
+        format_hint_upper = (format_hint or "").upper()
+        is_tiff_hint = "TIFF" in format_hint_upper
+        is_zarr_hint = "ZARR" in format_hint_upper
+        is_tiff_path = path.suffix.lower() in {".tif", ".tiff"}
+        if (is_tiff_path or is_tiff_hint) and not is_zarr_hint:
+            try:
+                from bioio_tifffile.reader import Reader as TiffReader
+
+                img = BioImage(path_str, reader=TiffReader)
+                warnings.append(
+                    {
+                        "code": "TIFF_READER_FALLBACK",
+                        "message": "Fell back to bioio-tifffile reader after BioImage failed.",
+                    }
+                )
+                return _get_data(img), warnings, "bioio+tifffile-reader"
+            except Exception:
+                pass
+
         is_ome_format = format_hint and (
-            "OME-TIFF" in format_hint.upper() or "OME-ZARR" in format_hint.upper()
+            "OME-TIFF" in format_hint_upper or "OME-ZARR" in format_hint_upper
         )
 
         if not path.suffix or is_ome_format:
             # Try OME-TIFF reader
-            if not format_hint or "OME-TIFF" in format_hint.upper() or not path.suffix:
+            if not format_hint or "OME-TIFF" in format_hint_upper or not path.suffix:
                 try:
                     from bioio_ome_tiff.reader import Reader as OmeTiffReader
 
@@ -112,7 +131,7 @@ def _load_image_internal(
                     pass
 
             # Try OME-Zarr reader
-            if format_hint and "OME-ZARR" in format_hint.upper():
+            if format_hint and "OME-ZARR" in format_hint_upper:
                 try:
                     from bioio_ome_zarr.reader import Reader as OmeZarrReader
 

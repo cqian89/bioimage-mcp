@@ -23,18 +23,24 @@ dependencies:
   - numexpr
   - phasorpy
   - numpydoc
+  - mrc>=0.2.0
+  - nd2>=0.10.3
+  - resource_backed_dask_array>=0.1.0
+  - imageio>=2.31
+  - pillow>=9.3
   - pydantic>=2.0
   - pip:
     # Bioio reader plugins (PyPI-only)
-    - bioio-czi         # CZI (Zeiss) files
-    - bioio-dv          # DeltaVision files
-    - bioio-imageio     # General image formats (PNG, JPG, etc.)
-    - bioio-nd2         # Nikon ND2 files
-    - bioio-sldy        # SlideBook files
-    - bioio-tifffile    # Generic TIFF files
-    - bioio-tiff-glob   # Multi-file TIFF stacks
-    - bioio-bioformats  # Bio-Formats (Java-based, supports 150+ formats)
-    - resource_backed_dask_array  # Required by bioio-bioformats
+    - bioio-czi==2.4.2         # CZI (Zeiss) files
+    - aicspylibczi==3.3.1      # Native CZI reader dependency for bioio-czi (cp313 wheel)
+    - pylibczirw==5.1.1        # Native CZI reader dependency for bioio-czi (cp313 wheel)
+    - bioio-dv==1.2.0          # DeltaVision files
+    - bioio-imageio==1.3.0     # General image formats (PNG, JPG, etc.)
+    - bioio-nd2==1.6.0         # Nikon ND2 files
+    # bioio-sldy==1.4.0 is excluded: requires numpy<2 (incompatible with python=3.13)
+    - bioio-tifffile==1.3.0    # Generic TIFF files
+    - bioio-tiff-glob==1.2.0   # Multi-file TIFF stacks
+    - bioio-bioformats==1.3.2  # Bio-Formats (Java-based, supports 150+ formats)
     # Note: bioio-ome-tiled-tiff is excluded due to dependency conflicts with numpy
     # (requires tifffile<2022.4.22 which needs numpy 1.26.4 built from source)
     # Install bioimage_mcp in editable mode for access to adapters

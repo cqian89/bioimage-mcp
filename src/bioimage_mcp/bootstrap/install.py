@@ -4,6 +4,7 @@ import json
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 import yaml
@@ -139,30 +140,62 @@ def _install_pip_deps(exe: str, env_name: str, env_file: Path) -> bool:
     if not pip_deps:
         return True
 
+    # Install one-by-one to avoid pip resolver trying to replace conda packages
+    # (notably numpy) when many packages are installed together.
     normalized = [_normalize_pip_dep(dep, env_file) for dep in pip_deps]
-    cmd = [exe, "run", "-n", env_name, "python", "-m", "pip", "install", *normalized]
-    result = subprocess.run(cmd, check=False)
-    return result.returncode == 0
+    for dep in normalized:
+        pip_args: list[str] = ["python", "-m", "pip", "install"]
+        if dep.startswith("-e "):
+            pip_args.extend(["-e", dep[3:].strip()])
+        else:
+            pip_args.append(dep)
+        cmd = [exe, "run", "-n", env_name, *pip_args]
+        result = subprocess.run(cmd, check=False)
+        if result.returncode != 0:
+            return False
+    return True
 
 
 def _install_env(exe: str, manager: str, env_name: str, env_file: Path) -> bool:
     """Install or update a conda/micromamba environment."""
+    # If the env spec contains a pip section, strip it for the conda solve step.
+    # We'll install pip deps separately via _install_pip_deps.
+    raw = yaml.safe_load(env_file.read_text())
+    dependencies = raw.get("dependencies", []) if isinstance(raw, dict) else []
+    has_pip_section = any(isinstance(dep, dict) and "pip" in dep for dep in dependencies)
+    env_file_for_conda = env_file
+
+    tmp_dir_ctx = None
+    if has_pip_section and isinstance(raw, dict) and isinstance(dependencies, list):
+        stripped = dict(raw)
+        stripped["dependencies"] = [
+            dep for dep in dependencies if not (isinstance(dep, dict) and "pip" in dep)
+        ]
+        tmp_dir_ctx = tempfile.TemporaryDirectory(prefix="bioimage-mcp-env-")
+        tmp_dir = Path(tmp_dir_ctx.name)
+        env_file_for_conda = tmp_dir / env_file.name
+        env_file_for_conda.write_text(yaml.safe_dump(stripped, sort_keys=False))
+
     # Try update first
-    cmd = [exe, "env", "update", "-n", env_name, "-f", str(env_file)]
+    cmd = [exe, "env", "update", "-n", env_name, "-f", str(env_file_for_conda)]
     if manager != "micromamba":
         cmd.append("--prune")
 
     result = subprocess.run(cmd, check=False)
     if result.returncode == 0:
+        if tmp_dir_ctx is not None:
+            tmp_dir_ctx.cleanup()
         return True
 
     # If update fails, try create
     if manager == "micromamba":
-        create_cmd = [exe, "create", "-n", env_name, "-f", str(env_file), "-y"]
+        create_cmd = [exe, "create", "-n", env_name, "-f", str(env_file_for_conda), "-y"]
     else:
-        create_cmd = [exe, "env", "create", "-n", env_name, "-f", str(env_file), "-y"]
+        create_cmd = [exe, "env", "create", "-n", env_name, "-f", str(env_file_for_conda), "-y"]
 
     result = subprocess.run(create_cmd, check=False)
+    if tmp_dir_ctx is not None:
+        tmp_dir_ctx.cleanup()
     return result.returncode == 0
 
 
@@ -244,8 +277,12 @@ def install(
 
         print(f"Installing {name}...")
 
+        pip_deps = _collect_pip_deps(env_file)
+
         # Install logic
-        if conda_lock_exe and lockfile.exists():
+        # Note: conda-lock pip integration can be brittle; for envs with pip deps we
+        # install conda deps first (without pip) then install pip deps separately.
+        if conda_lock_exe and lockfile.exists() and not pip_deps:
             success = _install_env_with_lock(conda_lock_exe, env_name, lockfile)
         else:
             success = _install_env(exe, manager, env_name, env_file)
