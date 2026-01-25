@@ -164,9 +164,20 @@ def introspect_function(fn_id: str) -> dict:
             "properties": properties,
             "required": required,
         },
+        "tool_version": _get_trackpy_version(),
         "summary": _extract_summary(func),
         "introspection_source": "numpydoc",
     }
+
+
+def _get_trackpy_version() -> str:
+    """Get the version of the installed trackpy library."""
+    try:
+        import importlib.metadata
+
+        return importlib.metadata.version("trackpy")
+    except Exception:
+        return "unknown"
 
 
 def _extract_summary(func) -> str:
