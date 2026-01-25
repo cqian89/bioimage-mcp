@@ -46,7 +46,7 @@ Plans:
 - [x] 06-01-PLAN.md — Rich subprocess discovery for dynamic sources
 - [x] 06-02-PLAN.md — Harden scipy.ndimage discovery (blacklist + deprecated filtering)
 - [x] 06-03-PLAN.md — Scipy N-D execution infrastructure (dtype safety, auxiliary artifacts, callable allowlist)
-- [ ] 06-04-PLAN.md — Gap closure: preserve physical pixel sizes in written OME-TIFF metadata
+- [x] 06-04-PLAN.md — Gap closure: preserve physical pixel sizes in written OME-TIFF metadata
 
 ### Phase 7: Transforms & Measurements
 **Goal:** Enable coordinate-aware operations and analytical extraction from images.

@@ -7,9 +7,9 @@
 
 ## Current Position
 - **Phase:** 6
-- **Plan:** 3 of 3 in current phase (Phase complete)
+- **Plan:** 4 of 4 in current phase (Phase complete)
 - **Status:** Phase complete
-- **Last activity:** 2026-01-25 - Completed 06-03-PLAN.md
+- **Last activity:** 2026-01-25 - Completed 06-04-PLAN.md
 
 Progress: ████████████████████████ 100%
 
@@ -33,13 +33,14 @@ Progress: ███████████████████████�
 | 6 | Curated allowlist for callables | Ensures security while supporting scipy measurements by restricting callables to safe numpy equivalents. |
 | 6 | 16MB uint16 threshold | Automatically cast large uint16 images to float32 to prevent overflow during processing. |
 | 6 | Context-dependent return format | Return OME-TIFF for image arrays and JSON for scalar measurements to optimize agent UX. |
+| 6 | Forward physical metadata to writers | Ensured scipy.ndimage outputs retain physical pixel size and channel name metadata by explicitly passing them to `OmeTiffWriter.save`. |
 
 ### Session Continuity
 - v0.2.0 "Foundation" complete (Phases 1-5).
 - Scipy research (SUMMARY.md) incorporated into roadmap.
 - Phase 5.1 Complete: Protocol standardized across trackpy and cellpose, core parsers implemented.
 - Phase 6 Complete: Scipy ndimage infrastructure established with metadata preservation and memory safety.
-- Stopped at: Completed 06-03-PLAN.md
+- Stopped at: Completed 06-04-PLAN.md
 - Resume file: None
 
 ## Next Steps
