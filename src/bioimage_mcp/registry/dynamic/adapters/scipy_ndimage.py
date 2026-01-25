@@ -231,8 +231,36 @@ class ScipyNdimageAdapter(BaseAdapter):
         try:
             from bioio.writers import OmeTiffWriter
 
+            pps = None
+            channels = None
+            if metadata_override:
+                raw_pps = metadata_override.get("physical_pixel_sizes")
+                if raw_pps:
+                    from bioio_base.types import PhysicalPixelSizes
+
+                    if isinstance(raw_pps, dict):
+                        pps = PhysicalPixelSizes(
+                            X=raw_pps.get("X"),
+                            Y=raw_pps.get("Y"),
+                            Z=raw_pps.get("Z"),
+                        )
+                    elif isinstance(raw_pps, (list, tuple)):
+                        # interpret as Y/X (and optional Z) in that order.
+                        if len(raw_pps) == 2:
+                            pps = PhysicalPixelSizes(Y=raw_pps[0], X=raw_pps[1], Z=None)
+                        elif len(raw_pps) == 3:
+                            pps = PhysicalPixelSizes(Z=raw_pps[0], Y=raw_pps[1], X=raw_pps[2])
+
+                channels = metadata_override.get("channel_names")
+
             if len(inferred_axes) == array.ndim:
-                OmeTiffWriter.save(array, str(path), dim_order=inferred_axes)
+                save_kwargs: dict[str, Any] = {"dim_order": inferred_axes}
+                if pps:
+                    save_kwargs["physical_pixel_sizes"] = pps
+                if channels:
+                    save_kwargs["channel_names"] = channels
+
+                OmeTiffWriter.save(array, str(path), **save_kwargs)
                 saved = True
         except Exception as e:
             logger.warning(f"Failed to save via OmeTiffWriter: {e}")
