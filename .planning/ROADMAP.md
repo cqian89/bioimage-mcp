@@ -84,7 +84,7 @@ It seems dynamic discovery is implemmented via different methods in different pa
 |-------|-----------|--------|-----------|
 | 1-5 | v0.2.0 | ✅ Complete | 2026-01-25 |
 | 5.1 - Discovery | v0.3.0 | ✅ Complete | 2026-01-25 |
-| 6 - Infrastructure | v0.3.0 | 📋 Pending | — |
+| 6 - Infrastructure | v0.3.0 | 🏗️ In progress | — |
 | 7 - Transforms | v0.3.0 | 📋 Pending | — |
 | 8 - Statistics | v0.3.0 | 📋 Pending | — |
 | 9 - Spatial/Signal | v0.3.0 | 📋 Pending | — |
