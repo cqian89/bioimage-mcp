@@ -3,15 +3,15 @@
 ## Project Reference
 - **Core Value:** Enables AI agents to safely and reproducibly execute bioimage analysis tools without dependency conflicts.
 - **Current Milestone:** v0.3.0 Scipy Integration
-- **Current Focus:** Phase 6 (Infrastructure & N-D Foundation)
+- **Current Focus:** Phase 5.1 (Research Dynamic Discovery Standardization)
 
 ## Current Position
-- **Phase:** 6
-- **Plan:** None (Ready to plan Phase 6)
-- **Status:** INITIALIZING
-- **Last activity:** 2026-01-25 - Completed 05.1-03-PLAN.md (Wave 2 complete)
+- **Phase:** 5.1
+- **Plan:** 5 of 6 in current phase
+- **Status:** In progress
+- **Last activity:** 2026-01-25 - Completed 05.1-05-PLAN.md
 
-Progress: ██████████████████░░ 88%
+Progress: █████████████████░░░ 85%
 
 ## Performance Metrics
 - **Phase Coverage:** 5/10 phases completed
@@ -37,13 +37,15 @@ Progress: ██████████████████░░ 88%
 | 5.1 | Enriched `meta.list` entries | Added `module` and `io_pattern` to enable server-side classification and better search results. |
 | 5.1 | String-only errors in discovery | Standardized all tool-pack meta.* handlers to return string errors for parsing simplicity. |
 | 5.1 | `tool_version` requirement | Required `tool_version` in both `meta.list` and `meta.describe` for reliable cache invalidation. |
+| 5.1 | Aggregated introspection_source in CLI | Show provenance of tool metadata in `bioimage-mcp list` for better transparency. |
 
 ### Session Continuity
 - v0.2.0 "Foundation" complete (Phases 1-5).
 - Scipy research (SUMMARY.md) incorporated into roadmap.
 - Phase 5.1 Complete: Protocol standardized across trackpy and cellpose, core parsers implemented.
-- Stopped at: Completed 05.1-03-PLAN.md (Wave 2 finished)
+- Stopped at: Completed 05.1-05-PLAN.md
 - Resume file: None
 
 ## Next Steps
-1. Transition to Phase 6 (Infrastructure & N-D Foundation) to implement Scipy dynamic adapter.
+1. Complete 05.1-06-PLAN.md to persist module/io_pattern and expose in MCP list.
+2. Transition to Phase 6 (Infrastructure & N-D Foundation).
