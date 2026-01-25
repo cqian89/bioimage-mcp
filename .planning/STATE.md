@@ -7,11 +7,11 @@
 
 ## Current Position
 - **Phase:** 5.1 of 10 (Research Dynamic Discovery Standardization)
-- **Plan:** 1 of 4 in current phase
+- **Plan:** 2 of 4 in current phase
 - **Status:** In progress
-- **Last activity:** 2026-01-25 - Completed 05.1-01-PLAN.md
+- **Last activity:** 2026-01-25 - Completed 05.1-04-PLAN.md
 
-Progress: ████████████░░░░░░░░ 60%
+Progress: ████████████████░░░░ 80%
 
 ## Performance Metrics
 - **Phase Coverage:** 5/10 phases completed
@@ -34,12 +34,13 @@ Progress: ████████████░░░░░░░░ 60%
 |-------|----------|-----------|
 | 5.1 | Standardized `meta.describe` error shape | Chose string-based `error` to simplify parsing and match existing `cellpose` implementation. |
 | 5.1 | Required `tool_version` in discovery | Critical for reliable `SchemaCache` invalidation when underlying scientific libraries are updated. |
+| 5.1 | Enriched `meta.list` entries | Added `module` and `io_pattern` to enable server-side classification and better search results. |
 
 ### Session Continuity
 - v0.2.0 "Foundation" complete (Phases 1-5).
 - Scipy research (SUMMARY.md) incorporated into roadmap.
-- Phase 5.1 Plan 1 complete: Protocol defined and audit finished.
-- Stopped at: Completed 05.1-01-PLAN.md
+- Phase 5.1 Plan 1 & 4 complete: Protocol defined, audit finished, and cellpose aligned.
+- Stopped at: Completed 05.1-04-PLAN.md
 - Resume file: None
 
 ## Next Steps
