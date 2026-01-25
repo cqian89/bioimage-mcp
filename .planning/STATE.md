@@ -7,14 +7,14 @@
 
 ## Current Position
 - **Phase:** 6
-- **Plan:** 2 of 3 in current phase (Plan 1 and 2 complete)
-- **Status:** In progress
-- **Last activity:** 2026-01-25 - Completed 06-01-PLAN.md
+- **Plan:** 3 of 3 in current phase (Phase complete)
+- **Status:** Phase complete
+- **Last activity:** 2026-01-25 - Completed 06-03-PLAN.md
 
-Progress: ██████████████████████░ 96%
+Progress: ████████████████████████ 100%
 
 ## Performance Metrics
-- **Phase Coverage:** 7/11 phases completed (including 5.1)
+- **Phase Coverage:** 8/11 phases completed (including 5.1)
 ...
 ### Decisions table
 | Phase | Decision | Rationale |
@@ -30,14 +30,18 @@ Progress: ██████████████████████░ 
 | 6 | Transparent provenance | Prefixed subprocess-based discovery source with `subprocess:` to distinguish it from in-process discovery. |
 | 6 | Inject `_manifest_path` into adapter config | Allows resolution of relative paths (like blacklists) without global state. |
 | 6 | Filter deprecated functions in discovery | Ensures stable AI interaction by excluding stale scientific APIs. |
+| 6 | Curated allowlist for callables | Ensures security while supporting scipy measurements by restricting callables to safe numpy equivalents. |
+| 6 | 16MB uint16 threshold | Automatically cast large uint16 images to float32 to prevent overflow during processing. |
+| 6 | Context-dependent return format | Return OME-TIFF for image arrays and JSON for scalar measurements to optimize agent UX. |
 
 ### Session Continuity
 - v0.2.0 "Foundation" complete (Phases 1-5).
 - Scipy research (SUMMARY.md) incorporated into roadmap.
 - Phase 5.1 Complete: Protocol standardized across trackpy and cellpose, core parsers implemented.
-- Stopped at: Completed 06-01-PLAN.md
+- Phase 6 Complete: Scipy ndimage infrastructure established with metadata preservation and memory safety.
+- Stopped at: Completed 06-03-PLAN.md
 - Resume file: None
 
 ## Next Steps
-1. Complete Phase 6 (Infrastructure & N-D Foundation).
+1. Transition to Phase 7: Transforms & Measurements.
 
