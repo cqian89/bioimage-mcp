@@ -17,6 +17,7 @@ from bioimage_mcp.registry.manifest_schema import (
     ToolManifest,
 )
 from bioimage_mcp.runtimes.executor import execute_tool
+from bioimage_mcp.runtimes.meta_protocol import parse_meta_list_result
 
 logger = logging.getLogger(__name__)
 
@@ -334,8 +335,7 @@ def _discover_via_subprocess(manifest: ToolManifest) -> list[FunctionMetadata]:
             logger.warning("meta.list failed for %s: %s", manifest.tool_id, response)
             return []
 
-        result = response.get("outputs", {}).get("result", {})
-        functions = result.get("functions", [])
+        functions = parse_meta_list_result(response)
 
         return [
             FunctionMetadata(

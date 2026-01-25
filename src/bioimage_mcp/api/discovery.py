@@ -13,6 +13,7 @@ from bioimage_mcp.registry.loader import load_manifests
 from bioimage_mcp.registry.schema_cache import SchemaCache
 from bioimage_mcp.registry.search import SearchIndex, any_tag_matches, io_type_matches
 from bioimage_mcp.runtimes.executor import execute_tool
+from bioimage_mcp.runtimes.meta_protocol import parse_meta_describe_result
 
 
 class DiscoveryService:
@@ -542,26 +543,17 @@ class DiscoveryService:
                             request=request,
                             env_id=manifest.env_id,
                         )
-                        if response.get("ok"):
-                            # Normalize result extraction (support legacy and worker shapes)
-                            result = response.get("result")
-                            if result is None:
-                                result = response.get("outputs", {}).get("result")
-
-                            if isinstance(result, dict) and isinstance(
-                                result.get("params_schema"), dict
-                            ):
-                                params_schema = result["params_schema"]
-                                introspection_source = str(
-                                    result.get("introspection_source") or "manual"
-                                )
-                                cache.set(
-                                    tool_id=manifest.tool_id,
-                                    tool_version=manifest.tool_version,
-                                    fn_id=fn_id,
-                                    params_schema=params_schema,
-                                    introspection_source=introspection_source,
-                                )
+                        result = parse_meta_describe_result(response)
+                        if result:
+                            params_schema = result["params_schema"]
+                            introspection_source = result["introspection_source"]
+                            cache.set(
+                                tool_id=manifest.tool_id,
+                                tool_version=manifest.tool_version,
+                                fn_id=fn_id,
+                                params_schema=params_schema,
+                                introspection_source=introspection_source,
+                            )
                     except Exception as exc:
                         import logging
 
