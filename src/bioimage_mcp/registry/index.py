@@ -79,6 +79,8 @@ class RegistryIndex:
         outputs: list[dict],
         params_schema: dict,
         introspection_source: str | None = None,
+        module: str | None = None,
+        io_pattern: str | None = None,
     ) -> None:
         self._conn.execute(
             """
@@ -91,9 +93,11 @@ class RegistryIndex:
                 inputs_json,
                 outputs_json,
                 params_schema_json,
-                introspection_source
+                introspection_source,
+                module,
+                io_pattern
             )
-            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(fn_id) DO UPDATE SET
               tool_id=excluded.tool_id,
               name=excluded.name,
@@ -102,7 +106,9 @@ class RegistryIndex:
               inputs_json=excluded.inputs_json,
               outputs_json=excluded.outputs_json,
               params_schema_json=excluded.params_schema_json,
-              introspection_source=excluded.introspection_source
+              introspection_source=excluded.introspection_source,
+              module=excluded.module,
+              io_pattern=excluded.io_pattern
             """,
             (
                 fn_id,
@@ -114,6 +120,8 @@ class RegistryIndex:
                 json.dumps(outputs),
                 json.dumps(params_schema),
                 introspection_source,
+                module,
+                io_pattern,
             ),
         )
         self._conn.commit()
@@ -158,7 +166,8 @@ class RegistryIndex:
 
     def list_functions(self) -> list[dict]:
         rows = self._conn.execute(
-            "SELECT fn_id, tool_id, name, description, inputs_json, outputs_json FROM functions ORDER BY fn_id"
+            "SELECT fn_id, tool_id, name, description, inputs_json, outputs_json, "
+            "module, io_pattern, introspection_source FROM functions ORDER BY fn_id"
         ).fetchall()
         return [
             {
@@ -168,6 +177,9 @@ class RegistryIndex:
                 "description": row["description"],
                 "inputs": json.loads(row["inputs_json"]),
                 "outputs": json.loads(row["outputs_json"]),
+                "module": row["module"],
+                "io_pattern": row["io_pattern"],
+                "introspection_source": row["introspection_source"],
             }
             for row in rows
         ]

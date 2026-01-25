@@ -45,7 +45,9 @@ def init_schema(conn: sqlite3.Connection) -> None:
             inputs_json TEXT NOT NULL,
             outputs_json TEXT NOT NULL,
             params_schema_json TEXT NOT NULL,
-            introspection_source TEXT
+            introspection_source TEXT,
+            module TEXT,
+            io_pattern TEXT
         );
 
         CREATE TABLE IF NOT EXISTS artifacts (
@@ -128,4 +130,12 @@ def init_schema(conn: sqlite3.Connection) -> None:
         );
         """
     )
+
+    # Migrations
+    existing_cols = {row["name"] for row in conn.execute("PRAGMA table_info(functions)")}
+    if "module" not in existing_cols:
+        conn.execute("ALTER TABLE functions ADD COLUMN module TEXT")
+    if "io_pattern" not in existing_cols:
+        conn.execute("ALTER TABLE functions ADD COLUMN io_pattern TEXT")
+
     conn.commit()
