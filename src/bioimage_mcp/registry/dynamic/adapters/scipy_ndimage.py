@@ -121,6 +121,9 @@ class ScipyNdimageAdapter(BaseAdapter):
         if func_name == "label":
             return IOPattern.IMAGE_TO_LABELS_AND_JSON
 
+        if "fourier" in func_name or module_name == "scipy.fft":
+            return IOPattern.IMAGE_TO_IMAGE
+
         measurement_funcs = {
             "center_of_mass",
             "extrema",
@@ -546,7 +549,15 @@ class ScipyNdimageAdapter(BaseAdapter):
                     if updated:
                         metadata_override["physical_pixel_sizes"] = pps_dict
 
-        # 7) Output normalization & metadata override
+        # 7) Fourier workflow support (Complex -> Real transition)
+        # If this is an inverse FFT and result is complex, check if it can be real
+        if (func_name.startswith("ifft") or "irfft" in func_name) and np.iscomplexobj(result):
+            # If the imaginary part is negligible, cast to real to complete workflow
+            if np.allclose(result.imag, 0, atol=1e-6):
+                logger.info(f"Automatically casting complex {func_name} result to real")
+                result = result.real
+
+        # 8) Output normalization & metadata override
         # Handle label separately as it returns (image, count)
         if func_name == "label" and isinstance(result, tuple) and len(result) == 2:
             labeled_image, count = result
