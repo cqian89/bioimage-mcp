@@ -49,6 +49,7 @@ dynamic_sources:
     modules:
       - scipy.ndimage
       - scipy.fft
+      - scipy.stats
     include_patterns:
       - "*"
     exclude_patterns:
