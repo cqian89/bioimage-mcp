@@ -6,13 +6,13 @@
 - **Current Focus:** Phase 7 (Transforms & Measurements)
 
 ## Current Position
-- **Phase:** 8
-- **Plan:** 3 of 3 in current phase
-- **Status:** Phase complete
-- **Last activity:** 2026-01-26 - Completed 08-03-PLAN.md
-- **Next Phase (added to roadmap):** 11
+- **Phase:** 9
+- **Plan:** 1 of 4 in current phase
+- **Status:** In progress
+- **Last activity:** 2026-01-26 - Completed 09-01-PLAN.md
+- **Next Phase:** 11
 
-Progress: ██████████████████████░░░░ 85%
+Progress: ███████████████████████░░░ 88%
 
 ## Performance Metrics
 - **Phase Coverage:** 9/11 phases completed (including 5.1)
@@ -24,6 +24,8 @@ Progress: ██████████████████████░�
 | 8 | Native JSON Serialization | Statistical results are returned as `ScalarRef` (JSON) to allow easy consumption by AI agents and downstream logic. |
 | 8 | Curated Stats Wrappers | Exposing specific `*_table` wrappers instead of raw `scipy.stats` functions ensures reliable artifact I/O and easier agent consumption. |
 | 8 | TABLE_PAIR_TO_JSON pattern | Introduced a specific I/O pattern for two-sample tests to simplify port mapping for t-tests and KS-tests. |
+| 9 | Spatial/Signal Routing | Used prefix-based routing in ScipyAdapter to support submodules like scipy.spatial and scipy.signal without breaking ndimage/stats. |
+| 9 | KDTree Lifecycle Patterns | Introduced TABLE_TO_OBJECT and OBJECT_AND_TABLE_TO_JSON to support stateful KDTree building and querying. |
 
 ## Accumulated Context
 
@@ -37,9 +39,10 @@ Progress: ██████████████████████░�
 - Phase 6 Complete: Scipy ndimage infrastructure established with metadata preservation and memory safety.
 - Phase 7 Complete: IO patterns, zoom transforms, and Fourier workflow support implemented.
 - Phase 8 Complete: Statistical Analysis foundation, wrappers, distributions, and comprehensive testing implemented.
-- Stopped at: Completed 08-03-PLAN.md
+- Phase 9 Plan 1 Complete: Spatial/Signal routing established.
+- Stopped at: Completed 09-01-PLAN.md
 - Resume file: None
 
 ## Next Steps
-1. Transition to Phase 9: Spatial & Signal Processing.
-2. Define plans for Phase 9 (KDTree, Spectral analysis).
+1. Execute 09-02-PLAN.md: Spatial distances + Voronoi/Delaunay wrappers.
+2. Implement KDTree build/query wrappers (09-03).
