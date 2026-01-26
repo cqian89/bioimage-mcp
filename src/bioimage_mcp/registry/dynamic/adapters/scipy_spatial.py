@@ -292,6 +292,7 @@ class ScipySpatialAdapter(ScipyStatsAdapter):
 
         return [
             {
+                "ref_id": uid,
                 "type": "ObjectRef",
                 "python_class": "scipy.spatial.cKDTree",
                 "uri": uri,

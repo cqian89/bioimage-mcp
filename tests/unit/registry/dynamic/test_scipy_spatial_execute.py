@@ -5,6 +5,7 @@ import json
 from unittest.mock import patch, MagicMock
 from bioimage_mcp.registry.dynamic.adapters.scipy_spatial import ScipySpatialAdapter
 from bioimage_mcp.registry.dynamic import object_cache
+from bioimage_mcp.artifacts.models import ObjectRef
 
 
 @pytest.fixture
@@ -160,7 +161,12 @@ def test_execute_kdtree_lifecycle(spatial_adapter, tmp_path):
         assert len(results_build) == 1
         ref_obj = results_build[0]
         assert ref_obj["type"] == "ObjectRef"
+        assert "ref_id" in ref_obj and isinstance(ref_obj["ref_id"], str)
         assert ref_obj["python_class"] == "scipy.spatial.cKDTree"
+
+        # Strict schema validation
+        ObjectRef.model_validate(ref_obj)
+
         uri_tree = ref_obj["uri"]
         assert uri_tree.startswith("obj://default/scipy_spatial/")
 
