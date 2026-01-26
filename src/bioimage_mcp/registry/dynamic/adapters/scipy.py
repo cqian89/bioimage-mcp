@@ -57,15 +57,25 @@ class ScipyAdapter(BaseAdapter):
         work_dir: Any | None = None,
     ) -> list[dict]:
         """Route execution to the appropriate sub-adapter."""
-        # Infer module from fn_id (e.g. scipy.stats.ttest_ind -> scipy.stats)
+        # Strip optional tool prefix (e.g. base.scipy.stats.ttest_ind -> scipy.stats.ttest_ind)
         parts = fn_id.split(".")
+        if "scipy" in parts:
+            idx = parts.index("scipy")
+            parts = parts[idx:]
+
+        clean_fn_id = ".".join(parts)
+
+        # Infer module from fn_id (e.g. scipy.stats.ttest_ind -> scipy.stats)
         if len(parts) >= 3:
             module_name = ".".join(parts[:-1])
+            # Handle distribution methods like scipy.stats.norm.pdf -> scipy.stats
+            if module_name.startswith("scipy.stats"):
+                module_name = "scipy.stats"
         else:
             module_name = ""
 
         adapter = self._get_adapter(module_name)
-        return adapter.execute(fn_id, inputs, params, work_dir=work_dir)
+        return adapter.execute(clean_fn_id, inputs, params, work_dir=work_dir)
 
     def resolve_io_pattern(self, func_name: str, signature: Any) -> IOPattern:
         """Resolve I/O pattern (defaulting to ndimage logic)."""
