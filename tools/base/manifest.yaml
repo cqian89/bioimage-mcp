@@ -48,6 +48,7 @@ dynamic_sources:
     prefix: scipy
     modules:
       - scipy.ndimage
+      - scipy.fft
     include_patterns:
       - "*"
     exclude_patterns:
