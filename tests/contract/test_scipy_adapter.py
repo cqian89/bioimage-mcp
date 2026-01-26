@@ -128,7 +128,7 @@ def test_scipy_adapter_execute_calls_gaussian_filter(mock_gaussian_filter, mock_
 
     outputs = adapter.execute(
         fn_id="scipy.ndimage.gaussian_filter",
-        inputs=[input_artifact],
+        inputs=[("image", input_artifact)],
         params={"sigma": 2.0},
     )
 
@@ -165,7 +165,7 @@ def test_scipy_adapter_execute_calls_sobel(mock_sobel, mock_bioimage):
 
     outputs = adapter.execute(
         fn_id="scipy.ndimage.sobel",
-        inputs=[input_artifact],
+        inputs=[("image", input_artifact)],
         params={},
     )
 
@@ -194,3 +194,106 @@ def test_scipy_adapter_signature_analysis():
     # gaussian_filter has parameters like: input, sigma, order, output, mode, cval, truncate
     assert fn_meta.parameters is not None
     assert len(fn_meta.parameters) > 0
+
+
+def test_scipy_adapter_discovers_label():
+    """discover() should return metadata for scipy.ndimage.label with correct pattern."""
+    adapter = ScipyNdimageAdapter()
+
+    module_config = {
+        "module_name": "scipy.ndimage",
+        "include": ["label"],
+    }
+
+    discovered = adapter.discover(module_config)
+
+    assert len(discovered) == 1
+    fn_meta = discovered[0]
+    assert fn_meta.name == "label"
+    assert fn_meta.io_pattern == IOPattern.IMAGE_TO_LABELS_AND_JSON
+
+
+def test_scipy_adapter_io_pattern_inference_for_measurements():
+    """Adapter should correctly identify IO patterns for measurements and labeling."""
+    adapter = ScipyNdimageAdapter()
+
+    assert (
+        adapter.determine_io_pattern("scipy.ndimage", "label") == IOPattern.IMAGE_TO_LABELS_AND_JSON
+    )
+    assert (
+        adapter.determine_io_pattern("scipy.ndimage", "center_of_mass")
+        == IOPattern.IMAGE_AND_LABELS_TO_JSON
+    )
+    assert (
+        adapter.determine_io_pattern("scipy.ndimage", "mean") == IOPattern.IMAGE_AND_LABELS_TO_JSON
+    )
+
+
+@patch("bioio.BioImage")
+@patch("scipy.ndimage.label")
+def test_scipy_adapter_execute_label(mock_label, mock_bioimage):
+    """execute() for label should return two artifacts (labels and count)."""
+    import numpy as np
+
+    adapter = ScipyNdimageAdapter()
+
+    mock_img = MagicMock()
+    mock_img.reader.data = np.zeros((10, 10))
+    mock_bioimage.return_value = mock_img
+
+    labeled = np.zeros((10, 10), dtype=np.int32)
+    labeled[1:3, 1:3] = 1
+    mock_label.return_value = (labeled, 1)
+
+    input_artifact = {
+        "ref_id": "test-image",
+        "type": "BioImageRef",
+        "uri": "file:///tmp/test.tif",
+        "metadata": {"axes": "YX"},
+    }
+
+    outputs = adapter.execute(
+        fn_id="scipy.ndimage.label",
+        inputs=[("image", input_artifact)],
+        params={},
+    )
+
+    assert mock_label.called
+    assert len(outputs) == 2
+    # First output should be labels
+    assert outputs[0]["type"] == "LabelImageRef"
+    assert outputs[0]["metadata"]["output_name"] == "labels"
+    # Second output should be count (JSON)
+    assert outputs[1]["type"] == "NativeOutputRef"
+    assert outputs[1]["metadata"]["output_name"] == "output"
+
+
+@patch("bioio.BioImage")
+@patch("scipy.ndimage.mean")
+def test_scipy_adapter_execute_measurement(mock_mean, mock_bioimage):
+    """execute() for measurements should return a JSON artifact."""
+    import numpy as np
+
+    adapter = ScipyNdimageAdapter()
+
+    mock_img = MagicMock()
+    mock_img.reader.data = np.zeros((10, 10))
+    mock_bioimage.return_value = mock_img
+    mock_mean.return_value = 5.5
+
+    input_artifact = {
+        "ref_id": "test-image",
+        "type": "BioImageRef",
+        "uri": "file:///tmp/test.tif",
+    }
+
+    outputs = adapter.execute(
+        fn_id="scipy.ndimage.mean",
+        inputs=[("image", input_artifact)],
+        params={},
+    )
+
+    assert mock_mean.called
+    assert len(outputs) == 1
+    assert outputs[0]["type"] == "NativeOutputRef"
+    assert outputs[0]["format"] == "json"
