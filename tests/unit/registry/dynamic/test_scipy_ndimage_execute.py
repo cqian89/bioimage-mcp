@@ -33,6 +33,18 @@ class MockFilters:
             return np.full_like(image, val)
         return val
 
+    @staticmethod
+    def zoom(image, zoom, **kwargs):
+        return image
+
+    @staticmethod
+    def rotate(image, angle, **kwargs):
+        return image
+
+    @staticmethod
+    def shift(image, shift, **kwargs):
+        return image
+
 
 class MockNdimage:
     filters = MockFilters()
@@ -51,6 +63,9 @@ def mock_module(tmp_path):
     mock_mod.simple_filter = MockFilters.simple_filter
     mock_mod.auxiliary_filter = MockFilters.auxiliary_filter
     mock_mod.callable_filter = MockFilters.callable_filter
+    mock_mod.zoom = MockFilters.zoom
+    mock_mod.rotate = MockFilters.rotate
+    mock_mod.shift = MockFilters.shift
 
     real_import = importlib.import_module
 
@@ -318,3 +333,95 @@ def test_execute_metadata_list_form_persistence(adapter, mock_module, tmp_path):
     assert pps is not None
     assert pps["Y"] == 0.5
     assert pps["X"] == 0.25
+
+
+def test_execute_zoom_metadata_updates(adapter, mock_module, tmp_path):
+    # Setup 2D input with YX axes
+    data = np.random.rand(10, 10).astype(np.float32)
+    uri = "obj://zoom_yx"
+    OBJECT_CACHE[uri] = data
+
+    inputs = [
+        (
+            "image",
+            {
+                "uri": uri,
+                "metadata": {
+                    "axes": "YX",
+                    "physical_pixel_sizes": {"Y": 0.5, "X": 0.25},
+                },
+            },
+        )
+    ]
+    # Zoom Y by 1.0 (no change), X by 2.0 (pixel size should be halved)
+    params = {"zoom": [1.0, 2.0]}
+
+    results = adapter.execute(
+        fn_id="scipy.ndimage.zoom", inputs=inputs, params=params, work_dir=tmp_path
+    )
+
+    out_pps = results[0]["metadata"]["physical_pixel_sizes"]
+    assert out_pps["Y"] == 0.5
+    assert out_pps["X"] == 0.125
+
+
+def test_execute_zoom_5d_metadata_updates(adapter, mock_module, tmp_path):
+    # Setup 5D input TCZYX
+    data = np.random.rand(1, 1, 1, 10, 10).astype(np.float32)
+    uri = "obj://zoom_5d"
+    OBJECT_CACHE[uri] = data
+
+    inputs = [
+        (
+            "image",
+            {
+                "uri": uri,
+                "metadata": {
+                    "axes": "TCZYX",
+                    "physical_pixel_sizes": {"Z": 1.0, "Y": 0.5, "X": 0.25},
+                },
+            },
+        )
+    ]
+    # Zoom factors for T, C, Z, Y, X
+    # T, C factors should be ignored for physical size updates
+    params = {"zoom": [1.0, 1.0, 2.0, 1.0, 0.5]}
+
+    results = adapter.execute(
+        fn_id="scipy.ndimage.zoom", inputs=inputs, params=params, work_dir=tmp_path
+    )
+
+    out_pps = results[0]["metadata"]["physical_pixel_sizes"]
+    assert out_pps["Z"] == 0.5  # 1.0 / 2.0
+    assert out_pps["Y"] == 0.5  # 0.5 / 1.0
+    assert out_pps["X"] == 0.5  # 0.25 / 0.5
+
+
+def test_execute_transform_pass_through(adapter, mock_module, tmp_path):
+    # Proves rotate and shift preserve metadata without changes
+    data = np.random.rand(10, 10).astype(np.float32)
+    uri = "obj://transform_pass"
+    OBJECT_CACHE[uri] = data
+
+    metadata = {
+        "axes": "YX",
+        "physical_pixel_sizes": {"Y": 0.5, "X": 0.25},
+        "channel_names": ["Green"],
+    }
+    inputs = [("image", {"uri": uri, "metadata": metadata})]
+
+    # 1) Rotate
+    res_rotate = adapter.execute(
+        fn_id="scipy.ndimage.rotate", inputs=inputs, params={"angle": 45}, work_dir=tmp_path
+    )
+    meta_rotate = res_rotate[0]["metadata"]
+    assert meta_rotate["physical_pixel_sizes"] == metadata["physical_pixel_sizes"]
+    assert meta_rotate["channel_names"] == metadata["channel_names"]
+
+    # 2) Shift
+    res_shift = adapter.execute(
+        fn_id="scipy.ndimage.shift", inputs=inputs, params={"shift": [1, 1]}, work_dir=tmp_path
+    )
+    meta_shift = res_shift[0]["metadata"]
+    assert meta_shift["physical_pixel_sizes"] == metadata["physical_pixel_sizes"]
+    assert meta_shift["channel_names"] == metadata["channel_names"]
