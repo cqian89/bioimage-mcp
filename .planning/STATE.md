@@ -10,6 +10,7 @@
 - **Plan:** 3 of 3 in current phase
 - **Status:** Phase complete
 - **Last activity:** 2026-01-26 - Completed 08-03-PLAN.md
+- **Next Phase (added to roadmap):** 11
 
 Progress: ██████████████████████░░░░ 85%
 
@@ -24,6 +25,11 @@ Progress: ██████████████████████░�
 | 8 | Curated Stats Wrappers | Exposing specific `*_table` wrappers instead of raw `scipy.stats` functions ensures reliable artifact I/O and easier agent consumption. |
 | 8 | TABLE_PAIR_TO_JSON pattern | Introduced a specific I/O pattern for two-sample tests to simplify port mapping for t-tests and KS-tests. |
 
+## Accumulated Context
+
+### Roadmap Evolution
+- Phase 11 added: Fix scipy.stats dynamic discovery and adapter gaps
+
 ### Session Continuity
 - v0.2.0 "Foundation" complete (Phases 1-5).
 - Scipy research (SUMMARY.md) incorporated into roadmap.
@@ -37,4 +43,3 @@ Progress: ██████████████████████░�
 ## Next Steps
 1. Transition to Phase 9: Spatial & Signal Processing.
 2. Define plans for Phase 9 (KDTree, Spectral analysis).
-

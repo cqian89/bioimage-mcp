@@ -3,7 +3,7 @@
 ## Integration Pattern (Reuse)
 
 - Follow the Phase 08 approach: a composite `ScipyAdapter` routes by `fn_id` prefix to sub-adapters.
-- Prefer curated wrappers (stable I/O + predictable outputs) over exposing raw `scipy.spatial` / `scipy.signal` functions dynamically.
+- Prefer exposing raw `scipy.spatial` / `scipy.signal` functions dynamically over using wrappers.
 
 ## Artifact I/O Patterns
 
