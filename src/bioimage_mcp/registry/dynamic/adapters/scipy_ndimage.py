@@ -118,6 +118,27 @@ class ScipyNdimageAdapter(BaseAdapter):
 
     def determine_io_pattern(self, module_name: str, func_name: str) -> IOPattern:
         """Determine I/O pattern based on module and function name."""
+        if func_name == "label":
+            return IOPattern.IMAGE_TO_LABELS_AND_JSON
+
+        measurement_funcs = {
+            "center_of_mass",
+            "extrema",
+            "find_objects",
+            "histogram",
+            "maximum",
+            "maximum_position",
+            "mean",
+            "median",
+            "minimum",
+            "minimum_position",
+            "standard_deviation",
+            "sum",
+            "variance",
+        }
+        if func_name in measurement_funcs:
+            return IOPattern.IMAGE_AND_LABELS_TO_JSON
+
         # scipy.ndimage functions are predominantly image-to-image transformations
         # (filters, morphology, interpolation, etc.)
         return IOPattern.IMAGE_TO_IMAGE
@@ -285,6 +306,8 @@ class ScipyNdimageAdapter(BaseAdapter):
                 meta["physical_pixel_sizes"] = metadata_override["physical_pixel_sizes"]
             if "channel_names" in metadata_override:
                 meta["channel_names"] = metadata_override["channel_names"]
+            if "output_name" in metadata_override:
+                meta["output_name"] = metadata_override["output_name"]
 
         ref = {
             "type": "BioImageRef",
@@ -313,7 +336,12 @@ class ScipyNdimageAdapter(BaseAdapter):
         }
         return axes_map.get(array.ndim, "")
 
-    def _save_scalar(self, value: Any, work_dir: Path | None = None) -> dict:
+    def _save_scalar(
+        self,
+        value: Any,
+        work_dir: Path | None = None,
+        metadata_override: dict[str, Any] | None = None,
+    ) -> dict:
         """Save scalar value to JSON and return artifact reference dict."""
         import json
 
@@ -328,21 +356,33 @@ class ScipyNdimageAdapter(BaseAdapter):
             work_dir.mkdir(parents=True, exist_ok=True)
             path = work_dir / "output.json"
 
-        # Convert numpy scalars to native python types
-        if hasattr(value, "item"):
-            val_to_save = value.item()
-        else:
-            val_to_save = value
+        # Convert numpy scalars to native python types recursively
+        def _to_native(v: Any) -> Any:
+            if hasattr(v, "item") and not isinstance(v, np.ndarray):
+                return v.item()
+            if isinstance(v, (list, tuple)):
+                return [_to_native(i) for i in v]
+            if isinstance(v, np.ndarray):
+                return v.tolist()
+            if isinstance(v, slice):
+                return {"start": v.start, "stop": v.stop, "step": v.step}
+            return v
+
+        val_to_save = _to_native(value)
 
         with open(path, "w") as f:
             json.dump({"value": val_to_save}, f)
+
+        meta = {"dtype": str(type(val_to_save).__name__)}
+        if metadata_override:
+            meta.update(metadata_override)
 
         return {
             "type": "NativeOutputRef",
             "format": "json",
             "uri": path.absolute().as_uri(),
             "path": str(path.absolute()),
-            "metadata": {"dtype": str(type(val_to_save).__name__)},
+            "metadata": meta,
         }
 
     def execute(
@@ -445,15 +485,31 @@ class ScipyNdimageAdapter(BaseAdapter):
             result = func(**params)
 
         # 6) Output metadata override
-        # Returns a list containing the output artifact reference dict
-        # Check if result is an image array or a scalar/measurements
+        # Handle label separately as it returns (image, count)
+        if func_name == "label" and isinstance(result, tuple) and len(result) == 2:
+            labeled_image, count = result
+            # Ensure labeled image has LabelImageRef type
+            labels_meta = metadata_override.copy()
+            labels_meta["output_name"] = "labels"
+            labels_ref = self._save_image(
+                labeled_image, work_dir=work_dir, axes=axes, metadata_override=labels_meta
+            )
+            labels_ref["type"] = "LabelImageRef"
+
+            count_meta = {"output_name": "output"}
+            count_ref = self._save_scalar(count, work_dir=work_dir, metadata_override=count_meta)
+            return [labels_ref, count_ref]
+
+        # General handling for single outputs or other multi-outputs
         if isinstance(result, np.ndarray) and result.ndim > 0:
             output_ref = self._save_image(
                 result, work_dir=work_dir, axes=axes, metadata_override=metadata_override
             )
         else:
             # Scalar or small array result (measurements)
-            output_ref = self._save_scalar(result, work_dir=work_dir)
+            output_ref = self._save_scalar(
+                result, work_dir=work_dir, metadata_override=metadata_override
+            )
 
         return [output_ref]
 
