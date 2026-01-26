@@ -210,6 +210,27 @@ def _map_io_pattern_to_ports(pattern: IOPattern) -> tuple[list[Port], list[Port]
     elif pattern == IOPattern.PARAMS_TO_JSON:
         inputs = []
         outputs = [Port(name="output", artifact_type="ScalarRef")]
+    elif pattern == IOPattern.TABLE_TO_OBJECT:
+        inputs = [Port(name="table", artifact_type=["TableRef", "ObjectRef"])]
+        outputs = [Port(name="object", artifact_type="ObjectRef")]
+    elif pattern == IOPattern.OBJECT_AND_TABLE_TO_JSON:
+        inputs = [
+            Port(name="object", artifact_type="ObjectRef"),
+            Port(name="table", artifact_type=["TableRef", "ObjectRef"]),
+        ]
+        outputs = [Port(name="output", artifact_type="ScalarRef")]
+    elif pattern == IOPattern.TABLE_TO_FILE:
+        inputs = [Port(name="table", artifact_type=["TableRef", "ObjectRef"])]
+        outputs = [Port(name="output", artifact_type="NativeOutputRef")]
+    elif pattern == IOPattern.TABLE_PAIR_TO_FILE:
+        inputs = [
+            Port(name="table_a", artifact_type=["TableRef", "ObjectRef"]),
+            Port(name="table_b", artifact_type=["TableRef", "ObjectRef"]),
+        ]
+        outputs = [Port(name="output", artifact_type="NativeOutputRef")]
+    elif pattern == IOPattern.ANY_TO_TABLE:
+        inputs = [Port(name="input", artifact_type=["TableRef", "BioImageRef", "ObjectRef"])]
+        outputs = [Port(name="table", artifact_type="TableRef")]
     else:
         # Default/Generic: single input/output
         inputs = [Port(name="image", artifact_type="BioImageRef")]

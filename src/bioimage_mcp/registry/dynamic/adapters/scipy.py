@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING, Any
 
 from bioimage_mcp.registry.dynamic.adapters import BaseAdapter
 from bioimage_mcp.registry.dynamic.adapters.scipy_ndimage import ScipyNdimageAdapter
+from bioimage_mcp.registry.dynamic.adapters.scipy_signal import ScipySignalAdapter
+from bioimage_mcp.registry.dynamic.adapters.scipy_spatial import ScipySpatialAdapter
 from bioimage_mcp.registry.dynamic.adapters.scipy_stats import ScipyStatsAdapter
 
 if TYPE_CHECKING:
@@ -21,11 +23,17 @@ class ScipyAdapter(BaseAdapter):
     def __init__(self) -> None:
         self.ndimage = ScipyNdimageAdapter()
         self.stats = ScipyStatsAdapter()
+        self.spatial = ScipySpatialAdapter()
+        self.signal = ScipySignalAdapter()
 
     def _get_adapter(self, module_name: str) -> BaseAdapter:
         """Route to the appropriate sub-adapter based on module name."""
-        if module_name == "scipy.stats":
+        if module_name.startswith("scipy.stats"):
             return self.stats
+        if module_name.startswith("scipy.spatial"):
+            return self.spatial
+        if module_name.startswith("scipy.signal"):
+            return self.signal
         # Default to ndimage (also handles fft via generic array processing)
         return self.ndimage
 

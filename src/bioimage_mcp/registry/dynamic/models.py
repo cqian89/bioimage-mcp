@@ -51,6 +51,11 @@ class IOPattern(str, Enum):
     TABLE_PAIR_TO_JSON = "table_pair_to_json"
     MULTI_TABLE_TO_JSON = "multi_table_to_json"
     PARAMS_TO_JSON = "params_to_json"
+    TABLE_TO_OBJECT = "table_to_object"
+    OBJECT_AND_TABLE_TO_JSON = "object_and_table_to_json"
+    ANY_TO_TABLE = "any_to_table"
+    TABLE_TO_FILE = "table_to_file"
+    TABLE_PAIR_TO_FILE = "table_pair_to_file"
     GENERIC = "generic"
 
 

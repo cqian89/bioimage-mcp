@@ -265,7 +265,7 @@ def test_scipy_adapter_execute_label(mock_label, mock_bioimage):
     assert outputs[0]["metadata"]["output_name"] == "labels"
     # Second output should be count (JSON)
     assert outputs[1]["type"] == "NativeOutputRef"
-    assert outputs[1]["metadata"]["output_name"] == "output"
+    assert outputs[1]["metadata"]["output_name"] == "counts"
 
 
 @patch("bioio.BioImage")

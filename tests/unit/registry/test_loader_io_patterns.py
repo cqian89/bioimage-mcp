@@ -57,3 +57,50 @@ def test_map_io_pattern_to_ports_stats_patterns():
     assert len(inputs) == 0
     assert len(outputs) == 1
     assert outputs[0].artifact_type == "ScalarRef"
+
+
+def test_map_io_pattern_to_ports_spatial_patterns():
+    # Test TABLE_TO_OBJECT
+    inputs, outputs = _map_io_pattern_to_ports(IOPattern.TABLE_TO_OBJECT)
+    assert len(inputs) == 1
+    assert inputs[0].name == "table"
+    assert "TableRef" in inputs[0].artifact_type
+    assert "ObjectRef" in inputs[0].artifact_type
+    assert len(outputs) == 1
+    assert outputs[0].name == "object"
+    assert outputs[0].artifact_type == "ObjectRef"
+
+    # Test OBJECT_AND_TABLE_TO_JSON
+    inputs, outputs = _map_io_pattern_to_ports(IOPattern.OBJECT_AND_TABLE_TO_JSON)
+    assert len(inputs) == 2
+    assert inputs[0].name == "object"
+    assert inputs[0].artifact_type == "ObjectRef"
+    assert inputs[1].name == "table"
+    assert "TableRef" in inputs[1].artifact_type
+    assert len(outputs) == 1
+    assert outputs[0].artifact_type == "ScalarRef"
+
+    # Test TABLE_TO_FILE
+    inputs, outputs = _map_io_pattern_to_ports(IOPattern.TABLE_TO_FILE)
+    assert len(inputs) == 1
+    assert inputs[0].name == "table"
+    assert len(outputs) == 1
+    assert outputs[0].artifact_type == "NativeOutputRef"
+
+    # Test TABLE_PAIR_TO_FILE
+    inputs, outputs = _map_io_pattern_to_ports(IOPattern.TABLE_PAIR_TO_FILE)
+    assert len(inputs) == 2
+    assert inputs[0].name == "table_a"
+    assert inputs[1].name == "table_b"
+    assert len(outputs) == 1
+    assert outputs[0].artifact_type == "NativeOutputRef"
+
+    # Test ANY_TO_TABLE
+    inputs, outputs = _map_io_pattern_to_ports(IOPattern.ANY_TO_TABLE)
+    assert len(inputs) == 1
+    assert inputs[0].name == "input"
+    assert "TableRef" in inputs[0].artifact_type
+    assert "BioImageRef" in inputs[0].artifact_type
+    assert len(outputs) == 1
+    assert outputs[0].name == "table"
+    assert outputs[0].artifact_type == "TableRef"

@@ -50,6 +50,9 @@ dynamic_sources:
       - scipy.ndimage
       - scipy.fft
       - scipy.stats
+      - scipy.spatial
+      - scipy.spatial.distance
+      - scipy.signal
     include_patterns:
       - "*"
     exclude_patterns:
