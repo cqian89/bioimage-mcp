@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 
 from bioimage_mcp.registry.dynamic.adapters.scipy_ndimage import ScipyNdimageAdapter
 from bioimage_mcp.registry.dynamic.object_cache import OBJECT_CACHE
+from bioimage_mcp.registry.dynamic.models import IOPattern
 
 
 # Create a mock module structure for testing
@@ -594,3 +595,63 @@ def test_execute_sum_or_mean_json_scalar_output(adapter, mock_module, tmp_path):
         payload = json.load(f)
 
     assert payload == {"1": 10.0}
+
+
+def test_execute_fourier_complex_workflow(adapter, tmp_path):
+    # Setup mock for scipy.fft
+    mock_fft = MagicMock()
+
+    # fftn returns complex data
+    complex_data = (np.random.rand(4, 4) + 1j * np.random.rand(4, 4)).astype(np.complex128)
+    mock_fft.fftn = MagicMock(return_value=complex_data)
+
+    # ifftn returns complex, but we'll test the auto-real-cast
+    real_data = np.random.rand(4, 4).astype(np.float32)
+    # Return complex with effectively zero imaginary part
+    mock_fft.ifftn = MagicMock(return_value=real_data.astype(np.complex128))
+
+    real_import = importlib.import_module
+
+    def side_effect(name, *args, **kwargs):
+        if name == "scipy.fft":
+            return mock_fft
+        return real_import(name, *args, **kwargs)
+
+    with patch("importlib.import_module", side_effect=side_effect):
+        # 1) Test FFT (Real -> Complex)
+        uri_real = "obj://fft_input"
+        OBJECT_CACHE[uri_real] = np.random.rand(4, 4).astype(np.float32)
+
+        res_fft = adapter.execute(
+            fn_id="scipy.fft.fftn",
+            inputs=[("image", {"uri": uri_real})],
+            params={},
+            work_dir=tmp_path,
+        )
+
+        assert "complex" in res_fft[0]["metadata"]["dtype"]
+
+        # 2) Test IFFT (Complex -> Real auto-cast)
+        uri_complex = "obj://ifft_input"
+        OBJECT_CACHE[uri_complex] = complex_data
+
+        res_ifft = adapter.execute(
+            fn_id="scipy.fft.ifftn",
+            inputs=[("image", {"uri": uri_complex})],
+            params={},
+            work_dir=tmp_path,
+        )
+
+        # Should be cast to real because mock returns complex with 0 imag
+        assert res_ifft[0]["metadata"]["dtype"] == "float64"  # complex128.real is float64
+
+
+def test_determine_io_pattern_fourier(adapter):
+    # Test fourier functions in ndimage
+    assert (
+        adapter.determine_io_pattern("scipy.ndimage", "fourier_gaussian")
+        == IOPattern.IMAGE_TO_IMAGE
+    )
+    # Test fft module functions
+    assert adapter.determine_io_pattern("scipy.fft", "fft") == IOPattern.IMAGE_TO_IMAGE
+    assert adapter.determine_io_pattern("scipy.fft", "ifft2") == IOPattern.IMAGE_TO_IMAGE
