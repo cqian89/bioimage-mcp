@@ -78,7 +78,7 @@ Plans:
 
 Phases:
 - [x] 08-01-PLAN.md — Add stats IOPatterns + scipy adapter routing + enable scipy.stats discovery
-- [ ] 08-02-PLAN.md — Implement scipy.stats wrappers (summary/tests) + distribution methods with JSON outputs
+- [x] 08-02-PLAN.md — Implement scipy.stats wrappers (summary/tests) + distribution methods with JSON outputs
 - [ ] 08-03-PLAN.md — Add contract + unit tests for scipy.stats discovery and execution
 
 ### Phase 9: Spatial & Signal Processing

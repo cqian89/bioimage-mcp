@@ -7,11 +7,11 @@
 
 ## Current Position
 - **Phase:** 8
-- **Plan:** 1 of 3 in current phase
+- **Plan:** 2 of 3 in current phase
 - **Status:** In progress
-- **Last activity:** 2026-01-26 - Completed 08-01-PLAN.md
+- **Last activity:** 2026-01-26 - Completed 08-02-PLAN.md
 
-Progress: ████████████████████░░░░░░ 78%
+Progress: █████████████████████░░░░░ 81%
 
 ## Performance Metrics
 - **Phase Coverage:** 9/11 phases completed (including 5.1)
@@ -21,6 +21,8 @@ Progress: ████████████████████░░░�
 | 8 | Composite Scipy Adapter | Using a dispatcher allows clean separation of concerns between image processing (`ndimage`) and statistics (`stats`) while maintaining a single registry entry. |
 | 8 | Inheritance for Stats Adapter | `ScipyStatsAdapter` inherits from `ScipyNdimageAdapter` to reuse robust artifact loading and JSON serialization logic. |
 | 8 | Native JSON Serialization | Statistical results are returned as `ScalarRef` (JSON) to allow easy consumption by AI agents and downstream logic. |
+| 8 | Curated Stats Wrappers | Exposing specific `*_table` wrappers instead of raw `scipy.stats` functions ensures reliable artifact I/O and easier agent consumption. |
+| 8 | TABLE_PAIR_TO_JSON pattern | Introduced a specific I/O pattern for two-sample tests to simplify port mapping for t-tests and KS-tests. |
 
 ### Session Continuity
 - v0.2.0 "Foundation" complete (Phases 1-5).
@@ -29,9 +31,10 @@ Progress: ████████████████████░░░�
 - Phase 6 Complete: Scipy ndimage infrastructure established with metadata preservation and memory safety.
 - Phase 7 Complete: IO patterns, zoom transforms, and Fourier workflow support implemented.
 - Phase 8 Plan 1 Complete: Statistical Analysis foundation with composite adapter and stats discovery.
-- Stopped at: Completed 08-01-PLAN.md
+- Phase 8 Plan 2 Complete: Statistical Analysis wrappers and distribution methods implemented.
+- Stopped at: Completed 08-02-PLAN.md
 - Resume file: None
 
 ## Next Steps
-1. Execute 07-04-PLAN.md: Add complex Fourier artifact support + expose scipy.fft
+1. Execute 08-03-PLAN.md: Add contract + unit tests for scipy.stats discovery and execution
 
