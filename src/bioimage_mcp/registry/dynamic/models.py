@@ -48,6 +48,7 @@ class IOPattern(str, Enum):
     IMAGE_AND_LABELS_TO_JSON = "image_and_labels_to_json"
     IMAGE_TO_LABELS_AND_JSON = "image_to_labels_and_json"
     TABLE_TO_JSON = "table_to_json"
+    TABLE_PAIR_TO_JSON = "table_pair_to_json"
     MULTI_TABLE_TO_JSON = "multi_table_to_json"
     PARAMS_TO_JSON = "params_to_json"
     GENERIC = "generic"
