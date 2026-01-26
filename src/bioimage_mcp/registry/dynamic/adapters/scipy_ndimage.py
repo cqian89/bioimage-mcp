@@ -206,6 +206,7 @@ class ScipyNdimageAdapter(BaseAdapter):
         work_dir: Path | None = None,
         axes: str | None = None,
         metadata_override: dict[str, Any] | None = None,
+        filename: str = "output.ome.tiff",
     ) -> dict:
         """Save image array to file and return artifact reference dict."""
         # Handle scalar outputs
@@ -220,9 +221,6 @@ class ScipyNdimageAdapter(BaseAdapter):
             elif not axes:
                 axes = "YX"
 
-        # Use .ome.tiff extension for better compatibility
-        ext = ".ome.tiff"
-
         # Dtype safety: If the output dtype is int64, cast to int32/uint32 for OME-TIFF compatibility
         if array.dtype == np.int64:
             array = array.astype(np.int32)
@@ -231,6 +229,8 @@ class ScipyNdimageAdapter(BaseAdapter):
 
         if work_dir is None:
             # Use system temp directory
+            # Use .ome.tiff extension for better compatibility if not provided in filename
+            ext = Path(filename).suffix if "." in filename else ".ome.tiff"
             fd, path_str = tempfile.mkstemp(suffix=ext)
             import os
 
@@ -239,7 +239,7 @@ class ScipyNdimageAdapter(BaseAdapter):
         else:
             # Use provided work directory
             work_dir.mkdir(parents=True, exist_ok=True)
-            path = work_dir / f"output{ext}"
+            path = work_dir / filename
 
         # Only use passed axes if they match the output array dimensions
         if axes and len(axes) == array.ndim:
@@ -546,7 +546,7 @@ class ScipyNdimageAdapter(BaseAdapter):
                     if updated:
                         metadata_override["physical_pixel_sizes"] = pps_dict
 
-        # 7) Output metadata override
+        # 7) Output normalization & metadata override
         # Handle label separately as it returns (image, count)
         if func_name == "label" and isinstance(result, tuple) and len(result) == 2:
             labeled_image, count = result
@@ -554,13 +554,74 @@ class ScipyNdimageAdapter(BaseAdapter):
             labels_meta = metadata_override.copy()
             labels_meta["output_name"] = "labels"
             labels_ref = self._save_image(
-                labeled_image, work_dir=work_dir, axes=axes, metadata_override=labels_meta
+                labeled_image,
+                work_dir=work_dir,
+                axes=axes,
+                metadata_override=labels_meta,
+                filename="labels.ome.tiff",
             )
             labels_ref["type"] = "LabelImageRef"
 
-            count_meta = {"output_name": "output"}
-            count_ref = self._save_scalar(count, work_dir=work_dir, metadata_override=count_meta)
+            count_meta = {"output_name": "counts", "schema": "scipy.ndimage.label.v1"}
+            count_ref = self._save_json(
+                {"num_features": count},
+                work_dir=work_dir,
+                filename="counts.json",
+                metadata_override=count_meta,
+            )
             return [labels_ref, count_ref]
+
+        # NDIMG-04: Measurement JSON normalization
+        measurement_funcs = {
+            "center_of_mass",
+            "extrema",
+            "find_objects",
+            "histogram",
+            "maximum",
+            "maximum_position",
+            "mean",
+            "median",
+            "minimum",
+            "minimum_position",
+            "standard_deviation",
+            "sum",
+            "variance",
+        }
+        if func_name in measurement_funcs and "labels" in params:
+            labels_array = params["labels"]
+            present = set(np.unique(labels_array).tolist()) - {0}
+
+            # Normalize requested labels
+            index = params.get("index")
+            if index is not None:
+                if isinstance(index, (int, float, np.integer)):
+                    requested = [int(index)]
+                else:
+                    requested = [int(i) for i in index]
+            else:
+                requested = sorted(list(present))
+
+            # Map result to requested labels
+            payload = {}
+            if len(requested) == 1:
+                # Scipy returns scalar/tuple for single requested label
+                payload[str(requested[0])] = result if requested[0] in present else None
+            elif isinstance(result, (list, tuple, np.ndarray)) and len(result) == len(requested):
+                # Zip in order
+                for i, label_id in enumerate(requested):
+                    payload[str(label_id)] = result[i] if label_id in present else None
+            else:
+                # Fallback or complex return (e.g. histogram)
+                payload = {"value": result}
+
+            measurement_meta = {"schema": "scipy.ndimage.measurement.v1"}
+            if metadata_override:
+                measurement_meta.update(metadata_override)
+
+            output_ref = self._save_json(
+                payload, work_dir=work_dir, metadata_override=measurement_meta
+            )
+            return [output_ref]
 
         # General handling for single outputs or other multi-outputs
         if isinstance(result, np.ndarray) and result.ndim > 0:
@@ -568,7 +629,7 @@ class ScipyNdimageAdapter(BaseAdapter):
                 result, work_dir=work_dir, axes=axes, metadata_override=metadata_override
             )
         else:
-            # Scalar or small array result (measurements)
+            # Scalar or small array result (generic)
             output_ref = self._save_scalar(
                 result, work_dir=work_dir, metadata_override=metadata_override
             )
