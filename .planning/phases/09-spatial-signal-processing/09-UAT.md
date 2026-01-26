@@ -4,37 +4,37 @@
 - [x] **Verify Spatial & Signal Tool Discovery**
   - **Action:** Run `bioimage-mcp list` and check for `scipy.spatial.*` and `scipy.signal.*`.
   - **Expected:** List includes `scipy.spatial.distance.cdist`, `scipy.spatial.Voronoi`, `scipy.spatial.Delaunay`, `scipy.signal.periodogram`, `scipy.signal.welch`, `scipy.signal.fftconvolve`.
-  - **Status:** Passed (Verified via internal list command)
+  - **Status:** Passed
 
 ## Spatial Analysis
-- [x] **Verify Distance Matrix (cdist)**
+- [ ] **Verify Distance Matrix (cdist)**
   - **Action:** Execute `scipy.spatial.distance.cdist` with two point sets.
   - **Expected:** Returns a distance matrix artifact.
-  - **Status:** Passed (Returns NativeOutputRef .npy)
+  - **Status:** Pending
 
 - [x] **Verify Tessellations (Voronoi/Delaunay)**
   - **Action:** Execute `scipy.spatial.Voronoi` or `scipy.spatial.Delaunay` on a point set.
   - **Expected:** Returns a structured JSON artifact containing vertices/regions/simplices.
-  - **Status:** Passed (Returns NativeOutputRef .json)
+  - **Status:** Passed
 
 ## KDTree Lifecycle
 - [x] **Verify KDTree Build (Persistence)**
   - **Action:** Execute `scipy.spatial.cKDTree` on a point set.
   - **Expected:** Returns an `ObjectRef` with a valid `obj://` URI and `ref_id`.
-  - **Status:** Passed (Returns ObjectRef with ref_id)
+  - **Status:** Passed
 
 - [x] **Verify KDTree Query**
   - **Action:** Execute query using the `ObjectRef` from the previous step.
   - **Expected:** Returns nearest neighbor distances and indices.
-  - **Status:** Passed (Returns NativeOutputRef .json)
+  - **Status:** Passed
 
 ## Signal Processing
 - [x] **Verify Spectral Analysis (Periodogram)**
   - **Action:** Execute `scipy.signal.periodogram` on a 1D signal (string URI/path).
   - **Expected:** Returns a Table artifact with frequency and power columns.
-  - **Status:** Passed (Fixed metadata validation in `pandas.py`, pending server restart)
+  - **Status:** Passed
 
 - [x] **Verify Convolution (fftconvolve)**
   - **Action:** Execute `scipy.signal.fftconvolve` on two images/signals.
   - **Expected:** Returns a convolved Image artifact.
-  - **Status:** Passed (Fixed input validation in `loader.py` to accept `NativeOutputRef`, pending server restart)
+  - **Status:** Passed
