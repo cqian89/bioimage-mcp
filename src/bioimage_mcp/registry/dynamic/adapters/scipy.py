@@ -1,0 +1,79 @@
+from __future__ import annotations
+
+import logging
+from typing import TYPE_CHECKING, Any
+
+from bioimage_mcp.registry.dynamic.adapters import BaseAdapter
+from bioimage_mcp.registry.dynamic.adapters.scipy_ndimage import ScipyNdimageAdapter
+from bioimage_mcp.registry.dynamic.adapters.scipy_stats import ScipyStatsAdapter
+
+if TYPE_CHECKING:
+    from bioimage_mcp.api.schemas import DimensionRequirement
+    from bioimage_mcp.artifacts.base import Artifact
+    from bioimage_mcp.registry.dynamic.models import FunctionMetadata, IOPattern
+
+logger = logging.getLogger(__name__)
+
+
+class ScipyAdapter(BaseAdapter):
+    """Composite adapter for Scipy submodules (ndimage, fft, stats)."""
+
+    def __init__(self) -> None:
+        self.ndimage = ScipyNdimageAdapter()
+        self.stats = ScipyStatsAdapter()
+
+    def _get_adapter(self, module_name: str) -> BaseAdapter:
+        """Route to the appropriate sub-adapter based on module name."""
+        if module_name == "scipy.stats":
+            return self.stats
+        # Default to ndimage (also handles fft via generic array processing)
+        return self.ndimage
+
+    def discover(self, module_config: dict[str, Any]) -> list[FunctionMetadata]:
+        """Discover functions across multiple Scipy submodules."""
+        results = []
+        modules = module_config.get("modules", [])
+        if not modules:
+            # Fallback to single module_name if provided
+            mod_name = module_config.get("module_name")
+            modules = [mod_name] if mod_name else []
+
+        for mod in modules:
+            sub_config = module_config.copy()
+            sub_config["modules"] = [mod]
+            # Ensure _manifest_path is preserved for blacklist resolution
+            if "_manifest_path" in module_config:
+                sub_config["_manifest_path"] = module_config["_manifest_path"]
+
+            adapter = self._get_adapter(mod)
+            results.extend(adapter.discover(sub_config))
+        return results
+
+    def execute(
+        self,
+        fn_id: str,
+        inputs: list[tuple[str, Any]],
+        params: dict[str, Any],
+        work_dir: Any | None = None,
+    ) -> list[dict]:
+        """Route execution to the appropriate sub-adapter."""
+        # Infer module from fn_id (e.g. scipy.stats.ttest_ind -> scipy.stats)
+        parts = fn_id.split(".")
+        if len(parts) >= 3:
+            module_name = ".".join(parts[:-1])
+        else:
+            module_name = ""
+
+        adapter = self._get_adapter(module_name)
+        return adapter.execute(fn_id, inputs, params, work_dir=work_dir)
+
+    def resolve_io_pattern(self, func_name: str, signature: Any) -> IOPattern:
+        """Resolve I/O pattern (defaulting to ndimage logic)."""
+        return self.ndimage.resolve_io_pattern(func_name, signature)
+
+    def generate_dimension_hints(
+        self, module_name: str, func_name: str
+    ) -> DimensionRequirement | None:
+        """Generate dimension hints from the appropriate sub-adapter."""
+        adapter = self._get_adapter(module_name)
+        return adapter.generate_dimension_hints(module_name, func_name)
