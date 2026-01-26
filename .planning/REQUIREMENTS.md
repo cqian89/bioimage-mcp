@@ -26,26 +26,26 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [x] **NDIMG-01**: Filters (Gaussian, Uniform, Laplace, Prewitt, Sobel)
 - [x] **NDIMG-02**: Morphology (Dilation, Erosion, Opening, Closing, Tophat)
-- [ ] **NDIMG-03**: Interpolation (Zoom, Rotate, Shift, Affine)
-- [ ] **NDIMG-04**: Measurements (Labeling, Center of Mass, Extrema, Sum/Mean)
-- [ ] **NDIMG-05**: Fourier Domain Filters (Fourier Gaussian, Ellipsoid)
+- [x] **NDIMG-03**: Interpolation (Zoom, Rotate, Shift, Affine)
+- [x] **NDIMG-04**: Measurements (Labeling, Center of Mass, Extrema, Sum/Mean)
+- [x] **NDIMG-05**: Fourier Domain Filters (Fourier Gaussian, Ellipsoid)
 
 ### Statistics (`scipy.stats`)
 
-- [ ] **STATS-01**: Summary Statistics (Describe, Mean, Skew, Kurtosis)
-- [ ] **STATS-02**: Statistical Tests (T-test, ANOVA, KS-test)
-- [ ] **STATS-03**: Probability Distributions (PDF/CDF access via introspection)
+- [x] **STATS-01**: Summary Statistics (Describe, Mean, Skew, Kurtosis)
+- [x] **STATS-02**: Statistical Tests (T-test, ANOVA, KS-test)
+- [x] **STATS-03**: Probability Distributions (PDF/CDF access via introspection)
 
 ### Spatial Analysis (`scipy.spatial`)
 
-- [ ] **SPATIAL-01**: Distance Metrics (Euclidean, Cosine, Mahalanobis)
-- [ ] **SPATIAL-02**: KDTree / Nearest Neighbor Search (Query points against artifacts)
-- [ ] **SPATIAL-03**: Tessellations (Voronoi, Delaunay)
+- [x] **SPATIAL-01**: Distance Metrics (Euclidean, Cosine, Mahalanobis)
+- [x] **SPATIAL-02**: KDTree / Nearest Neighbor Search (Query points against artifacts)
+- [x] **SPATIAL-03**: Tessellations (Voronoi, Delaunay)
 
 ### Signal Processing (`scipy.signal`)
 
-- [ ] **SIGNAL-01**: N-D Convolutions (Convolve, Correlate)
-- [ ] **SIGNAL-02**: Spectral Analysis (Periodogram, Welch)
+- [x] **SIGNAL-01**: N-D Convolutions (Convolve, Correlate)
+- [x] **SIGNAL-02**: Spectral Analysis (Periodogram, Welch)
 
 ## v2 Requirements
 
@@ -80,17 +80,17 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TEST-04 | Phase 10 | Pending |
 | NDIMG-01 | Phase 6 | Complete |
 | NDIMG-02 | Phase 6 | Complete |
-| NDIMG-03 | Phase 7 | Pending |
-| NDIMG-04 | Phase 7 | Pending |
-| NDIMG-05 | Phase 7 | Pending |
-| STATS-01 | Phase 8 | Pending |
-| STATS-02 | Phase 8 | Pending |
-| STATS-03 | Phase 8 | Pending |
-| SPATIAL-01 | Phase 9 | Pending |
-| SPATIAL-02 | Phase 9 | Pending |
-| SPATIAL-03 | Phase 9 | Pending |
-| SIGNAL-01 | Phase 9 | Pending |
-| SIGNAL-02 | Phase 9 | Pending |
+| NDIMG-03 | Phase 7 | Complete |
+| NDIMG-04 | Phase 7 | Complete |
+| NDIMG-05 | Phase 7 | Complete |
+| STATS-01 | Phase 8 | Complete |
+| STATS-02 | Phase 8 | Complete |
+| STATS-03 | Phase 8 | Complete |
+| SPATIAL-01 | Phase 9 | Complete |
+| SPATIAL-02 | Phase 9 | Complete |
+| SPATIAL-03 | Phase 9 | Complete |
+| SIGNAL-01 | Phase 9 | Complete |
+| SIGNAL-02 | Phase 9 | Complete |
 
 **Coverage:**
 - v1 requirements: 21 total
