@@ -94,7 +94,7 @@ Phases:
 
 Plans:
 - [x] 09-01-PLAN.md — Add spatial/signal routing + KDTree IOPatterns
-- [ ] 09-02-PLAN.md — Spatial distances + Voronoi/Delaunay wrappers
+- [x] 09-02-PLAN.md — Spatial distances + Voronoi/Delaunay wrappers
 - [ ] 09-03-PLAN.md — KDTree build/query wrappers (session persistence)
 - [x] 09-04-PLAN.md — Signal convolution + spectral analysis wrappers
 
