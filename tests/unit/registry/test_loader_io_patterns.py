@@ -32,3 +32,28 @@ def test_map_io_pattern_to_ports_new_patterns():
     assert outputs[0].artifact_type == "LabelImageRef"
     assert outputs[1].name == "output"
     assert outputs[1].artifact_type == "ScalarRef"
+
+
+def test_map_io_pattern_to_ports_stats_patterns():
+    # Test TABLE_TO_JSON
+    inputs, outputs = _map_io_pattern_to_ports(IOPattern.TABLE_TO_JSON)
+    assert len(inputs) == 1
+    assert inputs[0].name == "table"
+    assert inputs[0].artifact_type == "TableRef"
+    assert len(outputs) == 1
+    assert outputs[0].artifact_type == "ScalarRef"
+
+    # Test MULTI_TABLE_TO_JSON
+    inputs, outputs = _map_io_pattern_to_ports(IOPattern.MULTI_TABLE_TO_JSON)
+    assert len(inputs) == 1
+    assert inputs[0].name == "tables"
+    assert inputs[0].is_array is True
+    assert "TableRef" in inputs[0].artifact_type
+    assert len(outputs) == 1
+    assert outputs[0].artifact_type == "ScalarRef"
+
+    # Test PARAMS_TO_JSON
+    inputs, outputs = _map_io_pattern_to_ports(IOPattern.PARAMS_TO_JSON)
+    assert len(inputs) == 0
+    assert len(outputs) == 1
+    assert outputs[0].artifact_type == "ScalarRef"
