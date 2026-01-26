@@ -61,7 +61,7 @@ Plans:
 
 Plans:
 - [x] 07-01-PLAN.md — Add IO patterns for JSON + multi-output labeling
-- [ ] 07-02-PLAN.md — Implement zoom metadata updates and transform pass-through
+- [x] 07-02-PLAN.md — Implement zoom metadata updates and transform pass-through
 - [ ] 07-03-PLAN.md — Implement labeling + measurement JSON schemas
 - [ ] 07-04-PLAN.md — Add complex Fourier artifact support + expose scipy.fft
 

@@ -7,11 +7,11 @@
 
 ## Current Position
 - **Phase:** 7
-- **Plan:** 1 of 4 in current phase
+- **Plan:** 2 of 4 in current phase
 - **Status:** In progress
-- **Last activity:** 2026-01-26 - Completed 07-01-PLAN.md
+- **Last activity:** 2026-01-26 - Completed 07-02-PLAN.md
 
-Progress: ████████████████████░░░░ 80%
+Progress: █████████████████████░░░ 84%
 
 ## Performance Metrics
 - **Phase Coverage:** 8/11 phases completed (including 5.1)
@@ -36,6 +36,8 @@ Progress: ████████████████████░░░�
 | 6 | Forward physical metadata to writers | Ensured scipy.ndimage outputs retain physical pixel size and channel name metadata by explicitly passing them to `OmeTiffWriter.save`. |
 | 7 | Explicit output naming for label() | Set `output_name` metadata for `label()` outputs (`labels`, `output`) to ensure correct client-side mapping. |
 | 7 | Recursive JSON serialization | Implemented `_to_native` helper in `_save_scalar` to ensure complex measurement outputs (tuples/lists/slices) are JSON-serializable. |
+| 7 | Division-based pps update for zoom | Zooming in (factor > 1) reduces the physical extent of each pixel, thus physical size must be divided by the factor. |
+| 7 | Axis-specific zoom mapping | Allowed mapping zoom sequences to either full axes or just spatial axes to support common scipy usage patterns while maintaining metadata integrity. |
 
 ### Session Continuity
 - v0.2.0 "Foundation" complete (Phases 1-5).
@@ -43,9 +45,9 @@ Progress: ████████████████████░░░�
 - Phase 5.1 Complete: Protocol standardized across trackpy and cellpose, core parsers implemented.
 - Phase 6 Complete: Scipy ndimage infrastructure established with metadata preservation and memory safety.
 - Phase 7 In Progress: IO patterns for analytical extraction implemented.
-- Stopped at: Completed 07-01-PLAN.md
+- Stopped at: Completed 07-02-PLAN.md
 - Resume file: None
 
 ## Next Steps
-1. Execute 07-02-PLAN.md: Implement zoom metadata updates and transform pass-through.
+1. Execute 07-03-PLAN.md: Implement labeling + measurement JSON schemas.
 
