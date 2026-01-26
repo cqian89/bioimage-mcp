@@ -14,6 +14,8 @@ def test_scipy_spatial_adapter_discovers():
     assert "scipy.spatial.distance.cdist" in fn_ids
     assert "scipy.spatial.Voronoi" in fn_ids
     assert "scipy.spatial.Delaunay" in fn_ids
+    assert "scipy.spatial.cKDTree" in fn_ids
+    assert "scipy.spatial.cKDTree.query" in fn_ids
 
     cdist = next(f for f in fns if f.fn_id == "scipy.spatial.distance.cdist")
     assert cdist.io_pattern == IOPattern.TABLE_PAIR_TO_FILE
@@ -24,6 +26,14 @@ def test_scipy_spatial_adapter_discovers():
     voronoi = next(f for f in fns if f.fn_id == "scipy.spatial.Voronoi")
     assert voronoi.io_pattern == IOPattern.TABLE_TO_JSON
     assert "columns" in voronoi.parameters
+
+    kdtree = next(f for f in fns if f.fn_id == "scipy.spatial.cKDTree")
+    assert kdtree.io_pattern == IOPattern.TABLE_TO_OBJECT
+    assert "leafsize" in kdtree.parameters
+
+    query = next(f for f in fns if f.fn_id == "scipy.spatial.cKDTree.query")
+    assert query.io_pattern == IOPattern.OBJECT_AND_TABLE_TO_JSON
+    assert "k" in query.parameters
 
 
 @pytest.mark.requires_base

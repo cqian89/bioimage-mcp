@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -8,6 +9,7 @@ import numpy as np
 
 from bioimage_mcp.registry.dynamic.adapters.scipy_stats import ScipyStatsAdapter
 from bioimage_mcp.registry.dynamic.models import FunctionMetadata, IOPattern, ParameterSchema
+from bioimage_mcp.registry.dynamic.object_cache import OBJECT_CACHE
 
 if TYPE_CHECKING:
     from bioimage_mcp.api.schemas import DimensionRequirement
@@ -123,6 +125,98 @@ class ScipySpatialAdapter(ScipyStatsAdapter):
             )
         )
 
+        # 4. scipy.spatial.cKDTree
+        results.append(
+            FunctionMetadata(
+                name="cKDTree",
+                module="scipy.spatial",
+                qualified_name="scipy.spatial.cKDTree",
+                fn_id="scipy.spatial.cKDTree",
+                source_adapter="scipy_spatial",
+                description="kd-tree for quick nearest-neighbor lookup.",
+                parameters={
+                    "columns": ParameterSchema(
+                        name="columns",
+                        type="array",
+                        items={"type": "string"},
+                        description="Coordinate columns",
+                        required=False,
+                    ),
+                    "leafsize": ParameterSchema(
+                        name="leafsize",
+                        type="integer",
+                        default=10,
+                        required=False,
+                    ),
+                    "balanced_tree": ParameterSchema(
+                        name="balanced_tree",
+                        type="boolean",
+                        default=True,
+                        required=False,
+                    ),
+                    "compact_nodes": ParameterSchema(
+                        name="compact_nodes",
+                        type="boolean",
+                        default=True,
+                        required=False,
+                    ),
+                },
+                io_pattern=IOPattern.TABLE_TO_OBJECT,
+                tags=["spatial", "kdtree", "index"],
+            )
+        )
+
+        # 5. scipy.spatial.cKDTree.query
+        results.append(
+            FunctionMetadata(
+                name="query",
+                module="scipy.spatial.cKDTree",
+                qualified_name="scipy.spatial.cKDTree.query",
+                fn_id="scipy.spatial.cKDTree.query",
+                source_adapter="scipy_spatial",
+                description="Query the kd-tree for nearest neighbors.",
+                parameters={
+                    "k": ParameterSchema(
+                        name="k",
+                        type="integer",
+                        default=1,
+                        required=False,
+                    ),
+                    "eps": ParameterSchema(
+                        name="eps",
+                        type="number",
+                        default=0.0,
+                        required=False,
+                    ),
+                    "p": ParameterSchema(
+                        name="p",
+                        type="number",
+                        default=2.0,
+                        required=False,
+                    ),
+                    "distance_upper_bound": ParameterSchema(
+                        name="distance_upper_bound",
+                        type="number",
+                        required=False,
+                    ),
+                    "workers": ParameterSchema(
+                        name="workers",
+                        type="integer",
+                        required=False,
+                    ),
+                    "columns": ParameterSchema(
+                        name="columns",
+                        type="array",
+                        items={"type": "string"},
+                        description="Coordinate columns for the query points",
+                        required=False,
+                    ),
+                },
+                io_pattern=IOPattern.OBJECT_AND_TABLE_TO_JSON,
+                tags=["spatial", "kdtree", "nearest-neighbor"],
+            )
+        )
+
         return results
 
     def execute(
@@ -139,6 +233,144 @@ class ScipySpatialAdapter(ScipyStatsAdapter):
             return self._execute_tessellation(fn_id, inputs, params, work_dir)
         elif fn_id == "scipy.spatial.Delaunay":
             return self._execute_tessellation(fn_id, inputs, params, work_dir)
+        elif fn_id == "scipy.spatial.cKDTree":
+            return self._execute_kdtree_build(inputs, params)
+        elif fn_id == "scipy.spatial.cKDTree.query":
+            return self._execute_kdtree_query(inputs, params, work_dir)
+
+        raise ValueError(f"Unsupported spatial fn_id: {fn_id}")
+
+    def _execute_kdtree_build(
+        self,
+        inputs: list[tuple[str, Any]],
+        params: dict[str, Any],
+    ) -> list[dict]:
+        from bioimage_mcp.registry.dynamic.adapters.pandas import PandasAdapterForRegistry
+
+        pa = PandasAdapterForRegistry()
+        input_dict = dict(inputs)
+
+        table = input_dict.get("table")
+        if table is None:
+            # Fallback: try to find any TableRef-like input
+            for _name, val in inputs:
+                if isinstance(val, dict) and any(
+                    k in val for k in ("ref_id", "uri", "path", "type")
+                ):
+                    table = val
+                    break
+
+        if table is None:
+            raise ValueError("scipy.spatial.cKDTree requires a table input")
+
+        columns = params.pop("columns", None)
+        leafsize = params.pop("leafsize", 10)
+        balanced_tree = params.pop("balanced_tree", True)
+        compact_nodes = params.pop("compact_nodes", True)
+
+        df = pa._load_table(table)
+        selected_cols = (
+            columns if columns else df.select_dtypes(include=[np.number]).columns.tolist()
+        )
+        if len(selected_cols) < 1:
+            raise ValueError(f"Table must have at least 1 numeric column, found: {selected_cols}")
+
+        points = df[selected_cols].to_numpy()
+
+        import scipy.spatial
+
+        tree = scipy.spatial.cKDTree(
+            points,
+            leafsize=leafsize,
+            balanced_tree=balanced_tree,
+            compact_nodes=compact_nodes,
+        )
+
+        uid = uuid.uuid4().hex
+        uri = f"obj://default/scipy_spatial/{uid}"
+        OBJECT_CACHE.set(uri, tree)
+
+        return [
+            {
+                "type": "ObjectRef",
+                "python_class": "scipy.spatial.cKDTree",
+                "uri": uri,
+                "storage_type": "memory",
+                "metadata": {
+                    "n_points": tree.n,
+                    "n_dims": tree.m,
+                    "selected_columns": selected_cols,
+                },
+            }
+        ]
+
+    def _execute_kdtree_query(
+        self,
+        inputs: list[tuple[str, Any]],
+        params: dict[str, Any],
+        work_dir: Path | None = None,
+    ) -> list[dict]:
+        from bioimage_mcp.registry.dynamic.adapters.pandas import PandasAdapterForRegistry
+
+        pa = PandasAdapterForRegistry()
+        input_dict = dict(inputs)
+
+        obj_ref = input_dict.get("object")
+        table = input_dict.get("table")
+
+        if obj_ref is None or table is None:
+            raise ValueError("scipy.spatial.cKDTree.query requires 'object' and 'table' inputs")
+
+        uri = obj_ref.get("uri")
+        if not uri or not uri.startswith("obj://"):
+            raise ValueError(f"Invalid or missing ObjectRef URI: {uri}")
+
+        tree = OBJECT_CACHE.get(uri)
+        if tree is None:
+            raise ValueError(f"Object not found in cache: {uri}")
+
+        columns = params.pop("columns", None)
+        k = params.pop("k", 1)
+        eps = params.pop("eps", 0.0)
+        p = params.pop("p", 2.0)
+        distance_upper_bound = params.pop("distance_upper_bound", np.inf)
+        workers = params.pop("workers", 1)
+
+        df = pa._load_table(table)
+        selected_cols = (
+            columns if columns else df.select_dtypes(include=[np.number]).columns.tolist()
+        )
+
+        query_points = df[selected_cols].to_numpy()
+
+        dists, idxs = tree.query(
+            query_points,
+            k=k,
+            eps=eps,
+            p=p,
+            distance_upper_bound=distance_upper_bound,
+            workers=workers,
+        )
+
+        payload = {
+            "k": k,
+            "shape": list(dists.shape),
+            "distances": dists.tolist(),
+            "indices": idxs.tolist(),
+            "selected_columns": selected_cols,
+        }
+
+        ref = self._save_json(
+            payload,
+            work_dir=work_dir,
+            filename="kdtree_query.json",
+            metadata_override={
+                "fn_id": "scipy.spatial.cKDTree.query",
+                "k": k,
+                "n_queries": len(query_points),
+            },
+        )
+        return [ref]
 
         # KDTree execution lands in 09-03
         raise ValueError(f"Unsupported spatial fn_id: {fn_id}")

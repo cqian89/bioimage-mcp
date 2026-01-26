@@ -137,3 +137,61 @@ def test_cdist_mahalanobis_from_param(spatial_adapter, tmp_path):
         args, kwargs = mock_cdist.call_args
         assert "VI" in kwargs
         np.testing.assert_array_equal(kwargs["VI"], np.array(vi))
+
+
+@pytest.mark.requires_base
+def test_execute_kdtree_lifecycle(spatial_adapter, tmp_path):
+    # 1. Build
+    df = pd.DataFrame({"x": [0.0, 1.0, 2.0], "y": [0.0, 1.0, 2.0]})
+    uri_table = "obj://test/table_kdtree"
+    object_cache.register(uri_table, df)
+
+    inputs_build = [("table", {"uri": uri_table, "type": "TableRef"})]
+    params_build = {"leafsize": 5}
+
+    with patch("scipy.spatial.cKDTree") as mock_ckdtree:
+        mock_tree_obj = MagicMock()
+        mock_tree_obj.n = 3
+        mock_tree_obj.m = 2
+        mock_ckdtree.return_value = mock_tree_obj
+
+        results_build = spatial_adapter.execute("scipy.spatial.cKDTree", inputs_build, params_build)
+
+        assert len(results_build) == 1
+        ref_obj = results_build[0]
+        assert ref_obj["type"] == "ObjectRef"
+        assert ref_obj["python_class"] == "scipy.spatial.cKDTree"
+        uri_tree = ref_obj["uri"]
+        assert uri_tree.startswith("obj://default/scipy_spatial/")
+
+        # Verify registration in OBJECT_CACHE
+        assert object_cache.get(uri_tree) == mock_tree_obj
+
+    # 2. Query
+    df_query = pd.DataFrame({"x": [0.5], "y": [0.5]})
+    uri_query = "obj://test/table_query"
+    object_cache.register(uri_query, df_query)
+
+    inputs_query = [
+        ("object", ref_obj),
+        ("table", {"uri": uri_query, "type": "TableRef"}),
+    ]
+    params_query = {"k": 1}
+
+    # mock_tree_obj already created above
+    mock_tree_obj.query.return_value = (np.array([0.707]), np.array([0]))
+
+    results_query = spatial_adapter.execute(
+        "scipy.spatial.cKDTree.query", inputs_query, params_query, work_dir=tmp_path
+    )
+
+    assert len(results_query) == 1
+    ref_json = results_query[0]
+    assert ref_json["format"] == "json"
+
+    with open(ref_json["path"]) as f:
+        data = json.load(f)
+        assert data["k"] == 1
+        assert data["distances"] == [0.707]
+        assert data["indices"] == [0]
+        assert data["selected_columns"] == ["x", "y"]
