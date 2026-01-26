@@ -195,6 +195,15 @@ def _map_io_pattern_to_ports(pattern: IOPattern) -> tuple[list[Port], list[Port]
             Port(name="labels", artifact_type="LabelImageRef"),
             Port(name="output", artifact_type="ScalarRef"),
         ]
+    elif pattern == IOPattern.TABLE_TO_JSON:
+        inputs = [Port(name="table", artifact_type="TableRef")]
+        outputs = [Port(name="output", artifact_type="ScalarRef")]
+    elif pattern == IOPattern.MULTI_TABLE_TO_JSON:
+        inputs = [Port(name="tables", artifact_type=["TableRef", "ObjectRef"], is_array=True)]
+        outputs = [Port(name="output", artifact_type="ScalarRef")]
+    elif pattern == IOPattern.PARAMS_TO_JSON:
+        inputs = []
+        outputs = [Port(name="output", artifact_type="ScalarRef")]
     else:
         # Default/Generic: single input/output
         inputs = [Port(name="image", artifact_type="BioImageRef")]
