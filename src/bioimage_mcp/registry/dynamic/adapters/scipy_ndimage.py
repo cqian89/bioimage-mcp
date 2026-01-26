@@ -343,6 +343,21 @@ class ScipyNdimageAdapter(BaseAdapter):
         metadata_override: dict[str, Any] | None = None,
     ) -> dict:
         """Save scalar value to JSON and return artifact reference dict."""
+        return self._save_json(
+            {"value": value},
+            work_dir=work_dir,
+            filename="output.json",
+            metadata_override=metadata_override,
+        )
+
+    def _save_json(
+        self,
+        payload: Any,
+        work_dir: Path | None = None,
+        filename: str = "output.json",
+        metadata_override: dict[str, Any] | None = None,
+    ) -> dict:
+        """Save payload to JSON and return artifact reference dict."""
         import json
 
         if work_dir is None:
@@ -354,10 +369,14 @@ class ScipyNdimageAdapter(BaseAdapter):
             path = Path(path_str)
         else:
             work_dir.mkdir(parents=True, exist_ok=True)
-            path = work_dir / "output.json"
+            path = work_dir / filename
 
         # Convert numpy scalars to native python types recursively
         def _to_native(v: Any) -> Any:
+            if v is None:
+                return None
+            if isinstance(v, (float, np.floating)) and np.isnan(v):
+                return None
             if hasattr(v, "item") and not isinstance(v, np.ndarray):
                 return v.item()
             if isinstance(v, (list, tuple)):
@@ -366,12 +385,14 @@ class ScipyNdimageAdapter(BaseAdapter):
                 return v.tolist()
             if isinstance(v, slice):
                 return {"start": v.start, "stop": v.stop, "step": v.step}
+            if isinstance(v, dict):
+                return {str(k): _to_native(val) for k, val in v.items()}
             return v
 
-        val_to_save = _to_native(value)
+        val_to_save = _to_native(payload)
 
         with open(path, "w") as f:
-            json.dump({"value": val_to_save}, f)
+            json.dump(val_to_save, f)
 
         meta = {"dtype": str(type(val_to_save).__name__)}
         if metadata_override:
