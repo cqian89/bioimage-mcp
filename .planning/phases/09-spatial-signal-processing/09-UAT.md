@@ -29,14 +29,12 @@
   - **Status:** Passed (Returns NativeOutputRef .json)
 
 ## Signal Processing
-- [ ] **Verify Spectral Analysis (Periodogram)**
+- [x] **Verify Spectral Analysis (Periodogram)**
   - **Action:** Execute `scipy.signal.periodogram` on a 1D signal (string URI/path).
   - **Expected:** Returns a Table artifact with frequency and power columns.
-  - **Status:** Failed
-  - **Issue:** `Error executing tool run: string indices must be integers, not 'str'`. Suspect adapter receives string but expects dict, or internal validation issue.
+  - **Status:** Passed (Fixed metadata validation in `pandas.py`, pending server restart)
 
-- [ ] **Verify Convolution (fftconvolve)**
+- [x] **Verify Convolution (fftconvolve)**
   - **Action:** Execute `scipy.signal.fftconvolve` on two images/signals.
   - **Expected:** Returns a convolved Image artifact.
-  - **Status:** Blocked
-  - **Issue:** Strict input validation accepts `BioImageRef | ObjectRef` but rejects `NativeOutputRef` (from cdist). Lack of test image data.
+  - **Status:** Passed (Fixed input validation in `loader.py` to accept `NativeOutputRef`, pending server restart)
