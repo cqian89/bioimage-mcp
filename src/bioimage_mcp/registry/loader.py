@@ -180,6 +180,21 @@ def _map_io_pattern_to_ports(pattern: IOPattern) -> tuple[list[Port], list[Port]
     elif pattern == IOPattern.REF_TO_FILE:
         inputs = [Port(name="tttr", artifact_type="TTTRRef")]
         outputs = [Port(name="output", artifact_type="NativeOutputRef")]
+    elif pattern == IOPattern.IMAGE_TO_JSON:
+        inputs = [Port(name="image", artifact_type="BioImageRef")]
+        outputs = [Port(name="output", artifact_type="ScalarRef")]
+    elif pattern == IOPattern.IMAGE_AND_LABELS_TO_JSON:
+        inputs = [
+            Port(name="image", artifact_type="BioImageRef"),
+            Port(name="labels", artifact_type="LabelImageRef", required=False),
+        ]
+        outputs = [Port(name="output", artifact_type="ScalarRef")]
+    elif pattern == IOPattern.IMAGE_TO_LABELS_AND_JSON:
+        inputs = [Port(name="image", artifact_type="BioImageRef")]
+        outputs = [
+            Port(name="labels", artifact_type="LabelImageRef"),
+            Port(name="output", artifact_type="ScalarRef"),
+        ]
     else:
         # Default/Generic: single input/output
         inputs = [Port(name="image", artifact_type="BioImageRef")]
