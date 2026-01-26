@@ -74,6 +74,13 @@ Plans:
   - Summary statistics (mean, skew, kurtosis) are returned as structured scalar results.
   - Probability distributions (PDF/CDF) are accessible via dynamic introspection of `scipy.stats`.
 
+**Plans:** 3 plans
+
+Plans:
+- [ ] 08-01-PLAN.md — Add stats IOPatterns + scipy adapter routing + enable scipy.stats discovery
+- [ ] 08-02-PLAN.md — Implement scipy.stats wrappers (summary/tests) + distribution methods with JSON outputs
+- [ ] 08-03-PLAN.md — Add contract + unit tests for scipy.stats discovery and execution
+
 ### Phase 9: Spatial & Signal Processing
 **Goal:** Support advanced spatial metrics and spectral signal analysis.
 - **Dependencies:** Phase 8
