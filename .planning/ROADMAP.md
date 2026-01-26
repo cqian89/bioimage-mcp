@@ -95,7 +95,7 @@ Phases:
 Plans:
 - [x] 09-01-PLAN.md — Add spatial/signal routing + KDTree IOPatterns
 - [x] 09-02-PLAN.md — Spatial distances + Voronoi/Delaunay wrappers
-- [ ] 09-03-PLAN.md — KDTree build/query wrappers (session persistence)
+- [x] 09-03-PLAN.md — KDTree build/query wrappers (session persistence)
 - [x] 09-04-PLAN.md — Signal convolution + spectral analysis wrappers
 
 ### Phase 10: Verification & Smoke Testing
@@ -130,7 +130,7 @@ Plans:
 | 6 - Infrastructure | v0.3.0 | ✅ Complete | 2026-01-25 |
 | 7 - Transforms | v0.3.0 | ✅ Complete | 2026-01-26 |
 | 8 - Statistics | v0.3.0 | ✅ Complete | 2026-01-26 |
-| 9 - Spatial/Signal | v0.3.0 | 📋 Pending | — |
+| 9 - Spatial/Signal | v0.3.0 | ✅ Complete | 2026-01-26 |
 | 10 - Verification | v0.3.0 | 📋 Pending | — |
 | 11 - Stats Discovery Hardening | v0.3.0 | 📋 Pending | — |
 
