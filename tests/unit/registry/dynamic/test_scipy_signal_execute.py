@@ -87,3 +87,27 @@ def test_scipy_signal_welch_bioimage_execution(adapter):
             saved_df = mock_save.call_args[0][0]
             assert "frequency" in saved_df.columns
             assert "psd" in saved_df.columns
+
+
+@pytest.mark.requires_base
+def test_scipy_signal_periodogram_string_input(adapter):
+    df = pd.DataFrame({"signal": np.sin(np.linspace(0, 10, 100))})
+    # Plain string URI as input
+    art_ref = "file:///tmp/table.parquet"
+
+    inputs = [("input", art_ref)]
+    params = {"column": "signal", "fs": 10.0}
+
+    from bioimage_mcp.registry.dynamic.adapters.pandas import PandasAdapterForRegistry
+
+    with patch.object(PandasAdapterForRegistry, "_load_table", return_value=df):
+        with patch.object(PandasAdapterForRegistry, "_save_table") as mock_save:
+            mock_save.return_value = [{"type": "TableRef"}]
+
+            result = adapter.execute("scipy.signal.periodogram", inputs, params)
+
+            assert len(result) == 1
+            mock_save.assert_called_once()
+            saved_df = mock_save.call_args[0][0]
+            assert "frequency" in saved_df.columns
+            assert "power" in saved_df.columns

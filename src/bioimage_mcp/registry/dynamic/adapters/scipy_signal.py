@@ -241,6 +241,8 @@ class ScipySignalAdapter(ScipyNdimageAdapter):
             is_bioimage = False
             if isinstance(art_ref, dict):
                 is_bioimage = art_ref.get("type") == "BioImageRef"
+            elif isinstance(art_ref, str):
+                is_bioimage = False
             else:
                 is_bioimage = getattr(art_ref, "type", None) == "BioImageRef"
 

@@ -149,8 +149,11 @@ class PandasAdapterForRegistry(BaseAdapter):
         return normalized
 
     def _load_table(self, artifact: Artifact) -> pd.DataFrame:
-        """Load DataFrame from artifact (TableRef or ObjectRef)."""
-        if isinstance(artifact, dict):
+        """Load DataFrame from artifact (TableRef or ObjectRef or URI string)."""
+        if isinstance(artifact, str):
+            uri = artifact
+            path = None
+        elif isinstance(artifact, dict):
             uri = artifact.get("uri")
             path = artifact.get("path")
         else:
