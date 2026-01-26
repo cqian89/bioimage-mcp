@@ -44,6 +44,9 @@ class IOPattern(str, Enum):
     REF_TO_TABLE = "ref_to_table"
     REF_TO_OBJECT = "ref_to_object"
     REF_TO_FILE = "ref_to_file"
+    IMAGE_TO_JSON = "image_to_json"
+    IMAGE_AND_LABELS_TO_JSON = "image_and_labels_to_json"
+    IMAGE_TO_LABELS_AND_JSON = "image_to_labels_and_json"
     GENERIC = "generic"
 
 
