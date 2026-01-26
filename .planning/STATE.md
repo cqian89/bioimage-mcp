@@ -3,15 +3,15 @@
 ## Project Reference
 - **Core Value:** Enables AI agents to safely and reproducibly execute bioimage analysis tools without dependency conflicts.
 - **Current Milestone:** v0.3.0 Scipy Integration
-- **Current Focus:** Phase 6 (Infrastructure & N-D Foundation)
+- **Current Focus:** Phase 7 (Transforms & Measurements)
 
 ## Current Position
-- **Phase:** 6
-- **Plan:** 4 of 4 in current phase (Phase complete)
-- **Status:** Phase complete
-- **Last activity:** 2026-01-25 - Completed 06-04-PLAN.md
+- **Phase:** 7
+- **Plan:** 1 of 4 in current phase
+- **Status:** In progress
+- **Last activity:** 2026-01-26 - Completed 07-01-PLAN.md
 
-Progress: ████████████████████████ 100%
+Progress: ████████████████████░░░░ 80%
 
 ## Performance Metrics
 - **Phase Coverage:** 8/11 phases completed (including 5.1)
@@ -34,15 +34,18 @@ Progress: ███████████████████████�
 | 6 | 16MB uint16 threshold | Automatically cast large uint16 images to float32 to prevent overflow during processing. |
 | 6 | Context-dependent return format | Return OME-TIFF for image arrays and JSON for scalar measurements to optimize agent UX. |
 | 6 | Forward physical metadata to writers | Ensured scipy.ndimage outputs retain physical pixel size and channel name metadata by explicitly passing them to `OmeTiffWriter.save`. |
+| 7 | Explicit output naming for label() | Set `output_name` metadata for `label()` outputs (`labels`, `output`) to ensure correct client-side mapping. |
+| 7 | Recursive JSON serialization | Implemented `_to_native` helper in `_save_scalar` to ensure complex measurement outputs (tuples/lists/slices) are JSON-serializable. |
 
 ### Session Continuity
 - v0.2.0 "Foundation" complete (Phases 1-5).
 - Scipy research (SUMMARY.md) incorporated into roadmap.
 - Phase 5.1 Complete: Protocol standardized across trackpy and cellpose, core parsers implemented.
 - Phase 6 Complete: Scipy ndimage infrastructure established with metadata preservation and memory safety.
-- Stopped at: Completed 06-04-PLAN.md
+- Phase 7 In Progress: IO patterns for analytical extraction implemented.
+- Stopped at: Completed 07-01-PLAN.md
 - Resume file: None
 
 ## Next Steps
-1. Transition to Phase 7: Transforms & Measurements.
+1. Execute 07-02-PLAN.md: Implement zoom metadata updates and transform pass-through.
 
