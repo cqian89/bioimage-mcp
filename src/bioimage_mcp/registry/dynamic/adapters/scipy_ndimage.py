@@ -484,7 +484,48 @@ class ScipyNdimageAdapter(BaseAdapter):
         else:
             result = func(**params)
 
-        # 6) Output metadata override
+        # 6) Zoom metadata adjustment
+        if func_name == "zoom" and "zoom" in params and axes:
+            zoom_val = params["zoom"]
+            zoom_map = {}
+            spatial_axes = [a for a in axes if a in "ZYX"]
+
+            if isinstance(zoom_val, (int, float)):
+                # Rule 1: scalar applies to all axes
+                zoom_map = {a: float(zoom_val) for a in axes}
+            elif isinstance(zoom_val, (list, tuple)):
+                if len(zoom_val) == len(axes):
+                    # Rule 2: direct zip
+                    zoom_map = {a: float(z) for a, z in zip(axes, zoom_val)}
+                elif len(zoom_val) == len(spatial_axes):
+                    # Rule 3: map to spatial axes in order
+                    zoom_map = {a: float(z) for a, z in zip(spatial_axes, zoom_val)}
+
+            if zoom_map and "physical_pixel_sizes" in metadata_override:
+                pps = metadata_override["physical_pixel_sizes"]
+                # Normalize pps to dict for easier math if it's a list/tuple
+                pps_dict = {}
+                if isinstance(pps, dict):
+                    pps_dict = pps.copy()
+                elif isinstance(pps, (list, tuple)):
+                    # Use standard bioio ordering for list pps: Y, X (2) or Z, Y, X (3)
+                    if len(pps) == 2:
+                        pps_dict = {"Y": pps[0], "X": pps[1]}
+                    elif len(pps) == 3:
+                        pps_dict = {"Z": pps[0], "Y": pps[1], "X": pps[2]}
+
+                if pps_dict:
+                    updated = False
+                    for ax, factor in zoom_map.items():
+                        if ax in "ZYX" and ax in pps_dict and factor > 0:
+                            val = pps_dict[ax]
+                            if isinstance(val, (int, float)):
+                                pps_dict[ax] = val / factor
+                                updated = True
+                    if updated:
+                        metadata_override["physical_pixel_sizes"] = pps_dict
+
+        # 7) Output metadata override
         # Handle label separately as it returns (image, count)
         if func_name == "label" and isinstance(result, tuple) and len(result) == 2:
             labeled_image, count = result
