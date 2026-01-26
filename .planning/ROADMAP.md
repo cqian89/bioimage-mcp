@@ -76,8 +76,8 @@ Plans:
 
 **Plans:** 3 plans
 
-Plans:
-- [ ] 08-01-PLAN.md — Add stats IOPatterns + scipy adapter routing + enable scipy.stats discovery
+Phases:
+- [x] 08-01-PLAN.md — Add stats IOPatterns + scipy adapter routing + enable scipy.stats discovery
 - [ ] 08-02-PLAN.md — Implement scipy.stats wrappers (summary/tests) + distribution methods with JSON outputs
 - [ ] 08-03-PLAN.md — Add contract + unit tests for scipy.stats discovery and execution
 
@@ -109,7 +109,7 @@ Plans:
 | 5.1 - Discovery | v0.3.0 | ✅ Complete | 2026-01-25 |
 | 6 - Infrastructure | v0.3.0 | ✅ Complete | 2026-01-25 |
 | 7 - Transforms | v0.3.0 | ✅ Complete | 2026-01-26 |
-| 8 - Statistics | v0.3.0 | 📋 Pending | — |
+| 8 - Statistics | v0.3.0 | 🚧 In progress | 2026-01-26 |
 | 9 - Spatial/Signal | v0.3.0 | 📋 Pending | — |
 | 10 - Verification | v0.3.0 | 📋 Pending | — |
 
