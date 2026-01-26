@@ -7,11 +7,11 @@
 
 ## Current Position
 - **Phase:** 7
-- **Plan:** 2 of 4 in current phase
+- **Plan:** 3 of 4 in current phase
 - **Status:** In progress
-- **Last activity:** 2026-01-26 - Completed 07-02-PLAN.md
+- **Last activity:** 2026-01-26 - Completed 07-03-PLAN.md
 
-Progress: █████████████████████░░░ 84%
+Progress: ███████████████████████░░ 92%
 
 ## Performance Metrics
 - **Phase Coverage:** 8/11 phases completed (including 5.1)
@@ -38,16 +38,19 @@ Progress: █████████████████████░░�
 | 7 | Recursive JSON serialization | Implemented `_to_native` helper in `_save_scalar` to ensure complex measurement outputs (tuples/lists/slices) are JSON-serializable. |
 | 7 | Division-based pps update for zoom | Zooming in (factor > 1) reduces the physical extent of each pixel, thus physical size must be divided by the factor. |
 | 7 | Axis-specific zoom mapping | Allowed mapping zoom sequences to either full axes or just spatial axes to support common scipy usage patterns while maintaining metadata integrity. |
+| 7 | Dedicated `_save_json` helper | Avoids the `{"value": ...}` wrapper in `_save_scalar`, allowing for clean, top-level dictionaries in measurement artifacts. |
+| 7 | Multi-output naming convention | Standardized on `labels.ome.tiff` and `counts.json` for `label()` to ensure stable filenames under a provided `work_dir`. |
+| 7 | Key-by-ID measurement payload | Using label ID strings as keys (e.g., `{"1": [y, x]}`) provides the most unambiguous representation for AI agents and downstream logic. |
 
 ### Session Continuity
 - v0.2.0 "Foundation" complete (Phases 1-5).
 - Scipy research (SUMMARY.md) incorporated into roadmap.
 - Phase 5.1 Complete: Protocol standardized across trackpy and cellpose, core parsers implemented.
 - Phase 6 Complete: Scipy ndimage infrastructure established with metadata preservation and memory safety.
-- Phase 7 In Progress: IO patterns for analytical extraction implemented.
-- Stopped at: Completed 07-02-PLAN.md
+- Phase 7 In Progress: IO patterns and measurement JSON schemas implemented.
+- Stopped at: Completed 07-03-PLAN.md
 - Resume file: None
 
 ## Next Steps
-1. Execute 07-03-PLAN.md: Implement labeling + measurement JSON schemas.
+1. Execute 07-04-PLAN.md: Add complex Fourier artifact support + expose scipy.fft
 
