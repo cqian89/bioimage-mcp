@@ -99,8 +99,8 @@ def _map_io_pattern_to_ports(pattern: IOPattern) -> tuple[list[Port], list[Port]
         outputs = [Port(name="output", artifact_type="ObjectRef")]
     elif pattern == IOPattern.BINARY:
         inputs = [
-            Port(name="image", artifact_type=["BioImageRef", "ObjectRef"]),
-            Port(name="input_1", artifact_type=["BioImageRef", "ObjectRef"]),
+            Port(name="image", artifact_type=["BioImageRef", "ObjectRef", "NativeOutputRef"]),
+            Port(name="input_1", artifact_type=["BioImageRef", "ObjectRef", "NativeOutputRef"]),
         ]
         outputs = [Port(name="output", artifact_type=["BioImageRef", "ObjectRef"])]
     elif pattern == IOPattern.OBJECT_TO_IMAGE:

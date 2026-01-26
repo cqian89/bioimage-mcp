@@ -436,7 +436,10 @@ class PandasAdapterForRegistry(BaseAdapter):
                 "path": str(out_path.absolute()),
                 "metadata": {
                     "shape": list(df.shape),
-                    "columns": list(df.columns),
+                    "columns": [
+                        {"name": name, "dtype": str(df[name].dtype)} for name in df.columns
+                    ],
+                    "row_count": len(df),
                 },
             }
         ]
