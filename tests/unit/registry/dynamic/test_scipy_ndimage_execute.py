@@ -45,6 +45,30 @@ class MockFilters:
     def shift(image, shift, **kwargs):
         return image
 
+    @staticmethod
+    def label(input, structure=None, output=None):
+        return (input.astype(np.int32), 2)
+
+    @staticmethod
+    def center_of_mass(input, labels=None, index=None):
+        if index is None:
+            return (1.0, 1.0)
+        if np.isscalar(index):
+            return (float(index), float(index))
+        return [(float(i), float(i)) for i in index]
+
+    @staticmethod
+    def extrema(input, labels=None, index=None):
+        return (0.0, 10.0, (0, 0), (1, 1))
+
+    @staticmethod
+    def sum(input, labels=None, index=None):
+        if index is None:
+            return 100.0
+        if np.isscalar(index):
+            return float(index) * 10.0
+        return [float(i) * 10.0 for i in index]
+
 
 class MockNdimage:
     filters = MockFilters()
@@ -66,6 +90,10 @@ def mock_module(tmp_path):
     mock_mod.zoom = MockFilters.zoom
     mock_mod.rotate = MockFilters.rotate
     mock_mod.shift = MockFilters.shift
+    mock_mod.label = MockFilters.label
+    mock_mod.center_of_mass = MockFilters.center_of_mass
+    mock_mod.extrema = MockFilters.extrema
+    mock_mod.sum = MockFilters.sum
 
     real_import = importlib.import_module
 
@@ -425,3 +453,144 @@ def test_execute_transform_pass_through(adapter, mock_module, tmp_path):
     meta_shift = res_shift[0]["metadata"]
     assert meta_shift["physical_pixel_sizes"] == metadata["physical_pixel_sizes"]
     assert meta_shift["channel_names"] == metadata["channel_names"]
+
+
+def test_execute_label_returns_labels_and_counts_json(adapter, mock_module, tmp_path):
+    # Setup data
+    data = np.zeros((10, 10), dtype=np.float32)
+    data[2:5, 2:5] = 1.0
+    data[7:9, 7:9] = 1.0
+    uri = "obj://label_input"
+    OBJECT_CACHE[uri] = data
+
+    inputs = [("image", {"uri": uri, "metadata": {"axes": "YX"}})]
+
+    # Mock label to return (data, 2)
+    mock_module.label = MagicMock(return_value=(data.astype(np.int32), 2))
+
+    results = adapter.execute(
+        fn_id="scipy.ndimage.label", inputs=inputs, params={}, work_dir=tmp_path
+    )
+
+    assert len(results) == 2
+    labels_ref = next(r for r in results if r.get("type") == "LabelImageRef")
+    counts_ref = next(r for r in results if r.get("format") == "json")
+
+    assert labels_ref["path"].endswith("labels.ome.tiff")
+    assert counts_ref["path"].endswith("counts.json")
+
+    assert Path(labels_ref["path"]).exists()
+    assert Path(counts_ref["path"]).exists()
+
+    import json
+
+    with open(counts_ref["path"], "r") as f:
+        counts = json.load(f)
+    assert counts["num_features"] == 2
+
+
+def test_execute_center_of_mass_json_index_and_missing_labels(adapter, mock_module, tmp_path):
+    # Setup intensity image
+    img_data = np.ones((10, 10), dtype=np.float32)
+    # Setup labels: only label 1 is present
+    labels_data = np.zeros((10, 10), dtype=np.int32)
+    labels_data[2:5, 2:5] = 1
+
+    img_uri = "obj://com_img"
+    labels_uri = "obj://com_labels"
+    OBJECT_CACHE[img_uri] = img_data
+    OBJECT_CACHE[labels_uri] = labels_data
+
+    inputs = [
+        ("image", {"uri": img_uri}),
+        ("labels", {"uri": labels_uri, "type": "LabelImageRef"}),
+    ]
+    # Request labels 1 (present) and 3 (missing)
+    params = {"index": [1, 3]}
+
+    # Mock center_of_mass to return results for 2 labels
+    mock_module.center_of_mass = MagicMock(return_value=[(3.0, 3.0), (0.0, 0.0)])
+
+    results = adapter.execute(
+        fn_id="scipy.ndimage.center_of_mass", inputs=inputs, params=params, work_dir=tmp_path
+    )
+
+    assert len(results) == 1
+    out = results[0]
+    assert out["format"] == "json"
+
+    import json
+
+    with open(out["path"], "r") as f:
+        payload = json.load(f)
+
+    # Label 1 should be (3.0, 3.0)
+    assert payload["1"] == [3.0, 3.0]
+    # Label 3 should be null because it's missing from labels_data
+    assert payload["3"] is None
+
+    # Verify mock call - CRITICAL wiring proof
+    call_args, call_kwargs = mock_module.center_of_mass.call_args
+    # First positional arg is image_data
+    assert np.all(call_args[0] == img_data)
+    # labels should be passed in params
+    assert "labels" in call_kwargs
+    assert np.all(call_kwargs["labels"] == labels_data)
+
+
+def test_execute_extrema_json_missing_labels(adapter, mock_module, tmp_path):
+    # Setup labels: label 5 is missing
+    labels_data = np.zeros((5, 5), dtype=np.int32)
+    labels_data[0:2, 0:2] = 1
+    labels_uri = "obj://extrema_labels"
+    OBJECT_CACHE[labels_uri] = labels_data
+
+    inputs = [
+        ("image", {"uri": "obj://any"}),
+        ("labels", {"uri": labels_uri, "type": "LabelImageRef"}),
+    ]
+    OBJECT_CACHE["obj://any"] = np.ones((5, 5))
+
+    params = {"index": [5]}
+
+    # Mock extrema to return a tuple (min, max, min_loc, max_loc)
+    mock_module.extrema = MagicMock(return_value=(0.0, 1.0, (0, 0), (1, 1)))
+
+    results = adapter.execute(
+        fn_id="scipy.ndimage.extrema", inputs=inputs, params=params, work_dir=tmp_path
+    )
+
+    import json
+
+    with open(results[0]["path"], "r") as f:
+        payload = json.load(f)
+
+    assert payload == {"5": None}
+
+
+def test_execute_sum_or_mean_json_scalar_output(adapter, mock_module, tmp_path):
+    labels_data = np.zeros((5, 5), dtype=np.int32)
+    labels_data[0:2, 0:2] = 1
+    labels_uri = "obj://sum_labels"
+    OBJECT_CACHE[labels_uri] = labels_data
+
+    inputs = [
+        ("image", {"uri": "obj://any"}),
+        ("labels", {"uri": labels_uri, "type": "LabelImageRef"}),
+    ]
+    OBJECT_CACHE["obj://any"] = np.ones((5, 5))
+
+    # Single index
+    params = {"index": 1}
+    mock_module.sum = MagicMock(return_value=10.0)
+
+    results = adapter.execute(
+        fn_id="scipy.ndimage.sum", inputs=inputs, params=params, work_dir=tmp_path
+    )
+
+    import json
+
+    with open(results[0]["path"], "r") as f:
+        payload = json.load(f)
+
+    assert payload == {"1": 10.0}
