@@ -90,13 +90,14 @@ Phases:
   - KDTree objects can be created and queried for nearest neighbors within a session.
   - Spectral analysis (Welch/Periodogram) can be performed on 1D signal artifacts.
 
-**Plans:** 4 plans
+**Plans:** 5 plans
 
 Plans:
 - [x] 09-01-PLAN.md — Add spatial/signal routing + KDTree IOPatterns
 - [x] 09-02-PLAN.md — Spatial distances + Voronoi/Delaunay wrappers
 - [x] 09-03-PLAN.md — KDTree build/query wrappers (session persistence)
 - [x] 09-04-PLAN.md — Signal convolution + spectral analysis wrappers
+- [x] 09-05-PLAN.md — Gap closure: fix KDTree validation + periodogram string inputs
 
 ### Phase 10: Verification & Smoke Testing
 **Goal:** Ensure end-to-end reliability and parity with native Scipy results.

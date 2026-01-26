@@ -7,9 +7,9 @@
 
 ## Current Position
 - **Phase:** 9
-- **Plan:** 4 of 4 in current phase
+- **Plan:** 5 of 5 in current phase
 - **Status:** Phase complete
-- **Last activity:** 2026-01-26 - Completed Phase 9
+- **Last activity:** 2026-01-26 - Completed Phase 9 gap closures (09-05-PLAN.md)
 - **Next Phase:** 10
 
 Progress: █████████████████████████░░░ 90%
@@ -23,6 +23,7 @@ Progress: ███████████████████████�
 | 9 | KDTree Lifecycle Patterns | Introduced TABLE_TO_OBJECT and OBJECT_AND_TABLE_TO_JSON to support stateful KDTree building and querying. |
 | 9 | Direct SciPy API Mapping | Exposing direct `scipy.spatial` fn_ids (cdist, Voronoi) while wrapping execution logic to handle artifacts and coordinate selection. |
 | 9 | KDTree Lifecycle Persistence | Used `obj://` URIs and `OBJECT_CACHE` to persist KDTree objects across tool calls, enabling efficient multi-query workflows. |
+| 9 | String-to-Table Normalization | Centralized plain URI string normalization in `PandasAdapterForRegistry._load_table` to support flexible artifact passing across adapters. |
 
 ## Accumulated Context
 
@@ -36,8 +37,8 @@ Progress: ███████████████████████�
 - Phase 6 Complete: Scipy ndimage infrastructure established with metadata preservation and memory safety.
 - Phase 7 Complete: IO patterns, zoom transforms, and Fourier workflow support implemented.
 - Phase 8 Complete: Statistical Analysis foundation, wrappers, distributions, and comprehensive testing implemented.
-- Phase 9 Complete: Spatial metrics, KDTree persistence, and Signal processing (spectral/convolution) implemented.
-- Stopped at: Completed Phase 9
+- Phase 9 Complete: Spatial metrics, KDTree persistence, Signal processing, and gap closures (validation/normalization) implemented.
+- Stopped at: Completed 09-05-PLAN.md
 - Resume file: None
 
 ## Next Steps
