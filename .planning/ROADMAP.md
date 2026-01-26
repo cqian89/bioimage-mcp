@@ -57,6 +57,14 @@ Plans:
   - Labeling and center-of-mass measurements return JSON artifacts usable for downstream logic.
   - Fourier filters correctly handle complex-to-real transitions in image artifacts.
 
+**Plans:** 4 plans
+
+Plans:
+- [ ] 07-01-PLAN.md — Add IO patterns for JSON + multi-output labeling
+- [ ] 07-02-PLAN.md — Implement zoom metadata updates and transform pass-through
+- [ ] 07-03-PLAN.md — Implement labeling + measurement JSON schemas
+- [ ] 07-04-PLAN.md — Add complex Fourier artifact support + expose scipy.fft
+
 ### Phase 8: Statistical Analysis
 **Goal:** Bridge image measurements to scientific statistical testing.
 - **Dependencies:** Phase 7
