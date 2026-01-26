@@ -63,7 +63,7 @@ Plans:
 - [x] 07-01-PLAN.md — Add IO patterns for JSON + multi-output labeling
 - [x] 07-02-PLAN.md — Implement zoom metadata updates and transform pass-through
 - [x] 07-03-PLAN.md — Implement labeling + measurement JSON schemas
-- [ ] 07-04-PLAN.md — Add complex Fourier artifact support + expose scipy.fft
+- [x] 07-04-PLAN.md — Add complex Fourier artifact support + expose scipy.fft
 
 ### Phase 8: Statistical Analysis
 **Goal:** Bridge image measurements to scientific statistical testing.
@@ -101,7 +101,7 @@ Plans:
 | 1-5 | v0.2.0 | ✅ Complete | 2026-01-25 |
 | 5.1 - Discovery | v0.3.0 | ✅ Complete | 2026-01-25 |
 | 6 - Infrastructure | v0.3.0 | ✅ Complete | 2026-01-25 |
-| 7 - Transforms | v0.3.0 | 📋 Pending | — |
+| 7 - Transforms | v0.3.0 | ✅ Complete | 2026-01-26 |
 | 8 - Statistics | v0.3.0 | 📋 Pending | — |
 | 9 - Spatial/Signal | v0.3.0 | 📋 Pending | — |
 | 10 - Verification | v0.3.0 | 📋 Pending | — |
