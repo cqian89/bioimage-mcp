@@ -12,7 +12,7 @@
 - **Last activity:** 2026-01-27 — Milestone v0.4.0 started
 
 ## Performance Metrics
-- **Phase Coverage:** 10/11 phases completed (including 5.1)
+- **Phase Coverage:** 10/10 phases completed (including 5.1)
 ...
 | 8 | Curated Stats Wrappers | Exposing specific `*_table` wrappers instead of raw `scipy.stats` functions ensures reliable artifact I/O and easier agent consumption. |
 | 8 | TABLE_PAIR_TO_JSON pattern | Introduced a specific I/O pattern for two-sample tests to simplify port mapping for t-tests and KS-tests. |

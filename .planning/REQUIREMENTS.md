@@ -1,68 +1,63 @@
-# Requirements: Bioimage-MCP Scipy Integration
+# Requirements: Bioimage-MCP Unified Introspection Engine
 
-**Defined:** 2026-01-25
+**Defined:** 2026-01-27
 **Core Value:** Enables AI agents to safely and reproducibly execute bioimage analysis tools without dependency conflicts.
-**Milestone:** v0.3.0
 
-## v1 Requirements (v0.3.0)
+## v1 Requirements
 
-Requirements for initial release. Each maps to roadmap phases.
+Requirements for this milestone. Each maps to roadmap phases.
 
-### General / Infrastructure
+### Introspection Pipeline
 
-- [x] **GEN-01**: Dynamic Adapter for Scipy module discovery (numpydoc support)
-- [x] **GEN-02**: Access images via `BioImageRef.reader` (Native dimensions, no auto-squeezing)
-- [x] **GEN-03**: Explicit `float32` output forcing for memory safety
-- [x] **GEN-04**: Resolution-aware metadata preservation (pass-through)
+- [ ] **INT-01**: Agent can discover tools with params_schema derived from AST without importing tool code.
+- [ ] **INT-02**: Engine falls back to isolated runtime introspection when AST signatures are missing or dynamic.
+- [ ] **INT-03**: MCP tools/list and meta.describe share a single introspection source so metadata is consistent.
 
-### Testing & Verification
+### Schema Emission
 
-- [ ] **TEST-01**: Smoke tests mimicking tool calls on a live server
-- [ ] **TEST-02**: Reference scripts based on real Scipy documentation examples
-- [ ] **TEST-03**: Verification: Reference script output matches MCP output
-- [ ] **TEST-04**: Data strategy: Use `datasets/` folder or synthetic data
+- [ ] **SCHEMA-01**: Agent receives params_schema derived from type hints and docstrings with required fields populated.
+- [ ] **SCHEMA-02**: params_schema excludes artifact ports; artifact I/O remains separate from parameters.
+- [ ] **SCHEMA-03**: meta.describe includes tool_version and introspection_source for each function.
 
-### N-D Image Processing (`scipy.ndimage`)
+### Environment Readiness
 
-- [x] **NDIMG-01**: Filters (Gaussian, Uniform, Laplace, Prewitt, Sobel)
-- [x] **NDIMG-02**: Morphology (Dilation, Erosion, Opening, Closing, Tophat)
-- [x] **NDIMG-03**: Interpolation (Zoom, Rotate, Shift, Affine)
-- [x] **NDIMG-04**: Measurements (Labeling, Center of Mass, Extrema, Sum/Mean)
-- [x] **NDIMG-05**: Fourier Domain Filters (Fourier Gaussian, Ellipsoid)
+- [ ] **ENV-01**: Operator can see readiness diagnostics for missing tool environments or packages with remediation.
 
-### Statistics (`scipy.stats`)
+### Caching
 
-- [x] **STATS-01**: Summary Statistics (Describe, Mean, Skew, Kurtosis)
-- [x] **STATS-02**: Statistical Tests (T-test, ANOVA, KS-test)
-- [x] **STATS-03**: Probability Distributions (PDF/CDF access via introspection)
+- [ ] **CACHE-01**: Schema cache persists across server restarts.
+- [ ] **CACHE-02**: Cache invalidates on tool_version, env lock hash, or source hash changes.
 
-### Spatial Analysis (`scipy.spatial`)
+### Overlays and Patches
 
-- [x] **SPATIAL-01**: Distance Metrics (Euclidean, Cosine, Mahalanobis)
-- [x] **SPATIAL-02**: KDTree / Nearest Neighbor Search (Query points against artifacts)
-- [x] **SPATIAL-03**: Tessellations (Voronoi, Delaunay)
+- [ ] **OVERLAY-01**: Tool authors can apply overlays to rename/drop/annotate parameters without code changes.
+- [ ] **OVERLAY-02**: Overlay precedence is deterministic across built-in, manifest, and user overrides.
 
-### Signal Processing (`scipy.signal`)
+### Metadata and Diagnostics
 
-- [x] **SIGNAL-01**: N-D Convolutions (Convolve, Correlate)
-- [x] **SIGNAL-02**: Spectral Analysis (Periodogram, Welch)
+- [ ] **META-01**: Functions report full module paths with stable fn_id metadata.
+- [ ] **META-02**: callable_fingerprint is recorded and exposed for cache/diagnostic use.
+- [ ] **DIAG-01**: Diagnostics report missing docs, runtime fallback usage, and patch application.
 
 ## v2 Requirements
 
-Deferred to future release.
+Deferred to future release. Tracked but not in current roadmap.
 
-- **CLUSTER-01**: K-Means clustering (`scipy.cluster`)
-- **OPTIM-01**: Optimization recipes (`scipy.optimize`) - *unsafe for dynamic dispatch*
+### Types and Compatibility
+
+- **TYPE-01**: Semantic array typing (dims/axes/units) beyond FunctionHints.
+- **RUNTIME-01**: Full support for runtime-generated signatures without imports.
+- **COMPAT-01**: Backward compatibility for legacy fn_id or cache shapes.
 
 ## Out of Scope
 
-Explicitly excluded.
+Explicitly excluded. Documented to prevent scope creep.
 
 | Feature | Reason |
 |---------|--------|
-| Interactive Plotting | Use `matplotlib` adapter instead. |
-| Sparse Matrices | No standard artifact format for sparse arrays yet. |
-| Callback-based Optimization | Security risk in dynamic context. |
+| Runtime data introspection | Too slow and unsafe during discovery; use static signatures instead. |
+| Direct binary introspection | Compiled bindings require manual manifests or wrappers. |
+| Implicit type guessing | Leads to incorrect schemas; require explicit type hints. |
 
 ## Traceability
 
@@ -70,33 +65,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| GEN-01 | Phase 6 | Complete |
-| GEN-02 | Phase 6 | Complete |
-| GEN-03 | Phase 6 | Complete |
-| GEN-04 | Phase 6 | Complete |
-| TEST-01 | Phase 10 | Pending |
-| TEST-02 | Phase 10 | Pending |
-| TEST-03 | Phase 10 | Pending |
-| TEST-04 | Phase 10 | Pending |
-| NDIMG-01 | Phase 6 | Complete |
-| NDIMG-02 | Phase 6 | Complete |
-| NDIMG-03 | Phase 7 | Complete |
-| NDIMG-04 | Phase 7 | Complete |
-| NDIMG-05 | Phase 7 | Complete |
-| STATS-01 | Phase 8 | Complete |
-| STATS-02 | Phase 8 | Complete |
-| STATS-03 | Phase 8 | Complete |
-| SPATIAL-01 | Phase 9 | Complete |
-| SPATIAL-02 | Phase 9 | Complete |
-| SPATIAL-03 | Phase 9 | Complete |
-| SIGNAL-01 | Phase 9 | Complete |
-| SIGNAL-02 | Phase 9 | Complete |
 
 **Coverage:**
-- v1 requirements: 21 total
-- Mapped to phases: 21
-- Unmapped: 0 ✓
+- v1 requirements: 14 total
+- Mapped to phases: 0
+- Unmapped: 14 ⚠️
 
 ---
-*Requirements defined: 2026-01-25*
-*Last updated: 2026-01-25 start of v0.3.0*
+*Requirements defined: 2026-01-27*
+*Last updated: 2026-01-27 after initial definition*

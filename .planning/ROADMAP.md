@@ -6,7 +6,7 @@ Milestone v0.3.0 integrates the SciPy ecosystem into Bioimage-MCP using a **Dyna
 
 ## Milestone Status
 - **Target:** v0.3.0
-- **Phases:** 6-11 (follows v0.2.0)
+- **Phases:** 6-10 (follows v0.2.0)
 - **Coverage:** 21/21 requirements mapped
 
 ---
@@ -108,18 +108,6 @@ Plans:
    - MCP tool outputs for Gaussian blur and T-test match native Scipy script outputs bit-for-bit.
    - Synthetic and standard datasets are available for consistent test reproduction.
 
-### Phase 11: Fix scipy.stats Dynamic Discovery and Adapter Gaps
-
-**Goal:** [To be planned]
-**Depends on:** Phase 10
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd-plan-phase 11 to break down)
-
-**Details:**
-[To be added during planning]
-
 ---
 
 ## Progress
@@ -133,7 +121,6 @@ Plans:
 | 8 - Statistics | v0.3.0 | ✅ Complete | 2026-01-26 |
 | 9 - Spatial/Signal | v0.3.0 | ✅ Complete | 2026-01-26 |
 | 10 - Verification | v0.3.0 | 📋 Pending | — |
-| 11 - Stats Discovery Hardening | v0.3.0 | 📋 Pending | — |
 
 ---
 *Roadmap generated: 2026-01-25*
