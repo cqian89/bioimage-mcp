@@ -51,7 +51,6 @@ def list_tools(*, json_output: bool) -> int:
         tool_id = m.tool_id or "unknown"
         env_id = m.env_id
         fn_count = len(m.functions)
-
         env_exists = env_id in installed_envs if env_id else False
 
         # Status logic:

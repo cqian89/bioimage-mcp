@@ -374,6 +374,13 @@ def handle_meta_describe(params: dict[str, Any]) -> dict[str, Any]:
     if not target_fn:
         return {"ok": False, "error": "Missing target_fn parameter"}
 
+    # Normalize target_fn: strip tools.cellpose. or cellpose. prefix to match handlers
+    # Actually handlers use cellpose. prefix
+    if target_fn.startswith("tools.cellpose."):
+        target_fn = target_fn[6:]  # -> cellpose.models...
+    elif target_fn.startswith("base."):  # Cellpose sometimes prefixed with base. in old specs
+        target_fn = "cellpose." + target_fn[5:]
+
     if target_fn == "cellpose.models.CellposeModel.eval":
         schema = _introspect_cellpose_fn("cellpose.models.CellposeModel.eval")
         return {

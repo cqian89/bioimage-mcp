@@ -480,7 +480,6 @@ class DiscoveryService:
             (m for m in manifests if any(fn.fn_id == fn_id for fn in m.functions)),
             None,
         )
-
         # If no manifest found, use what we have in DB
         function_def = None
         if manifest:

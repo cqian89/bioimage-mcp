@@ -1,10 +1,13 @@
 from __future__ import annotations
+from __future__ import annotations
 
 import fnmatch
 import logging
+import sys
 from pathlib import Path
 from typing import Any
 
+from bioimage_mcp.bootstrap.env_manager import get_env_paths
 from bioimage_mcp.registry.diagnostics import EngineEvent, EngineEventType
 from bioimage_mcp.registry.dynamic.models import IOPattern, ParameterSchema
 from bioimage_mcp.registry.manifest_schema import Function, FunctionOverlay, Port, ToolManifest
@@ -114,11 +117,25 @@ class DiscoveryEngine:
             if tools_dir.exists():
                 search_paths.append(tools_dir)
 
+        # Include sys.path to allow griffe to find libraries installed in the current environment
+        # (Important for discovery of scipy, skimage, etc. when running doctor/server)
+        for p in sys.path:
+            if p:
+                search_paths.append(Path(p))
+
+        self._append_env_site_packages(search_paths, manifest.env_id)
+
+        if not source.modules or source.adapter in {"scipy", "trackpy"}:
+            runtime_functions = self._runtime_list(manifest)
+            return self._map_runtime_functions(manifest, source, runtime_functions, set())
+
         discovered_functions: list[Function] = []
+        failed_modules: list[str] = []
 
         for module_name in source.modules:
             try:
                 report = inspect_module(module_name, search_paths)
+                found_any = False
                 for sc in report.callables:
                     if not self._should_include(
                         sc.name, source.include_patterns, source.exclude_patterns
@@ -128,10 +145,157 @@ class DiscoveryEngine:
                     fn = self._process_callable(manifest, sc, source.prefix)
                     if fn:
                         discovered_functions.append(fn)
+                        found_any = True
+
+                if not found_any:
+                    include_patterns = source.include_patterns or ["*"]
+                    if "*" in include_patterns:
+                        logger.info("AST found no callables in module %s", module_name)
+                        failed_modules.append(module_name)
+
             except Exception as e:
                 logger.warning("AST inspection failed for module %s: %s", module_name, e)
+                failed_modules.append(module_name)
+
+        # Fallback: If AST discovery failed for any module, try runtime discovery
+        # (This is important when libraries use lazy_loader or are in isolated environments)
+        if failed_modules and source.modules:
+            logger.info("Attempting runtime fallback discovery for source %s", source.prefix)
+            runtime_functions = self._runtime_list(manifest)
+            print(
+                f"DEBUG: Runtime list for {source.prefix} returned {len(runtime_functions)} functions"
+            )
+            discovered_functions = self._map_runtime_functions(
+                manifest,
+                source,
+                runtime_functions,
+                {fn.fn_id for fn in discovered_functions},
+                discovered_functions,
+            )
 
         return discovered_functions
+
+    def _map_runtime_functions(
+        self,
+        manifest: ToolManifest,
+        source: Any,
+        runtime_functions: list[dict[str, Any]],
+        existing_ids: set[str],
+        discovered_functions: list[Function] | None = None,
+    ) -> list[Function]:
+        if discovered_functions is None:
+            discovered_functions = []
+
+        env_prefix = self._env_prefix_from_tool_id(manifest.tool_id)
+        source_prefix = f"{env_prefix}.{source.prefix}" if env_prefix else source.prefix
+
+        for fn_data in runtime_functions:
+            raw_fn_id = fn_data.get("fn_id", "")
+
+            # Match logic: check both prefixed and unprefixed IDs
+            is_match = False
+            final_fn_id = raw_fn_id
+
+            if raw_fn_id.startswith(f"{source_prefix}."):
+                is_match = True
+            elif source.prefix and raw_fn_id.startswith(f"{source.prefix}."):
+                is_match = True
+                # Prepend env_prefix if missing to maintain naming consistency
+                if env_prefix and not raw_fn_id.startswith(f"{env_prefix}."):
+                    final_fn_id = f"{env_prefix}.{raw_fn_id}"
+            elif source.prefix == "" and env_prefix and raw_fn_id.startswith(f"{env_prefix}."):
+                # Special case: empty prefix matches tool ID prefix
+                is_match = True
+
+            if is_match and final_fn_id not in existing_ids:
+                # Basic mapping from runtime dict to Function model
+                try:
+                    # Map input/output ports
+                    inputs = []
+                    for p in fn_data.get("inputs", []):
+                        if isinstance(p, dict):
+                            inputs.append(Port(**p))
+                        else:
+                            inputs.append(Port(name=p, artifact_type="BioImageRef"))
+
+                    outputs = []
+                    for p in fn_data.get("outputs", []):
+                        if isinstance(p, dict):
+                            outputs.append(Port(**p))
+                        else:
+                            outputs.append(Port(name=p, artifact_type="BioImageRef"))
+
+                    fn = Function(
+                        fn_id=final_fn_id,
+                        tool_id=manifest.tool_id,
+                        name=fn_data["name"],
+                        description=fn_data.get("description", ""),
+                        tags=fn_data.get("tags", []),
+                        inputs=inputs,
+                        outputs=outputs,
+                        params_schema=fn_data.get("params_schema", {"type": "object"}),
+                        io_pattern=fn_data.get("io_pattern"),
+                        module=fn_data.get("module"),
+                        introspection_source=f"runtime:{fn_data.get('introspection_source', 'meta.list')}",
+                    )
+                    discovered_functions.append(fn)
+                    existing_ids.add(final_fn_id)
+                except Exception as e:
+                    print(f"DEBUG: Failed to map runtime function {raw_fn_id}: {e}")
+                    logger.debug("Failed to map runtime function %s: %s", raw_fn_id, e)
+                    continue
+
+        return discovered_functions
+
+    def _append_env_site_packages(self, search_paths: list[Path], env_id: str | None) -> None:
+        if not env_id:
+            return
+        env_paths = get_env_paths()
+        env_path = env_paths.get(env_id)
+        if not env_path or not env_path.exists():
+            return
+
+        candidates: list[Path] = []
+        windows_site = env_path / "Lib" / "site-packages"
+        if windows_site.exists():
+            candidates.append(windows_site)
+
+        lib_dir = env_path / "lib"
+        if lib_dir.exists():
+            for python_dir in lib_dir.glob("python*"):
+                site_packages = python_dir / "site-packages"
+                if site_packages.exists():
+                    candidates.append(site_packages)
+
+        for candidate in candidates:
+            if candidate not in search_paths:
+                search_paths.append(candidate)
+
+    def _runtime_list(self, manifest: ToolManifest) -> list[dict[str, Any]]:
+        """Call meta.list on the tool pack to get all functions."""
+        try:
+            # We use meta.list command (legacy format usually handles it)
+            request = {
+                "command": "execute",
+                "fn_id": "meta.list",
+                "params": {},
+            }
+            # execute_tool handles spawning the worker
+            # Note: execute_tool returns (result_dict, log_text, exit_code)
+            result, _log, code = execute_tool(
+                entrypoint=manifest.entrypoint,
+                request=request,
+                env_id=manifest.env_id,
+            )
+            if code == 0 and isinstance(result, dict) and result.get("ok"):
+                # Result format: {"ok": True, "outputs": {"result": {"functions": [...]}}}
+                # based on entrypoint.py process_execute_request for meta.list
+                outputs = result.get("outputs", {})
+                res_data = outputs.get("result", {})
+                return res_data.get("functions", [])
+        except Exception as e:
+            logger.error("Runtime list failed for %s: %s", manifest.tool_id, e)
+        return []
 
     def _should_include(self, name: str, include: list[str], exclude: list[str]) -> bool:
         if not any(fnmatch.fnmatch(name, pat) for pat in include):
@@ -143,8 +307,13 @@ class DiscoveryEngine:
     def _process_callable(self, manifest: ToolManifest, sc: Any, prefix: str) -> Function | None:
         """Convert a static callable to a Function, with runtime fallback if needed."""
         env_prefix = self._env_prefix_from_tool_id(manifest.tool_id)
-        raw_fn_id = f"{prefix}.{sc.name}" if prefix else sc.name
-        fn_id = f"{env_prefix}.{raw_fn_id}" if env_prefix else raw_fn_id
+        raw_fn_id = sc.qualified_name or (f"{prefix}.{sc.name}" if prefix else sc.name)
+        if prefix and not raw_fn_id.startswith(f"{prefix}."):
+            raw_fn_id = f"{prefix}.{raw_fn_id}"
+        if env_prefix and not raw_fn_id.startswith(f"{env_prefix}."):
+            fn_id = f"{env_prefix}.{raw_fn_id}"
+        else:
+            fn_id = raw_fn_id
 
         # Basic AST-derived info
         description = sc.docstring or ""
@@ -176,6 +345,8 @@ class DiscoveryEngine:
             "NativeOutputRef",
             "PlotRef",
         }
+        original_param_names = {p.name for p in sc.parameters}
+
         if "properties" in params_schema:
             params_schema["properties"] = {
                 k: v
@@ -187,8 +358,9 @@ class DiscoveryEngine:
                     r for r in params_schema["required"] if r in params_schema["properties"]
                 ]
 
-        # Define "AST incomplete" as: params_schema missing properties OR properties is empty
-        is_ast_incomplete = not params_schema.get("properties")
+        # Only fallback when params were expected but missing after filtering
+        artifact_only = not original_param_names or original_param_names.issubset(port_names)
+        is_ast_incomplete = not params_schema.get("properties") and not artifact_only
 
         # Only fallback to runtime describe if AST schema is incomplete
         if is_ast_incomplete:

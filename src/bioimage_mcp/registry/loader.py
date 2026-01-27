@@ -60,6 +60,11 @@ def load_manifest_file(path: Path) -> tuple[ToolManifest | None, ManifestDiagnos
                 "manifest_checksum": checksum,
             }
         )
+        # Resolve entrypoint relative to manifest file if it's a relative path
+        if manifest.entrypoint and not Path(manifest.entrypoint).is_absolute():
+            abs_entrypoint = (path.parent / manifest.entrypoint).resolve()
+            if abs_entrypoint.exists():
+                manifest.entrypoint = str(abs_entrypoint)
     except Exception as exc:  # noqa: BLE001
         return None, ManifestDiagnostic(path=path, tool_id=tool_id, errors=[str(exc)])
 
@@ -101,8 +106,9 @@ def discover_manifest_paths(roots: list[Path]) -> list[Path]:
     for root in roots:
         if not root.exists() or not root.is_dir():
             continue
-        paths.extend(sorted(root.rglob("*.yaml")))
-        paths.extend(sorted(root.rglob("*.yml")))
+        # Only pick up manifest files to avoid treating non-manifest YAMLs as tools
+        paths.extend(sorted(root.rglob("manifest.yaml")))
+        paths.extend(sorted(root.rglob("manifest.yml")))
     # De-dup
     seen: set[Path] = set()
     unique: list[Path] = []

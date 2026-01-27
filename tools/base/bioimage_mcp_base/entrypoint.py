@@ -305,10 +305,34 @@ def handle_meta_list(params: dict[str, Any]) -> dict[str, Any]:
 
 def handle_meta_describe(params: dict[str, Any]) -> dict[str, Any]:
     target_fn = params.get("target_fn", "")
-    if target_fn not in FN_MAP:
-        return {"ok": False, "error": f"Unknown function: {target_fn}"}
+    if not target_fn:
+        return {"ok": False, "error": "Missing target_fn"}
 
-    func, descriptions = FN_MAP[target_fn]
+    func = None
+    descriptions = {}
+
+    if target_fn in FN_MAP:
+        func, descriptions = FN_MAP[target_fn]
+    else:
+        # Try dynamic resolution for functions not in FN_MAP
+        try:
+            # Strip base. prefix if present
+            search_fn = target_fn
+            if search_fn.startswith("base."):
+                search_fn = search_fn[5:]
+
+            # skimage.filters.gaussian
+            parts = search_fn.split(".")
+            if len(parts) >= 3:
+                module_path = ".".join(parts[:-1])
+                func_name = parts[-1]
+                module = importlib.import_module(module_path)
+                func = getattr(module, func_name)
+        except Exception as e:
+            return {"ok": False, "error": f"Failed to resolve function {target_fn}: {e}"}
+
+    if func is None:
+        return {"ok": False, "error": f"Unknown function: {target_fn}"}
 
     # Import introspect_python_api only when needed (for meta.describe)
     try:
@@ -316,9 +340,9 @@ def handle_meta_describe(params: dict[str, Any]) -> dict[str, Any]:
     except ImportError:
         return {"ok": False, "error": "Introspection not available in this environment"}
 
-    schema = introspect_python_api(
-        func, descriptions, exclude_params={"inputs", "params", "work_dir"}
-    )
+    # Exclude common artifact/system params from schema
+    exclude = {"inputs", "params", "work_dir", "self", "cls"}
+    schema = introspect_python_api(func, descriptions, exclude_params=exclude)
 
     return {
         "ok": True,

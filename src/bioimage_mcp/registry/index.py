@@ -61,8 +61,8 @@ class RegistryIndex:
                 env_id,
                 json.dumps({"name": name, "description": description}),
                 manifest_path,
-                int(installed),
-                int(available),
+                1 if installed else 0,
+                1 if available else 0,
             ),
         )
         self._conn.commit()

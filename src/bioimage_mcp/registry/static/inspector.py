@@ -1,4 +1,5 @@
 from __future__ import annotations
+from __future__ import annotations
 
 import pathlib
 
@@ -36,7 +37,10 @@ def inspect_module(module: str, search_paths: list[pathlib.Path]) -> StaticModul
     callables = []
     # all_members includes members of the module and its submodules if it's a package
     for member in griffe_mod.all_members.values():
-        if member.is_function:
+        if member.kind is not griffe.Kind.FUNCTION:
+            continue
+
+        try:
             params = []
             for p in member.parameters:
                 params.append(
@@ -46,15 +50,19 @@ def inspect_module(module: str, search_paths: list[pathlib.Path]) -> StaticModul
                         default=str(p.default) if p.default else None,
                     )
                 )
+            docstring = member.docstring.value if member.docstring else None
+            source = member.source
+        except (griffe.AliasResolutionError, griffe.CyclicAliasError):
+            continue
 
-            callables.append(
-                StaticCallable(
-                    name=member.name,
-                    qualified_name=member.path,
-                    docstring=member.docstring.value if member.docstring else None,
-                    parameters=params,
-                    source=member.source,
-                )
+        callables.append(
+            StaticCallable(
+                name=member.name,
+                qualified_name=member.path,
+                docstring=docstring,
+                parameters=params,
+                source=source,
             )
+        )
 
     return StaticModuleReport(module_name=module, callables=callables)

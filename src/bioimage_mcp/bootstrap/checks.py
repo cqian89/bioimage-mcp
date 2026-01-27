@@ -139,7 +139,7 @@ def check_tool_consolidation() -> CheckResult:
         remediation.append(f"Restore base manifest at {base_manifest_path}")
     else:
         manifest, diag = load_manifest_file(base_manifest_path)
-        if manifest is None or diag is not None:
+        if manifest is None or (diag is not None and diag.errors):
             errors.append("invalid_base_manifest")
             details["base_manifest_errors"] = (
                 diag.errors if diag is not None else ["unknown manifest error"]

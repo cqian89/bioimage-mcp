@@ -77,6 +77,13 @@ def handle_meta_describe(params: dict) -> dict:
     if not target_fn:
         return {"ok": False, "error": "target_fn required"}
 
+    # Strip tool prefix if present (e.g. tools.trackpy.locate -> trackpy.locate)
+    if target_fn.startswith("tools.trackpy."):
+        target_fn = target_fn[14:]
+    elif target_fn.startswith("trackpy.") and not target_fn.startswith("trackpy.trackpy."):
+        # Already correct format for introspect_function
+        pass
+
     try:
         result = introspect_function(target_fn)
         return {"ok": True, "result": result}
