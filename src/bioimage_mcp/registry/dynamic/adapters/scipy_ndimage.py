@@ -380,6 +380,8 @@ class ScipyNdimageAdapter(BaseAdapter):
                 return None
             if isinstance(v, (float, np.floating)) and np.isnan(v):
                 return None
+            if isinstance(v, np.dtype) or "DType" in str(type(v)):
+                return str(v)
             if hasattr(v, "item") and not isinstance(v, np.ndarray):
                 return v.item()
             if isinstance(v, (list, tuple)):
@@ -390,6 +392,13 @@ class ScipyNdimageAdapter(BaseAdapter):
                 return {"start": v.start, "stop": v.stop, "step": v.step}
             if isinstance(v, dict):
                 return {str(k): _to_native(val) for k, val in v.items()}
+
+            # Fallback for common non-serializable types
+            import types
+
+            if isinstance(v, (types.ModuleType, types.FunctionType, types.MethodType)):
+                return str(v)
+
             return v
 
         val_to_save = _to_native(payload)
@@ -417,6 +426,14 @@ class ScipyNdimageAdapter(BaseAdapter):
         work_dir: Path | None = None,
     ) -> list[dict]:
         """Execute the scipy.ndimage function with metadata preservation and dtype safety."""
+        # Resolve function early for metadata and routing
+        parts = fn_id.split(".")
+        if len(parts) < 3:
+            raise ValueError(f"Invalid fn_id: {fn_id}")
+
+        module_path = ".".join(parts[:-1])
+        func_name = parts[-1]
+
         # 1) Named input resolution
         # Find primary image input by key preference: 'image' then 'input' then first artifact-like entry
         input_dict = dict(inputs)
@@ -484,20 +501,19 @@ class ScipyNdimageAdapter(BaseAdapter):
 
         # 5) Memory safety / dtype
         # If the primary input dtype is uint16 and the array is "large", cast to float32
-        # Threshold: 16 MB
+        # Threshold: 16 MB. Also force for filters/transforms to ensure precision.
         if image_data is not None and image_data.dtype == np.uint16:
-            if image_data.nbytes >= 16 * 1024 * 1024:
-                logger.info(f"Casting large uint16 input ({image_data.nbytes} bytes) to float32")
+            is_precise_op = any(
+                kw in func_name
+                for kw in ("filter", "gaussian", "zoom", "rotate", "shift", "affine")
+            )
+            if image_data.nbytes >= 16 * 1024 * 1024 or is_precise_op:
+                logger.info(
+                    f"Casting uint16 input ({image_data.nbytes} bytes) to float32 for {func_name}"
+                )
                 image_data = image_data.astype(np.float32)
 
         # Resolve function
-        parts = fn_id.split(".")
-        if len(parts) < 3:
-            raise ValueError(f"Invalid fn_id: {fn_id}")
-
-        module_path = ".".join(parts[:-1])
-        func_name = parts[-1]
-
         module = importlib.import_module(module_path)
         func = getattr(module, func_name)
 

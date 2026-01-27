@@ -23,14 +23,16 @@ def main():
 
     # Load image using BioImage
     img = BioImage(input_path)
-    # Get the data as a numpy array.
+    # Get the data as a numpy array and force float32 for deterministic parity
     data = img.reader.data
     if hasattr(data, "compute"):
         data = data.compute()
+    data = np.asarray(data, dtype=np.float32)
 
     # Run gaussian filter
     # Note: scipy.ndimage.gaussian_filter works on the whole array
     result = ndimage.gaussian_filter(data, sigma=args.sigma)
+    result = np.asarray(result, dtype=np.float32)
 
     # Save as .npy for easy comparison in the test
     # We'll save it in the same directory as a temporary file

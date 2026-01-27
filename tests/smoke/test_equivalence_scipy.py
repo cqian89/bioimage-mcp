@@ -93,11 +93,12 @@ async def test_scipy_ndimage_gaussian_filter_equivalence(
     if mcp_path.startswith("/") and len(mcp_path) > 2 and mcp_path[2] == ":":
         mcp_path = mcp_path[1:]
 
-    # Load MCP result data
+    # Load MCP result data and force float32 for bit-for-bit comparison
     mcp_img = BioImage(mcp_path)
     mcp_data = mcp_img.reader.data
     if hasattr(mcp_data, "compute"):
         mcp_data = mcp_data.compute()
+    mcp_data = np.asarray(mcp_data, dtype=np.float32)
 
     # 2. Run via Native Reference Script
     script_path = Path(__file__).parent / "reference_scripts" / "scipy_baseline.py"
@@ -109,10 +110,11 @@ async def test_scipy_ndimage_gaussian_filter_equivalence(
 
     assert baseline_result["status"] == "success"
     expected_data = np.load(baseline_result["output_path"])
+    expected_data = np.asarray(expected_data, dtype=np.float32)
 
-    # 3. Compare
+    # 3. Compare bit-for-bit
     try:
-        helper.assert_arrays_equivalent(mcp_data, expected_data, rtol=1e-5)
+        np.testing.assert_array_equal(mcp_data, expected_data)
     finally:
         # Cleanup baseline temp file
         baseline_tmp_path = Path(baseline_result["output_path"])
