@@ -103,6 +103,8 @@ class FunctionOverlay(BaseModel):
     io_pattern: IOPattern | None = None
     hints: FunctionHints | None = None
     params_override: dict[str, dict[str, Any]] | None = None
+    params_rename: dict[str, str] | None = None
+    params_omit: list[str] | None = None
 
 
 class DynamicSource(BaseModel):
