@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 ## Current Position
 
 Phase: 12 of 12 (Core Engine + AST-First)
-Plan: 6 of 6 in current phase
-Status: Phase complete
-Last activity: 2026-01-27 — Completed 12-06-PLAN.md
+Plan: 7 of 9 in current phase
+Status: In progress
+Last activity: 2026-01-27 — Completed 12-07-PLAN.md
 
-Progress: ██████████ 100%
+Progress: ███████░░░ 77%
 
 ## Accumulated Context
 
@@ -40,6 +40,8 @@ Progress: ██████████ 100%
 | 12 | Extended ManifestDiagnostic | Include engine_events for unified reporting of fallback, overlays, and missing docs. |
 | 12 | diagnostic_level config | Allow filtering of discovery events (minimal/standard/full) in doctor output. |
 | 12 | tool_environments check | Detect missing conda environments referenced by manifests with actionable remediation. |
+| 12 | Gated runtime fallback | DiscoveryEngine only calls runtime fallback if AST-derived schema is incomplete (empty properties after filtering). |
+| 12 | target_fn request param | Aligned DiscoveryEngine runtime describe call with tool entrypoint and API schema. |
 
 ### Roadmap Evolution
 - Phase 12 added: Core Engine + AST-First
@@ -51,9 +53,11 @@ Progress: ██████████ 100%
 - Existing failures in bootstrap/test_install.py need investigation.
 
 ### Session Continuity
-Last session: 2026-01-27T14:52:00Z
-Stopped at: Completed 12-06-PLAN.md
+Last session: 2026-01-27T15:44:17Z
+Stopped at: Completed 12-07-PLAN.md
 Resume file: None
 
 ## Next Steps
-1. Release v0.4.0 Unified Introspection Engine.
+1. Execute 12-08-PLAN.md: Enforce cache invalidation keys and sync list/describe metadata.
+2. Execute 12-09-PLAN.md: Preserve runtime schema descriptions.
+3. Release v0.4.0 Unified Introspection Engine.
