@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 ## Current Position
 
 Phase: 12 of 12 (Core Engine + AST-First)
-Plan: 5 of 6 in current phase
-Status: In progress
-Last activity: 2026-01-27 — Completed 12-05-PLAN.md
+Plan: 6 of 6 in current phase
+Status: Phase complete
+Last activity: 2026-01-27 — Completed 12-06-PLAN.md
 
-Progress: █████████░ 98%
+Progress: ██████████ 100%
 
 ## Accumulated Context
 
@@ -37,6 +37,9 @@ Progress: █████████░ 98%
 | 12 | Multi-key cache invalidation | Ensures cache safety by tracking version, env, and source changes. |
 | 12 | Move metadata to adjacent block | Moved tool_version and introspection_source to meta block in describe to keep params_schema pure. |
 | 12 | Persistent Registry Cache | Wired API to DB-backed schema cache, eliminating separate schema_cache.json file. |
+| 12 | Extended ManifestDiagnostic | Include engine_events for unified reporting of fallback, overlays, and missing docs. |
+| 12 | diagnostic_level config | Allow filtering of discovery events (minimal/standard/full) in doctor output. |
+| 12 | tool_environments check | Detect missing conda environments referenced by manifests with actionable remediation. |
 
 ### Roadmap Evolution
 - Phase 12 added: Core Engine + AST-First
@@ -48,9 +51,9 @@ Progress: █████████░ 98%
 - Existing failures in bootstrap/test_install.py need investigation.
 
 ### Session Continuity
-Last session: 2026-01-27T14:23:50Z
-Stopped at: Completed 12-05-PLAN.md
+Last session: 2026-01-27T14:52:00Z
+Stopped at: Completed 12-06-PLAN.md
 Resume file: None
 
 ## Next Steps
-1. Execute Plan 12-06: Introspection cleanup and consolidation.
+1. Release v0.4.0 Unified Introspection Engine.

@@ -23,9 +23,9 @@ Plans:
 ### Phase 12: Core Engine + AST-First
 
 **Goal:** Unified introspection engine that is AST-first with isolated runtime fallback, deterministic schema emission, and consistent metadata across list/describe.
-**Status:** In progress
+**Status:** Complete (2026-01-27)
 **Depends on:** Phase 11
-**Plans:** 5/6 plans complete
+**Plans:** 6/6 plans complete
 
 Plans:
 - [x] 12-01-PLAN.md — Static inspector foundation (griffe + fingerprint + normalization)
@@ -33,7 +33,7 @@ Plans:
 - [x] 12-03-PLAN.md — DiscoveryEngine: AST-first + runtime fallback + skip rules
 - [x] 12-04-PLAN.md — Persistent cache invalidation keys + callable_fingerprint storage
 - [x] 12-05-PLAN.md — API wiring: single schema source + describe metadata contract
-- [ ] 12-06-PLAN.md — Diagnostics + doctor readiness checks (ENV-01)
+- [x] 12-06-PLAN.md — Diagnostics + doctor readiness checks (ENV-01)
 
 **Details:**
 [To be added during planning]
