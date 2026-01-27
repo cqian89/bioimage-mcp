@@ -47,10 +47,10 @@ Table stakes include automatic schema derivation, AST-first discovery, readiness
 
 ### Architecture Approach
 
-Adopt a UnifiedIntrospectionEngine that orchestrates AST parsing, optional runtime fallback, overlay application, and schema emission, while storing outputs in a consolidated cache and registry index. See `.planning/research/ARCHITECTURE.md`.
-
-**Major components:**
-1. UnifiedIntrospectionEngine — orchestrates introspection and overlays
+Adopt an IntrospectionEngine that orchestrates AST parsing, optional runtime fallback, overlay application, and schema emission, while storing outputs in a consolidated cache and registry index. See `.planning/research/ARCHITECTURE.md`.
+ 
+ **Major components:**
+ 1. IntrospectionEngine — orchestrates introspection and overlays
 2. SchemaCache (DiskCache/SQLite) — persists derived schemas
 3. Runtime fallback (tool-pack meta.describe) — handles dynamic tools
 
