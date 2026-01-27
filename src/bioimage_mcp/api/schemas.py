@@ -286,6 +286,15 @@ class NextStep(BaseModel):
     reason: str
 
 
+class FunctionMeta(BaseModel):
+    """Metadata block for function nodes."""
+
+    tool_version: str
+    introspection_source: str
+    callable_fingerprint: str | None = None
+    module: str | None = None
+
+
 class FunctionDescriptor(BaseModel):
     """Full function description for describe responses."""
 
@@ -296,6 +305,8 @@ class FunctionDescriptor(BaseModel):
     inputs: dict[str, InputPort]
     outputs: dict[str, OutputPort]
     params_schema: dict[str, Any]
+    meta: FunctionMeta
+    hints: FunctionHints | None = None
     examples: list[FunctionExample] = Field(default_factory=list)
     next_steps: list[NextStep] = Field(default_factory=list)
 

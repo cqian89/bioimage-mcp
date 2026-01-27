@@ -33,6 +33,7 @@ class MetaDescribeResult(BaseModel):
     params_schema: dict[str, Any]
     tool_version: str
     introspection_source: str
+    callable_fingerprint: str | None = None
 
 
 class MetaDescribeSuccess(BaseModel):

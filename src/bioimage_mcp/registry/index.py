@@ -217,13 +217,15 @@ class RegistryIndex:
 
     def get_function(self, fn_id: str) -> dict | None:
         row = self._conn.execute(
-            "SELECT fn_id, params_schema_json, introspection_source FROM functions WHERE fn_id = ?",
+            "SELECT fn_id, tool_id, module, params_schema_json, introspection_source FROM functions WHERE fn_id = ?",
             (fn_id,),
         ).fetchone()
         if row is None:
             return None
         result = {
             "fn_id": row["fn_id"],
+            "tool_id": row["tool_id"],
+            "module": row["module"],
             "schema": json.loads(row["params_schema_json"]),
         }
         if row["introspection_source"]:
