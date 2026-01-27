@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 ## Current Position
 
 Phase: 12 of 12 (Core Engine + AST-First)
-Plan: 7 of 9 in current phase
+Plan: 8 of 9 in current phase
 Status: In progress
-Last activity: 2026-01-27 — Completed 12-07-PLAN.md
+Last activity: 2026-01-27 — Completed 12-09-PLAN.md
 
-Progress: ███████░░░ 77%
+Progress: █████████░ 88%
 
 ## Accumulated Context
 
@@ -42,6 +42,9 @@ Progress: ███████░░░ 77%
 | 12 | tool_environments check | Detect missing conda environments referenced by manifests with actionable remediation. |
 | 12 | Gated runtime fallback | DiscoveryEngine only calls runtime fallback if AST-derived schema is incomplete (empty properties after filtering). |
 | 12 | target_fn request param | Aligned DiscoveryEngine runtime describe call with tool entrypoint and API schema. |
+| 12 | Enforce required/properties consistency | Stripping required fields that don't match emitted properties (e.g. omitted artifacts). |
+| 12 | Omit empty 'required' key | Produces cleaner, more deterministic schema output. |
+| 12 | Description merging precedence | curated > docstring > TypeAdapter > fallback. |
 
 ### Roadmap Evolution
 - Phase 12 added: Core Engine + AST-First

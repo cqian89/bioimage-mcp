@@ -36,7 +36,7 @@ Plans:
 - [x] 12-06-PLAN.md — Diagnostics + doctor readiness checks (ENV-01)
 - [x] 12-07-PLAN.md — DiscoveryEngine: AST-first gating (conditional runtime fallback)
 - [ ] 12-08-PLAN.md — Cache invalidation keys enforcement + list/describe sync
-- [ ] 12-09-PLAN.md — Runtime schema description preservation + required/docstring alignment
+- [x] 12-09-PLAN.md — Runtime schema description preservation + required/docstring alignment
 
 **Details:**
 [To be added during planning]
