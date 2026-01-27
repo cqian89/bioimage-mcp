@@ -60,6 +60,9 @@ def test_discovery_engine_ast_only(manifest):
             assert fn.params_schema["properties"]["param1"]["type"] == "integer"
             assert "param1" in fn.params_schema["required"]
 
+            # Assert no runtime fallback occurred for AST-complete callable
+            mock_execute.assert_not_called()
+
 
 def test_discovery_engine_runtime_fallback(manifest):
     engine = DiscoveryEngine()
@@ -101,6 +104,9 @@ def test_discovery_engine_runtime_fallback(manifest):
             assert fn.introspection_source == "runtime:python_api"
             assert "runtime_param" in fn.params_schema["properties"]
 
+            # Assert runtime fallback occurred for AST-incomplete callable
+            mock_execute.assert_called_once()
+
 
 def test_discovery_engine_skip_on_failure(manifest):
     engine = DiscoveryEngine()
@@ -120,6 +126,7 @@ def test_discovery_engine_skip_on_failure(manifest):
 
             # Should be skipped because AST was empty and runtime failed
             assert len(functions) == 0
+            mock_execute.assert_called_once()
 
 
 def test_discovery_engine_normalization(manifest):
