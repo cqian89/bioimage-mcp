@@ -1,82 +1,55 @@
-# Domain Pitfalls: Scipy Integration
+# Domain Pitfalls: Unified Introspection & Registry Consolidation
 
-**Domain:** Bioimage-MCP / Scipy Integration (v0.3.0)
-**Researched:** 2026-01-25
-**Overall Confidence:** HIGH
+**Domain:** Bioimage-MCP Tool Registry
+**Researched:** 2026-01-27
 
-## Critical Pitfalls (Scipy Specific)
+## Critical Pitfalls
 
-Mistakes that cause system instability, OOM crashes, or data corruption when integrating Scipy.
+### 1. Environment-Blind Introspection (Import Isolation Leak)
+**What goes wrong:** The engine attempts to introspect a tool (e.g., `cellpose`) by importing it in the core server process rather than inside the tool's isolated environment.
+**Why it happens:** Attempting to consolidate logic by using `importlib` directly in the server.
+**Consequences:** `ImportError` or DLL/CUDA library mismatches; server crash during startup if a tool pack is missing a heavy dependency.
+**Prevention:** Use a **Two-Stage Pipeline**. Stage 1 (AST-first with **Griffe**) never imports code. Stage 2 (Dynamic Fallback) runs in a subprocess within the tool's environment.
 
-### Pitfall 1: Memory Exhaustion on Large Volumes
-**What goes wrong:** `scipy.ndimage` functions generally require the entire input array to be materialized in RAM. Bioimage datasets (e.g., lightsheet, 4D time-lapse) often exceed available system memory.
-**Why it happens:** The current adapter pattern (inherited from early skimage integration) calls `.compute()` on Dask-backed xarrays, forcing a full load of potentially multi-gigabyte files.
-**Consequences:** Worker process crashes (OOM), system instability, or failed MCP requests without clear error messages.
-**Warning signs:** High RSS memory usage in worker processes; `MemoryError` in logs; worker disconnects during filtering.
-**Prevention:** 
-1. Implement chunked processing for functions that support it (e.g., via `dask.array.map_blocks`).
-2. Add a "memory budget" check before materializing arrays.
-3. Provide a `slice` parameter to operate on sub-volumes by default.
-**Phase:** **Phase 1 (Integration Hardening)**.
+### 2. Decorator Erasure (Signature Loss)
+**What goes wrong:** Custom decorators (e.g., `@validate_call`, `@cache`) hide the original function signature or docstring.
+**Why it happens:** `inspect.signature` often sees the decorator's wrapper instead of the original function.
+**Consequences:** MCP `inputSchema` shows generic `*args` and `**kwargs` instead of actual parameters, making the tool unusable for LLMs.
+**Prevention:** **Griffe** handles decorators much better statically by following the AST. For runtime fallback, use `functools.wraps` or access `__wrapped__` attributes explicitly.
 
-### Pitfall 2: Implicit Dtype Escalation (Memory Doubling)
-**What goes wrong:** Many Scipy functions (especially filters like `gaussian_filter`) promote input data to `float64` by default to ensure precision.
-**Why it happens:** Scipy's default behavior for most linear filters is to use double-precision floats unless an `output` array or dtype is explicitly provided.
-**Consequences:** Doubling of memory usage (e.g., `uint16` -> `float64` is 4x increase). This often triggers the OOM issues described above.
-**Warning signs:** Result artifacts are significantly larger than input artifacts; memory spikes during execution.
-**Prevention:** 
-1. Use the `output` parameter in `ndimage` functions to force a specific dtype (e.g., `float32`).
-2. Add a heuristic to the adapter to choose the most memory-efficient safe dtype for the operation.
-**Phase:** **Phase 1 (Integration Hardening)**.
-
-### Pitfall 3: Return Type Mismatch (Scalars/Tuples)
-**What goes wrong:** The current adapter assumes all `scipy.ndimage` functions return a single image array. However, many functions return scalars (`mean`, `variance`) or tuples (`label`, `extrema`).
-**Why it happens:** Simplistic `IMAGE_TO_IMAGE` I/O pattern mapping in the adapter's `execute` method.
-**Consequences:** `TypeError` or `AttributeError` when the adapter tries to call `.ndim` or `.dtype` on a scalar/tuple result.
-**Warning signs:** "object has no attribute 'ndim'" errors in logs for measurement functions.
-**Prevention:** 
-1. Implement more granular I/O pattern detection (e.g., `IMAGE_TO_SCALAR`, `IMAGE_TO_LABELS_AND_COUNT`).
-2. Update the `execute` logic to handle non-array returns (e.g., returning a `TableRef` or `ObjectRef` instead of a `BioImageRef`).
-**Phase:** **Phase 2 (Feature Expansion)**.
+### 3. Stale Schema Invalidation (Caching Blindness)
+**What goes wrong:** The unified cache stores tool schemas but misses updates to the underlying tool-pack code or environment.
+**Why it happens:** Relying on version numbers alone (which developers often forget to bump during development).
+**Consequences:** LLMs receive stale tool definitions, leading to `ValidationError` when the tool is called.
+**Prevention:** Include the **xxHash** of the tool's source file in the cache key. Any change to the code immediately invalidates the cache.
 
 ## Moderate Pitfalls
 
-### Pitfall 1: Physical Metadata (Voxel Size) Loss
-**What goes wrong:** Scipy operations are unaware of physical units (microns, ms). Parameters like `sigma` are interpreted in pixels, not physical units.
-**Why it happens:** Scipy works on raw `numpy.ndarray`, stripping away `xarray` coordinates and `bioio` metadata.
-**Consequences:** Incorrect biological interpretations (e.g., applying a "2 micron" blur that is actually 2 pixels on an anisotropic volume).
-**Prevention:** 
-1. Extract physical spacing from `BioImageRef` metadata.
-2. If the agent provides physical units, convert them to pixels based on the metadata before calling Scipy.
-3. Preserve and propagate physical metadata to output artifacts.
-**Phase:** **Phase 3 (Metadata & Units)**.
+### 1. SWIG/Compiled Binding Blindness
+**What goes wrong:** The unified engine assumes all tools are pure Python and relies on signatures, which fail on SWIG-wrapped C++ (e.g., `tttrlib`).
+**Prevention:** Implement a fallback to `manifest.yaml` (manual schema) when dynamic introspection returns empty results. Ensure manual overrides take precedence.
 
-### Pitfall 2: Multi-Input Handling Failure
-**What goes wrong:** Functions requiring multiple images (e.g., `binary_propagation` with a `mask`, `watershed_ift` with `markers`) are not correctly mapped.
-**Why it happens:** The current adapter only loads the first input in `execute` and treats all others as scalar parameters.
-**Consequences:** Failure to execute advanced morphological or segmentation workflows.
-**Prevention:** 
-1. Enhance `_normalize_inputs` to identify all `BioImageRef` inputs in the request.
-2. Map MCP input names to Scipy argument names based on function signatures.
-**Phase:** **Phase 2 (Feature Expansion)**.
+### 2. Circular Type Definition Deadlocks
+**What goes wrong:** Tools use system-wide types (like `ArtifactRef`) in their signatures, but the registry requires those tool signatures to build its own internal models.
+**Prevention:** Move shared types to a leaf-node package with zero internal dependencies.
 
-## General System Pitfalls (Legacy)
+## Minor Pitfalls
 
-- **Zombie Processes:** Workers remain alive after server crash. *Mitigation: stdin EOF polling.*
-- **The "Memory://" Illusion:** Assuming `mem://` URIs are global across workers. *Mitigation: Track worker ownership.*
-- **Serialization Overhead:** Passing large lists in JSON. *Mitigation: Use Artifacts for data.*
+### 1. Pydantic V2 Schema Collision
+**What goes wrong:** Default Pydantic schema generation creates duplicate `$defs` keys for different tools.
+**Prevention:** Use a custom `schema_generator` that prefixes definitions with the tool ID.
 
 ## Phase-Specific Warnings
 
 | Phase Topic | Likely Pitfall | Mitigation |
 |-------------|---------------|------------|
-| **Hardening** | Memory OOM | Implement chunking or memory budget checks. |
-| **Hardening** | Dtype Bloat | Force `float32` output for linear filters by default. |
-| **Expansion** | Scalar Returns | Handle `label`, `mean`, etc. returning non-arrays. |
-| **Expansion** | Multi-input | Map multiple `BioImageRef` to function arguments. |
-| **Metadata** | Unit Loss | Convert physical units to pixels using image metadata. |
+| **Core Engine** | Circular Imports | Decouple primitive types from registry logic. |
+| **AST/Griffe** | Decorator Erasure | Use Griffe's AST traversal to find original signatures. |
+| **Caching** | Stale Metadata | Include `xxHash` of source code in the cache key. |
+| **Fallback** | Subprocess Overhead | Only use runtime fallback for tools that fail AST analysis. |
 
 ## Sources
-- [SciPy ndimage Tutorial](https://scipy.github.io/devdocs/tutorial/ndimage.html)
-- [Image.sc Forum: Scipy Pitfalls](https://forum.image.sc/search?q=scipy%20pitfalls)
-- [bioimage-mcp: tools/base/bioimage_mcp_base/entrypoint.py](tools/base/bioimage_mcp_base/entrypoint.py)
+- [Griffe Documentation](https://mkdocstrings.github.io/griffe/)
+- [Pydantic V2 JSON Schema Guide](https://docs.pydantic.dev/latest/concepts/json_schema/)
+- [Python `inspect` Module Limitations](https://docs.python.org/3/library/inspect.html)
+- `src/bioimage_mcp/registry/` (Existing implementation)

@@ -1,81 +1,56 @@
-# Architecture Patterns: SciPy Dynamic Integration
+# Architecture Patterns: Unified Introspection
 
-**Domain:** Bioimage-MCP / SciPy Ecosystem
-**Researched:** 2026-01-25
-**Overall Confidence:** HIGH
+**Domain:** Bioimage-MCP Tool Registry
+**Researched:** 2026-01-27
 
-## Recommended Architecture
+## Recommended Architecture: "Two-Stage Introspection Pipeline"
 
-SciPy integration follows the **Dynamic Adapter Pattern**, extending the existing Hub-and-Spoke model. Instead of hardcoded tool wrappers, a specialized `ScipyAdapter` uses reflection and docstring parsing to expose the SciPy ecosystem directly to the MCP server.
+The engine utilizes a tiered strategy to maximize safety (no imports) while providing high fidelity (runtime probing).
 
 ### Component Boundaries
 
 | Component | Responsibility | Communicates With |
 |-----------|---------------|-------------------|
-| **ScipyAdapter** | Orchestrates discovery and execution for the `scipy.*` namespace. Maps MCP artifacts to NumPy arrays and vice versa. | `Introspector`, SciPy Submodules |
-| **Introspector** | Extracts function signatures and NumPy-style docstrings using `numpydoc`. Maps Python types to JSON Schema. | SciPy functions |
-| **Dynamic Dispatch** | Routes `fn_id`s with the `scipy` prefix to the `ScipyAdapter` within the `bioimage-mcp-base` worker. | MCP Server, ScipyAdapter |
-| **Artifact Bridge** | Handles conversion between `BioImageRef` (OME-TIFF), `TableRef` (CSV), and `ObjectRef` (In-memory). | `bioio`, `pandas`, `tifffile` |
+| **UnifiedIntrospectionEngine** | Orchestrates Stage 1 (Static) and Stage 2 (Dynamic) probing. | `RegistryIndex`, `Runtimes`. |
+| **Stage 1: Griffe (Static)** | Parses tool source code using AST to extract signatures/docstrings. | Tool source files. |
+| **Stage 2: Subprocess (Dynamic)** | Executes `inspect` in the tool's conda env for factory-based tools. | `Runtime Workers`. |
+| **SchemaCache (DiskCache)** | Persistent storage for generated JSON Schemas, keyed by content hashes. | `UnifiedIntrospectionEngine`. |
 
-### Data Flow Changes
+### Data Flow
 
-The SciPy integration introduces more diverse data flows compared to standard image-to-image tools:
-
-1.  **Image-to-Image (ndimage/signal)**:
-    - Input: `BioImageRef` -> loaded as `np.ndarray`.
-    - Execution: `scipy.ndimage.gaussian_filter(array, ...)`
-    - Output: Result saved as `BioImageRef` (OME-TIFF).
-2.  **Image/Array-to-Scalar (stats)**:
-    - Input: `BioImageRef` or `TableRef`.
-    - Execution: `scipy.stats.skew(array)`
-    - Output: Result returned as scalar in `metadata` or saved to a tiny `TableRef`.
-3.  **Table-to-Table (spatial)**:
-    - Input: `TableRef` (e.g., coordinates from Trackpy).
-    - Execution: `scipy.spatial.distance.pdist(table.values)`
-    - Output: Result saved as `TableRef` (CSV).
-4.  **Constructor Pattern (spatial)**:
-    - Execution: `scipy.spatial.KDTree(data)`
-    - Output: Result stored in `ObjectCache` as an `ObjectRef` for subsequent neighbor queries.
-
-## New Components
-
-### 1. Generalized ScipyAdapter
-A new, multi-module adapter replacing the prototype `ScipyNdimageAdapter`. It must handle:
-- **Module Scanning**: Iterating `scipy.ndimage`, `scipy.signal`, `scipy.stats`, `scipy.spatial`, `scipy.optimize`, and `scipy.cluster`.
-- **I/O Pattern Mapping**: Automatic assignment of `IOPattern` based on submodule and signature (e.g., functions returning `(p-value, statistic)` mapped to `ARRAY_TO_SCALAR`).
-
-### 2. Enhanced Introspector Configuration
-The `Introspector` requires specific tuning for SciPy:
-- **Parameter Filtering**: Automatically hide advanced SciPy parameters like `output`, `mode`, `cval`, and `callback` to simplify the agent interface.
-- **Axis Awareness**: A middleware component to map TCZYX dimension names to SciPy's integer `axis` indices.
+1.  **Stage 1 (AST)**: `UnifiedIntrospectionEngine` uses **Griffe** to parse tool source files. It extracts function names, types, and docstrings (Google/NumPy/Sphinx) without importing the code. This is the default path for 90% of tools.
+2.  **Stage 2 (Runtime Fallback)**: If Griffe fails (e.g., dynamic factories, complex decorators), the engine triggers a `meta.describe` call in a subprocess within the tool's conda environment.
+3.  **Consolidation**: Both paths produce a unified `IntrospectionResult`.
+4.  **Hashing**: The source file is hashed using **xxHash**. The result is cached in **DiskCache** with a key composed of `(tool_id, tool_version, source_hash)`.
 
 ## Patterns to Follow
 
-### Pattern 1: Dimension Squeezing (T203)
-SciPy functions typically expect 2D or 3D arrays. The adapter must use the `DimensionRequirement` hints to automatically squeeze singleton dimensions (T, C) from 5D BioImage artifacts before execution.
+### Pattern 1: AST-First Discovery
+Always attempt to resolve a signature via AST (Griffe) before resorting to a runtime import. This drastically reduces server startup time and prevents "DLL Hell" in the core process.
 
-### Pattern 2: Result Normalization
-SciPy's outputs are heterogeneous (ndarrays, named tuples, lists). The architecture uses a "Normalization Layer" to ensure all outputs are wrapped in a standard `Artifact` envelope.
+### Pattern 2: Strong Invalidation via xxHash
+Use the tool's source file content hash as part of the cache key. This ensures that any modification to the tool logic immediately triggers a schema refresh, even if the version number in `manifest.yaml` remains unchanged.
+
+### Pattern 3: Leaf-Node Type Definitions
+Define shared types like `ArtifactRef` and `BioImageRef` in a leaf-node package (e.g., `bioimage_mcp.types.refs`) with zero internal dependencies to prevent circular imports during runtime fallback.
 
 ## Anti-Patterns to Avoid
 
-### Anti-Pattern 1: Large Array Serialization
-**Never** return raw SciPy arrays in the MCP response JSON.
-**Instead:** Always save to OME-TIFF or CSV and return an `ArtifactRef`.
+### Anti-Pattern 1: In-Process Tool Imports
+Never import tool-pack code directly in the core server process. Heavy dependencies (PyTorch, TensorFlow) will cause OOMs or version conflicts with other tool-packs.
 
-### Anti-Pattern 2: Global Object Cache Bloat
-**Never** store every intermediate SciPy object (like KDTrees) indefinitely.
-**Instead:** Use session-scoped `ObjectCache` with an explicit `mcp__base__object_clear` command for cleanup.
+### Anti-Pattern 2: Volatile In-Memory Caching
+Relying only on in-memory caches means every server restart triggers a full re-scan. Use **DiskCache** for persistence across sessions.
 
-## Suggested Build Order
+## Scalability Considerations
 
-1.  **Phase 1: Adapter Generalization**: Refactor `ScipyNdimageAdapter` to handle `scipy.signal` and `scipy.ndimage` generically. Implement base `IOPattern.IMAGE_TO_IMAGE`.
-2.  **Phase 2: Tabular/Scalar Bridge**: Implement `ARRAY_TO_SCALAR` and `TABLE_TO_TABLE` patterns. Add support for `scipy.stats` and `scipy.spatial.distance`.
-3.  **Phase 3: Object Persistence**: Implement `ObjectRef` handling for `scipy.spatial.KDTree` and other stateful SciPy objects.
-4.  **Phase 4: Agent Guidance**: Populate `DimensionRequirement` and `SuccessHints` for the top 30 most common SciPy bioimage functions.
+| Concern | 10 Tools | 100 Tools | 1000 Tools |
+|---------|----------|-----------|------------|
+| **Startup Time** | <200ms | ~1s (Cached) | ~2s (Requires background indexer) |
+| **RAM Usage** | Low | ~50MB (Griffe overhead) | ~200MB |
+| **Cache Reliability** | High | High (DiskCache/SQLite) | High |
 
 ## Sources
-- `src/bioimage_mcp/registry/dynamic/adapters/skimage.py` (Pattern Reference)
-- `src/bioimage_mcp/registry/dynamic/introspection.py` (Core Engine)
-- [SciPy Multidimensional Image Processing](https://docs.scipy.org/doc/scipy/tutorial/ndimage.html)
-- [Bioimage-MCP v0.2.0 Architecture](.planning/research/ARCHITECTURE.md)
+- [Griffe Architecture](https://mkdocstrings.github.io/griffe/reference/griffe/loader/)
+- [DiskCache Memoization](http://www.grantjenks.com/docs/diskcache/tutorial.html#memoization)
+- `src/bioimage_mcp/registry/` (Existing implementation)
