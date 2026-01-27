@@ -3,12 +3,12 @@ Unit tests for PhasorPy adapter manifest configuration.
 """
 
 from pathlib import Path
-from types import ModuleType
 from unittest.mock import patch
 
 import yaml
 
 from bioimage_mcp.registry.loader import load_manifest_file
+from bioimage_mcp.registry.manifest_schema import Function
 
 
 def test_phasorpy_adapter_discovery_via_manifest(tmp_path):
@@ -33,21 +33,16 @@ def test_phasorpy_adapter_discovery_via_manifest(tmp_path):
     }
     manifest_path.write_text(yaml.dump(manifest_data))
 
-    # Create a real mock module with a real function attribute
-    mock_module = ModuleType("phasorpy.phasor")
-    mock_module.__name__ = "phasorpy.phasor"
+    mock_function = Function(
+        fn_id="test.tool.phasorpy.phasor.phasor_from_signal",
+        tool_id="test.tool",
+        name="phasor_from_signal",
+        description="Convert signal to phasor coordinates.",
+    )
 
-    # Create a real function (not a MagicMock) to avoid __name__ access issues
-    def phasor_from_signal(signal):
-        """Convert signal to phasor coordinates."""
-        pass
-
-    # Set the function's module attribute
-    phasor_from_signal.__module__ = "phasorpy.phasor"
-    mock_module.phasor_from_signal = phasor_from_signal
-
-    with patch("importlib.import_module", return_value=mock_module) as mock_import:
-        # Manifest loading will succeed, but functions discovered depends on adapter registration
+    with patch(
+        "bioimage_mcp.registry.loader.DiscoveryEngine.discover", return_value=([mock_function], [])
+    ):
         manifest, diag = load_manifest_file(manifest_path)
 
         assert manifest is not None
@@ -55,9 +50,6 @@ def test_phasorpy_adapter_discovery_via_manifest(tmp_path):
 
         # Check for discovered function
         function_ids = [f.fn_id for f in manifest.functions]
-
-        # Since adapter is not registered yet, this test will fail initially (TDD red phase)
-        # Once adapter is registered, it should pass (green phase)
         assert "test.tool.phasorpy.phasor.phasor_from_signal" in function_ids
 
 

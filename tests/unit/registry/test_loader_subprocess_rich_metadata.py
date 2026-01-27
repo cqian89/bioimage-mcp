@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 import yaml
 
 from bioimage_mcp.registry.loader import load_manifest_file
+from bioimage_mcp.registry.static.inspector import StaticCallable, StaticModuleReport
 
 
 @pytest.fixture
@@ -33,60 +33,54 @@ def mock_manifest(tmp_path):
     return manifest_path
 
 
-def test_loader_subprocess_rich_metadata(mock_manifest):
-    # Mock execute_tool to return a rich meta.list response
-    mock_response = {
-        "ok": True,
-        "result": {
-            "functions": [
-                {
-                    "fn_id": "scipy.ndimage.gaussian_filter",
-                    "name": "gaussian_filter",
-                    "module": "scipy.ndimage",
-                    "summary": "Multidimensional Gaussian filter.",
-                    "description": "Multidimensional Gaussian filter.\nDetailed description here.",
-                    "io_pattern": "image_to_image",
-                    "parameters": {
-                        "sigma": {
-                            "name": "sigma",
-                            "type": "number",
-                            "description": "Standard deviation for Gaussian kernel.",
-                            "default": 1.0,
-                            "required": False,
-                        }
-                    },
-                    "returns": "ndarray",
-                    "source_adapter": "scipy_ndimage",
+def test_loader_runtime_fallback_rich_metadata(mock_manifest):
+    # Mock DiscoveryEngine._runtime_describe to return rich metadata
+    mock_runtime_info = {
+        "params_schema": {
+            "type": "object",
+            "properties": {
+                "sigma": {
+                    "type": "number",
+                    "description": "Standard deviation for Gaussian kernel.",
+                    "default": 1.0,
                 }
-            ],
-            "tool_version": "1.0.0",
-            "introspection_source": "dynamic_discovery",
+            },
+            "required": [],
         },
+        "tool_version": "1.0.0",
+        "introspection_source": "subprocess:scipy_ndimage",
     }
 
-    # We need to patch execute_tool in bioimage_mcp.registry.loader
-    # Patch discover_functions to raise ValueError("Unknown adapter") to trigger subprocess fallback
+    # Mock griffe inspector to return a function that will trigger fallback
+    mock_report = StaticModuleReport(
+        module_name="scipy.ndimage",
+        callables=[
+            StaticCallable(
+                name="gaussian_filter",
+                qualified_name="scipy.ndimage.gaussian_filter",
+                parameters=[],
+            )
+        ],
+    )
+
     with (
-        patch("bioimage_mcp.registry.loader.execute_tool") as mock_execute,
+        patch("bioimage_mcp.registry.engine.inspect_module", return_value=mock_report),
         patch(
-            "bioimage_mcp.registry.loader.discover_functions",
-            side_effect=ValueError("Unknown adapter"),
+            "bioimage_mcp.registry.engine.DiscoveryEngine._runtime_describe",
+            return_value=mock_runtime_info,
         ),
     ):
-        mock_execute.return_value = (mock_response, "logs", 0)
-
         manifest, diag = load_manifest_file(mock_manifest)
 
         assert manifest is not None
         assert len(manifest.functions) == 1
 
         fn = manifest.functions[0]
-        # Tool ID prefix is applied by loader
-        assert fn.fn_id == "test.tool.scipy.ndimage.gaussian_filter"
+        # Tool ID prefix is applied by loader/engine
+        assert fn.fn_id == "test.tool.scipy.gaussian_filter"
         assert "sigma" in fn.params_schema["properties"]
         assert fn.params_schema["properties"]["sigma"]["type"] == "number"
         assert fn.params_schema["properties"]["sigma"]["default"] == 1.0
 
-        # Source adapter is prefixed with subprocess:
-        assert fn.introspection_source == "subprocess:scipy_ndimage"
-        assert fn.description == "Multidimensional Gaussian filter.\nDetailed description here."
+        # Source adapter is prefixed with runtime:
+        assert fn.introspection_source == "runtime:subprocess:scipy_ndimage"
