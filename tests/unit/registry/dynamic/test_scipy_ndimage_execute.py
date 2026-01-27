@@ -1,14 +1,13 @@
-import os
-import sys
 import importlib
-import pytest
-import numpy as np
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import numpy as np
+import pytest
+
 from bioimage_mcp.registry.dynamic.adapters.scipy_ndimage import ScipyNdimageAdapter
-from bioimage_mcp.registry.dynamic.object_cache import OBJECT_CACHE
 from bioimage_mcp.registry.dynamic.models import IOPattern
+from bioimage_mcp.registry.dynamic.object_cache import OBJECT_CACHE
 
 
 # Create a mock module structure for testing
@@ -270,7 +269,7 @@ def test_execute_scalar_output(adapter, mock_module, tmp_path):
     # Read JSON content
     import json
 
-    with open(results[0]["path"], "r") as f:
+    with open(results[0]["path"]) as f:
         content = json.load(f)
     assert content["value"] == 42.0
 
@@ -485,7 +484,7 @@ def test_execute_label_returns_labels_and_counts_json(adapter, mock_module, tmp_
 
     import json
 
-    with open(counts_ref["path"], "r") as f:
+    with open(counts_ref["path"]) as f:
         counts = json.load(f)
     assert counts["num_features"] == 2
 
@@ -522,7 +521,7 @@ def test_execute_center_of_mass_json_index_and_missing_labels(adapter, mock_modu
 
     import json
 
-    with open(out["path"], "r") as f:
+    with open(out["path"]) as f:
         payload = json.load(f)
 
     # Label 1 should be (3.0, 3.0)
@@ -563,7 +562,7 @@ def test_execute_extrema_json_missing_labels(adapter, mock_module, tmp_path):
 
     import json
 
-    with open(results[0]["path"], "r") as f:
+    with open(results[0]["path"]) as f:
         payload = json.load(f)
 
     assert payload == {"5": None}
@@ -591,7 +590,7 @@ def test_execute_sum_or_mean_json_scalar_output(adapter, mock_module, tmp_path):
 
     import json
 
-    with open(results[0]["path"], "r") as f:
+    with open(results[0]["path"]) as f:
         payload = json.load(f)
 
     assert payload == {"1": 10.0}

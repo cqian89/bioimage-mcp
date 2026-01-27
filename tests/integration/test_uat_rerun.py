@@ -1,10 +1,8 @@
 """UAT Regression tests for stability and recovery."""
 
-import pytest
+
 import psutil
-import os
-import time
-from bioimage_mcp.errors import BioimageMcpError
+import pytest
 
 
 @pytest.mark.integration

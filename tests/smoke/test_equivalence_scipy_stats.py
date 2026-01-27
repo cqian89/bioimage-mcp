@@ -73,7 +73,7 @@ async def test_scipy_stats_ttest_ind_equivalence(live_server, native_executor, t
         if mcp_path.startswith("/") and len(mcp_path) > 2 and mcp_path[2] == ":":
             mcp_path = mcp_path[1:]
 
-        with open(mcp_path, "r") as f:
+        with open(mcp_path) as f:
             mcp_data = json.load(f)
 
         # 3. Run via Native Reference Script
@@ -94,7 +94,7 @@ async def test_scipy_stats_ttest_ind_equivalence(live_server, native_executor, t
         )
 
         assert baseline_result["status"] == "success"
-        with open(baseline_result["output_path"], "r") as f:
+        with open(baseline_result["output_path"]) as f:
             expected_data = json.load(f)
 
         # 4. Compare bit-for-bit (exact dict equality)

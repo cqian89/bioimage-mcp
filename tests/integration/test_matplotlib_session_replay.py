@@ -4,10 +4,11 @@ Verifies that a plotting workflow (subplots -> hist -> savefig)
 can be exported and replayed deterministically.
 """
 
-import pytest
-from pathlib import Path
 import os
-import json
+from pathlib import Path
+
+import pytest
+
 from bioimage_mcp.api.execution import ExecutionService
 from bioimage_mcp.api.interactive import InteractiveExecutionService
 from bioimage_mcp.artifacts.store import ArtifactStore

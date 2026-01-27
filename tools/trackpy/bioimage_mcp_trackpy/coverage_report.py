@@ -6,9 +6,7 @@ Verifies TRACK-03: full API coverage from trackpy v0.7.
 from __future__ import annotations
 
 import importlib
-import inspect
 from dataclasses import dataclass
-from typing import Any
 
 from bioimage_mcp_trackpy.introspect import TRACKPY_MODULES, introspect_module
 

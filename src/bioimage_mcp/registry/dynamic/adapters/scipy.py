@@ -11,7 +11,6 @@ from bioimage_mcp.registry.dynamic.adapters.scipy_stats import ScipyStatsAdapter
 
 if TYPE_CHECKING:
     from bioimage_mcp.api.schemas import DimensionRequirement
-    from bioimage_mcp.artifacts.base import Artifact
     from bioimage_mcp.registry.dynamic.models import FunctionMetadata, IOPattern
 
 logger = logging.getLogger(__name__)

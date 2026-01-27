@@ -4,10 +4,9 @@ import argparse
 import json
 from pathlib import Path
 
-import numpy as np
 from bioio import BioImage
-from skimage.filters import gaussian, sobel
 from bioio.writers import OmeTiffWriter
+from skimage.filters import gaussian, sobel
 
 
 def main():

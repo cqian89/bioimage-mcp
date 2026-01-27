@@ -50,7 +50,6 @@ def _ensure_ome_tiff_compatible(
         return image_path, reader
 
     # Convert OME-Zarr to OME-TIFF
-    import numpy as np
     from bioio import BioImage
     from bioio.writers import OmeTiffWriter
 

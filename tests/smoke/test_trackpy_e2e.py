@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-import pytest
 from pathlib import Path
+
+import pytest
 
 
 def assert_valid_artifact_ref(ref: dict, name: str = "output"):

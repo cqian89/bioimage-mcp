@@ -4,12 +4,10 @@ import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 
 def test_savefig_uses_provided_fname():
     """savefig should use fname when provided."""
-    from bioimage_mcp_base.ops.matplotlib_ops import savefig, OBJECT_CACHE
+    from bioimage_mcp_base.ops.matplotlib_ops import OBJECT_CACHE, savefig
 
     # Create a mock figure
     mock_fig = MagicMock()
@@ -45,7 +43,7 @@ def test_savefig_uses_provided_fname():
 
 def test_savefig_autogenerates_without_fname():
     """savefig should auto-generate path when fname not provided."""
-    from bioimage_mcp_base.ops.matplotlib_ops import savefig, OBJECT_CACHE
+    from bioimage_mcp_base.ops.matplotlib_ops import OBJECT_CACHE, savefig
 
     mock_fig = MagicMock()
     mock_fig.dpi = 100

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from pathlib import Path
-import pytest
+
 import numpy as np
+import pytest
 
 
 @pytest.mark.smoke_full

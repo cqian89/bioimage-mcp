@@ -7,7 +7,6 @@ from pathlib import Path
 import pytest
 
 from bioimage_mcp.registry.loader import load_manifest_file
-from bioimage_mcp.registry.engine import DiscoveryEngine
 
 
 @pytest.fixture

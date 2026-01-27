@@ -1,8 +1,11 @@
 from __future__ import annotations
+
 from unittest.mock import MagicMock
+
 import pytest
+
+from bioimage_mcp.api.schemas import WorkflowRecord, WorkflowStep
 from bioimage_mcp.api.sessions import SessionService
-from bioimage_mcp.api.schemas import WorkflowRecord, WorkflowStep, ErrorDetail
 from bioimage_mcp.config.schema import Config
 
 
@@ -178,8 +181,9 @@ def test_version_mismatch_warning_helper():
 
 def test_replay_session_environment_missing(session_service):
     # Setup
+    from unittest.mock import MagicMock, patch
+
     from bioimage_mcp.artifacts.models import ArtifactRef
-    from unittest.mock import patch, MagicMock
 
     workflow_ref = ArtifactRef(ref_id="wf-123", type="TableRef", uri="")
     record = WorkflowRecord(
@@ -215,8 +219,9 @@ def test_replay_session_environment_missing(session_service):
 
 def test_replay_session_function_not_found(session_service):
     # Setup
+    from unittest.mock import MagicMock, patch
+
     from bioimage_mcp.artifacts.models import ArtifactRef
-    from unittest.mock import patch, MagicMock
 
     workflow_ref = ArtifactRef(ref_id="wf-123", type="TableRef", uri="")
     record = WorkflowRecord(
@@ -258,9 +263,10 @@ def test_replay_session_function_not_found(session_service):
 
 def test_replay_session_progress(session_service):
     # Setup
-    from bioimage_mcp.artifacts.models import ArtifactRef
-    from unittest.mock import patch, MagicMock
+    from unittest.mock import MagicMock, patch
+
     from bioimage_mcp.api.schemas import SessionReplayRequest
+    from bioimage_mcp.artifacts.models import ArtifactRef
 
     workflow_ref = ArtifactRef(ref_id="wf-123", type="TableRef", uri="")
     record = WorkflowRecord(
@@ -304,9 +310,10 @@ def test_replay_session_progress(session_service):
 
 def test_replay_session_dry_run(session_service):
     # Setup
-    from bioimage_mcp.artifacts.models import ArtifactRef
-    from unittest.mock import patch, MagicMock
+    from unittest.mock import MagicMock, patch
+
     from bioimage_mcp.api.schemas import SessionReplayRequest
+    from bioimage_mcp.artifacts.models import ArtifactRef
 
     workflow_ref = ArtifactRef(ref_id="wf-123", type="TableRef", uri="")
     record = WorkflowRecord(
@@ -338,9 +345,10 @@ def test_replay_session_dry_run(session_service):
 
 def test_replay_session_tool_warnings(session_service):
     # Setup
-    from bioimage_mcp.artifacts.models import ArtifactRef
-    from unittest.mock import patch, MagicMock
+    from unittest.mock import MagicMock, patch
+
     from bioimage_mcp.api.schemas import SessionReplayRequest
+    from bioimage_mcp.artifacts.models import ArtifactRef
 
     workflow_ref = ArtifactRef(ref_id="wf-123", type="TableRef", uri="")
     record = WorkflowRecord(
@@ -375,9 +383,10 @@ def test_replay_session_tool_warnings(session_service):
 
 def test_replay_session_missing_inputs(session_service):
     # Setup
+    from unittest.mock import MagicMock, patch
+
+    from bioimage_mcp.api.schemas import ExternalInput, SessionReplayRequest
     from bioimage_mcp.artifacts.models import ArtifactRef
-    from bioimage_mcp.api.schemas import SessionReplayRequest, ExternalInput
-    from unittest.mock import patch, MagicMock
 
     workflow_ref = ArtifactRef(ref_id="wf-123", type="TableRef", uri="")
     record = WorkflowRecord(
@@ -412,10 +421,11 @@ def test_replay_session_missing_inputs(session_service):
 
 def test_replay_session_resume(session_service):
     # Setup
-    from bioimage_mcp.artifacts.models import ArtifactRef
+    from unittest.mock import MagicMock, patch
+
     from bioimage_mcp.api.schemas import SessionReplayRequest
+    from bioimage_mcp.artifacts.models import ArtifactRef
     from bioimage_mcp.sessions.models import SessionStep
-    from unittest.mock import patch, MagicMock
 
     workflow_ref = ArtifactRef(ref_id="wf-123", type="TableRef", uri="")
     record = WorkflowRecord(

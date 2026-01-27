@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 from unittest.mock import patch
-import pytest
 
-from bioimage_mcp_trackpy.entrypoint import handle_meta_list, handle_meta_describe
+from bioimage_mcp_trackpy.entrypoint import handle_meta_describe, handle_meta_list
 
 
 def test_handle_meta_list_shape():

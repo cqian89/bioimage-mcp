@@ -6,8 +6,8 @@ import sys
 from pathlib import Path
 
 import numpy as np
-from scipy import ndimage
 from bioio import BioImage
+from scipy import ndimage
 
 
 def main():

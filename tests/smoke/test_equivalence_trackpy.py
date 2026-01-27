@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import numpy as np
-import pytest
-from bioio import BioImage
 import pandas as pd
+import pytest
 
 from tests.smoke.utils.data_equivalence import DataEquivalenceHelper
 from tests.smoke.utils.native_executor import NativeExecutor

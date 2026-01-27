@@ -1,7 +1,7 @@
 """Tests for install utility functions."""
 
-import json
 from unittest.mock import MagicMock, patch
+
 from bioimage_mcp.bootstrap.install import _env_exists
 
 

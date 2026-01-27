@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-import pytest
+
 from tests.fixtures.lfs_helpers import is_lfs_pointer
 
 

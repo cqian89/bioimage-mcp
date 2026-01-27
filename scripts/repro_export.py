@@ -1,8 +1,7 @@
 import asyncio
-import sys
-import os
 import json
-from pathlib import Path
+import os
+import sys
 
 # Add the project root to sys.path to ensure we can import from tests
 sys.path.append(os.getcwd())
@@ -48,7 +47,7 @@ async def run_requested_check():
                     log_path = log_ref["uri"].replace("file://", "")
                     if os.path.exists(log_path):
                         print("--- Relevant Log Lines ---")
-                        with open(log_path, "r") as f:
+                        with open(log_path) as f:
                             lines = f.readlines()
                             # Show last 20 lines or error-containing lines
                             for line in lines[-20:]:

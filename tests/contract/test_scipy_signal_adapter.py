@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 import pytest
+
 from bioimage_mcp.registry.dynamic.adapters.scipy_signal import ScipySignalAdapter
 from bioimage_mcp.registry.dynamic.models import IOPattern
 

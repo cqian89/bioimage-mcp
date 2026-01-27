@@ -115,7 +115,7 @@ class SkimageAdapter(BaseAdapter):
                 if is_regionprops_redirect:
                     try:
                         # Introspect regionprops_table instead to get the correct schema
-                        introspection_obj = getattr(module, "regionprops_table")
+                        introspection_obj = module.regionprops_table
                     except AttributeError:
                         pass
 

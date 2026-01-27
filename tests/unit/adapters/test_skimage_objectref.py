@@ -1,5 +1,6 @@
-import pytest
 import numpy as np
+import pytest
+
 from bioimage_mcp.registry.dynamic.adapters.skimage import SkimageAdapter
 from bioimage_mcp.registry.dynamic.object_cache import OBJECT_CACHE
 

@@ -5,12 +5,11 @@ from pathlib import Path
 from unittest.mock import patch
 
 import numpy as np
-import pytest
 
 
 def test_imsave_with_user_path():
     """imsave should save to user-provided path."""
-    from bioimage_mcp_base.ops.matplotlib_ops import imsave, OBJECT_CACHE
+    from bioimage_mcp_base.ops.matplotlib_ops import OBJECT_CACHE, imsave
 
     # Create test image data
     arr = np.random.rand(100, 100)
@@ -43,7 +42,7 @@ def test_imsave_with_user_path():
 
 def test_imsave_autogenerates_path():
     """imsave should auto-generate path when fname not provided."""
-    from bioimage_mcp_base.ops.matplotlib_ops import imsave, OBJECT_CACHE
+    from bioimage_mcp_base.ops.matplotlib_ops import OBJECT_CACHE, imsave
 
     arr = np.random.rand(100, 100)
 

@@ -1,11 +1,12 @@
 """Failing tests for ax parameter passthrough in PhasorPyAdapter."""
 
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
-from pathlib import Path
-from PIL import Image
 from bioio.writers import OmeTiffWriter
+from PIL import Image
 
 from bioimage_mcp.registry.dynamic.adapters.phasorpy import PhasorPyAdapter
 from bioimage_mcp.registry.dynamic.object_cache import OBJECT_CACHE

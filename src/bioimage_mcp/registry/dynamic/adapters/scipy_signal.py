@@ -7,7 +7,7 @@ from bioimage_mcp.registry.dynamic.adapters.scipy_ndimage import ScipyNdimageAda
 from bioimage_mcp.registry.dynamic.models import FunctionMetadata, IOPattern, ParameterSchema
 
 if TYPE_CHECKING:
-    from bioimage_mcp.api.schemas import DimensionRequirement
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -161,9 +161,10 @@ class ScipySignalAdapter(ScipyNdimageAdapter):
         work_dir: Path | None = None,
     ) -> list[dict]:
         """Execute signal functions."""
-        import scipy.signal
         import numpy as np
         import pandas as pd
+        import scipy.signal
+
         from bioimage_mcp.registry.dynamic.adapters.pandas import PandasAdapterForRegistry
 
         input_dict = dict(inputs)

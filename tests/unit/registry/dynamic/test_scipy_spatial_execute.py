@@ -1,11 +1,13 @@
-import pytest
+import json
+from unittest.mock import MagicMock, patch
+
 import numpy as np
 import pandas as pd
-import json
-from unittest.mock import patch, MagicMock
-from bioimage_mcp.registry.dynamic.adapters.scipy_spatial import ScipySpatialAdapter
-from bioimage_mcp.registry.dynamic import object_cache
+import pytest
+
 from bioimage_mcp.artifacts.models import ObjectRef
+from bioimage_mcp.registry.dynamic import object_cache
+from bioimage_mcp.registry.dynamic.adapters.scipy_spatial import ScipySpatialAdapter
 
 
 @pytest.fixture

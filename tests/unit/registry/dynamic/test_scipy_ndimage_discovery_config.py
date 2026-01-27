@@ -1,6 +1,7 @@
 import sys
+
 import yaml
-from pathlib import Path
+
 from bioimage_mcp.registry.dynamic.adapters.scipy_ndimage import ScipyNdimageAdapter
 
 

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+from typing import Any
+
 import numpy as np
-from typing import Any, Callable
 
 # Curated allowlist of safe callable mappings
 _SAFE_CALLABLES: dict[str, Callable[..., Any]] = {

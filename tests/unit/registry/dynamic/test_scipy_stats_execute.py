@@ -1,10 +1,11 @@
-import pytest
-import pandas as pd
-import numpy as np
-from pathlib import Path
 from unittest.mock import MagicMock, patch
-from bioimage_mcp.registry.dynamic.adapters.scipy_stats import ScipyStatsAdapter
+
+import numpy as np
+import pandas as pd
+import pytest
+
 from bioimage_mcp.registry.dynamic import object_cache
+from bioimage_mcp.registry.dynamic.adapters.scipy_stats import ScipyStatsAdapter
 
 
 @pytest.fixture

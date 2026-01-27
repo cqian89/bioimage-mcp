@@ -10,7 +10,7 @@ from bioimage_mcp.artifacts.models import ArtifactRef
 # We expect TTTRRef to be implemented in src/bioimage_mcp/artifacts/models.py
 # If not yet present, these imports will fail.
 try:
-    from bioimage_mcp.artifacts.models import TTTRRef, TTTRMetadata
+    from bioimage_mcp.artifacts.models import TTTRMetadata, TTTRRef
 except ImportError:
     # During TDD, we might need to mock or define these locally if we want to run the tests
     # before they are added to the core library, but the instruction is to write failing tests.

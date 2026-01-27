@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import json
-import matplotlib.pyplot as plt
-import numpy as np
 import sys
 from pathlib import Path
+
+import matplotlib.pyplot as plt
+import numpy as np
 
 
 def main():

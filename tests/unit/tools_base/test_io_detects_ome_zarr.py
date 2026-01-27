@@ -7,11 +7,7 @@ and report the correct format and MIME type.
 from __future__ import annotations
 
 import sys
-import tempfile
 from pathlib import Path
-
-import pytest
-
 
 # Add tools/base to path for testing
 sys.path.insert(0, str(Path(__file__).parents[3] / "tools" / "base"))

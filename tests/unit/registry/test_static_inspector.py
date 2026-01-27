@@ -4,8 +4,6 @@ import pathlib
 import tempfile
 import textwrap
 
-import pytest
-
 from bioimage_mcp.registry.static import (
     callable_fingerprint,
     inspect_module,

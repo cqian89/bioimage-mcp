@@ -1,4 +1,3 @@
-import pytest
 from bioimage_mcp.artifacts.models import ArtifactRef
 
 

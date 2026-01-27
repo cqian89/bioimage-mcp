@@ -26,11 +26,10 @@ if str(TRACKPY_TOOL_ROOT) not in sys.path:
 
 
 from bioimage_mcp_trackpy.introspect import (
-    introspect_module,
-    introspect_function,
-    get_trackpy_version,
     TRACKPY_MODULES,
-    ARTIFACT_INPUT_PARAMS,
+    get_trackpy_version,
+    introspect_function,
+    introspect_module,
 )
 
 TOOL_VERSION = "0.1.0"
@@ -225,7 +224,8 @@ def _save_table_artifact(df: pd.DataFrame, name_hint: str) -> dict:
 
 def _save_image_artifact(arr: np.ndarray, name_hint: str) -> dict:
     import uuid
-    from bioio_ome_tiff import Reader, Writer
+
+    from bioio_ome_tiff import Writer
 
     ref_id = str(uuid.uuid4())
     filename = f"{name_hint}_{ref_id[:8]}.ome.tif"

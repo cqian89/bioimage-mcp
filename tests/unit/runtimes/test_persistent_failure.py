@@ -1,7 +1,9 @@
 """Tests for worker failure handling."""
 
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
+
 from bioimage_mcp.runtimes.persistent import WorkerProcess, WorkerState
 
 

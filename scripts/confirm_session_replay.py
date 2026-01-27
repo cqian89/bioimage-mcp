@@ -21,7 +21,6 @@ import argparse
 import asyncio
 import json
 import os
-import sys
 import time
 from contextlib import AsyncExitStack
 from datetime import UTC, datetime

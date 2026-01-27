@@ -1,5 +1,5 @@
 import os
-from pathlib import Path
+
 import pytest
 from bioimage_mcp_base.ops import io as io_ops
 

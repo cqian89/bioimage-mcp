@@ -1,16 +1,13 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
 
 import pytest
 
-from bioimage_mcp.api.discovery import DiscoveryService
 from bioimage_mcp.config.loader import load_config
 from bioimage_mcp.registry.loader import load_manifests
 from bioimage_mcp.runtimes.executor import execute_tool
-from bioimage_mcp.storage.sqlite import connect
 from tests.smoke.schema_vectors import SCHEMA_VECTORS
 
 

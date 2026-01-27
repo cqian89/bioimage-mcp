@@ -6,22 +6,21 @@ from __future__ import annotations
 
 import importlib
 import inspect
-import tempfile
 import logging
+import tempfile
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable
-
-import yaml
+from typing import TYPE_CHECKING, Any
 from urllib.parse import unquote, urlparse
 
 import numpy as np
+import yaml
 
 from bioimage_mcp.artifacts.base import Artifact
 from bioimage_mcp.registry.dynamic.adapters import BaseAdapter
+from bioimage_mcp.registry.dynamic.adapters.callable_registry import resolve_callable
 from bioimage_mcp.registry.dynamic.introspection import Introspector
 from bioimage_mcp.registry.dynamic.models import FunctionMetadata, IOPattern
 from bioimage_mcp.registry.dynamic.object_cache import OBJECT_CACHE
-from bioimage_mcp.registry.dynamic.adapters.callable_registry import resolve_callable
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +55,7 @@ class ScipyNdimageAdapter(BaseAdapter):
             full_blacklist_path = Path(manifest_path).parent / blacklist_path
             if full_blacklist_path.exists():
                 try:
-                    with open(full_blacklist_path, "r") as f:
+                    with open(full_blacklist_path) as f:
                         data = yaml.safe_load(f)
                         if data and isinstance(data, dict) and "blacklist" in data:
                             blacklist = set(data["blacklist"])

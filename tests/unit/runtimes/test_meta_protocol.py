@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from bioimage_mcp.runtimes.meta_protocol import (
-    parse_meta_list_result,
-    parse_meta_describe_result,
     extract_result_payload,
+    parse_meta_describe_result,
+    parse_meta_list_result,
 )
 
 

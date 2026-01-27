@@ -3,8 +3,8 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import pytest
+
 from tests.smoke.utils.native_executor import NativeExecutor
-from tests.smoke.utils.data_equivalence import DataEquivalenceHelper
 
 
 @pytest.mark.smoke_minimal
@@ -78,7 +78,6 @@ def test_data_equivalence_xarray(helper, synthetic_xarray):
     helper.assert_metadata_preserved(synthetic_xarray, synthetic_xarray)
 
     # Different xarray should fail
-    import xarray as xr
 
     different_xr = synthetic_xarray.copy()
     different_xr.attrs["units"] = "meters"
@@ -137,8 +136,8 @@ def test_data_equivalence_plot(helper, tmp_path):
 
     # Should fail if it looks blank (variance check)
     blank_path = tmp_path / "blank.png"
-    from PIL import Image
     import numpy as np
+    from PIL import Image
 
     Image.fromarray(np.zeros((100, 100), dtype=np.uint8)).save(blank_path)
 

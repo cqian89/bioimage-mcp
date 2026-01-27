@@ -1,10 +1,11 @@
-import subprocess
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
-import pytest
+
 import numpy as np
+import pytest
 
 
 @pytest.mark.parametrize("fn_id", ["trackpy.locate", "trackpy.batch"])

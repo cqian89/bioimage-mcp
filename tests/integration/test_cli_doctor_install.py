@@ -3,7 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import yaml
-import pytest
 
 from bioimage_mcp import cli
 

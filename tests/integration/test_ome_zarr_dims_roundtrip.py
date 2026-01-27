@@ -1,9 +1,10 @@
-import pytest
 import json
 import os
 import sys
-import numpy as np
 from pathlib import Path
+
+import numpy as np
+import pytest
 from bioio_ome_zarr.writers import OMEZarrWriter
 
 

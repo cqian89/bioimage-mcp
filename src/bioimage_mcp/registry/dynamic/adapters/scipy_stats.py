@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import importlib
 import logging
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
-from bioimage_mcp.artifacts.base import Artifact
 from bioimage_mcp.registry.dynamic.adapters.scipy_ndimage import ScipyNdimageAdapter
 from bioimage_mcp.registry.dynamic.models import FunctionMetadata, IOPattern, ParameterSchema
 

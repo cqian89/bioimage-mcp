@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 
 from bioimage_mcp.api.execution import ExecutionService
-from bioimage_mcp.artifacts.models import ArtifactRef, PlotMetadata, PlotRef
+from bioimage_mcp.artifacts.models import ArtifactRef
 from bioimage_mcp.artifacts.store import ArtifactStore
 from bioimage_mcp.config.schema import Config
 from bioimage_mcp.registry.dynamic.adapters.phasorpy import PhasorPyAdapter
@@ -474,7 +474,6 @@ def test_plot_phasor_figureref_can_be_used_with_savefig(adapter, tmp_path):
     With Approach 2, plot functions return FigureRef (in-memory) instead of
     auto-saving to disk. User calls savefig() explicitly to materialize.
     """
-    import matplotlib.pyplot as plt
 
     from bioimage_mcp.registry.dynamic.object_cache import OBJECT_CACHE
 

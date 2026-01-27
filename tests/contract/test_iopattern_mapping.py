@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import pytest
 from bioimage_mcp.registry.dynamic.models import IOPattern
 from bioimage_mcp.registry.loader import _map_io_pattern_to_ports
 

@@ -250,11 +250,13 @@ def _convert_memory_inputs_to_files(inputs: dict[str, Any], work_dir: Path) -> d
 
 def handle_meta_list(params: dict[str, Any]) -> dict[str, Any]:
     """Out-of-process function discovery for base tool pack."""
-    from bioimage_mcp.registry.manifest_schema import ToolManifest
-    from bioimage_mcp.registry.dynamic.discovery import discover_functions
-    from bioimage_mcp.registry.dynamic.adapters import ADAPTER_REGISTRY
-    import yaml
     import hashlib
+
+    import yaml
+
+    from bioimage_mcp.registry.dynamic.adapters import ADAPTER_REGISTRY
+    from bioimage_mcp.registry.dynamic.discovery import discover_functions
+    from bioimage_mcp.registry.manifest_schema import ToolManifest
 
     manifest_path = BASE_DIR.parent / "manifest.yaml"
     try:

@@ -4,7 +4,7 @@ import json
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class NativeExecutorError(Exception):
@@ -20,7 +20,7 @@ class EnvironmentNotFoundError(NativeExecutorError):
 
 
 class NativeExecutor:
-    def __init__(self, conda_path: Optional[str] = None):
+    def __init__(self, conda_path: str | None = None):
         """Initialize with conda executable. Auto-detected if not provided."""
         if conda_path:
             self.conda_path = conda_path
@@ -54,10 +54,10 @@ class NativeExecutor:
         self,
         env_name: str,
         script_path: Path,
-        args: List[str],
+        args: list[str],
         timeout: int = 300,
-        cwd: Optional[Path] = None,
-    ) -> Dict[str, Any]:
+        cwd: Path | None = None,
+    ) -> dict[str, Any]:
         """Execute script and parse JSON output."""
         if not self.env_exists(env_name):
             raise EnvironmentNotFoundError(f"Conda environment '{env_name}' not found.")

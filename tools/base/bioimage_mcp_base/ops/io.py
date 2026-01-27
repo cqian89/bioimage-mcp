@@ -10,7 +10,6 @@ import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
-from urllib.parse import unquote, urlparse
 
 import numpy as np
 import pandas as pd

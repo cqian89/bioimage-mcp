@@ -9,7 +9,6 @@ from pathlib import Path
 import numpy as np
 import trackpy as tp
 from bioio import BioImage
-import pandas as pd
 
 
 def set_seeds(seed: int = 42):

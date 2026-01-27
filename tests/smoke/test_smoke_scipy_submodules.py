@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import pytest
-import pandas as pd
 from pathlib import Path
-import numpy as np
+
+import pandas as pd
+import pytest
 
 
 def assert_valid_artifact_ref(ref: dict):

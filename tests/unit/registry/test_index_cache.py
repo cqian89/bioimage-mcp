@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import sqlite3
+
 import pytest
+
 from bioimage_mcp.registry.index import RegistryIndex
 from bioimage_mcp.storage.sqlite import init_schema
 

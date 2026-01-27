@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-from pathlib import Path
 
 # Integration tests for trackpy adapter execution in trackpy env.
 # These tests run INSIDE the trackpy environment via micromamba run.
