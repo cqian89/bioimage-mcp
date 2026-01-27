@@ -19,20 +19,36 @@ def _collect_registry_summary(*, max_invalid: int = 5) -> dict[str, object]:
         function_count = sum(len(m.functions) for m in manifests)
 
         invalid_items = []
-        for diagnostic in diagnostics[:max_invalid]:
-            invalid_items.append(
-                {
-                    "path": str(diagnostic.path),
-                    "tool_id": diagnostic.tool_id,
-                    "errors": diagnostic.errors[:3],
-                }
-            )
+        # Filter for truly invalid (those that failed to load manifest object)
+        invalid_manifests = [d for d in diagnostics if d.errors]
+        for diagnostic in invalid_manifests[:max_invalid]:
+            invalid_items.append(diagnostic.to_dict())
+
+        all_events = []
+        for diagnostic in diagnostics:
+            all_events.extend(diagnostic.engine_events)
+
+        # Deterministic ordering
+        all_events.sort(key=lambda e: (e.fn_id or "", e.type.value, e.message))
+
+        # Filter based on diagnostic level
+        level = config.diagnostic_level
+        if level == "minimal":
+            # Only show errors/conflicts
+            all_events = [
+                e for e in all_events if e.type in ("skipped_callable", "overlay_conflict")
+            ]
+        elif level == "standard":
+            # Show everything except maybe missing docs if too many?
+            # For now just show all in standard
+            pass
 
         return {
             "tool_count": tool_count,
             "function_count": function_count,
-            "invalid_manifest_count": len(diagnostics),
+            "invalid_manifest_count": len(invalid_manifests),
             "invalid_manifests": invalid_items,
+            "engine_events": [e.to_dict() for e in all_events],
         }
     except Exception as exc:  # noqa: BLE001
         return {"error": str(exc)}

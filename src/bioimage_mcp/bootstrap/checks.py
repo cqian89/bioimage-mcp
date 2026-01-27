@@ -8,9 +8,9 @@ import sys
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
-from bioimage_mcp.bootstrap.env_manager import detect_env_manager
+from bioimage_mcp.bootstrap.env_manager import detect_env_manager, get_available_envs
 from bioimage_mcp.config.loader import find_repo_root, load_config
-from bioimage_mcp.registry.loader import load_manifest_file
+from bioimage_mcp.registry.loader import load_manifest_file, load_manifests
 
 
 @dataclass(frozen=True)
@@ -241,6 +241,39 @@ def check_network(host: str = "pypi.org", port: int = 443, timeout_s: float = 2.
         )
 
 
+def check_tool_environments() -> CheckResult:
+    config = load_config()
+    try:
+        manifests, _ = load_manifests(config.tool_manifest_roots)
+    except Exception as exc:  # noqa: BLE001
+        return CheckResult(
+            name="tool_environments",
+            ok=False,
+            remediation=["Check tool_manifest_roots in config"],
+            details={"error": str(exc)},
+        )
+
+    required_envs = {m.env_id for m in manifests if m.env_id}
+    if not required_envs:
+        return CheckResult(name="tool_environments", ok=True, details={"count": 0})
+
+    available_envs = set(get_available_envs())
+    missing = required_envs - available_envs
+
+    if not missing:
+        return CheckResult(name="tool_environments", ok=True, details={"count": len(required_envs)})
+
+    remediation = [f"Install missing environments: {', '.join(sorted(missing))}"]
+    remediation.append("Run: bioimage-mcp install")
+
+    return CheckResult(
+        name="tool_environments",
+        ok=False,
+        remediation=remediation,
+        details={"missing": sorted(list(missing)), "required": sorted(list(required_envs))},
+    )
+
+
 def run_all_checks() -> list[CheckResult]:
     return [
         check_python_version(),
@@ -248,6 +281,7 @@ def run_all_checks() -> list[CheckResult]:
         check_disk(),
         check_permissions(),
         check_base_env(),
+        check_tool_environments(),
         check_tool_consolidation(),
         check_gpu(),
         check_conda_lock(),

@@ -30,6 +30,14 @@ class OverwritePolicy(str, Enum):
     ASK = "ask"
 
 
+class DiagnosticLevel(str, Enum):
+    """Detail level for engine diagnostics."""
+
+    MINIMAL = "minimal"
+    STANDARD = "standard"
+    FULL = "full"
+
+
 class PermissionSettings(BaseModel):
     """Configuration for file access behavior."""
 
@@ -62,6 +70,7 @@ class Config(BaseModel):
     default_pagination_limit: int = 20
     max_pagination_limit: int = 200
     session_ttl_hours: int = 24
+    diagnostic_level: DiagnosticLevel = DiagnosticLevel.MINIMAL
 
     # Worker process settings
     worker_timeout_seconds: int = 600  # Maximum time for a single operation
