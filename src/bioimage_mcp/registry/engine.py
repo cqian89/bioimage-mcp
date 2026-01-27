@@ -158,58 +158,14 @@ class DiscoveryEngine:
             )
 
         params_schema = self._generate_static_params_schema(sc)
-
         introspection_source = "ast"
-
-        # Fallback to runtime describe if AST schema is minimal or we want validation
-        runtime_info = self._runtime_describe(manifest, fn_id)
-        if runtime_info:
-            # Runtime overrides AST
-            params_schema = runtime_info.get("params_schema", params_schema)
-            introspection_source = (
-                f"runtime:{runtime_info.get('introspection_source', 'meta.describe')}"
-            )
-            self._events.append(
-                EngineEvent(
-                    type=EngineEventType.RUNTIME_FALLBACK,
-                    fn_id=fn_id,
-                    message=f"Used {introspection_source} fallback for {fn_id}",
-                )
-            )
-        elif not params_schema.get("properties"):
-            # If no AST info and runtime failed, skip
-            msg = f"Skipping {fn_id}: AST incomplete and runtime fallback failed"
-            logger.warning(msg)
-            self._events.append(
-                EngineEvent(
-                    type=EngineEventType.SKIPPED_CALLABLE,
-                    fn_id=fn_id,
-                    message=msg,
-                )
-            )
-            return None
-
-        # Fingerprint from source if available
-        # fingerprint = callable_fingerprint(sc.source or "") # Not used in Function model yet
-
-        # Check for missing docs in properties
-        if "properties" in params_schema:
-            for p_name, p_schema in params_schema["properties"].items():
-                if not p_schema.get("description"):
-                    self._events.append(
-                        EngineEvent(
-                            type=EngineEventType.MISSING_DOCS,
-                            fn_id=fn_id,
-                            message=f"Parameter '{p_name}' in {fn_id} missing description",
-                            details={"parameter": p_name},
-                        )
-                    )
 
         # Heuristic for I/O pattern
         io_pattern = self._guess_io_pattern(sc)
         inputs, outputs = self.map_io_pattern_to_ports(io_pattern)
 
         # Filter out port names from parameters (enforce artifact separation)
+        # We do this BEFORE deciding to fallback so we know if AST is truly incomplete
         port_names = {p.name for p in inputs} | {p.name for p in outputs}
         artifact_types = {
             "BioImageRef",
@@ -230,6 +186,51 @@ class DiscoveryEngine:
                 params_schema["required"] = [
                     r for r in params_schema["required"] if r in params_schema["properties"]
                 ]
+
+        # Define "AST incomplete" as: params_schema missing properties OR properties is empty
+        is_ast_incomplete = not params_schema.get("properties")
+
+        # Only fallback to runtime describe if AST schema is incomplete
+        if is_ast_incomplete:
+            runtime_info = self._runtime_describe(manifest, fn_id)
+            if runtime_info:
+                # Runtime overrides AST
+                params_schema = runtime_info.get("params_schema", params_schema)
+                introspection_source = (
+                    f"runtime:{runtime_info.get('introspection_source', 'meta.describe')}"
+                )
+                self._events.append(
+                    EngineEvent(
+                        type=EngineEventType.RUNTIME_FALLBACK,
+                        fn_id=fn_id,
+                        message=f"Used {introspection_source} fallback for {fn_id}",
+                    )
+                )
+            else:
+                # If no AST info and runtime failed, skip
+                msg = f"Skipping {fn_id}: AST incomplete and runtime fallback failed"
+                logger.warning(msg)
+                self._events.append(
+                    EngineEvent(
+                        type=EngineEventType.SKIPPED_CALLABLE,
+                        fn_id=fn_id,
+                        message=msg,
+                    )
+                )
+                return None
+
+        # Check for missing docs in properties
+        if "properties" in params_schema:
+            for p_name, p_schema in params_schema["properties"].items():
+                if not p_schema.get("description"):
+                    self._events.append(
+                        EngineEvent(
+                            type=EngineEventType.MISSING_DOCS,
+                            fn_id=fn_id,
+                            message=f"Parameter '{p_name}' in {fn_id} missing description",
+                            details={"parameter": p_name},
+                        )
+                    )
 
         return Function(
             fn_id=fn_id,
@@ -280,7 +281,7 @@ class DiscoveryEngine:
         request = {
             "fn_id": "meta.describe",
             "command": "execute",
-            "params": {"fn_id": fn_id},
+            "params": {"target_fn": fn_id},
             "inputs": {},
         }
         try:
