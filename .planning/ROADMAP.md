@@ -108,6 +108,13 @@ Plans:
    - MCP tool outputs for Gaussian blur and T-test match native Scipy script outputs bit-for-bit.
    - Synthetic and standard datasets are available for consistent test reproduction.
 
+**Plans:** 3 plans
+
+Plans:
+- [ ] 10-01-PLAN.md — Add live-server SciPy smoke test matrix (ndimage/stats/spatial/signal)
+- [ ] 10-02-PLAN.md — Add strict equivalence tests (gaussian_filter + ttest_ind_table)
+- [ ] 10-03-PLAN.md — Add dataset + discovery guardrail smoke tests
+
 ---
 
 ## Progress
