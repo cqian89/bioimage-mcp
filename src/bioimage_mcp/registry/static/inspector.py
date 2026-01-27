@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pathlib
-from typing import Optional
 
 import griffe
 from pydantic import BaseModel, Field
@@ -9,16 +8,16 @@ from pydantic import BaseModel, Field
 
 class StaticParameter(BaseModel):
     name: str
-    annotation: Optional[str] = None
-    default: Optional[str] = None
+    annotation: str | None = None
+    default: str | None = None
 
 
 class StaticCallable(BaseModel):
     name: str
     qualified_name: str
-    docstring: Optional[str] = None
+    docstring: str | None = None
     parameters: list[StaticParameter] = Field(default_factory=list)
-    source: Optional[str] = None
+    source: str | None = None
 
 
 class StaticModuleReport(BaseModel):
