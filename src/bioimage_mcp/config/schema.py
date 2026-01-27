@@ -49,6 +49,8 @@ class Config(BaseModel):
     artifact_store_root: Path
     tool_manifest_roots: list[Path]
     schema_cache_path: Path | None = None
+    enable_schema_cache: bool = True
+    schema_cache_use_db: bool = True
 
     fs_allowlist_read: list[Path] = Field(default_factory=list)
     fs_allowlist_write: list[Path] = Field(default_factory=list)

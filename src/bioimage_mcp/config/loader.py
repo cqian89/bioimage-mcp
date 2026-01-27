@@ -141,6 +141,8 @@ def load_config(*, global_path: Path | None = None, local_path: Path | None = No
     merged.setdefault("tool_manifest_roots", _discover_tool_manifest_roots())
     if "tool_manifest_roots" in merged:
         merged["tool_manifest_roots"] = _merge_manifest_roots(list(merged["tool_manifest_roots"]))
+    merged.setdefault("enable_schema_cache", True)
+    merged.setdefault("schema_cache_use_db", True)
     merged.setdefault("fs_allowlist_read", [merged["artifact_store_root"]])
     merged.setdefault("fs_allowlist_write", [str(Path.home() / ".bioimage-mcp")])
     merged.setdefault("fs_denylist", [])
