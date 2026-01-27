@@ -51,6 +51,9 @@ def test_describe_function_separates_inputs_outputs_params():
     assert "inputs" in described
     assert "outputs" in described
     assert "params_schema" in described
+    assert "meta" in described
+    assert described["meta"]["tool_version"] == "0.1.0"
+    assert "introspection_source" in described["meta"]
     assert "image" in described["inputs"]
     assert "output" in described["outputs"]
     assert "sigma" in described["params_schema"]["properties"]

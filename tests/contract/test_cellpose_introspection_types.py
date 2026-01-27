@@ -99,6 +99,11 @@ class TestTrainSegIntrospection:
                 f"Parameter '{name}' has invalid type: {spec.get('type')}"
             )
 
+        # meta metadata should NOT be in params_schema properties
+        assert "tool_version" not in properties
+        assert "introspection_source" not in properties
+        assert "callable_fingerprint" not in properties
+
     def test_train_seg_key_params_exposed(self, introspect_fn):
         """Critical training parameters must be exposed."""
         schema = introspect_fn("cellpose.train.train_seg")

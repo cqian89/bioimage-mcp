@@ -37,6 +37,7 @@ class CellposeMetaDescribeResponse(BaseModel):
                 raise ValueError("result.tool_version is required")
             if "introspection_source" not in self.result:
                 raise ValueError("result.introspection_source is required")
+            # callable_fingerprint is optional but allowed
         else:
             if self.error is None:
                 raise ValueError("error is required when ok is False")
@@ -151,6 +152,14 @@ class TestCellposeDescribeObjectRef:
         assert described["inputs"]["model"]["type"] == "ObjectRef"
         assert "x" in described["inputs"]
         assert described["inputs"]["x"]["type"] == "BioImageRef"
+
+        # Check new meta block (Task 1)
+        assert "meta" in described
+        assert described["meta"]["tool_version"] == "0.1.0"
+        assert described["meta"]["introspection_source"] == "manual"
+        assert "module" in described["meta"]
+        # callable_fingerprint might be None if not cached/introspected
+        assert "callable_fingerprint" in described["meta"]
 
     def test_describe_objectref_not_in_params_schema(self, discovery_service):
         """T049: Test that ObjectRef and other artifact ports are NOT in params_schema."""
