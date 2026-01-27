@@ -177,6 +177,65 @@ class TestIntrospectPythonApi:
         assert list(schema1["properties"].keys()) == ["a", "m", "z"]
         assert schema1 == schema2
 
+    def test_required_and_docstring_interaction(self) -> None:
+        """Test that required params with docstrings are correctly emitted."""
+
+        def func(param: int) -> None:
+            """Docstring.
+            Args:
+                param: The parameter description.
+            """
+            pass
+
+        schema = introspect_python_api(func, {})
+        assert "param" in schema["required"]
+        assert schema["properties"]["param"]["description"] == "The parameter description."
+
+    def test_artifact_omission_removes_from_required(self) -> None:
+        """Test that artifact parameters are not listed in required even if no default."""
+
+        def func(image: Any, threshold: float) -> None:
+            pass
+
+        schema = introspect_python_api(func, {})
+        assert "image" not in schema["properties"]
+        assert "image" not in schema.get("required", [])
+        assert "threshold" in schema["required"]
+
+    def test_typeadapter_does_not_affect_required(self) -> None:
+        """Test that Optional type with no default is still required."""
+
+        def func(x: int | None) -> None:
+            pass
+
+        schema = introspect_python_api(func, {})
+        assert "x" in schema["required"]
+        # TypeAdapter should have merged the null type
+        prop = schema["properties"]["x"]
+        assert any(k in prop for k in ("anyOf", "type"))
+
+    def test_required_omitted_when_empty(self) -> None:
+        """Test that 'required' key is omitted if no parameters are required."""
+
+        def func(x: int = 1) -> None:
+            pass
+
+        schema = introspect_python_api(func, {})
+        assert "required" not in schema
+
+    def test_fallback_schema_has_no_empty_required(self) -> None:
+        """Test that fallback schema from descriptions has no empty required key."""
+
+        # Function that yields no properties via signature but has descriptions
+        def func(image: Any) -> None:  # 'image' is artifact, so properties empty
+            pass
+
+        descriptions = {"param": "A parameter"}
+        schema = introspect_python_api(func, descriptions)
+
+        assert "param" in schema["properties"]
+        assert "required" not in schema
+
 
 class TestIntrospectArgparse:
     """Tests for introspect_argparse() utility (T000b)."""
@@ -289,3 +348,11 @@ class TestIntrospectArgparse:
 
         assert "input_file" not in schema["properties"]
         assert "threshold" in schema["properties"]
+
+    def test_argparse_required_omitted_when_empty(self) -> None:
+        """Test that 'required' key is omitted if no argparse arguments are required."""
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--threshold", type=float, default=0.5)
+
+        schema = introspect_argparse(parser, {})
+        assert "required" not in schema
