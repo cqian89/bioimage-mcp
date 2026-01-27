@@ -6,6 +6,7 @@ import sys
 import uuid
 from pathlib import Path
 from typing import Any
+from urllib.parse import unquote, urlparse
 
 from bioimage_mcp.api.errors import execution_error, not_found_error, validation_error
 from bioimage_mcp.api.schemas import ErrorDetail
@@ -304,9 +305,48 @@ def _materialize_zarr_to_file(
     This is now primarily used in tests as the main materialization logic
     is integrated into ExecutionService.run_workflow.
     """
-    # Create a minimal implementation or just return the ref if it's already a file.
-    # The unit tests that mock this will provide their own implementation anyway.
-    return artifact_ref
+    storage_type = artifact_ref.get("storage_type", "file")
+    if storage_type != "zarr-temp":
+        return artifact_ref
+
+    ref_id = artifact_ref.get("ref_id")
+    uri = artifact_ref.get("uri")
+    if not uri and ref_id:
+        try:
+            uri = artifact_store.get(ref_id).uri
+        except KeyError:
+            uri = None
+
+    if not uri:
+        raise ValueError("Artifact is missing URI for materialization")
+
+    parsed = urlparse(uri)
+    if parsed.scheme not in ("", "file"):
+        raise ValueError(f"Unsupported URI scheme for materialization: {parsed.scheme}")
+
+    if parsed.scheme == "file":
+        raw_path = unquote(parsed.path)
+        if raw_path.startswith("/") and len(raw_path) > 2 and raw_path[2] == ":":
+            raw_path = raw_path[1:]
+        src_path = Path(raw_path)
+    else:
+        src_path = Path(uri)
+
+    if not src_path.exists():
+        raise FileNotFoundError(f"Artifact path does not exist: {src_path}")
+
+    if src_path.is_dir():
+        raise ValueError(
+            "Core cannot materialize directory-backed artifacts. "
+            "Use a tool pack (e.g., base.export) to convert formats."
+        )
+
+    artifact_type = artifact_ref.get("type", "BioImageRef")
+    materialized_format = artifact_ref.get("format") or "OME-TIFF"
+    new_ref = artifact_store.import_file(
+        src_path, artifact_type=artifact_type, format=materialized_format
+    )
+    return new_ref.model_dump()
 
 
 class WorkflowValidationError(ValueError):

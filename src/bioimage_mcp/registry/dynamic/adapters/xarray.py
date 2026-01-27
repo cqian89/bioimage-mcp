@@ -293,7 +293,8 @@ class XarrayAdapterForRegistry(BaseAdapter):
                 else getattr(artifact, "metadata", {})
             ) or {}
             expected_axes = metadata.get("axes")
-            if expected_axes:
+            axes_inferred = metadata.get("axes_inferred")
+            if expected_axes and axes_inferred is not True:
                 # Normalize expected_axes to uppercase set for case-insensitive comparison
                 expected_set = (
                     set(expected_axes.upper())

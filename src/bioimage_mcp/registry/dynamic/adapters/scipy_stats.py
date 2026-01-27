@@ -24,7 +24,7 @@ class ScipyStatsAdapter(ScipyNdimageAdapter):
         results = []
 
         # 1. Summary statistics
-        for name in ["describe_table", "tmean_table", "skew_table", "kurtosis_table"]:
+        for name in ["describe_table", "mean_table", "tmean_table", "skew_table", "kurtosis_table"]:
             results.append(self._create_stats_wrapper_metadata(name))
 
         # 2. Statistical tests
@@ -283,9 +283,13 @@ class ScipyStatsAdapter(ScipyNdimageAdapter):
         base_name = fn_id.replace("_table", "").split(".")[-1]
         import scipy.stats
 
-        func = getattr(scipy.stats, base_name)
-
-        result = func(*data_args, **params)
+        if base_name == "mean":
+            if not data_args:
+                raise ValueError("No data provided for mean_table")
+            result = np.mean(data_args[0])
+        else:
+            func = getattr(scipy.stats, base_name)
+            result = func(*data_args, **params)
 
         # Prepare payload
         payload = {

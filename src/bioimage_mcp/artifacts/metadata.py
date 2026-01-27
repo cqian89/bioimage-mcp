@@ -157,15 +157,18 @@ def extract_image_metadata(path: Path) -> dict | None:
         return _extract_metadata_tifffile(path)
 
     # Use reader for native dimensions (T021)
-    reader = getattr(image, "reader", image)
-    dims_obj = getattr(reader, "dims", None)
-    axes = getattr(reader, "axes", None)
-    if not axes and dims_obj and hasattr(dims_obj, "order"):
-        axes = dims_obj.order
+    try:
+        reader = getattr(image, "reader", image)
+        dims_obj = getattr(reader, "dims", None)
+        axes = getattr(reader, "axes", None)
+        if not axes and dims_obj and hasattr(dims_obj, "order"):
+            axes = dims_obj.order
 
-    shape = list(getattr(reader, "shape", ()))
-    ndim = getattr(reader, "ndim", len(shape))
-    axes_inferred = not bool(dims_obj)
+        shape = list(getattr(reader, "shape", ()))
+        ndim = getattr(reader, "ndim", len(shape))
+        axes_inferred = not bool(dims_obj)
+    except Exception:
+        return None
 
     # Keep this intentionally minimal and JSON-serializable.
     meta: dict = {
@@ -181,15 +184,23 @@ def extract_image_metadata(path: Path) -> dict | None:
         },
     }
 
-    channel_names = getattr(image, "channel_names", None)
-    if channel_names:
-        meta["channel_names"] = [str(name) for name in channel_names]
+    try:
+        channel_names = getattr(image, "channel_names", None)
+        if channel_names:
+            meta["channel_names"] = [str(name) for name in channel_names]
+    except Exception:
+        pass
 
-    pps = getattr(image, "physical_pixel_sizes", None)
-    if pps:
-        meta["physical_pixel_sizes"] = {
-            k: float(v) for k, v in {"X": pps.X, "Y": pps.Y, "Z": pps.Z}.items() if v is not None
-        }
+    try:
+        pps = getattr(image, "physical_pixel_sizes", None)
+        if pps:
+            meta["physical_pixel_sizes"] = {
+                k: float(v)
+                for k, v in {"X": pps.X, "Y": pps.Y, "Z": pps.Z}.items()
+                if v is not None
+            }
+    except Exception:
+        pass
 
     return meta
 

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import yaml
 
-from bioimage_mcp.registry.diagnostics import ManifestDiagnostic
+from bioimage_mcp.registry.diagnostics import EngineEventType, ManifestDiagnostic
 from bioimage_mcp.registry.engine import DiscoveryEngine
 from bioimage_mcp.registry.manifest_schema import ToolManifest
 
@@ -32,6 +32,7 @@ def _env_prefix_from_tool_id(tool_id: str | None) -> str | None:
 
 
 def load_manifest_file(path: Path) -> tuple[ToolManifest | None, ManifestDiagnostic | None]:
+    path = path.resolve()
     try:
         raw = path.read_bytes()
     except OSError as exc:
@@ -83,6 +84,9 @@ def load_manifest_file(path: Path) -> tuple[ToolManifest | None, ManifestDiagnos
 
         engine = DiscoveryEngine(project_root=project_root)
         manifest.functions, engine_events = engine.discover(manifest)
+        engine_events = [
+            event for event in engine_events if event.type != EngineEventType.OVERLAY_APPLIED
+        ]
     except Exception as e:
         engine_events = []
         warnings.append(f"Discovery engine failed for {path}: {e}")

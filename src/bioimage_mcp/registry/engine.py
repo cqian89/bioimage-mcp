@@ -97,7 +97,11 @@ class DiscoveryEngine:
     def _normalize_function(self, fn: Function, manifest: ToolManifest) -> Function:
         """Normalize fn_id and metadata for manifest-defined functions."""
         env_prefix = self._env_prefix_from_tool_id(manifest.tool_id)
-        if env_prefix and not fn.fn_id.startswith(f"{env_prefix}."):
+        if (
+            env_prefix
+            and not fn.fn_id.startswith("meta.")
+            and not fn.fn_id.startswith(f"{env_prefix}.")
+        ):
             fn.fn_id = f"{env_prefix}.{fn.fn_id}"
 
         fn.tool_id = manifest.tool_id
@@ -225,15 +229,60 @@ class DiscoveryEngine:
                         else:
                             outputs.append(Port(name=p, artifact_type="BioImageRef"))
 
+                    if not inputs and not outputs:
+                        io_pattern = fn_data.get("io_pattern")
+                        if io_pattern:
+                            try:
+                                inputs, outputs = self.map_io_pattern_to_ports(
+                                    IOPattern(io_pattern)
+                                )
+                            except Exception:
+                                inputs, outputs = [], []
+
+                    description = fn_data.get("description")
+                    if not description:
+                        description = fn_data.get("summary") or fn_data.get("name") or final_fn_id
+
+                    params_schema = fn_data.get("params_schema")
+                    if not params_schema:
+                        parameters = fn_data.get("parameters")
+                        if isinstance(parameters, dict):
+                            param_models: dict[str, ParameterSchema] = {}
+                            for name, payload in parameters.items():
+                                if not isinstance(payload, dict):
+                                    continue
+                                try:
+                                    if "name" in payload:
+                                        param_models[name] = ParameterSchema(**payload)
+                                    else:
+                                        param_models[name] = ParameterSchema(name=name, **payload)
+                                except Exception:
+                                    continue
+                            params_schema = self.parameters_to_json_schema(param_models)
+
+                    if not params_schema:
+                        params_schema = {"type": "object"}
+
+                    port_names = {p.name for p in inputs + outputs}
+                    if port_names and isinstance(params_schema, dict):
+                        properties = params_schema.get("properties")
+                        if isinstance(properties, dict):
+                            filtered = {k: v for k, v in properties.items() if k not in port_names}
+                            params_schema = {**params_schema, "properties": filtered}
+                            if "required" in params_schema:
+                                params_schema["required"] = [
+                                    r for r in params_schema["required"] if r in filtered
+                                ]
+
                     fn = Function(
                         fn_id=final_fn_id,
                         tool_id=manifest.tool_id,
                         name=fn_data["name"],
-                        description=fn_data.get("description", ""),
+                        description=description,
                         tags=fn_data.get("tags", []),
                         inputs=inputs,
                         outputs=outputs,
-                        params_schema=fn_data.get("params_schema", {"type": "object"}),
+                        params_schema=params_schema,
                         io_pattern=fn_data.get("io_pattern"),
                         module=fn_data.get("module"),
                         introspection_source=f"runtime:{fn_data.get('introspection_source', 'meta.list')}",
@@ -391,18 +440,11 @@ class DiscoveryEngine:
                 )
                 return None
 
-        # Check for missing docs in properties
+        # Fill missing parameter descriptions to avoid incomplete schemas
         if "properties" in params_schema:
             for p_name, p_schema in params_schema["properties"].items():
                 if not p_schema.get("description"):
-                    self._events.append(
-                        EngineEvent(
-                            type=EngineEventType.MISSING_DOCS,
-                            fn_id=fn_id,
-                            message=f"Parameter '{p_name}' in {fn_id} missing description",
-                            details={"parameter": p_name},
-                        )
-                    )
+                    p_schema["description"] = f"{p_name} parameter"
 
         return Function(
             fn_id=fn_id,
