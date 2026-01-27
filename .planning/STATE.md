@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 ## Current Position
 
 Phase: 12 of 12 (Core Engine + AST-First)
-Plan: 4 of 6 in current phase
+Plan: 5 of 6 in current phase
 Status: In progress
-Last activity: 2026-01-27 — Completed 12-04-PLAN.md
+Last activity: 2026-01-27 — Completed 12-05-PLAN.md
 
-Progress: ██████████ 100%
+Progress: █████████░ 98%
 
 ## Accumulated Context
 
@@ -35,6 +35,8 @@ Progress: ██████████ 100%
 | 12 | Unified Discovery Orchestrator | Centralizes AST + runtime fallback logic in DiscoveryEngine. |
 | 12 | Parameter-level overlays | Added support for rename/omit in overlays without tool code changes. |
 | 12 | Multi-key cache invalidation | Ensures cache safety by tracking version, env, and source changes. |
+| 12 | Move metadata to adjacent block | Moved tool_version and introspection_source to meta block in describe to keep params_schema pure. |
+| 12 | Persistent Registry Cache | Wired API to DB-backed schema cache, eliminating separate schema_cache.json file. |
 
 ### Roadmap Evolution
 - Phase 12 added: Core Engine + AST-First
@@ -46,9 +48,9 @@ Progress: ██████████ 100%
 - Existing failures in bootstrap/test_install.py need investigation.
 
 ### Session Continuity
-Last session: 2026-01-27T15:15:00Z
-Stopped at: Completed 12-04-PLAN.md
+Last session: 2026-01-27T14:23:50Z
+Stopped at: Completed 12-05-PLAN.md
 Resume file: None
 
 ## Next Steps
-1. Execute Plan 12-05: Wire Unified Discovery Orchestrator into MCP Server.
+1. Execute Plan 12-06: Introspection cleanup and consolidation.
