@@ -280,15 +280,19 @@ class RegistryIndex:
         tool_id: str,
         tool_version: str,
         fn_id: str,
+        env_lock_hash: str | None = None,
+        source_hash: str | None = None,
     ) -> dict | None:
-        """Get cached params_schema if it exists and version matches.
+        """Get cached params_schema if it exists and version/hashes match.
 
         Returns None if no cache entry exists or if tool_version has changed
-        (indicating cache invalidation is needed).
+        (indicating cache invalidation is needed). If env_lock_hash or source_hash
+        are provided, they must also match.
         """
         row = self._conn.execute(
             """
-            SELECT params_schema_json, introspection_source, tool_version
+            SELECT params_schema_json, introspection_source, tool_version,
+                   env_lock_hash, source_hash, callable_fingerprint
             FROM schema_cache
             WHERE tool_id = ? AND fn_id = ?
             """,
@@ -302,9 +306,22 @@ class RegistryIndex:
         if row["tool_version"] != tool_version:
             return None
 
+        # Invalidate if env_lock_hash provided and differs
+        if env_lock_hash is not None and row["env_lock_hash"] != env_lock_hash:
+            return None
+
+        # Invalidate if source_hash provided and differs
+        if source_hash is not None:
+            # Check both source_hash and callable_fingerprint for robustness
+            if row["source_hash"] != source_hash and row["callable_fingerprint"] != source_hash:
+                return None
+
         return {
             "params_schema": json.loads(row["params_schema_json"]),
             "introspection_source": row["introspection_source"],
+            "tool_version": row["tool_version"],
+            "env_lock_hash": row["env_lock_hash"],
+            "source_hash": row["source_hash"] or row["callable_fingerprint"],
         }
 
     def upsert_schema_cache(
@@ -315,6 +332,9 @@ class RegistryIndex:
         fn_id: str,
         params_schema: dict,
         introspection_source: str,
+        env_lock_hash: str | None = None,
+        callable_fingerprint: str | None = None,
+        source_hash: str | None = None,
     ) -> None:
         """Cache a params_schema obtained via meta.describe."""
         now = datetime.now(UTC).isoformat()
@@ -322,14 +342,18 @@ class RegistryIndex:
             """
             INSERT INTO schema_cache(
                 tool_id, tool_version, fn_id,
-                params_schema_json, introspection_source, introspected_at
+                params_schema_json, introspection_source, introspected_at,
+                env_lock_hash, callable_fingerprint, source_hash
             )
-            VALUES(?, ?, ?, ?, ?, ?)
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(tool_id, fn_id) DO UPDATE SET
               tool_version=excluded.tool_version,
               params_schema_json=excluded.params_schema_json,
               introspection_source=excluded.introspection_source,
-              introspected_at=excluded.introspected_at
+              introspected_at=excluded.introspected_at,
+              env_lock_hash=excluded.env_lock_hash,
+              callable_fingerprint=excluded.callable_fingerprint,
+              source_hash=excluded.source_hash
             """,
             (
                 tool_id,
@@ -338,6 +362,9 @@ class RegistryIndex:
                 json.dumps(params_schema),
                 introspection_source,
                 now,
+                env_lock_hash,
+                callable_fingerprint,
+                source_hash,
             ),
         )
         self._conn.commit()
