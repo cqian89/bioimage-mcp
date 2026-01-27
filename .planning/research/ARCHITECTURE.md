@@ -1,56 +1,177 @@
-# Architecture Patterns: Unified Introspection
+# Architecture Research
 
-**Domain:** Bioimage-MCP Tool Registry
+**Domain:** MCP tool registry & introspection
 **Researched:** 2026-01-27
+**Confidence:** HIGH
 
-## Recommended Architecture: "Two-Stage Introspection Pipeline"
+## Standard Architecture
 
-The engine utilizes a tiered strategy to maximize safety (no imports) while providing high fidelity (runtime probing).
+### System Overview
 
-### Component Boundaries
+```
+┌──────────────────────────────────────────────────────────────┐
+│ MCP API (tools/list, tools/describe, run)                     │
+├──────────────────────────────────────────────────────────────┤
+│ DiscoveryService + RegistryIndex (SQLite)                     │
+│  └─ UnifiedIntrospectionEngine                                │
+│      ├─ AST Parser (Griffe)                                   │
+│      ├─ Runtime Fallback (tool-pack meta.describe)            │
+│      └─ Overlay/Patch Pipeline                                │
+├──────────────────────────────────────────────────────────────┤
+│ Schema Cache (DiskCache/SQLite)                               │
+├──────────────────────────────────────────────────────────────┤
+│ Tool-Pack Runtimes (conda envs, meta.list/meta.describe)      │
+└──────────────────────────────────────────────────────────────┘
+```
 
-| Component | Responsibility | Communicates With |
-|-----------|---------------|-------------------|
-| **UnifiedIntrospectionEngine** | Orchestrates Stage 1 (Static) and Stage 2 (Dynamic) probing. | `RegistryIndex`, `Runtimes`. |
-| **Stage 1: Griffe (Static)** | Parses tool source code using AST to extract signatures/docstrings. | Tool source files. |
-| **Stage 2: Subprocess (Dynamic)** | Executes `inspect` in the tool's conda env for factory-based tools. | `Runtime Workers`. |
-| **SchemaCache (DiskCache)** | Persistent storage for generated JSON Schemas, keyed by content hashes. | `UnifiedIntrospectionEngine`. |
+### Component Responsibilities
 
-### Data Flow
+| Component | Responsibility | Typical Implementation |
+|-----------|----------------|------------------------|
+| UnifiedIntrospectionEngine | Orchestrates AST-first + runtime fallback, merges overlays, emits params_schema. | Python module in `registry/`. |
+| RegistryIndex | Stores tools/functions/schema metadata. | SQLite-backed index. |
+| SchemaCache | Persistent cache for derived schemas and fingerprints. | DiskCache (SQLite-backed). |
+| Runtime Fallback | Introspects dynamic tools in isolated envs. | `meta.describe` via tool runtime. |
+| Overlay Pipeline | Applies function_overlays with deterministic precedence. | Manifest overlay merger. |
 
-1.  **Stage 1 (AST)**: `UnifiedIntrospectionEngine` uses **Griffe** to parse tool source files. It extracts function names, types, and docstrings (Google/NumPy/Sphinx) without importing the code. This is the default path for 90% of tools.
-2.  **Stage 2 (Runtime Fallback)**: If Griffe fails (e.g., dynamic factories, complex decorators), the engine triggers a `meta.describe` call in a subprocess within the tool's conda environment.
-3.  **Consolidation**: Both paths produce a unified `IntrospectionResult`.
-4.  **Hashing**: The source file is hashed using **xxHash**. The result is cached in **DiskCache** with a key composed of `(tool_id, tool_version, source_hash)`.
+## Recommended Project Structure
 
-## Patterns to Follow
+```
+src/
+└── bioimage_mcp/
+    ├── registry/
+    │   ├── introspection_engine/
+    │   │   ├── engine.py          # Orchestrator
+    │   │   ├── ast_griffe.py      # AST-first extraction
+    │   │   ├── runtime_fallback.py# Tool-pack probing
+    │   │   └── overlays.py        # Overlay merge + diagnostics
+    │   ├── index.py               # RegistryIndex / ToolIndex
+    │   └── schema_cache.py        # Consolidated cache adapter
+    ├── runtimes/
+    │   └── meta_describe.py       # Tool-pack runtime endpoint
+    └── api/
+        └── server.py              # MCP list/describe/run
+```
+
+### Structure Rationale
+
+- **registry/introspection_engine/:** isolates the new engine and keeps discovery logic in one place.
+- **registry/schema_cache.py:** centralizes caching to avoid parallel cache stores.
+
+## Architectural Patterns
 
 ### Pattern 1: AST-First Discovery
-Always attempt to resolve a signature via AST (Griffe) before resorting to a runtime import. This drastically reduces server startup time and prevents "DLL Hell" in the core process.
 
-### Pattern 2: Strong Invalidation via xxHash
-Use the tool's source file content hash as part of the cache key. This ensures that any modification to the tool logic immediately triggers a schema refresh, even if the version number in `manifest.yaml` remains unchanged.
+**What:** Use Griffe to parse signatures/docstrings without imports.
+**When to use:** Default path for all tool packs.
+**Trade-offs:** Some dynamic factories require fallback.
 
-### Pattern 3: Leaf-Node Type Definitions
-Define shared types like `ArtifactRef` and `BioImageRef` in a leaf-node package (e.g., `bioimage_mcp.types.refs`) with zero internal dependencies to prevent circular imports during runtime fallback.
+**Example:**
+```python
+result = engine.introspect_static(module_path)
+if result.needs_runtime:
+    result = engine.introspect_runtime(fn_id)
+```
 
-## Anti-Patterns to Avoid
+### Pattern 2: Two-Stage Pipeline
+
+**What:** Stage 1 static, Stage 2 runtime fallback in tool env.
+**When to use:** For tools with decorators/factories or compiled bindings.
+**Trade-offs:** Runtime fallback is slower and requires env availability.
+
+**Example:**
+```python
+if not ast_signature:
+    schema = runtime.describe(fn_id, env_id)
+```
+
+### Pattern 3: Overlay/Patch Pipeline
+
+**What:** Apply overlays after normalization, before schema emission.
+**When to use:** When docstrings or type hints are incomplete.
+**Trade-offs:** Requires clear precedence rules.
+
+**Example:**
+```python
+spec = normalize(spec)
+spec = apply_overlays(spec)
+schema = emit_schema(spec)
+```
+
+## Data Flow
+
+### Request Flow
+
+```
+tools/describe
+    ↓
+DiscoveryService → UnifiedIntrospectionEngine → SchemaCache/RegistryIndex
+    ↓                         ↓
+  Response  ←────────── merged schema
+```
+
+### State Management
+
+```
+RegistryIndex
+    ↓ (refresh)
+IntrospectionEngine → SchemaCache → RegistryIndex
+```
+
+### Key Data Flows
+
+1. **Introspection pipeline:** AST parse → optional runtime fallback → overlays → schema emission.
+2. **Cache invalidation:** tool_version/env lock/source hash → cache refresh.
+3. **Overlay application:** built-in → manifest → user overrides.
+
+## Scaling Considerations
+
+| Scale (tools) | Architecture Adjustments |
+|--------------|--------------------------|
+| 0-10 tools | AST-only scan on startup is fine. |
+| 10-100 tools | Cache schemas; background refresh on changes. |
+| 100+ tools | Defer runtime fallback to on-demand describe. |
+
+### Scaling Priorities
+
+1. **First bottleneck:** full runtime fallback at startup → move to on-demand.
+2. **Second bottleneck:** cache churn from low-quality hashes → include env lock hash.
+
+## Anti-Patterns
 
 ### Anti-Pattern 1: In-Process Tool Imports
-Never import tool-pack code directly in the core server process. Heavy dependencies (PyTorch, TensorFlow) will cause OOMs or version conflicts with other tool-packs.
 
-### Anti-Pattern 2: Volatile In-Memory Caching
-Relying only on in-memory caches means every server restart triggers a full re-scan. Use **DiskCache** for persistence across sessions.
+**What people do:** import tool packs in core server for signatures.
+**Why it's wrong:** causes dependency conflicts and crashes.
+**Do this instead:** AST-first + runtime fallback in tool env.
 
-## Scalability Considerations
+### Anti-Pattern 2: Always-On Runtime Fallback
 
-| Concern | 10 Tools | 100 Tools | 1000 Tools |
-|---------|----------|-----------|------------|
-| **Startup Time** | <200ms | ~1s (Cached) | ~2s (Requires background indexer) |
-| **RAM Usage** | Low | ~50MB (Griffe overhead) | ~200MB |
-| **Cache Reliability** | High | High (DiskCache/SQLite) | High |
+**What people do:** use runtime introspection for every tool.
+**Why it's wrong:** slow and couples to env availability.
+**Do this instead:** AST-first default; fallback only when needed.
+
+## Integration Points
+
+### External Services
+
+| Service | Integration Pattern | Notes |
+|---------|---------------------|-------|
+| Conda/Micromamba | subprocess invocation | Used for tool env checks and runtime fallback. |
+
+### Internal Boundaries
+
+| Boundary | Communication | Notes |
+|----------|---------------|-------|
+| Registry ↔ Runtimes | NDJSON meta.list/meta.describe | Cross-env tool discovery. |
+| Registry ↔ Artifacts | IOPattern + FunctionHints | Keep artifact ports out of params_schema. |
 
 ## Sources
-- [Griffe Architecture](https://mkdocstrings.github.io/griffe/reference/griffe/loader/)
-- [DiskCache Memoization](http://www.grantjenks.com/docs/diskcache/tutorial.html#memoization)
-- `src/bioimage_mcp/registry/` (Existing implementation)
+
+- https://mkdocstrings.github.io/griffe/
+- https://modelcontextprotocol.io/specification/
+- src/bioimage_mcp/registry/
+
+---
+*Architecture research for: MCP tool registry & introspection*
+*Researched: 2026-01-27*

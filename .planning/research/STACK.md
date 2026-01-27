@@ -1,47 +1,92 @@
-# Technology Stack: Unified Introspection Engine
+# Stack Research
 
-**Project:** Bioimage-MCP
+**Domain:** MCP tool registry & introspection (bioimage-mcp)
 **Researched:** 2026-01-27
+**Confidence:** HIGH
 
 ## Recommended Stack
 
-### Core Introspection & Analysis
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| **Griffe** | 1.15+ | AST-based Static Analysis | Extracts signatures and docstrings without executing code. Avoids `ImportError` and OOM in the server process. |
-| **Pydantic** | v2.10+ | Schema Emission | Standard for generating MCP-compatible JSON Schemas. |
-| **docstring-parser** | 0.17+ | Documentation Parsing | High-fidelity extraction of parameter descriptions from NumPy/Google docstrings. |
+### Core Technologies
 
-### Metadata & Caching
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| **SQLite** | 3.x | Unified Registry Index | Fast, relational storage for function metadata and cached schemas. |
-| **DiskCache** | 5.6+ | Schema Storage | SQLite-backed, thread-safe persistent cache for derived schemas. |
-| **xxHash** | 3.6+ | Content Invalidation | Extremely fast hashing of tool source files to detect changes. |
+| Technology | Version | Purpose | Why Recommended |
+|------------|---------|---------|-----------------|
+| Griffe | 1.15+ | AST-based static analysis | Parses signatures/docstrings without importing tool code. |
+| Pydantic | 2.10+ | JSON Schema emission | Standard for MCP-compatible params_schema output. |
+| docstring-parser | 0.17+ | Docstring parsing | Extracts parameter descriptions (NumPy/Google/Sphinx). |
+| SQLite | 3.x | Registry index storage | Existing store for ToolIndex and schema cache. |
 
-### Isolation & Infrastructure
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| **Python** | 3.13 | Base Runtime | Modern typing and performance improvements. |
-| **Micromamba** | Latest | Environment Isolation | Reliable management of tool-pack environments. |
+### Supporting Libraries
 
-## Alternatives Considered
+| Library | Version | Purpose | When to Use |
+|---------|---------|---------|-------------|
+| DiskCache | 5.6+ | Persistent schema cache | Store derived schemas across restarts. |
+| xxHash | 3.6+ | Content hashing | Cache invalidation on source changes. |
+| inspect (stdlib) | Python 3.10+ | Runtime fallback signatures | Only inside tool-pack runtime fallback. |
 
-| Category | Recommended | Alternative | Why Not |
-|----------|-------------|-------------|---------|
-| Analysis | **Griffe** | `inspect` (Stdlib) | `inspect` requires importing the code, which leaks dependencies and causes crashes in the server process. |
-| Caching | **DiskCache** | JSON Files | File-per-schema is hard to manage and prone to race conditions. |
-| Type System | **Pydantic v2** | Marshmallow | Pydantic is already the internal standard for bioimage-mcp. |
+### Development Tools
+
+| Tool | Purpose | Notes |
+|------|---------|-------|
+| ruff | Lint/format | Enforce consistent formatting. |
+| pytest | Test runner | Use markers for env-gated tests. |
 
 ## Installation
 
 ```bash
-# Core server requirements
-python -m pip install griffe pydantic diskcache xxhash docstring-parser
+# Core
+python -m pip install "griffe>=1.15" "pydantic>=2.10" "docstring-parser>=0.17"
+
+# Supporting
+python -m pip install "diskcache>=5.6" "xxhash>=3.6"
+
+# Dev dependencies
+python -m pip install -e ".[dev]"
 ```
+
+## Alternatives Considered
+
+| Recommended | Alternative | When to Use Alternative |
+|-------------|-------------|-------------------------|
+| Griffe | inspect (stdlib) | Only for runtime fallback in isolated tool envs. |
+| DiskCache | JSON files | Only for tiny tool packs with no concurrency. |
+| Pydantic v2 | Marshmallow | Only if the repo migrates away from Pydantic. |
+
+## What NOT to Use
+
+| Avoid | Why | Use Instead |
+|-------|-----|-------------|
+| In-process tool imports | Leaks heavy deps into core server | AST-first with Griffe; fallback in tool env. |
+| File-per-schema JSON cache | Race-prone and hard to invalidate | Centralized SQLite/DiskCache. |
+| Implicit type guessing | Unreliable schemas | Type hints + docstring parsing + overlays. |
+
+## Stack Patterns by Variant
+
+**If tool pack is pure Python:**
+- Use AST-first only
+- Because static parsing is faster and safer
+
+**If tool pack uses compiled bindings:**
+- Use manifest overlays and runtime fallback
+- Because static parsing cannot see C++ signatures
+
+**If tool pack has heavy deps (torch, cellpose):**
+- Never import in core server
+- Because dependency conflicts crash discovery
+
+## Version Compatibility
+
+| Package A | Compatible With | Notes |
+|-----------|-----------------|-------|
+| Pydantic 2.10+ | Python 3.10+ | Aligns with bioimage-mcp runtime constraints. |
+| Griffe 1.15+ | Python 3.10+ | AST parsing without import side-effects. |
 
 ## Sources
 
-- [Griffe Project Page](https://github.com/mkdocstrings/griffe)
-- [Pydantic JSON Schema Guide](https://docs.pydantic.dev/latest/concepts/json_schema/)
-- `src/bioimage_mcp/config/` (Existing configuration)
+- https://mkdocstrings.github.io/griffe/
+- https://docs.pydantic.dev/latest/concepts/json_schema/
+- http://www.grantjenks.com/docs/diskcache/tutorial.html
+- https://pypi.org/project/xxhash/
+
+---
+*Stack research for: MCP tool registry & introspection*
+*Researched: 2026-01-27*
