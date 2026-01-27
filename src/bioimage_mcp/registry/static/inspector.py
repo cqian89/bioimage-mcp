@@ -1,0 +1,61 @@
+from __future__ import annotations
+
+import pathlib
+from typing import Optional
+
+import griffe
+from pydantic import BaseModel, Field
+
+
+class StaticParameter(BaseModel):
+    name: str
+    annotation: Optional[str] = None
+    default: Optional[str] = None
+
+
+class StaticCallable(BaseModel):
+    name: str
+    qualified_name: str
+    docstring: Optional[str] = None
+    parameters: list[StaticParameter] = Field(default_factory=list)
+    source: Optional[str] = None
+
+
+class StaticModuleReport(BaseModel):
+    module_name: str
+    callables: list[StaticCallable] = Field(default_factory=list)
+
+
+def inspect_module(module: str, search_paths: list[pathlib.Path]) -> StaticModuleReport:
+    """Uses griffe to load module/package WITHOUT importing tool code.
+
+    Extracts fully qualified module path(s) and callable definitions.
+    """
+    loader = griffe.GriffeLoader(search_paths=[str(p) for p in search_paths])
+    griffe_mod = loader.load(module)
+
+    callables = []
+    # all_members includes members of the module and its submodules if it's a package
+    for member in griffe_mod.all_members.values():
+        if member.is_function:
+            params = []
+            for p in member.parameters:
+                params.append(
+                    StaticParameter(
+                        name=p.name,
+                        annotation=str(p.annotation) if p.annotation else None,
+                        default=str(p.default) if p.default else None,
+                    )
+                )
+
+            callables.append(
+                StaticCallable(
+                    name=member.name,
+                    qualified_name=member.path,
+                    docstring=member.docstring.value if member.docstring else None,
+                    parameters=params,
+                    source=member.source,
+                )
+            )
+
+    return StaticModuleReport(module_name=module, callables=callables)
