@@ -93,6 +93,9 @@ def init_schema(conn: sqlite3.Connection) -> None:
             params_schema_json TEXT NOT NULL,
             introspection_source TEXT NOT NULL,
             introspected_at TEXT NOT NULL,
+            env_lock_hash TEXT,
+            callable_fingerprint TEXT,
+            source_hash TEXT,
             PRIMARY KEY (tool_id, fn_id)
         );
 
@@ -137,5 +140,14 @@ def init_schema(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE functions ADD COLUMN module TEXT")
     if "io_pattern" not in existing_cols:
         conn.execute("ALTER TABLE functions ADD COLUMN io_pattern TEXT")
+
+    # schema_cache migrations
+    cache_cols = {row["name"] for row in conn.execute("PRAGMA table_info(schema_cache)")}
+    if "env_lock_hash" not in cache_cols:
+        conn.execute("ALTER TABLE schema_cache ADD COLUMN env_lock_hash TEXT")
+    if "callable_fingerprint" not in cache_cols:
+        conn.execute("ALTER TABLE schema_cache ADD COLUMN callable_fingerprint TEXT")
+    if "source_hash" not in cache_cols:
+        conn.execute("ALTER TABLE schema_cache ADD COLUMN source_hash TEXT")
 
     conn.commit()
