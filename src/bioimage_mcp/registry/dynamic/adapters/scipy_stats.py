@@ -293,7 +293,16 @@ class ScipyStatsAdapter(ScipyNdimageAdapter):
         payload = {
             "fn_id": fn_id,
             "selected_columns": selected_columns,
+            "column": column,
+            "nan_policy": nan_policy,
         }
+        payload.update(params)
+
+        # Add sample sizes
+        if len(data_args) >= 1:
+            payload["n_a"] = len(data_args[0])
+        if len(data_args) >= 2:
+            payload["n_b"] = len(data_args[1])
 
         # Handle Bunch or other structured returns from scipy
         if hasattr(result, "_asdict"):
