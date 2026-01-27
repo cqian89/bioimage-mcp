@@ -5,6 +5,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from bioimage_mcp.registry.diagnostics import EngineEvent, EngineEventType
 from bioimage_mcp.registry.dynamic.models import IOPattern, ParameterSchema
 from bioimage_mcp.registry.manifest_schema import Function, FunctionOverlay, Port, ToolManifest
 from bioimage_mcp.registry.static.inspector import inspect_module
@@ -18,15 +19,16 @@ logger = logging.getLogger(__name__)
 class DiscoveryEngine:
     def __init__(self, project_root: Path | None = None):
         self.project_root = project_root
+        self._events: list[EngineEvent] = []
 
-    def discover(self, manifest: ToolManifest) -> tuple[list[Function], list[str]]:
+    def discover(self, manifest: ToolManifest) -> tuple[list[Function], list[EngineEvent]]:
         """Unified discovery for a tool manifest.
 
         Performs AST-first introspection with runtime fallback.
         """
+        self._events = []
         functions: list[Function] = []
         existing_fn_ids: set[str] = set()
-        warnings: list[str] = []
 
         # 1. Start with static functions defined in manifest
         for fn in manifest.functions:
@@ -45,7 +47,13 @@ class DiscoveryEngine:
             except Exception as e:
                 msg = f"Dynamic discovery failed for source {source.prefix}: {e}"
                 logger.error(msg)
-                warnings.append(msg)
+                self._events.append(
+                    EngineEvent(
+                        type=EngineEventType.SKIPPED_CALLABLE,
+                        message=msg,
+                        details={"source_prefix": source.prefix},
+                    )
+                )
 
         # 3. Apply overlays
         if manifest.function_overlays:
@@ -60,15 +68,28 @@ class DiscoveryEngine:
                 for i, fn in enumerate(functions):
                     if fn.fn_id == target_id:
                         functions[i] = self.merge_function_overlay(fn, overlay)
+                        self._events.append(
+                            EngineEvent(
+                                type=EngineEventType.OVERLAY_APPLIED,
+                                fn_id=target_id,
+                                message=f"Applied overlay to {target_id}",
+                            )
+                        )
                         found = True
                         break
 
                 if not found:
                     msg = f"Overlay target {target_id} not found in tool {manifest.tool_id}"
                     logger.warning(msg)
-                    warnings.append(msg)
+                    self._events.append(
+                        EngineEvent(
+                            type=EngineEventType.OVERLAY_CONFLICT,
+                            fn_id=target_id,
+                            message=msg,
+                        )
+                    )
 
-        return functions, warnings
+        return functions, list(self._events)
 
     def _normalize_function(self, fn: Function, manifest: ToolManifest) -> Function:
         """Normalize fn_id and metadata for manifest-defined functions."""
@@ -127,6 +148,15 @@ class DiscoveryEngine:
 
         # Basic AST-derived info
         description = sc.docstring or ""
+        if not description:
+            self._events.append(
+                EngineEvent(
+                    type=EngineEventType.MISSING_DOCS,
+                    fn_id=fn_id,
+                    message=f"Function {fn_id} missing docstring",
+                )
+            )
+
         params_schema = self._generate_static_params_schema(sc)
 
         introspection_source = "ast"
@@ -139,13 +169,41 @@ class DiscoveryEngine:
             introspection_source = (
                 f"runtime:{runtime_info.get('introspection_source', 'meta.describe')}"
             )
+            self._events.append(
+                EngineEvent(
+                    type=EngineEventType.RUNTIME_FALLBACK,
+                    fn_id=fn_id,
+                    message=f"Used {introspection_source} fallback for {fn_id}",
+                )
+            )
         elif not params_schema.get("properties"):
             # If no AST info and runtime failed, skip
-            logger.warning("Skipping %s: AST incomplete and runtime fallback failed", fn_id)
+            msg = f"Skipping {fn_id}: AST incomplete and runtime fallback failed"
+            logger.warning(msg)
+            self._events.append(
+                EngineEvent(
+                    type=EngineEventType.SKIPPED_CALLABLE,
+                    fn_id=fn_id,
+                    message=msg,
+                )
+            )
             return None
 
         # Fingerprint from source if available
         # fingerprint = callable_fingerprint(sc.source or "") # Not used in Function model yet
+
+        # Check for missing docs in properties
+        if "properties" in params_schema:
+            for p_name, p_schema in params_schema["properties"].items():
+                if not p_schema.get("description"):
+                    self._events.append(
+                        EngineEvent(
+                            type=EngineEventType.MISSING_DOCS,
+                            fn_id=fn_id,
+                            message=f"Parameter '{p_name}' in {fn_id} missing description",
+                            details={"parameter": p_name},
+                        )
+                    )
 
         # Heuristic for I/O pattern
         io_pattern = self._guess_io_pattern(sc)

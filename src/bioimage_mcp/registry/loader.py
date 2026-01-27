@@ -77,15 +77,21 @@ def load_manifest_file(path: Path) -> tuple[ToolManifest | None, ManifestDiagnos
             curr = curr.parent
 
         engine = DiscoveryEngine(project_root=project_root)
-        manifest.functions, discovery_warnings = engine.discover(manifest)
-        warnings.extend(discovery_warnings)
+        manifest.functions, engine_events = engine.discover(manifest)
     except Exception as e:
+        engine_events = []
         warnings.append(f"Discovery engine failed for {path}: {e}")
         logger.exception("Discovery engine error")
 
     diag = None
-    if warnings:
-        diag = ManifestDiagnostic(path=path, tool_id=manifest.tool_id, errors=[], warnings=warnings)
+    if warnings or engine_events:
+        diag = ManifestDiagnostic(
+            path=path,
+            tool_id=manifest.tool_id,
+            errors=[],
+            warnings=warnings,
+            engine_events=engine_events,
+        )
 
     return manifest, diag
 
@@ -123,7 +129,7 @@ def load_manifests(roots: list[Path]) -> tuple[list[ToolManifest], list[Manifest
         manifest, diag = load_manifest_file(path)
         if manifest is not None:
             manifests.append(manifest)
-        elif diag is not None:
+        if diag is not None:
             diagnostics.append(diag)
 
     _MANIFEST_CACHE[cache_key] = (list(manifests), list(diagnostics))
