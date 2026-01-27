@@ -19,6 +19,16 @@ Enables AI agents to safely and reproducibly execute bioimage analysis tools wit
 - Overlay/patch pipeline consolidation with diagnostics
 - fn_id/module metadata cleanup with callable_fingerprint
 
+## Current State
+
+Shipped v0.3.0 Scipy Integration (2026-01-27) with dynamic adapters for `scipy.ndimage`, `scipy.stats`, `scipy.spatial`, and `scipy.signal`, plus metadata preservation and parity-grade testing.
+
+## Next Milestone Goals
+
+- Consolidate discovery/introspection into a single AST-first engine with runtime fallback.
+- Align params_schema emission (tool_version + introspection_source) with artifact separation.
+- Unify schema caching, overlays, and diagnostic reporting.
+
 ## Requirements
 
 ### Validated
@@ -32,6 +42,7 @@ Enables AI agents to safely and reproducibly execute bioimage analysis tools wit
 - ✓ **Workflow Replay**: Validated export and replay engine — v0.2.0
 - ✓ **GPU Passthrough**: NVIDIA (CUDA) and Apple Silicon (MPS) detection — v0.2.0
 - ✓ **Trackpy Integration**: First major tool pack with dynamic introspection — v0.2.0
+- ✓ **Scipy Integration**: ndimage/stats/spatial/signal adapters with parity testing — v0.3.0
 
 ### Active
 
@@ -51,10 +62,10 @@ Enables AI agents to safely and reproducibly execute bioimage analysis tools wit
 
 ## Context
 
-Shipped v0.2.0 "Foundation" with ~28k LOC Python.
+Shipped v0.3.0 "Scipy Integration" with ~81k LOC Python.
 Tech stack: Python 3.10+, Conda, MCP.
 Key capabilities: Hub-and-spoke isolation, zero-copy artifacts, reproducible workflows.
-First integration: Trackpy (v0.7).
+Integrations: Trackpy (v0.7), Scipy (ndimage/stats/spatial/signal).
 Developing a "standard library" for bioimage AI. Building on top of the `mcp` Python SDK. The system must bridge the gap between heavy bioimage dependencies (which often conflict) and the lightweight JSON-based MCP interface.
 
 ## Constraints
@@ -74,6 +85,9 @@ Developing a "standard library" for bioimage AI. Building on top of the `mcp` Py
 | **Interactive Mode** | Agents need human feedback | — Pending |
 | **NDJSON over stdio** | Robust, streamable IPC | ✓ Implemented |
 | **SQLite persistence** | Lightweight, file-based storage | ✓ Implemented |
+| **Discovery Protocol Standardization** | Align meta.list/meta.describe across tool packs | ✓ Implemented (v0.3.0) |
+| **NativeOutputRef for stats JSON** | Stable structured payloads for stats outputs | ✓ Implemented (v0.3.0) |
+| **Automatic float32 promotion** | Prevent uint16 overflow, ensure parity | ✓ Implemented (v0.3.0) |
 
 ---
-*Last updated: 2026-01-27 start of v0.4.0 milestone*
+*Last updated: 2026-01-27 after v0.3.0 milestone completion*
