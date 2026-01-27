@@ -393,8 +393,29 @@ class ArtifactStore:
         meta = kwargs.get("metadata", {})
 
         if artifact_type == "TableRef":
-            kwargs.setdefault("columns", [c["name"] for c in meta.get("columns", [])])
+            columns = []
+            raw_columns = meta.get("columns", [])
+            if isinstance(raw_columns, list):
+                if raw_columns and all(isinstance(c, str) for c in raw_columns):
+                    columns = raw_columns
+                elif raw_columns and all(isinstance(c, dict) for c in raw_columns):
+                    columns = [
+                        c.get("name") for c in raw_columns if isinstance(c, dict) and c.get("name")
+                    ]
+            kwargs.setdefault("columns", columns)
             kwargs.setdefault("row_count", meta.get("row_count", 0))
+            # Normalize metadata to satisfy TableMetadata (columns + row_count)
+            if isinstance(meta, dict):
+                if "row_count" not in meta:
+                    meta = {**meta, "row_count": kwargs.get("row_count", 0)}
+                if "columns" in meta and isinstance(meta.get("columns"), list):
+                    # If columns are plain strings, convert to ColumnMetadata-like dicts
+                    if meta["columns"] and all(isinstance(c, str) for c in meta["columns"]):
+                        meta = {
+                            **meta,
+                            "columns": [{"name": c, "dtype": "string"} for c in meta["columns"]],
+                        }
+            kwargs["metadata"] = meta
             return TableRef(**kwargs)
         elif artifact_type == "ScalarRef":
             return ScalarRef(**kwargs)
