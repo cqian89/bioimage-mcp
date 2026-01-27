@@ -1,6 +1,8 @@
-import os
-import pytest
+from __future__ import annotations
+
 from pathlib import Path
+
+import pytest
 
 
 @pytest.mark.smoke_minimal
@@ -12,9 +14,8 @@ def test_dataset_presence():
         "datasets/sample_data/measurements.csv",
     ]
 
-    root_dir = Path(__file__).parent.parent.parent
-
+    # Assume running from repo root
     for rel_path in required_files:
-        full_path = root_dir / rel_path
-        assert full_path.exists(), f"Missing required dataset: {rel_path}"
-        assert full_path.is_file(), f"Path exists but is not a file: {rel_path}"
+        path = Path(rel_path)
+        assert path.exists(), f"Missing required dataset: {rel_path}"
+        assert path.is_file(), f"Path exists but is not a file: {rel_path}"
