@@ -430,6 +430,10 @@ def table_load(*, inputs: dict[str, Any], params: dict[str, Any], work_dir: Path
     # Create TableRef
     ref_id = uuid.uuid4().hex
     table_format = format_hint.lower() if format_hint else ("tsv" if delimiter == "\t" else "csv")
+
+    # T010: Align with core TableRef and TableMetadata models
+    column_metadata = [{"name": str(col), "dtype": str(df[col].dtype)} for col in df.columns]
+
     table_ref = {
         "ref_id": ref_id,
         "type": "TableRef",
@@ -441,6 +445,11 @@ def table_load(*, inputs: dict[str, Any], params: dict[str, Any], work_dir: Path
         "delimiter": delimiter,
         "size_bytes": resolved_path.stat().st_size,
         "created_at": datetime.now(UTC).isoformat(),
+        "metadata": {
+            "columns": column_metadata,
+            "row_count": len(df),
+            "delimiter": delimiter,
+        },
     }
 
     return {"outputs": {"table": table_ref}}
@@ -550,6 +559,9 @@ def table_export(
     ref_id = uuid.uuid4().hex
     table_format = "tsv" if sep == "\t" else "csv"
 
+    # T010: Align with core TableRef and TableMetadata models
+    column_metadata = [{"name": str(col), "dtype": str(df[col].dtype)} for col in df.columns]
+
     table_ref = {
         "ref_id": ref_id,
         "type": "TableRef",
@@ -561,6 +573,11 @@ def table_export(
         "delimiter": sep,
         "size_bytes": dest_path.stat().st_size,
         "created_at": datetime.now(UTC).isoformat(),
+        "metadata": {
+            "columns": column_metadata,
+            "row_count": len(df),
+            "delimiter": sep,
+        },
     }
 
     return {"outputs": {"table": table_ref}}
