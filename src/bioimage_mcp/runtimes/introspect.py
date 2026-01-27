@@ -78,12 +78,11 @@ def schema_from_descriptions(descriptions: dict[str, str]) -> dict[str, Any]:
         descriptions: Parameter descriptions {param_name: description}
 
     Returns:
-        JSON Schema dict with 'type', 'properties', and 'required' fields
+        JSON Schema dict with 'type', 'properties' fields.
     """
     schema: dict[str, Any] = {
         "type": "object",
         "properties": {},
-        "required": [],
     }
 
     for name, desc in sorted(descriptions.items()):
@@ -154,6 +153,7 @@ def introspect_python_api(
 
         # Add description (curated > docstring > fallback)
         desc = descriptions.get(name) or doc_params.get(name)
+        has_curated_or_doc = desc is not None
         if desc:
             prop["description"] = desc
         else:
@@ -179,7 +179,7 @@ def introspect_python_api(
                 param_json_schema = TypeAdapter(type_hint).json_schema()
                 # Clean up schema for parameter use
                 param_json_schema.pop("title", None)
-                if "description" in prop:
+                if has_curated_or_doc:
                     param_json_schema.pop("description", None)
                 prop.update(param_json_schema)
             except Exception:
@@ -199,7 +199,13 @@ def introspect_python_api(
     # Ensure deterministic output
     sorted_properties = {k: schema["properties"][k] for k in sorted(schema["properties"].keys())}
     schema["properties"] = sorted_properties
-    schema["required"].sort()
+
+    # Final cleanup of required fields: must exist in properties and omit if empty
+    schema["required"] = [r for r in schema["required"] if r in schema["properties"]]
+    if schema["required"]:
+        schema["required"].sort()
+    else:
+        schema.pop("required", None)
 
     return schema
 
@@ -277,6 +283,12 @@ def introspect_argparse(
     # Ensure deterministic output
     sorted_properties = {k: schema["properties"][k] for k in sorted(schema["properties"].keys())}
     schema["properties"] = sorted_properties
-    schema["required"].sort()
+
+    # Final cleanup of required fields: must exist in properties and omit if empty
+    schema["required"] = [r for r in schema["required"] if r in schema["properties"]]
+    if schema["required"]:
+        schema["required"].sort()
+    else:
+        schema.pop("required", None)
 
     return schema
