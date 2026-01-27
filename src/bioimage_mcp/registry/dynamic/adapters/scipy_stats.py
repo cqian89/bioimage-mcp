@@ -26,7 +26,7 @@ class ScipyStatsAdapter(ScipyNdimageAdapter):
         results = []
 
         # 1. Summary statistics
-        for name in ["describe_table", "mean_table", "skew_table", "kurtosis_table"]:
+        for name in ["describe_table", "tmean_table", "skew_table", "kurtosis_table"]:
             results.append(self._create_stats_wrapper_metadata(name))
 
         # 2. Statistical tests

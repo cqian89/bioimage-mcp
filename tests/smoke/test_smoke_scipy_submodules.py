@@ -120,7 +120,8 @@ async def test_scipy_minimal_matrix(
     res = await live_server.call_tool_checked(
         "run", {"fn_id": fn_id, "inputs": inputs, "params": params}
     )
-    assert res.get("status") == "success"
+    if res.get("status") != "success":
+        pytest.fail(f"Tool {fn_id} failed: {res}")
     assert "outputs" in res
 
     # Check for at least one output of expected type
@@ -150,7 +151,7 @@ async def test_scipy_minimal_matrix(
         ("base.scipy.ndimage.binary_erosion", "image", {}, "BioImageRef"),
         ("base.scipy.ndimage.label", "image", {}, "LabelImageRef"),
         # stats
-        ("base.scipy.stats.mean_table", "table", {"column": "val"}, "NativeOutputRef"),
+        ("base.scipy.stats.tmean_table", "table", {"column": "val"}, "NativeOutputRef"),
         ("base.scipy.stats.skew_table", "table", {"column": "val"}, "NativeOutputRef"),
         ("base.scipy.stats.kurtosis_table", "table", {"column": "val"}, "NativeOutputRef"),
         (
@@ -226,7 +227,8 @@ async def test_scipy_full_matrix(
     res = await live_server.call_tool_checked(
         "run", {"fn_id": fn_id, "inputs": inputs, "params": params}
     )
-    assert res.get("status") == "success"
+    if res.get("status") != "success":
+        pytest.fail(f"Tool {fn_id} failed: {res}")
     assert "outputs" in res
 
     outputs = res["outputs"]
