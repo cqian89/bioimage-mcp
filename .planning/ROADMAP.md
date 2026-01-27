@@ -25,13 +25,13 @@ Plans:
 **Goal:** Unified introspection engine that is AST-first with isolated runtime fallback, deterministic schema emission, and consistent metadata across list/describe.
 **Status:** In progress
 **Depends on:** Phase 11
-**Plans:** 3/6 plans complete
+**Plans:** 4/6 plans complete
 
 Plans:
 - [x] 12-01-PLAN.md — Static inspector foundation (griffe + fingerprint + normalization)
 - [x] 12-02-PLAN.md — Runtime schema emission upgrade (TypeAdapter + docstrings)
 - [x] 12-03-PLAN.md — DiscoveryEngine: AST-first + runtime fallback + skip rules
-- [ ] 12-04-PLAN.md — Persistent cache invalidation keys + callable_fingerprint storage
+- [x] 12-04-PLAN.md — Persistent cache invalidation keys + callable_fingerprint storage
 - [ ] 12-05-PLAN.md — API wiring: single schema source + describe metadata contract
 - [ ] 12-06-PLAN.md — Diagnostics + doctor readiness checks (ENV-01)
 

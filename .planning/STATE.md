@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 ## Current Position
 
 Phase: 12 of 12 (Core Engine + AST-First)
-Plan: 3 of 6 in current phase
+Plan: 4 of 6 in current phase
 Status: In progress
-Last activity: 2026-01-27 — Completed 12-03-PLAN.md
+Last activity: 2026-01-27 — Completed 12-04-PLAN.md
 
-Progress: █████████░ 94%
+Progress: ██████████ 100%
 
 ## Accumulated Context
 
@@ -34,6 +34,7 @@ Progress: █████████░ 94%
 | 12 | Automated artifact omission | Prevents I/O artifacts from polluting the parameters schema. |
 | 12 | Unified Discovery Orchestrator | Centralizes AST + runtime fallback logic in DiscoveryEngine. |
 | 12 | Parameter-level overlays | Added support for rename/omit in overlays without tool code changes. |
+| 12 | Multi-key cache invalidation | Ensures cache safety by tracking version, env, and source changes. |
 
 ### Roadmap Evolution
 - Phase 12 added: Core Engine + AST-First
@@ -42,11 +43,12 @@ Progress: █████████░ 94%
 - trackpy schema descriptions missing (contract test failure).
 - base.phasorpy schema type mismatch (contract test failure).
 - contract tests need to skip non-manifest YAMLs.
+- Existing failures in bootstrap/test_install.py need investigation.
 
 ### Session Continuity
-Last session: 2026-01-27T14:15:00Z
-Stopped at: Completed 12-03-PLAN.md
+Last session: 2026-01-27T15:15:00Z
+Stopped at: Completed 12-04-PLAN.md
 Resume file: None
 
 ## Next Steps
-1. Execute Plan 12-04: Persistent cache invalidation keys + callable_fingerprint storage.
+1. Execute Plan 12-05: Wire Unified Discovery Orchestrator into MCP Server.
