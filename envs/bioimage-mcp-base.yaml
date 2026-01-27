@@ -45,3 +45,4 @@ dependencies:
     # (requires tifffile<2022.4.22 which needs numpy 1.26.4 built from source)
     # Install bioimage_mcp in editable mode for access to adapters
     - -e ../.
+    - docstring-parser
