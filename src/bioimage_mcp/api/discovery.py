@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sqlite3
 from pathlib import Path
 from typing import Any
@@ -10,9 +11,62 @@ from bioimage_mcp.artifacts.models import ARTIFACT_TYPES
 from bioimage_mcp.config.loader import load_config
 from bioimage_mcp.registry.index import RegistryIndex, ToolIndex
 from bioimage_mcp.registry.loader import load_manifests
+from bioimage_mcp.registry.manifest_schema import ToolManifest
 from bioimage_mcp.registry.search import SearchIndex, any_tag_matches, io_type_matches
 from bioimage_mcp.runtimes.executor import execute_tool
 from bioimage_mcp.runtimes.meta_protocol import parse_meta_describe_result
+
+
+def _find_project_root(start: Path) -> Path | None:
+    curr = start
+    for _ in range(5):
+        if (curr / "envs").exists() or (curr / "pyproject.toml").exists():
+            return curr
+        curr = curr.parent
+    return None
+
+
+def _compute_env_lock_hash(project_root: Path | None, env_id: str) -> str | None:
+    if project_root is None:
+        return None
+    lock_file = project_root / "envs" / f"{env_id}.lock.yml"
+    if not lock_file.exists():
+        return None
+    try:
+        import hashlib
+
+        return hashlib.sha256(lock_file.read_bytes()).hexdigest()[:16]
+    except OSError:
+        return None
+
+
+def _compute_source_hash(
+    manifest: ToolManifest,
+    *,
+    module: str | None,
+    callable_name: str | None,
+    project_root: Path | None,
+) -> str | None:
+    if module is None or callable_name is None:
+        return None
+
+    from bioimage_mcp.registry.static.fingerprint import callable_fingerprint
+    from bioimage_mcp.registry.static.inspector import inspect_module
+
+    search_paths = [manifest.manifest_path.parent]
+    if project_root and (project_root / "tools").exists():
+        search_paths.append(project_root / "tools")
+
+    try:
+        report = inspect_module(module, search_paths)
+        for c in report.callables:
+            if c.name == callable_name:
+                if c.source:
+                    return callable_fingerprint(c.source)
+                return None
+    except Exception:
+        return None
+    return None
 
 
 class DiscoveryService:
@@ -452,8 +506,6 @@ class DiscoveryService:
                 "SELECT inputs_json FROM functions WHERE fn_id = ?", (fn_id,)
             ).fetchone()
             if raw_inputs:
-                import json
-
                 db_inputs = json.loads(raw_inputs[0])
                 for port in db_inputs:
                     name = port.get("name")
@@ -478,8 +530,6 @@ class DiscoveryService:
                 "SELECT outputs_json FROM functions WHERE fn_id = ?", (fn_id,)
             ).fetchone()
             if raw_outputs:
-                import json
-
                 db_outputs = json.loads(raw_outputs[0])
                 for port in db_outputs:
                     name = port.get("name")
@@ -513,11 +563,26 @@ class DiscoveryService:
             db_manifest_path = tool_row[0] if tool_row else None
 
             if db_manifest_path and Path(db_manifest_path).exists():
+                # Compute hashes for cache lookups and invalidation
+                project_root = _find_project_root(manifest.manifest_path.parent)
+                env_lock_hash = _compute_env_lock_hash(project_root, manifest.env_id)
+
+                module = node.module or (function_def.module if function_def else None)
+                callable_name = payload.get("name") or fn_id.split(".")[-1]
+                source_hash = _compute_source_hash(
+                    manifest,
+                    module=module,
+                    callable_name=callable_name,
+                    project_root=project_root,
+                )
+
                 # Check DB cache first
                 cached = self._index.get_cached_schema(
                     tool_id=manifest.tool_id,
                     tool_version=manifest.tool_version,
                     fn_id=fn_id,
+                    env_lock_hash=env_lock_hash,
+                    source_hash=source_hash,
                 )
                 if cached:
                     params_schema = cached["params_schema"]
@@ -550,13 +615,17 @@ class DiscoveryService:
                             params_schema = result["params_schema"]
                             introspection_source = result["introspection_source"]
                             callable_fingerprint = result.get("callable_fingerprint")
+
+                            # Cache the result with invalidation hashes
                             self._index.upsert_schema_cache(
                                 tool_id=manifest.tool_id,
                                 tool_version=manifest.tool_version,
                                 fn_id=fn_id,
                                 params_schema=params_schema,
                                 introspection_source=introspection_source,
-                                callable_fingerprint=callable_fingerprint,
+                                env_lock_hash=env_lock_hash,
+                                callable_fingerprint=callable_fingerprint or source_hash,
+                                source_hash=source_hash,
                             )
                     except Exception as exc:
                         import logging
@@ -568,6 +637,28 @@ class DiscoveryService:
                             exc,
                         )
                         # Continue with manifest schema as fallback
+
+                # Synchronize functions table so list/describe cannot diverge
+                if cached or manifest:
+                    row = self._index._conn.execute(
+                        "SELECT name, description, tags_json, inputs_json, outputs_json, "
+                        "module, io_pattern FROM functions WHERE fn_id = ?",
+                        (fn_id,),
+                    ).fetchone()
+                    if row:
+                        self._index.upsert_function(
+                            fn_id=fn_id,
+                            tool_id=manifest.tool_id,
+                            name=row["name"],
+                            description=row["description"],
+                            tags=json.loads(row["tags_json"]),
+                            inputs=json.loads(row["inputs_json"]),
+                            outputs=json.loads(row["outputs_json"]),
+                            params_schema=params_schema,
+                            introspection_source=introspection_source,
+                            module=row["module"],
+                            io_pattern=row["io_pattern"],
+                        )
 
         # Contract T036: params_schema contains NO artifact port keys
         if params_schema and "properties" in params_schema:

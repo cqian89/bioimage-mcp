@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import sqlite3
 from pathlib import Path
 
@@ -12,22 +11,49 @@ from bioimage_mcp.storage.sqlite import init_schema
 
 def _prepare_discovery(tmp_path: Path, monkeypatch) -> DiscoveryService:
     artifacts_root = tmp_path / "artifacts"
-    tools_root = Path(__file__).parent.parent.parent / "tools"
-    schema_cache_path = artifacts_root / "state" / "schema_cache.json"
+    tools_root = tmp_path / "tools"
+    tools_root.mkdir()
+
+    base_tool_dir = tools_root / "base"
+    base_tool_dir.mkdir()
+    manifest_path = base_tool_dir / "manifest.yaml"
+    manifest_path.write_text(
+        """
+manifest_version: "1.0"
+tool_id: tools.base
+tool_version: "0.2.0"
+name: Base Toolkit
+env_id: bioimage-mcp-base
+entrypoint: entry.py
+functions:
+  - fn_id: base.skimage.filters.gaussian
+    tool_id: tools.base
+    name: gaussian
+    description: gaussian filter
+    inputs: []
+    outputs: []
+    params_schema: {"type": "object", "properties": {}}
+"""
+    )
 
     config = Config(
         artifact_store_root=artifacts_root,
         tool_manifest_roots=[tools_root],
-        schema_cache_path=schema_cache_path,
-        fs_allowlist_read=[tmp_path, tools_root],
+        schema_cache_path=artifacts_root / "state" / "schema_cache.json",
+        fs_allowlist_read=[tmp_path],
         fs_allowlist_write=[tmp_path],
         fs_denylist=[],
     )
     monkeypatch.setattr("bioimage_mcp.api.discovery.load_config", lambda: config)
 
     conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
     init_schema(conn)
     service = DiscoveryService(conn)
+
+    from bioimage_mcp.registry.loader import _MANIFEST_CACHE
+
+    _MANIFEST_CACHE.clear()
 
     manifests, _ = load_manifests(config.tool_manifest_roots)
     for manifest in manifests:
@@ -56,7 +82,7 @@ def _prepare_discovery(tmp_path: Path, monkeypatch) -> DiscoveryService:
     return service
 
 
-def test_describe_function_uses_json_cache(tmp_path: Path, monkeypatch) -> None:
+def test_describe_function_uses_db_cache(tmp_path: Path, monkeypatch) -> None:
     service = _prepare_discovery(tmp_path, monkeypatch)
 
     calls: list[dict] = []
@@ -83,6 +109,15 @@ def test_describe_function_uses_json_cache(tmp_path: Path, monkeypatch) -> None:
         )
 
     monkeypatch.setattr("bioimage_mcp.api.discovery.execute_tool", _fake_execute_tool)
+    monkeypatch.setattr(
+        "bioimage_mcp.api.discovery._compute_env_lock_hash", lambda *args: "env-hash"
+    )
+    # Use a mutable container to allow changing source hash in test
+    source_hash_container = {"value": "src-hash"}
+    monkeypatch.setattr(
+        "bioimage_mcp.api.discovery._compute_source_hash",
+        lambda *args, **kwargs: source_hash_container["value"],
+    )
 
     fn_id = "base.skimage.filters.gaussian"
     first = service.describe_function(fn_id)
@@ -93,18 +128,18 @@ def test_describe_function_uses_json_cache(tmp_path: Path, monkeypatch) -> None:
     assert calls[0]["command"] == "execute"
     assert calls[0]["fn_id"] == "meta.describe"
 
+    # Verify cache hit
     second = service.describe_function(fn_id)
     assert second["id"] == fn_id
     assert "params_schema" in second
     assert second["params_schema"]["properties"]["sigma"]["type"] == "number"
     assert len(calls) == 1
 
-    cache_path = tmp_path / "artifacts" / "state" / "schema_cache.json"
-    assert cache_path.exists()
-    cache_data = json.loads(cache_path.read_text())
-    tool_key = "tools.base@0.2.0"
-    assert tool_key in cache_data.get("tools", {})
-    assert fn_id in cache_data["tools"][tool_key]["functions"]
+    # Verify invalidation on source hash change
+    source_hash_container["value"] = "src-hash-v2"
+    third = service.describe_function(fn_id)
+    assert third["id"] == fn_id
+    assert len(calls) == 2
 
 
 def test_describe_function_supports_worker_response(tmp_path: Path, monkeypatch) -> None:
@@ -136,11 +171,17 @@ def test_describe_function_supports_worker_response(tmp_path: Path, monkeypatch)
         )
 
     monkeypatch.setattr("bioimage_mcp.api.discovery.execute_tool", _fake_execute_tool)
+    monkeypatch.setattr(
+        "bioimage_mcp.api.discovery._compute_env_lock_hash", lambda *args: "env-hash"
+    )
+    monkeypatch.setattr(
+        "bioimage_mcp.api.discovery._compute_source_hash", lambda *args, **kwargs: "src-hash"
+    )
 
     fn_id = "base.skimage.filters.gaussian"
     res = service.describe_function(fn_id)
     assert res["params_schema"]["properties"]["sigma"]["type"] == "number"
-    assert res["introspection_source"] == "python_api"
+    assert res["meta"]["introspection_source"] == "python_api"
     assert len(calls) == 1
 
     # Verify caching
