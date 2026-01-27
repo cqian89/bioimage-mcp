@@ -18,6 +18,8 @@ dependencies = [
   "bioio-ome-zarr",
   "bioio-ome-tiff",
   "ngff-zarr",
+  "griffe",
+  "docstring-parser",
 ]
 
 [project.optional-dependencies]
