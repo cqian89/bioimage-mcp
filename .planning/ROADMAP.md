@@ -113,7 +113,7 @@ Plans:
 Plans:
 - [ ] 10-01-PLAN.md — Add live-server SciPy smoke test matrix (ndimage/stats/spatial/signal)
 - [ ] 10-02-PLAN.md — Add strict equivalence tests (gaussian_filter + ttest_ind_table)
-- [ ] 10-03-PLAN.md — Add dataset + discovery guardrail smoke tests
+- [x] 10-03-PLAN.md — Add dataset + discovery guardrail smoke tests
 
 ---
 
@@ -127,7 +127,7 @@ Plans:
 | 7 - Transforms | v0.3.0 | ✅ Complete | 2026-01-26 |
 | 8 - Statistics | v0.3.0 | ✅ Complete | 2026-01-26 |
 | 9 - Spatial/Signal | v0.3.0 | ✅ Complete | 2026-01-26 |
-| 10 - Verification | v0.3.0 | 📋 Pending | — |
+| 10 - Verification | v0.3.0 | 🚧 In progress | — |
 
 ---
 *Roadmap generated: 2026-01-25*
