@@ -10,7 +10,6 @@ from bioimage_mcp.artifacts.models import ARTIFACT_TYPES
 from bioimage_mcp.config.loader import load_config
 from bioimage_mcp.registry.index import RegistryIndex, ToolIndex
 from bioimage_mcp.registry.loader import load_manifests
-from bioimage_mcp.registry.schema_cache import SchemaCache
 from bioimage_mcp.registry.search import SearchIndex, any_tag_matches, io_type_matches
 from bioimage_mcp.runtimes.executor import execute_tool
 from bioimage_mcp.runtimes.meta_protocol import parse_meta_describe_result
@@ -497,8 +496,14 @@ class DiscoveryService:
 
         params_schema = payload.get("schema", {})
         introspection_source = payload.get("introspection_source", "manual")
+        callable_fingerprint = None
 
-        # Try to get enriched schema from cache or via meta.describe.
+        # Get tool version for metadata block
+        tool_id = payload.get("tool_id")
+        tool = self._index.get_tool(tool_id)
+        tool_version = tool["tool_version"] if tool else "unknown"
+
+        # Try to get enriched schema from DB cache or via meta.describe.
         # Only do this when the tool's recorded manifest_path exists on disk.
         if manifest:
             tool_row = self._index._conn.execute(
@@ -508,12 +513,8 @@ class DiscoveryService:
             db_manifest_path = tool_row[0] if tool_row else None
 
             if db_manifest_path and Path(db_manifest_path).exists():
-                schema_cache_path = config.schema_cache_path or (
-                    config.artifact_store_root / "state" / "schema_cache.json"
-                )
-                cache = SchemaCache(schema_cache_path)
-
-                cached = cache.get(
+                # Check DB cache first
+                cached = self._index.get_cached_schema(
                     tool_id=manifest.tool_id,
                     tool_version=manifest.tool_version,
                     fn_id=fn_id,
@@ -521,6 +522,7 @@ class DiscoveryService:
                 if cached:
                     params_schema = cached["params_schema"]
                     introspection_source = cached.get("introspection_source", "manual")
+                    callable_fingerprint = cached.get("source_hash")
                 else:
                     entrypoint = manifest.entrypoint
                     entry_path = Path(entrypoint)
@@ -547,12 +549,14 @@ class DiscoveryService:
                         if result:
                             params_schema = result["params_schema"]
                             introspection_source = result["introspection_source"]
-                            cache.set(
+                            callable_fingerprint = result.get("callable_fingerprint")
+                            self._index.upsert_schema_cache(
                                 tool_id=manifest.tool_id,
                                 tool_version=manifest.tool_version,
                                 fn_id=fn_id,
                                 params_schema=params_schema,
                                 introspection_source=introspection_source,
+                                callable_fingerprint=callable_fingerprint,
                             )
                     except Exception as exc:
                         import logging
@@ -601,6 +605,11 @@ class DiscoveryService:
             "inputs": inputs,
             "outputs": outputs,
             "params_schema": params_schema,
-            "introspection_source": introspection_source,
+            "meta": {
+                "tool_version": tool_version,
+                "introspection_source": introspection_source,
+                "callable_fingerprint": callable_fingerprint,
+                "module": node.module,
+            },
             "hints": hints,
         }
