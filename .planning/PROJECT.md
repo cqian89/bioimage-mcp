@@ -8,14 +8,16 @@ Bioimage-MCP is a local Python package that exposes bioimage analysis tools to A
 
 Enables AI agents to safely and reproducibly execute bioimage analysis tools without dependency conflicts.
 
-## Current Milestone: v0.3.0 Scipy Integration
+## Current Milestone: v0.4.0 Unified Introspection Engine
 
-**Goal:** Expose Scipy functionality to the MCP server using dynamic discovery, following existing patterns.
+**Goal:** Consolidate discovery/introspection into a single engine and align meta.describe schema output.
 
 **Target features:**
-- Dynamic discovery for Scipy modules
-- Manual schema supplements
-- Broad module coverage (opt-out exclusion)
+- Shared introspection engine (AST-first + runtime fallback) replacing duplicate paths
+- Unified params_schema emission (tool_version + introspection_source) with artifact separation
+- Consolidated schema cache with strong invalidation (tool_version + env lock + engine version)
+- Overlay/patch pipeline consolidation with diagnostics
+- fn_id/module metadata cleanup with callable_fingerprint
 
 ## Requirements
 
@@ -35,11 +37,11 @@ Enables AI agents to safely and reproducibly execute bioimage analysis tools wit
 
 <!-- Current scope. Building toward these. -->
 
-- [ ] **Scipy Integration**: Expose Scipy modules via dynamic discovery (v0.3.0)
-- [ ] **Interactive Mode**: Support tools asking users for input during execution (INTR-01)
-- [ ] **Streaming Progress**: Real-time progress streaming (INTR-02)
-- [ ] **Plugin System**: Support for external tool repositories/packages (ECO-02)
-- [ ] **Cross-platform CI/CD**: Testing for Linux/Mac/Win
+- [ ] **Unified Introspection Engine**: Single engine for discovery + meta.describe (v0.4.0)
+- [ ] **Schema Emission Alignment**: params_schema pipeline with tool_version/introspection_source
+- [ ] **Cache Consolidation**: Single schema cache with strong invalidation
+- [ ] **Overlay/Patch Consolidation**: Unified patch pipeline with diagnostics
+- [ ] **fn_id & Module Metadata Cleanup**: Full module paths + callable_fingerprint
 
 ### Out of Scope
 
@@ -74,4 +76,4 @@ Developing a "standard library" for bioimage AI. Building on top of the `mcp` Py
 | **SQLite persistence** | Lightweight, file-based storage | ✓ Implemented |
 
 ---
-*Last updated: 2026-01-25 start of v0.3.0 milestone*
+*Last updated: 2026-01-27 start of v0.4.0 milestone*

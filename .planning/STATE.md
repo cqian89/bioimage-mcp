@@ -2,17 +2,14 @@
 
 ## Project Reference
 - **Core Value:** Enables AI agents to safely and reproducibly execute bioimage analysis tools without dependency conflicts.
-- **Current Milestone:** v0.3.0 Scipy Integration
-- **Current Focus:** Phase 9 (Spatial & Signal Processing)
+- **Current Milestone:** v0.4.0 Unified Introspection Engine
+- **Current Focus:** Defining requirements
 
 ## Current Position
-- **Phase:** 9
-- **Plan:** 5 of 5 in current phase
-- **Status:** Phase complete
-- **Last activity:** 2026-01-26 - Completed Phase 9 gap closures (09-05-PLAN.md)
-- **Next Phase:** 10
-
-Progress: █████████████████████████░░░ 90%
+- **Phase:** Not started (defining requirements)
+- **Plan:** —
+- **Status:** Defining requirements
+- **Last activity:** 2026-01-27 — Milestone v0.4.0 started
 
 ## Performance Metrics
 - **Phase Coverage:** 10/11 phases completed (including 5.1)
