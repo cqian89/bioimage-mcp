@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 
 ## Current Position
 
-Phase: 11 of 11+ (Discovery Gap Closure)
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-01-27 — v0.3.0 milestone complete
+Phase: 12 of 12 (Core Engine + AST-First)
+Plan: 1 of 6 in current phase
+Status: In progress
+Last activity: 2026-01-27 — Completed 12-01-PLAN.md
 
-Progress: ░░░░░░░░░░ 0%
+Progress: █████████░ 90%
 
 ## Accumulated Context
 
@@ -27,6 +27,12 @@ Progress: ░░░░░░░░░░ 0%
 | 10 | Automatic Float32 Promotion | Ensures precision parity for filters/transforms on uint16 inputs. |
 | 10 | Stable JSON Contract | Facilitates strict comparison of statistical test outputs. |
 | 11 | Audit Gap Cleanup | Address descriptions and schema types identified in v0.3.0 audit. |
+| 12 | Used griffe for zero-import static inspection | Avoids heavy tool-pack dependencies in core server. |
+| 12 | sha256 source fingerprinting | Enables stable tracking of callable changes across runs. |
+| 12 | Deterministic JSON Schema normalization | Ensures consistent schema emission for caching and comparison. |
+
+### Roadmap Evolution
+- Phase 12 added: Core Engine + AST-First
 
 ### Blockers/Concerns Carried Forward
 - trackpy schema descriptions missing (contract test failure).
@@ -34,10 +40,9 @@ Progress: ░░░░░░░░░░ 0%
 - contract tests need to skip non-manifest YAMLs.
 
 ### Session Continuity
-Last session: 2026-01-27T14:00:00Z
-Stopped at: v0.3.0 Audited & Shipped; transitioning to v0.4.0.
+Last session: 2026-01-27T13:07:38Z
+Stopped at: Completed 12-01-PLAN.md
 Resume file: None
 
 ## Next Steps
-1. Execute Phase 11: Fix scipy.stats dynamic discovery and adapter gaps.
-2. Address contract test regressions identified in v0.3.0 audit.
+1. Execute Plan 12-02: Runtime schema emission upgrade (TypeAdapter + docstrings).
