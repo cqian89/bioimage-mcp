@@ -47,6 +47,7 @@ class _CapturingInteractive:
         params: dict[str, Any],
         ordinal: int | None = None,
         dry_run: bool = False,
+        timeout_seconds: int | None = None,
     ) -> dict[str, Any]:
         self.calls.append(
             {
@@ -56,6 +57,7 @@ class _CapturingInteractive:
                 "params": params,
                 "ordinal": ordinal,
                 "dry_run": dry_run,
+                "timeout_seconds": timeout_seconds,
             }
         )
         return {"status": "success", "session_id": session_id}
