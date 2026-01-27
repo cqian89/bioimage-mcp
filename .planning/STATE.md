@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 ## Current Position
 
 Phase: 12 of 12 (Core Engine + AST-First)
-Plan: 1 of 6 in current phase
+Plan: 2 of 6 in current phase
 Status: In progress
-Last activity: 2026-01-27 — Completed 12-01-PLAN.md
+Last activity: 2026-01-27 — Completed 12-02-PLAN.md
 
-Progress: █████████░ 90%
+Progress: █████████░ 92%
 
 ## Accumulated Context
 
@@ -30,6 +30,8 @@ Progress: █████████░ 90%
 | 12 | Used griffe for zero-import static inspection | Avoids heavy tool-pack dependencies in core server. |
 | 12 | sha256 source fingerprinting | Enables stable tracking of callable changes across runs. |
 | 12 | Deterministic JSON Schema normalization | Ensures consistent schema emission for caching and comparison. |
+| 12 | TypeAdapter-based schema generation | Leverages Pydantic v2 for high-fidelity type-to-schema mapping. |
+| 12 | Automated artifact omission | Prevents I/O artifacts from polluting the parameters schema. |
 
 ### Roadmap Evolution
 - Phase 12 added: Core Engine + AST-First
@@ -40,9 +42,9 @@ Progress: █████████░ 90%
 - contract tests need to skip non-manifest YAMLs.
 
 ### Session Continuity
-Last session: 2026-01-27T13:07:38Z
-Stopped at: Completed 12-01-PLAN.md
+Last session: 2026-01-27T13:22:00Z
+Stopped at: Completed 12-02-PLAN.md
 Resume file: None
 
 ## Next Steps
-1. Execute Plan 12-02: Runtime schema emission upgrade (TypeAdapter + docstrings).
+1. Execute Plan 12-03: DiscoveryEngine: AST-first + runtime fallback + skip rules.
