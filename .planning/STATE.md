@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 ## Current Position
 
 Phase: 12 of 12 (Core Engine + AST-First)
-Plan: 8 of 9 in current phase
-Status: In progress
-Last activity: 2026-01-27 — Completed 12-09-PLAN.md
+Plan: 9 of 9 in current phase
+Status: Phase complete
+Last activity: 2026-01-27 — Completed 12-08-PLAN.md
 
-Progress: █████████░ 88%
+Progress: ██████████ 100%
 
 ## Accumulated Context
 
@@ -45,6 +45,7 @@ Progress: █████████░ 88%
 | 12 | Enforce required/properties consistency | Stripping required fields that don't match emitted properties (e.g. omitted artifacts). |
 | 12 | Omit empty 'required' key | Produces cleaner, more deterministic schema output. |
 | 12 | Description merging precedence | curated > docstring > TypeAdapter > fallback. |
+| 12 | In-place metadata synchronization | Updating functions table during describe enrichment ensures tools/list and tools/describe stay consistent. |
 
 ### Roadmap Evolution
 - Phase 12 added: Core Engine + AST-First
@@ -56,11 +57,9 @@ Progress: █████████░ 88%
 - Existing failures in bootstrap/test_install.py need investigation.
 
 ### Session Continuity
-Last session: 2026-01-27T15:44:17Z
-Stopped at: Completed 12-07-PLAN.md
+Last session: 2026-01-27T17:15:00Z
+Stopped at: Completed 12-08-PLAN.md
 Resume file: None
 
 ## Next Steps
-1. Execute 12-08-PLAN.md: Enforce cache invalidation keys and sync list/describe metadata.
-2. Execute 12-09-PLAN.md: Preserve runtime schema descriptions.
-3. Release v0.4.0 Unified Introspection Engine.
+1. Release v0.4.0 Unified Introspection Engine.
