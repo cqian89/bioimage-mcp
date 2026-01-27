@@ -13,6 +13,9 @@ import inspect
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, get_type_hints
 
+import docstring_parser
+from pydantic import TypeAdapter
+
 if TYPE_CHECKING:
     pass
 
@@ -40,6 +43,30 @@ PARAM_TYPE_PATTERNS = {
     "anti_aliasing": "boolean",
 }
 
+# Artifact port names to omit from params_schema
+ARTIFACT_PORTS = {
+    "image",
+    "labels",
+    "table",
+    "signal",
+    "mask",
+    "model",
+    "artifact",
+    "output",
+    "input",
+    "labels_path",
+    "image_path",
+}
+
+
+def is_artifact_param(name: str, type_hint: Any) -> bool:
+    """Check if a parameter is likely an artifact port based on name or type."""
+    if name.lower() in ARTIFACT_PORTS:
+        return True
+    type_str = str(type_hint)
+    artifact_types = {"ArtifactRef", "BioImageRef", "NativeOutputRef", "ObjectRef"}
+    return any(at in type_str for at in artifact_types)
+
 
 def schema_from_descriptions(descriptions: dict[str, str]) -> dict[str, Any]:
     """Generate JSON Schema from curated parameter descriptions.
@@ -59,7 +86,7 @@ def schema_from_descriptions(descriptions: dict[str, str]) -> dict[str, Any]:
         "required": [],
     }
 
-    for name, desc in descriptions.items():
+    for name, desc in sorted(descriptions.items()):
         prop: dict[str, Any] = {"description": desc}
 
         # Infer type from parameter name patterns
@@ -88,7 +115,7 @@ def introspect_python_api(
     Returns:
         JSON Schema dict with 'type', 'properties', and 'required' fields
     """
-    exclude = exclude_params if exclude_params is not None else {"self"}
+    exclude = exclude_params if exclude_params is not None else {"self", "cls"}
     sig = inspect.signature(func)
 
     # Try to get type hints (may fail for some functions)
@@ -96,6 +123,10 @@ def introspect_python_api(
         hints = get_type_hints(func)
     except Exception:
         hints = {}
+
+    # Parse docstring for parameter descriptions
+    doc = docstring_parser.parse(func.__doc__ or "")
+    doc_params = {p.arg_name: p.description for p in doc.params if p.arg_name}
 
     schema: dict[str, Any] = {
         "type": "object",
@@ -114,11 +145,17 @@ def introspect_python_api(
         ):
             continue
 
+        # Skip artifact ports
+        type_hint = hints.get(name, param.annotation)
+        if is_artifact_param(name, type_hint):
+            continue
+
         prop: dict[str, Any] = {}
 
-        # Add description (curated or fallback)
-        if name in descriptions:
-            prop["description"] = descriptions[name]
+        # Add description (curated > docstring > fallback)
+        desc = descriptions.get(name) or doc_params.get(name)
+        if desc:
+            prop["description"] = desc
         else:
             module_name = getattr(func, "__module__", "unknown")
             prop["description"] = f"See {module_name} documentation."
@@ -136,20 +173,33 @@ def introspect_python_api(
             schema["required"].append(name)
 
         # Map type annotation to JSON Schema type
-        type_hint = hints.get(name, param.annotation)
         if type_hint is not inspect.Parameter.empty:
-            # Handle Optional, Union, etc.
-            origin = getattr(type_hint, "__origin__", type_hint)
-            if origin in TYPE_MAP:
-                prop["type"] = TYPE_MAP[origin]
-            elif type_hint in TYPE_MAP:
-                prop["type"] = TYPE_MAP[type_hint]
+            try:
+                # Pydantic v2 TypeAdapter for high-fidelity schema
+                param_json_schema = TypeAdapter(type_hint).json_schema()
+                # Clean up schema for parameter use
+                param_json_schema.pop("title", None)
+                if "description" in prop:
+                    param_json_schema.pop("description", None)
+                prop.update(param_json_schema)
+            except Exception:
+                # Fallback to manual mapping if TypeAdapter fails
+                origin = getattr(type_hint, "__origin__", type_hint)
+                if origin in TYPE_MAP:
+                    prop["type"] = TYPE_MAP[origin]
+                elif type_hint in TYPE_MAP:
+                    prop["type"] = TYPE_MAP[type_hint]
 
         schema["properties"][name] = prop
 
     # Fallback to descriptions if introspection yielded no properties
     if not schema["properties"] and descriptions:
         return schema_from_descriptions(descriptions)
+
+    # Ensure deterministic output
+    sorted_properties = {k: schema["properties"][k] for k in sorted(schema["properties"].keys())}
+    schema["properties"] = sorted_properties
+    schema["required"].sort()
 
     return schema
 
@@ -223,5 +273,10 @@ def introspect_argparse(
             schema["required"].append(action.dest)
 
         schema["properties"][action.dest] = prop
+
+    # Ensure deterministic output
+    sorted_properties = {k: schema["properties"][k] for k in sorted(schema["properties"].keys())}
+    schema["properties"] = sorted_properties
+    schema["required"].sort()
 
     return schema
