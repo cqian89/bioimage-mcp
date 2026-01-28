@@ -11,8 +11,6 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-import numpy as np
-
 BASE_DIR = Path(__file__).resolve().parent
 TOOLS_ROOT = BASE_DIR.parent
 REPO_ROOT = TOOLS_ROOT.parent.parent
@@ -22,8 +20,6 @@ if str(TOOLS_ROOT) not in sys.path:
     sys.path.insert(0, str(TOOLS_ROOT))
 
 from datetime import UTC  # noqa: E402
-
-from bioimage_mcp_base.ops import io as io_ops  # noqa: E402
 
 from bioimage_mcp.registry.dynamic.object_cache import OBJECT_CACHE  # noqa: E402
 
@@ -47,16 +43,31 @@ _SESSION_ID: str | None = None
 _ENV_ID: str | None = None
 
 
-FN_MAP = {
-    "base.io.bioimage.load": (io_ops.load, {}),
-    "base.io.bioimage.inspect": (io_ops.inspect, {}),
-    "base.io.bioimage.slice": (io_ops.slice_image, {}),
-    "base.io.bioimage.validate": (io_ops.validate, {}),
-    "base.io.bioimage.get_supported_formats": (io_ops.get_supported_formats, {}),
-    "base.io.bioimage.export": (io_ops.export, {}),
-    "base.io.table.load": (io_ops.table_load, {}),
-    "base.io.table.export": (io_ops.table_export, {}),
-}
+# ==============================================================================
+# Function Map (Lazy Loaded)
+# ==============================================================================
+
+_FN_MAP: dict[str, tuple] | None = None
+
+
+def get_fn_map() -> dict[str, tuple]:
+    """Get the function map, loading dependencies only when needed."""
+    global _FN_MAP
+    if _FN_MAP is None:
+        from bioimage_mcp_base.ops import io as io_ops
+
+        _FN_MAP = {
+            "base.io.bioimage.load": (io_ops.load, {}),
+            "base.io.bioimage.inspect": (io_ops.inspect, {}),
+            "base.io.bioimage.slice": (io_ops.slice_image, {}),
+            "base.io.bioimage.validate": (io_ops.validate, {}),
+            "base.io.bioimage.get_supported_formats": (io_ops.get_supported_formats, {}),
+            "base.io.bioimage.export": (io_ops.export, {}),
+            "base.io.table.load": (io_ops.table_load, {}),
+            "base.io.table.export": (io_ops.table_export, {}),
+        }
+    return _FN_MAP
+
 
 LEGACY_REDIRECTS = {}
 
@@ -73,7 +84,7 @@ def _initialize_worker(session_id: str, env_id: str) -> None:
     _ENV_ID = env_id
 
 
-def _store_in_memory(data: np.ndarray) -> tuple[str, str]:
+def _store_in_memory(data: Any) -> tuple[str, str]:
     """Store data in memory, return (artifact_id, mem:// URI).
 
     Args:
@@ -85,6 +96,8 @@ def _store_in_memory(data: np.ndarray) -> tuple[str, str]:
     Raises:
         RuntimeError: If worker identity not initialized
     """
+    import numpy as np
+
     if _SESSION_ID is None or _ENV_ID is None:
         raise RuntimeError("Worker identity not initialized. Cannot create mem:// URI.")
 
@@ -95,7 +108,7 @@ def _store_in_memory(data: np.ndarray) -> tuple[str, str]:
     return artifact_id, mem_uri
 
 
-def _load_from_memory(uri: str) -> np.ndarray:
+def _load_from_memory(uri: str) -> Any:
     """Load data from memory by mem:// URI.
 
     Args:
@@ -107,6 +120,8 @@ def _load_from_memory(uri: str) -> np.ndarray:
     Raises:
         ValueError: If URI is invalid or artifact not found
     """
+    import numpy as np
+
     if not uri.startswith("mem://"):
         raise ValueError(f"Invalid memory URI: {uri}")
 
@@ -130,7 +145,7 @@ def _load_from_memory(uri: str) -> np.ndarray:
     return _MEMORY_ARTIFACTS[artifact_id]
 
 
-def _load_input_data(input_ref: str | dict) -> np.ndarray:
+def _load_input_data(input_ref: str | dict) -> Any:
     """Load input data from file or memory.
 
     Args:
@@ -139,6 +154,7 @@ def _load_input_data(input_ref: str | dict) -> np.ndarray:
     Returns:
         Numpy array (native dimensions)
     """
+    import numpy as np
     from bioio import BioImage
 
     # Handle dict refs (artifact references)
@@ -190,7 +206,7 @@ def _infer_dims_from_shape(shape: tuple[int, ...]) -> str:
     return full_dims[-ndim:] if ndim <= len(full_dims) else full_dims
 
 
-def _expand_to_5d(data: np.ndarray) -> np.ndarray:
+def _expand_to_5d(data: Any) -> Any:
     """Expand array to 5D by prepending singleton dimensions.
 
     Args:
@@ -199,6 +215,8 @@ def _expand_to_5d(data: np.ndarray) -> np.ndarray:
     Returns:
         5D (or higher) numpy array
     """
+    import numpy as np
+
     while data.ndim < 5:
         data = np.expand_dims(data, axis=0)
     return data
@@ -216,13 +234,13 @@ def _convert_memory_inputs_to_files(inputs: dict[str, Any], work_dir: Path) -> d
     Returns:
         Dict of inputs with mem:// URIs replaced by file paths
     """
-    from bioio.writers import OmeTiffWriter
-
     converted_inputs = {}
 
     for key, value in inputs.items():
         if isinstance(value, dict) and value.get("uri", "").startswith("mem://"):
             # Load from memory and save to temp file
+            from bioio_ome_tiff import OmeTiffWriter
+
             mem_uri = value["uri"]
             data = _load_from_memory(mem_uri)
 
@@ -329,8 +347,9 @@ def handle_meta_describe(params: dict[str, Any]) -> dict[str, Any]:
     func = None
     descriptions = {}
 
-    if target_fn in FN_MAP:
-        func, descriptions = FN_MAP[target_fn]
+    fn_map = get_fn_map()
+    if target_fn in fn_map:
+        func, descriptions = fn_map[target_fn]
     else:
         # Try dynamic resolution for functions not in FN_MAP
         try:
@@ -742,8 +761,11 @@ def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
                     "error": {"message": result_response.get("error", "Unknown error")},
                     "log": f"meta.describe failed: {result_response.get('error', 'Unknown error')}",
                 }
-        elif fn_id in FN_MAP:
-            func, _descriptions = FN_MAP[fn_id]
+            return response
+
+        fn_map = get_fn_map()
+        if fn_id in fn_map:
+            func, _descriptions = fn_map[fn_id]
             result = func(inputs=inputs, params=params, work_dir=work_dir)
             if isinstance(result, dict):
                 outputs = result.get("outputs")
@@ -881,6 +903,8 @@ def _convert_outputs_to_memory(outputs: dict[str, Any], work_dir: Path) -> dict[
     Returns:
         Dict of memory artifact references
     """
+    import numpy as np
+
     mem_outputs = {}
 
     for key, value in outputs.items():

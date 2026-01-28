@@ -14,10 +14,6 @@ import traceback
 from pathlib import Path
 from typing import Any
 
-import numpy as np
-import pandas as pd
-from bioio import BioImage
-
 # Path setup: add tools/trackpy/ to sys.path for local imports
 BASE_DIR = Path(__file__).resolve().parent
 TRACKPY_TOOL_ROOT = BASE_DIR.parent
@@ -28,11 +24,6 @@ REPO_ROOT = TRACKPY_TOOL_ROOT.parent.parent
 if str(REPO_ROOT / "src") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "src"))
 
-
-from bioimage_mcp_trackpy.introspect import (  # noqa: E402
-    get_trackpy_version,
-    introspect_function,
-)
 
 TOOL_VERSION = "0.1.0"
 TOOL_ENV_NAME = "bioimage-mcp-trackpy"
@@ -113,6 +104,8 @@ def handle_meta_list(params: dict) -> dict:
                 }
             )
 
+        from bioimage_mcp_trackpy.introspect import get_trackpy_version
+
         return {
             "ok": True,
             "result": {
@@ -139,14 +132,22 @@ def handle_meta_describe(params: dict) -> dict:
         pass
 
     try:
+        from bioimage_mcp_trackpy.introspect import introspect_function
+
         result = introspect_function(target_fn)
-        return {"ok": True, "result": result}
+        return {
+            "ok": True,
+            "result": result,
+        }
     except Exception as e:
         return {"ok": False, "error": f"Introspection failed: {e}"}
 
 
 def _execute_trackpy_function(fn_id: str, params: dict, inputs: dict) -> dict:
     """Execute a trackpy function with artifact resolution."""
+    import numpy as np
+    import pandas as pd
+
     capture = io.StringIO()
     try:
         func = _resolve_callable(fn_id)
@@ -259,9 +260,13 @@ def _load_input_artifact(artifact_ref: dict) -> Any:
         raise ValueError(f"Artifact not found: {artifact_ref}")
 
     if ref_type == "BioImageRef":
+        from bioio import BioImage
+
         img = BioImage(path)
         return img.get_image_data("ZYX")  # Standard trackpy orientation
     elif ref_type == "TableRef":
+        import pandas as pd
+
         return pd.read_csv(path)
 
     return path  # Fallback to path string
@@ -269,6 +274,7 @@ def _load_input_artifact(artifact_ref: dict) -> Any:
 
 def _save_table_artifact(df: pd.DataFrame, name_hint: str) -> dict:
     import uuid
+    import pandas as pd
 
     ref_id = str(uuid.uuid4())
     filename = f"{name_hint}_{ref_id[:8]}.csv"
@@ -285,6 +291,7 @@ def _save_table_artifact(df: pd.DataFrame, name_hint: str) -> dict:
 
 def _save_image_artifact(arr: np.ndarray, name_hint: str) -> dict:
     import uuid
+    import numpy as np
 
     from bioio_ome_tiff import Writer
 

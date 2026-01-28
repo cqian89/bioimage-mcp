@@ -59,16 +59,25 @@ def discover_functions(
         lockfile_hash = _calculate_lockfile_hash(manifest, project_root)
 
     for source in manifest.dynamic_sources:
-        # Check if adapter exists in registry
-        if source.adapter not in adapter_registry:
-            raise ValueError(f"Unknown adapter: {source.adapter}")
-
         # Try cache first if available
         if cache and lockfile_hash:
             cached_results = cache.get(source.adapter, source.prefix, lockfile_hash)
             if cached_results is not None:
                 results.extend(cached_results)
                 continue
+
+        if source.adapter not in adapter_registry:
+            # Try populating default adapters if registry is empty
+            from bioimage_mcp.registry.dynamic.adapters import (
+                KNOWN_ADAPTERS,
+                populate_default_adapters,
+            )
+
+            if source.adapter in KNOWN_ADAPTERS:
+                populate_default_adapters()
+
+            if source.adapter not in adapter_registry:
+                raise ValueError(f"Unknown adapter: {source.adapter}")
 
         # Get adapter instance
         adapter = adapter_registry[source.adapter]

@@ -72,8 +72,20 @@ class BaseAdapter(Protocol):
 # This registry is shared across server and tool processes
 ADAPTER_REGISTRY: dict[str, Any] = {}
 
+# List of known adapter names for lazy loading verification
+KNOWN_ADAPTERS = {
+    "matplotlib",
+    "phasorpy",
+    "scipy",
+    "skimage",
+    "xarray",
+    "pandas",
+    "cellpose",
+    "tttrlib",
+}
 
-def _populate_default_adapters() -> None:
+
+def populate_default_adapters() -> None:
     """Populate registry with default adapters if not already populated."""
     if ADAPTER_REGISTRY:
         return
@@ -109,8 +121,8 @@ def _populate_default_adapters() -> None:
         pass  # tttrlib not installed, skip adapter
 
 
-# Populate on module import
-_populate_default_adapters()
+# No longer populate on module import to enable sub-second meta.list (T13)
+# Clients should call populate_default_adapters() if they need the instances.
 
 
-__all__ = ["BaseAdapter", "ADAPTER_REGISTRY"]
+__all__ = ["BaseAdapter", "ADAPTER_REGISTRY", "KNOWN_ADAPTERS", "populate_default_adapters"]
