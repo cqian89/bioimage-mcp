@@ -947,6 +947,7 @@ class ExecutionService:
                 "status": "failed",
                 "id": fn_id,
                 "log_ref": log_ref.model_dump(),
+                "log_ref_id": log_ref.ref_id,
                 "error": error_payload,
             }
 
@@ -1001,6 +1002,7 @@ class ExecutionService:
                 "status": "failed",
                 "id": fn_id,
                 "log_ref": log_ref.model_dump(),
+                "log_ref_id": log_ref.ref_id,
                 "error": error_payload,
                 "hints": error_response_hints,
                 "warnings": all_warnings,
@@ -1216,6 +1218,7 @@ class ExecutionService:
             "id": fn_id,
             "outputs": outputs_payload,
             "log_ref": log_ref.model_dump(),
+            "log_ref_id": log_ref.ref_id,
             "workflow_record_ref_id": workflow_record_ref.ref_id,
             "hints": success_hints,
             "warnings": all_warnings,
