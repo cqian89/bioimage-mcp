@@ -17,7 +17,7 @@ SCHEMA_VECTORS: dict[str, dict[str, Any]] = {
     },
     "cellpose.models.CellposeModel.eval": {
         "inputs": {
-            "model": {"type": "ObjectRef", "required": True},
+            "model": {"type": "ObjectRef", "required": False},
             "x": {"type": "BioImageRef", "required": True},
         },
         "outputs": {"labels": {"type": "LabelImageRef"}},
@@ -39,6 +39,7 @@ SCHEMA_VECTORS: dict[str, dict[str, Any]] = {
                 "interp": {"type": "boolean"},
                 "invert": {"type": "boolean"},
                 "max_size_fraction": {"type": "number"},
+                "model_type": {"type": "string"},
                 "min_size": {"type": "integer"},
                 "niter": {"type": "string"},
                 "normalize": {"type": "boolean"},
@@ -46,6 +47,7 @@ SCHEMA_VECTORS: dict[str, dict[str, Any]] = {
                 "resample": {"type": "boolean"},
                 "rescale": {"type": "string"},
                 "stitch_threshold": {"type": "number"},
+                "tile": {"type": "boolean"},
                 "tile_overlap": {"type": "number"},
                 "z_axis": {"type": "string"},
             },

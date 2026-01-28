@@ -341,6 +341,11 @@ def _introspect_cellpose_fn(target_fn: str) -> dict[str, Any]:
 
     # Ensure key curated parameters are present even when Cellpose uses **kwargs
     if target_fn == "cellpose.models.CellposeModel.eval":
+        schema["properties"]["model_type"] = {
+            "type": "string",
+            "default": "cyto3",
+            "description": SEGMENT_DESCRIPTIONS.get("model_type", "Model type"),
+        }
         schema["properties"]["channels"] = {
             "type": "array",
             "items": {"type": "integer"},
@@ -358,6 +363,11 @@ def _introspect_cellpose_fn(target_fn: str) -> dict[str, Any]:
             "description": SEGMENT_DESCRIPTIONS.get(
                 "cellprob_threshold", "Cell probability threshold"
             ),
+        }
+        schema["properties"]["tile"] = {
+            "type": "boolean",
+            "default": False,
+            "description": SEGMENT_DESCRIPTIONS.get("tile", "Enable tiling for large images"),
         }
 
     if target_fn == "cellpose.train.train_seg":
