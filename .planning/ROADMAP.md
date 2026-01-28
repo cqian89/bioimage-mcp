@@ -44,7 +44,7 @@ Plans:
 ### Phase 13: Dynamic Introspection Cache Reuse (incl. trackpy)
 
 **Goal:** Reuse dynamic introspection results across meta.list calls via a lockfile-gated cache stored under ~/.bioimage-mcp/cache/dynamic/, including trackpy.
-**Status:** Complete (verified 2026-01-28) — UAT gaps pending
+**Status:** Complete (verified 2026-01-29)
 **Depends on:** Phase 12
 **Plans:** 4/4 plans complete
 
