@@ -9,10 +9,11 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 
 ## Current Position
 
-Phase: 12 of 12 (Core Engine + AST-First)
-Plan: 9 of 9 in current phase
-Status: Phase complete
-Last activity: 2026-01-27 — Completed 12-09-PLAN.md
+Phase: 13 of 14 (Dynamic Introspection Cache Reuse)
+**Next Phase:** 14 (OME-Zarr Standardization)
+Plan: 1 of 2 in current phase
+Status: In progress
+Last activity: 2026-01-28 — Completed 13-01-PLAN.md
 
 Progress: ██████████ 100%
 
@@ -46,9 +47,13 @@ Progress: ██████████ 100%
 | 12 | Omit empty 'required' key | Produces cleaner, more deterministic schema output. |
 | 12 | Description merging precedence | curated > docstring > TypeAdapter > fallback. |
 | 12 | In-place metadata synchronization | Updating functions table during describe enrichment ensures tools/list and tools/describe stay consistent. |
+| 13 | User-home based dynamic cache | Store dynamic cache under ~/.bioimage-mcp/cache/dynamic/<tool_id> for stability across runs. |
+| 13 | Lockfile hash invalidation | Use env/<env_id>.lock.yml hash as the primary invalidation key for dynamic introspection caching. |
 
 ### Roadmap Evolution
 - Phase 12 added: Core Engine + AST-First
+- Phase 13 added: Dynamic Introspection Cache Reuse (incl. trackpy)
+- Phase 14 added: OME-Zarr Standardization
 
 ### Blockers/Concerns Carried Forward
 - trackpy schema descriptions missing (contract test failure).
@@ -57,8 +62,8 @@ Progress: ██████████ 100%
 - Existing failures in bootstrap/test_install.py need investigation.
 
 ### Session Continuity
-Last session: 2026-01-27T17:15:00Z
-Stopped at: Completed 12-08-PLAN.md
+Last session: 2026-01-28T20:13:03Z
+Stopped at: Completed 13-01-PLAN.md
 Resume file: None
 
 ## Next Steps
