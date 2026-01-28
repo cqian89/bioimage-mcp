@@ -115,15 +115,6 @@ def test_install_logic_skips_existing(tmp_path: Path, monkeypatch, capsys) -> No
     # Mock _env_exists to return True
     monkeypatch.setattr("bioimage_mcp.bootstrap.install._env_exists", lambda exe, name: True)
 
-    from bioimage_mcp.bootstrap.install import install
-
-    # Install without force
-    result = install(profile="minimal")
-    assert result == 0
-    captured = capsys.readouterr()
-    assert "base already installed" in captured.out
-
-    # Install with force
     called_install = []
 
     def fake_install_env(exe, manager, name, file):
@@ -131,8 +122,20 @@ def test_install_logic_skips_existing(tmp_path: Path, monkeypatch, capsys) -> No
         return True
 
     monkeypatch.setattr("bioimage_mcp.bootstrap.install._install_env", fake_install_env)
+    monkeypatch.setattr("bioimage_mcp.bootstrap.install._install_pip_deps", lambda *args: True)
     monkeypatch.setattr("bioimage_mcp.bootstrap.install._ensure_tool_manifest_roots", lambda: None)
+    monkeypatch.setattr("bioimage_mcp.bootstrap.install.shutil.which", lambda *_: None)
 
+    from bioimage_mcp.bootstrap.install import install
+
+    # Install without force should update existing env
+    result = install(profile="minimal")
+    assert result == 0
+    captured = capsys.readouterr()
+    assert "base already installed; updating" in captured.out
+    assert "bioimage-mcp-base" in called_install
+
+    # Install with force
     result = install(profile="minimal", force=True)
     assert result == 0
     assert "bioimage-mcp-base" in called_install

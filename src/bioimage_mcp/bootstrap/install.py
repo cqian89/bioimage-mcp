@@ -150,8 +150,16 @@ def _install_pip_deps(exe: str, env_name: str, env_file: Path) -> bool:
         else:
             pip_args.append(dep)
         cmd = [exe, "run", "-n", env_name, *pip_args]
-        result = subprocess.run(cmd, check=False)
+        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
         if result.returncode != 0:
+            print(
+                f"pip install failed for '{dep}' in {env_name} (exit {result.returncode})",
+                file=sys.stderr,
+            )
+            if result.stdout:
+                print(result.stdout, file=sys.stderr)
+            if result.stderr:
+                print(result.stderr, file=sys.stderr)
             return False
     return True
 
@@ -271,11 +279,9 @@ def install(
         # Check if exists
         exists = _env_exists(exe, env_name)
         if exists and not force:
-            print(f"{name} already installed (use --force to reinstall)")
-            stats["skipped"] += 1
-            continue
-
-        print(f"Installing {name}...")
+            print(f"{name} already installed; updating")
+        else:
+            print(f"Installing {name}...")
 
         pip_deps = _collect_pip_deps(env_file)
 
