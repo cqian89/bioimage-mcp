@@ -82,7 +82,20 @@ def handle_meta_list(params: dict) -> dict:
             }
         )
 
-        project_root = _find_project_root(manifest_path.parent)
+        # Robust project_root detection: env var -> cwd -> manifest fallback
+        project_root = None
+        env_root = os.environ.get("BIOIMAGE_MCP_PROJECT_ROOT")
+        if env_root:
+            p = Path(env_root)
+            if p.is_dir():
+                project_root = p
+
+        if project_root is None:
+            project_root = _find_project_root(Path.cwd())
+
+        if project_root is None:
+            project_root = _find_project_root(manifest_path.parent)
+
         cache_dir = Path.home() / ".bioimage-mcp" / "cache" / "dynamic" / manifest.tool_id
         cache = IntrospectionCache(cache_dir)
 
