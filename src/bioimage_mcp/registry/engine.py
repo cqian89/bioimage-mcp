@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import fnmatch
+import hashlib
 import logging
 import sys
 from pathlib import Path
@@ -9,6 +10,7 @@ from typing import Any
 from bioimage_mcp.bootstrap.env_manager import get_env_paths
 from bioimage_mcp.registry.diagnostics import EngineEvent, EngineEventType
 from bioimage_mcp.registry.dynamic.adapters import ADAPTER_REGISTRY
+from bioimage_mcp.registry.dynamic.meta_list_cache import MetaListCache
 from bioimage_mcp.registry.dynamic.models import IOPattern, ParameterSchema
 from bioimage_mcp.registry.manifest_schema import Function, FunctionOverlay, Port, ToolManifest
 from bioimage_mcp.registry.static.inspector import inspect_module
@@ -300,6 +302,28 @@ class DiscoveryEngine:
 
     def _runtime_list(self, manifest: ToolManifest) -> list[dict[str, Any]]:
         """Call meta.list on the tool pack to get all functions."""
+        # 1. Check for persistent cache
+        cache = None
+        lockfile_hash = None
+        if self.project_root and manifest.env_id:
+            lockfile_path = self.project_root / "envs" / f"{manifest.env_id}.lock.yml"
+            if lockfile_path.exists():
+                try:
+                    content = lockfile_path.read_bytes()
+                    lockfile_hash = hashlib.sha256(content).hexdigest()[:16]
+                    cache_dir = (
+                        Path.home() / ".bioimage-mcp" / "cache" / "dynamic" / manifest.tool_id
+                    )
+                    cache = MetaListCache(cache_dir)
+
+                    cached_results = cache.get(lockfile_hash, manifest.manifest_checksum)
+                    if cached_results is not None:
+                        logger.debug("Core meta.list cache hit for %s", manifest.tool_id)
+                        return cached_results
+                except Exception as e:
+                    logger.debug("Failed to check meta.list cache: %s", e)
+
+        # 2. Cache miss or disabled: execute tool
         try:
             # We use meta.list command (legacy format usually handles it)
             request = {
@@ -315,7 +339,11 @@ class DiscoveryEngine:
                 env_id=manifest.env_id,
             )
             if code == 0 and isinstance(result, dict) and result.get("ok"):
-                return parse_meta_list_result(result)
+                parsed = parse_meta_list_result(result)
+                # 3. Write to cache if enabled
+                if cache and lockfile_hash:
+                    cache.put(lockfile_hash, manifest.manifest_checksum, parsed)
+                return parsed
         except Exception as e:
             logger.error("Runtime list failed for %s: %s", manifest.tool_id, e)
         return []
