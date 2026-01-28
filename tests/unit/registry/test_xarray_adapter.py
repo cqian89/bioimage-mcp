@@ -7,11 +7,12 @@ import numpy as np
 import pytest
 from bioio.writers import OmeTiffWriter
 
-from bioimage_mcp.registry.dynamic.adapters import ADAPTER_REGISTRY
+from bioimage_mcp.registry.dynamic.adapters import ADAPTER_REGISTRY, populate_default_adapters
 
 
 def test_xarray_adapter_registered():
     """Test that xarray adapter is registered in ADAPTER_REGISTRY."""
+    populate_default_adapters()
     assert "xarray" in ADAPTER_REGISTRY
 
 

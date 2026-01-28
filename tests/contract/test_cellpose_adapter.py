@@ -35,11 +35,11 @@ def test_cellpose_adapter_registered(ensure_cellpose):
     # but wait, the registration happened when bioimage_mcp.registry.dynamic.adapters was imported
     # if it was imported before we mocked cellpose, it might not be there.
     # So we force re-population for the test.
-    from bioimage_mcp.registry.dynamic.adapters import ADAPTER_REGISTRY, _populate_default_adapters
+    from bioimage_mcp.registry.dynamic.adapters import ADAPTER_REGISTRY, populate_default_adapters
 
     # Reset registry to force re-population
     ADAPTER_REGISTRY.clear()
-    _populate_default_adapters()
+    populate_default_adapters()
 
     assert "cellpose" in ADAPTER_REGISTRY
 

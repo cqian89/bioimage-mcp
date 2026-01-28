@@ -2,11 +2,12 @@
 
 import pytest
 
-from bioimage_mcp.registry.dynamic.adapters import ADAPTER_REGISTRY
+from bioimage_mcp.registry.dynamic.adapters import ADAPTER_REGISTRY, populate_default_adapters
 
 
 def test_matplotlib_adapter_registered():
     """T006: Assert 'matplotlib' key exists in ADAPTER_REGISTRY."""
+    populate_default_adapters()
     assert "matplotlib" in ADAPTER_REGISTRY, "Matplotlib adapter not found in ADAPTER_REGISTRY"
 
 

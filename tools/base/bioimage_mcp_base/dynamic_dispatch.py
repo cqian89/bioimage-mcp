@@ -43,7 +43,13 @@ def get_adapter_for_fn_id(fn_id: str) -> Any:
 
     # Look up adapter in registry
     if prefix not in ADAPTER_REGISTRY:
-        raise ValueError(f"No adapter found for prefix: '{prefix}'")
+        from bioimage_mcp.registry.dynamic.adapters import KNOWN_ADAPTERS, populate_default_adapters
+
+        if prefix in KNOWN_ADAPTERS:
+            populate_default_adapters()
+
+        if prefix not in ADAPTER_REGISTRY:
+            raise ValueError(f"No adapter found for prefix: '{prefix}'")
 
     return ADAPTER_REGISTRY[prefix]
 
