@@ -14,6 +14,8 @@ def mock_registry(tmp_path, monkeypatch):
     # Create a minimal manifest
     manifest_root = tmp_path / "tools"
     manifest_root.mkdir()
+    tool_root = manifest_root / "test-tool"
+    tool_root.mkdir()
 
     manifest_data = {
         "manifest_version": "1.0",
@@ -21,6 +23,8 @@ def mock_registry(tmp_path, monkeypatch):
         "tool_version": "1.2.3",
         "env_id": "bioimage-mcp-test",
         "entrypoint": "main.py",
+        "name": "Test Tool",
+        "description": "A test tool",
         "functions": [
             {
                 "fn_id": "test.func",
@@ -28,11 +32,26 @@ def mock_registry(tmp_path, monkeypatch):
                 "name": "Test Func",
                 "description": "Test description",
                 "introspection_source": "python_api",
+                "inputs": [
+                    {
+                        "name": "image",
+                        "artifact_type": "BioImageRef",
+                        "description": "Input image",
+                    }
+                ],
+                "outputs": [
+                    {
+                        "name": "labels",
+                        "artifact_type": "LabelImageRef",
+                        "description": "Output labels",
+                    }
+                ],
+                "params_schema": {"type": "object", "properties": {}},
             }
         ],
     }
 
-    manifest_file = manifest_root / "test-tool.yaml"
+    manifest_file = tool_root / "manifest.yaml"
     with open(manifest_file, "w") as f:
         yaml.dump(manifest_data, f)
 

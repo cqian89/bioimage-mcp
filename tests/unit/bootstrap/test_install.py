@@ -7,15 +7,16 @@ import pytest
 
 
 def test_install_rejects_invalid_profile() -> None:
-    """Test that install raises ValueError for invalid profile."""
+    """Test that install returns nonzero for invalid profile."""
     from bioimage_mcp.bootstrap.install import install
 
-    with pytest.raises(ValueError, match="profile must be cpu or gpu"):
-        install(profile="invalid")
+    result = install(profile="invalid")
+
+    assert result != 0
 
 
-def test_install_raises_when_no_env_manager(monkeypatch) -> None:
-    """Test that install raises RuntimeError when no env manager found."""
+def test_install_returns_error_when_no_env_manager(monkeypatch, capsys) -> None:
+    """Test that install returns error when no env manager found."""
     monkeypatch.setattr(
         "bioimage_mcp.bootstrap.install.detect_env_manager",
         lambda: None,
@@ -23,12 +24,15 @@ def test_install_raises_when_no_env_manager(monkeypatch) -> None:
 
     from bioimage_mcp.bootstrap.install import install
 
-    with pytest.raises(RuntimeError, match="No micromamba/conda/mamba found"):
-        install(profile="cpu")
+    result = install(profile="cpu")
+    err = capsys.readouterr().err
+
+    assert result != 0
+    assert "No micromamba/conda/mamba found" in err
 
 
-def test_install_raises_when_env_file_missing(tmp_path: Path, monkeypatch) -> None:
-    """Test that install raises FileNotFoundError when env file is missing."""
+def test_install_returns_error_when_env_file_missing(tmp_path: Path, monkeypatch, capsys) -> None:
+    """Test that install returns error when env file is missing."""
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(
         "bioimage_mcp.bootstrap.install.detect_env_manager",
@@ -37,8 +41,11 @@ def test_install_raises_when_env_file_missing(tmp_path: Path, monkeypatch) -> No
 
     from bioimage_mcp.bootstrap.install import install
 
-    with pytest.raises(FileNotFoundError, match="Missing env spec"):
-        install(profile="cpu")
+    result = install(profile="cpu")
+    err = capsys.readouterr().err
+
+    assert result != 0
+    assert "Tool 'base' not found" in err
 
 
 def test_install_calls_env_manager_with_correct_args(tmp_path: Path, monkeypatch) -> None:
@@ -60,6 +67,7 @@ def test_install_calls_env_manager_with_correct_args(tmp_path: Path, monkeypatch
         return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
 
     monkeypatch.setattr(subprocess, "run", mock_run)
+    monkeypatch.setattr("bioimage_mcp.bootstrap.install._env_exists", lambda *_: False)
     monkeypatch.setattr(
         "bioimage_mcp.bootstrap.install.detect_env_manager",
         lambda: ("mamba", "/usr/bin/mamba", "2.0"),
@@ -99,6 +107,7 @@ def test_install_calls_micromamba_without_prune(tmp_path: Path, monkeypatch) -> 
         return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
 
     monkeypatch.setattr(subprocess, "run", mock_run)
+    monkeypatch.setattr("bioimage_mcp.bootstrap.install._env_exists", lambda *_: False)
     monkeypatch.setattr(
         "bioimage_mcp.bootstrap.install.detect_env_manager",
         lambda: ("micromamba", "/usr/bin/micromamba", "1.5.0"),

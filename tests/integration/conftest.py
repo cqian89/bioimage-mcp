@@ -97,11 +97,45 @@ def mcp_services(tmp_path: Path, request: pytest.FixtureRequest, monkeypatch: py
     use_mock = request.node.get_closest_marker("mock_execution") is not None
     if use_mock:
         from bioimage_mcp.registry.engine import DiscoveryEngine
+        from bioimage_mcp.registry.dynamic.xarray_allowlists import XARRAY_DATAARRAY_ALLOWLIST
+        import bioimage_mcp.api.discovery as discovery_module
 
-        def _empty_runtime_list(_self: DiscoveryEngine, _manifest) -> list[dict[str, Any]]:
-            return []
+        def _mock_runtime_list(_self: DiscoveryEngine, _manifest) -> list[dict[str, Any]]:
+            if _manifest.tool_id != "tools.base":
+                return []
 
-        monkeypatch.setattr(DiscoveryEngine, "_runtime_list", _empty_runtime_list)
+            entries: list[dict[str, Any]] = []
+            for name in ("rename", "transpose", "expand_dims", "squeeze"):
+                info = XARRAY_DATAARRAY_ALLOWLIST.get(name, {})
+                entries.append(
+                    {
+                        "fn_id": f"base.xarray.DataArray.{name}",
+                        "name": name,
+                        "summary": info.get("summary", ""),
+                        "module": "xarray.DataArray",
+                        "io_pattern": "object_to_image",
+                    }
+                )
+
+            entries.append(
+                {
+                    "fn_id": "base.phasorpy.phasor.phasor_from_signal",
+                    "name": "phasor_from_signal",
+                    "summary": "Compute phasor coordinates from a signal",
+                    "module": "phasorpy.phasor",
+                    "io_pattern": "signal_to_phasor",
+                }
+            )
+
+            return entries
+
+        monkeypatch.setattr(DiscoveryEngine, "_runtime_list", _mock_runtime_list)
+        monkeypatch.setattr(
+            discovery_module,
+            "_compute_source_hash",
+            lambda *args, **_kwargs: None,
+        )
+        monkeypatch.setattr("bioimage_mcp.registry.engine.inspect_module", lambda _m, _p: None)
 
     conn = connect(config)
     _MANIFEST_CACHE.pop(
@@ -212,7 +246,7 @@ def mock_executor() -> MockExecutor:
         return {"ok": True, "outputs": {"output": _mock_output(output_path)}}, "Mock swap", 0
 
     registry = {
-        "base.xarray.rename": _mock_relabel_axes,
+        "base.xarray.DataArray.rename": _mock_relabel_axes,
         "base.phasorpy.phasor.phasor_from_signal": _mock_phasor_from_signal,
         "base.xarray.expand_dims": _mock_expand_dims,
         "base.xarray.squeeze": _mock_squeeze,

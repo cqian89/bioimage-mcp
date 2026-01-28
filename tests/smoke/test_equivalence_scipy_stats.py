@@ -22,7 +22,7 @@ def native_executor():
 async def test_scipy_stats_ttest_ind_equivalence(live_server, native_executor, tmp_path):
     """Test that MCP scipy.stats.ttest_ind_table matches native execution bit-for-bit."""
     # 1. Prepare deterministic input CSVs in an allowed directory
-    allowed_tmp = Path("datasets/tmp")
+    allowed_tmp = Path("datasets/synthetic/tmp")
     allowed_tmp.mkdir(parents=True, exist_ok=True)
     table_a_path = allowed_tmp / "table_a.csv"
     table_b_path = allowed_tmp / "table_b.csv"
@@ -111,3 +111,8 @@ async def test_scipy_stats_ttest_ind_equivalence(live_server, native_executor, t
             table_b_path.unlink()
         if "baseline_result" in locals() and Path(baseline_result["output_path"]).exists():
             Path(baseline_result["output_path"]).unlink()
+        if allowed_tmp.exists():
+            try:
+                allowed_tmp.rmdir()
+            except OSError:
+                pass

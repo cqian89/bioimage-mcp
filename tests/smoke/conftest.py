@@ -26,7 +26,19 @@ class SmokeConfig:
     scenario_timeout_s: float = 300.0  # Max seconds per scenario
     log_dir: Path = field(default_factory=lambda: Path(".bioimage-mcp/smoke_logs"))
     minimal_mode: bool = True  # True for CI, False for full suite
-    session_start_time: float = field(default_factory=time.time)
+    session_start_time: float | None = None
+
+
+def _is_smoke_item(item: pytest.Item) -> bool:
+    """Return True if the test item is part of the smoke suite."""
+    marker_names = {marker.name for marker in item.iter_markers()}
+    if {"smoke_minimal", "smoke_full"}.intersection(marker_names):
+        return True
+
+    item_path = getattr(item, "path", None)
+    if item_path is None:
+        item_path = Path(str(item.fspath))
+    return "tests" in item_path.parts and "smoke" in item_path.parts
 
 
 def _env_available(env_name: str) -> bool:
@@ -156,7 +168,9 @@ def pytest_runtest_makereport(item, call):
 def pytest_runtest_setup(item):
     """Enforce suite-level time budget (T012)."""
     config = getattr(item.session, "_smoke_config", None)
-    if config and config.minimal_mode:
+    if config and config.minimal_mode and _is_smoke_item(item):
+        if config.session_start_time is None:
+            config.session_start_time = time.time()
         elapsed = time.time() - config.session_start_time
         if elapsed > config.minimal_suite_budget_s:
             pytest.exit(
@@ -172,6 +186,13 @@ def check_required_env(request):
         env_name = marker.args[0]
         if not _env_available(env_name):
             pytest.skip(f"Required environment not available: {env_name}")
+
+
+@pytest.fixture(autouse=True)
+def skip_smoke_full_in_minimal_mode(request, smoke_config):
+    """Skip smoke_full tests when running minimal smoke suite."""
+    if smoke_config.minimal_mode and request.node.get_closest_marker("smoke_full"):
+        pytest.skip("Skipping smoke_full test in minimal mode")
 
 
 @pytest.fixture(scope="session")

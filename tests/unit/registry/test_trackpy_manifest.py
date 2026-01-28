@@ -26,11 +26,19 @@ def test_trackpy_manifest_is_valid() -> None:
     assert manifest is not None
     assert manifest.tool_id == "tools.trackpy"
     assert manifest.env_id == "bioimage-mcp-trackpy"
-    assert manifest.entrypoint == "bioimage_mcp_trackpy/entrypoint.py"
+    entrypoint_path = Path(manifest.entrypoint)
+    if entrypoint_path.is_absolute():
+        assert entrypoint_path.as_posix().endswith(
+            "tools/trackpy/bioimage_mcp_trackpy/entrypoint.py"
+        ) or entrypoint_path.as_posix().endswith("bioimage_mcp_trackpy/entrypoint.py")
+    else:
+        assert manifest.entrypoint == "bioimage_mcp_trackpy/entrypoint.py"
     assert isinstance(manifest.dynamic_sources, list)
     assert len(manifest.dynamic_sources) == 1
     assert manifest.dynamic_sources[0].prefix == "trackpy"
 
     # Verify entrypoint exists relative to manifest
-    entrypoint_path = manifest_path.parent / manifest.entrypoint
-    assert entrypoint_path.exists(), f"Entrypoint not found at {entrypoint_path}"
+    resolved_entrypoint_path = (
+        entrypoint_path if entrypoint_path.is_absolute() else manifest_path.parent / entrypoint_path
+    )
+    assert resolved_entrypoint_path.exists(), f"Entrypoint not found at {resolved_entrypoint_path}"

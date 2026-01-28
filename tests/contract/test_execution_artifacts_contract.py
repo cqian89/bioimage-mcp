@@ -35,6 +35,7 @@ def test_run_workflow_contract_shape(tmp_path: Path, monkeypatch) -> None:
         "session_id",
         "id",
         "outputs",
+        "log_ref_id",
         "log_ref",
         "warnings",
         "error",

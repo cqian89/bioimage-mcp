@@ -83,7 +83,7 @@ def test_overlay_applied_to_gaussian(discovery_service: DiscoveryService):
     assert gaussian_fn is not None
     assert "denoise" in gaussian_fn["tags"]
     assert "smooth" in gaussian_fn["tags"]
-    assert "Apply a Gaussian filter" in gaussian_fn["description"]
+    assert "Apply a Gaussian filter" in gaussian_fn["summary"]
 
 
 @pytest.mark.integration

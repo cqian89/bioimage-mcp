@@ -13,6 +13,7 @@ def test_savefig_uses_provided_fname():
     mock_fig = MagicMock()
     mock_fig.dpi = 100
     mock_fig.get_size_inches.return_value = (8, 6)
+    mock_fig.savefig.side_effect = lambda path, *args, **kwargs: Path(path).write_bytes(b"test")
 
     # Register in cache
     uri = "obj://test-session/matplotlib/fig-123"
@@ -27,14 +28,19 @@ def test_savefig_uses_provided_fname():
         with patch("bioimage_mcp_base.ops.matplotlib_ops.plt"):
             result = savefig(inputs, params, work_dir=Path(tmpdir))
 
-        # Should have called savefig with user path
+        # Should have called savefig with artifact path
         mock_fig.savefig.assert_called_once()
         call_args = mock_fig.savefig.call_args
-        # The first argument to savefig should be the path
-        assert str(out_path) == str(call_args[0][0])
+        # The first argument to savefig should be the artifact path
+        savefig_path = Path(call_args[0][0])
+        assert savefig_path.parent.resolve() == Path(tmpdir).resolve()
+        assert savefig_path.name.startswith("plot_")
 
-        # Result should reference user path
-        assert result[0]["path"] == str(out_path.absolute())
+        # Result should reference artifact path
+        assert result[0]["path"] == str(savefig_path.absolute())
+        # User destination should be recorded and populated
+        assert result[0]["metadata"]["user_dest_path"] == str(out_path.absolute())
+        assert out_path.exists()
 
     # Clean up
     if uri in OBJECT_CACHE:

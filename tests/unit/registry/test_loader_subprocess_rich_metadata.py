@@ -34,22 +34,27 @@ def mock_manifest(tmp_path):
 
 
 def test_loader_runtime_fallback_rich_metadata(mock_manifest):
-    # Mock DiscoveryEngine._runtime_describe to return rich metadata
-    mock_runtime_info = {
-        "params_schema": {
-            "type": "object",
-            "properties": {
-                "sigma": {
-                    "type": "number",
-                    "description": "Standard deviation for Gaussian kernel.",
-                    "default": 1.0,
-                }
+    # Mock DiscoveryEngine._runtime_list to return rich metadata
+    mock_runtime_functions = [
+        {
+            "fn_id": "test.tool.scipy.gaussian_filter",
+            "name": "gaussian_filter",
+            "module": "scipy.ndimage",
+            "params_schema": {
+                "type": "object",
+                "properties": {
+                    "sigma": {
+                        "type": "number",
+                        "description": "Standard deviation for Gaussian kernel.",
+                        "default": 1.0,
+                    }
+                },
+                "required": [],
             },
-            "required": [],
-        },
-        "tool_version": "1.0.0",
-        "introspection_source": "subprocess:scipy_ndimage",
-    }
+            "tool_version": "1.0.0",
+            "introspection_source": "subprocess:scipy_ndimage",
+        }
+    ]
 
     # Mock griffe inspector to return a function that will trigger fallback
     mock_report = StaticModuleReport(
@@ -64,10 +69,11 @@ def test_loader_runtime_fallback_rich_metadata(mock_manifest):
     )
 
     with (
+        # Optional for scipy; runtime list is used directly.
         patch("bioimage_mcp.registry.engine.inspect_module", return_value=mock_report),
         patch(
-            "bioimage_mcp.registry.engine.DiscoveryEngine._runtime_describe",
-            return_value=mock_runtime_info,
+            "bioimage_mcp.registry.engine.DiscoveryEngine._runtime_list",
+            return_value=mock_runtime_functions,
         ),
     ):
         manifest, diag = load_manifest_file(mock_manifest)

@@ -128,17 +128,17 @@ def test_full_discovery_to_execution_flow(mcp_test_client, sample_flim_image) ->
 
     mcp_test_client.activate_functions(
         [
-            "base.xarray.rename",
+            "base.xarray.DataArray.rename",
             "base.phasorpy.phasor.phasor_from_signal",
         ]
     )
 
-    schema = mcp_test_client.describe_function("base.xarray.rename")
-    assert schema["id"] == "base.xarray.rename"
+    schema = mcp_test_client.describe_function("base.xarray.DataArray.rename")
+    assert schema["id"] == "base.xarray.DataArray.rename"
     assert schema["params_schema"]["type"] == "object"
 
     relabeled = mcp_test_client.call_tool(
-        fn_id="base.xarray.rename",
+        fn_id="base.xarray.DataArray.rename",
         inputs={"image": sample_flim_image},
         params={"mapping": {"Z": "T", "T": "Z"}},
     )
