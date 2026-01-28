@@ -51,8 +51,8 @@ Plans:
 Plans:
 - [x] 13-01-PLAN.md — Wire IntrospectionCache into tools.base meta.list + tests
 - [x] 13-02-PLAN.md — Add trackpy cache reuse via IntrospectionCache + tests
-- [ ] 13-03-PLAN.md — Core-side cache for runtime meta.list (avoid subprocess on repeat list)
-- [ ] 13-04-PLAN.md — Fix trackpy project_root detection for lockfile cache writes
+- [x] 13-03-PLAN.md — Core-side cache for runtime meta.list (avoid subprocess on repeat list)
+- [x] 13-04-PLAN.md — Fix trackpy project_root detection for lockfile cache writes
 
 ### Phase 14: OME-Zarr Standardization
 

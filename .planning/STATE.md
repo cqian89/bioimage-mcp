@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 
 Phase: 13 of 14 (Dynamic Introspection Cache Reuse)
 **Next Phase:** 14 (OME-Zarr Standardization)
-Plan: 2 of 2 in current phase
+Plan: 4 of 4 in current phase
 Status: Phase complete (verified)
-Last activity: 2026-01-28 — Verified Phase 13
+Last activity: 2026-01-28 — Completed 13-04-PLAN.md
 
-Progress: █████████░ 93%
+Progress: █████████░ 87%
 
 ## Accumulated Context
 
@@ -50,6 +50,7 @@ Progress: █████████░ 93%
 | 13 | User-home based dynamic cache | Store dynamic cache under ~/.bioimage-mcp/cache/dynamic/<tool_id> for stability across runs. |
 | 13 | Lockfile hash invalidation | Use env/<env_id>.lock.yml hash as the primary invalidation key for dynamic introspection caching. |
 | 13 | Reuse Unified IntrospectionCache for trackpy | Avoid bespoke cache implementations in tool packs to ensure consistent invalidation logic. |
+| 13 | Robust project_root detection | Support env var and CWD-based project root detection for caching in installed tool envs. |
 
 ### Roadmap Evolution
 - Phase 12 added: Core Engine + AST-First
@@ -63,8 +64,8 @@ Progress: █████████░ 93%
 - Existing failures in bootstrap/test_install.py need investigation.
 
 ### Session Continuity
-Last session: 2026-01-28T20:20:45Z
-Stopped at: Completed 13-02-PLAN.md
+Last session: 2026-01-28T23:14:42Z
+Stopped at: Completed 13-04-PLAN.md
 Resume file: None
 
 ## Next Steps
