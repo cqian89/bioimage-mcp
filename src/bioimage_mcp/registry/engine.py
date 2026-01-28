@@ -1,5 +1,4 @@
 from __future__ import annotations
-from __future__ import annotations
 
 import fnmatch
 import logging
@@ -9,12 +8,13 @@ from typing import Any
 
 from bioimage_mcp.bootstrap.env_manager import get_env_paths
 from bioimage_mcp.registry.diagnostics import EngineEvent, EngineEventType
+from bioimage_mcp.registry.dynamic.adapters import ADAPTER_REGISTRY
 from bioimage_mcp.registry.dynamic.models import IOPattern, ParameterSchema
 from bioimage_mcp.registry.manifest_schema import Function, FunctionOverlay, Port, ToolManifest
 from bioimage_mcp.registry.static.inspector import inspect_module
 from bioimage_mcp.registry.static.schema_normalize import normalize_json_schema
 from bioimage_mcp.runtimes.executor import execute_tool
-from bioimage_mcp.runtimes.meta_protocol import parse_meta_describe_result
+from bioimage_mcp.runtimes.meta_protocol import parse_meta_describe_result, parse_meta_list_result
 
 logger = logging.getLogger(__name__)
 
@@ -39,10 +39,16 @@ class DiscoveryEngine:
             functions.append(normalized)
             existing_fn_ids.add(normalized.fn_id)
 
+        runtime_functions: list[dict[str, Any]] = []
+        if manifest.dynamic_sources and any(
+            self._should_use_runtime_list(source) for source in manifest.dynamic_sources
+        ):
+            runtime_functions = self._runtime_list(manifest)
+
         # 2. Process dynamic sources
         for source in manifest.dynamic_sources:
             try:
-                discovered = self._discover_dynamic_source(manifest, source)
+                discovered = self._discover_dynamic_source(manifest, source, runtime_functions)
                 for fn in discovered:
                     if fn.fn_id not in existing_fn_ids:
                         functions.append(fn)
@@ -113,7 +119,12 @@ class DiscoveryEngine:
 
         return fn
 
-    def _discover_dynamic_source(self, manifest: ToolManifest, source: Any) -> list[Function]:
+    def _discover_dynamic_source(
+        self,
+        manifest: ToolManifest,
+        source: Any,
+        runtime_functions: list[dict[str, Any]],
+    ) -> list[Function]:
         """Discover functions from a single dynamic source using AST-first approach."""
         search_paths = [manifest.manifest_path.parent]
         if self.project_root:
@@ -129,8 +140,10 @@ class DiscoveryEngine:
 
         self._append_env_site_packages(search_paths, manifest.env_id)
 
+        adapter = ADAPTER_REGISTRY.get(source.adapter)
+        runtime_map = self._build_runtime_function_map(manifest, source, runtime_functions)
+
         if not source.modules or source.adapter in {"scipy", "trackpy"}:
-            runtime_functions = self._runtime_list(manifest)
             return self._map_runtime_functions(manifest, source, runtime_functions, set())
 
         discovered_functions: list[Function] = []
@@ -146,7 +159,7 @@ class DiscoveryEngine:
                     ):
                         continue
 
-                    fn = self._process_callable(manifest, sc, source.prefix)
+                    fn = self._process_callable(manifest, sc, source, adapter, runtime_map)
                     if fn:
                         discovered_functions.append(fn)
                         found_any = True
@@ -165,17 +178,14 @@ class DiscoveryEngine:
         # (This is important when libraries use lazy_loader or are in isolated environments)
         if failed_modules and source.modules:
             logger.info("Attempting runtime fallback discovery for source %s", source.prefix)
-            runtime_functions = self._runtime_list(manifest)
-            print(
-                f"DEBUG: Runtime list for {source.prefix} returned {len(runtime_functions)} functions"
-            )
-            discovered_functions = self._map_runtime_functions(
-                manifest,
-                source,
-                runtime_functions,
-                {fn.fn_id for fn in discovered_functions},
-                discovered_functions,
-            )
+
+        discovered_functions = self._map_runtime_functions(
+            manifest,
+            source,
+            runtime_functions,
+            {fn.fn_id for fn in discovered_functions},
+            discovered_functions,
+        )
 
         return discovered_functions
 
@@ -196,48 +206,17 @@ class DiscoveryEngine:
         for fn_data in runtime_functions:
             raw_fn_id = fn_data.get("fn_id", "")
 
-            # Match logic: check both prefixed and unprefixed IDs
-            is_match = False
-            final_fn_id = raw_fn_id
+            final_fn_id = self._normalize_runtime_fn_id(
+                raw_fn_id,
+                source_prefix,
+                source.prefix,
+                env_prefix,
+            )
 
-            if raw_fn_id.startswith(f"{source_prefix}."):
-                is_match = True
-            elif source.prefix and raw_fn_id.startswith(f"{source.prefix}."):
-                is_match = True
-                # Prepend env_prefix if missing to maintain naming consistency
-                if env_prefix and not raw_fn_id.startswith(f"{env_prefix}."):
-                    final_fn_id = f"{env_prefix}.{raw_fn_id}"
-            elif source.prefix == "" and env_prefix and raw_fn_id.startswith(f"{env_prefix}."):
-                # Special case: empty prefix matches tool ID prefix
-                is_match = True
-
-            if is_match and final_fn_id not in existing_ids:
+            if final_fn_id and final_fn_id not in existing_ids:
                 # Basic mapping from runtime dict to Function model
                 try:
-                    # Map input/output ports
-                    inputs = []
-                    for p in fn_data.get("inputs", []):
-                        if isinstance(p, dict):
-                            inputs.append(Port(**p))
-                        else:
-                            inputs.append(Port(name=p, artifact_type="BioImageRef"))
-
-                    outputs = []
-                    for p in fn_data.get("outputs", []):
-                        if isinstance(p, dict):
-                            outputs.append(Port(**p))
-                        else:
-                            outputs.append(Port(name=p, artifact_type="BioImageRef"))
-
-                    if not inputs and not outputs:
-                        io_pattern = fn_data.get("io_pattern")
-                        if io_pattern:
-                            try:
-                                inputs, outputs = self.map_io_pattern_to_ports(
-                                    IOPattern(io_pattern)
-                                )
-                            except Exception:
-                                inputs, outputs = [], []
+                    inputs, outputs, io_pattern = self._ports_from_runtime_entry(fn_data)
 
                     description = fn_data.get("description")
                     if not description:
@@ -283,14 +262,13 @@ class DiscoveryEngine:
                         inputs=inputs,
                         outputs=outputs,
                         params_schema=params_schema,
-                        io_pattern=fn_data.get("io_pattern"),
+                        io_pattern=io_pattern.value if io_pattern else fn_data.get("io_pattern"),
                         module=fn_data.get("module"),
                         introspection_source=f"runtime:{fn_data.get('introspection_source', 'meta.list')}",
                     )
                     discovered_functions.append(fn)
                     existing_ids.add(final_fn_id)
                 except Exception as e:
-                    print(f"DEBUG: Failed to map runtime function {raw_fn_id}: {e}")
                     logger.debug("Failed to map runtime function %s: %s", raw_fn_id, e)
                     continue
 
@@ -337,14 +315,17 @@ class DiscoveryEngine:
                 env_id=manifest.env_id,
             )
             if code == 0 and isinstance(result, dict) and result.get("ok"):
-                # Result format: {"ok": True, "outputs": {"result": {"functions": [...]}}}
-                # based on entrypoint.py process_execute_request for meta.list
-                outputs = result.get("outputs", {})
-                res_data = outputs.get("result", {})
-                return res_data.get("functions", [])
+                return parse_meta_list_result(result)
         except Exception as e:
             logger.error("Runtime list failed for %s: %s", manifest.tool_id, e)
         return []
+
+    def _should_use_runtime_list(self, source: Any) -> bool:
+        if not source.modules:
+            return True
+        if source.adapter in {"scipy", "trackpy"}:
+            return True
+        return source.adapter in ADAPTER_REGISTRY
 
     def _should_include(self, name: str, include: list[str], exclude: list[str]) -> bool:
         if not any(fnmatch.fnmatch(name, pat) for pat in include):
@@ -353,19 +334,37 @@ class DiscoveryEngine:
             return False
         return True
 
-    def _process_callable(self, manifest: ToolManifest, sc: Any, prefix: str) -> Function | None:
+    def _process_callable(
+        self,
+        manifest: ToolManifest,
+        sc: Any,
+        source: Any,
+        adapter: Any | None,
+        runtime_map: dict[str, dict[str, Any]],
+    ) -> Function | None:
         """Convert a static callable to a Function, with runtime fallback if needed."""
         env_prefix = self._env_prefix_from_tool_id(manifest.tool_id)
-        raw_fn_id = sc.qualified_name or (f"{prefix}.{sc.name}" if prefix else sc.name)
-        if prefix and not raw_fn_id.startswith(f"{prefix}."):
-            raw_fn_id = f"{prefix}.{raw_fn_id}"
+        raw_fn_id = sc.qualified_name or (
+            f"{source.prefix}.{sc.name}" if source.prefix else sc.name
+        )
+        if source.prefix and not raw_fn_id.startswith(f"{source.prefix}."):
+            raw_fn_id = f"{source.prefix}.{raw_fn_id}"
         if env_prefix and not raw_fn_id.startswith(f"{env_prefix}."):
             fn_id = f"{env_prefix}.{raw_fn_id}"
         else:
             fn_id = raw_fn_id
 
+        runtime_entry = runtime_map.get(fn_id)
+
         # Basic AST-derived info
         description = sc.docstring or ""
+        if not description and runtime_entry:
+            description = (
+                runtime_entry.get("description")
+                or runtime_entry.get("summary")
+                or runtime_entry.get("name")
+                or ""
+            )
         if not description:
             self._events.append(
                 EngineEvent(
@@ -378,9 +377,33 @@ class DiscoveryEngine:
         params_schema = self._generate_static_params_schema(sc)
         introspection_source = "ast"
 
-        # Heuristic for I/O pattern
-        io_pattern = self._guess_io_pattern(sc)
-        inputs, outputs = self.map_io_pattern_to_ports(io_pattern)
+        inputs: list[Port] = []
+        outputs: list[Port] = []
+        io_pattern: IOPattern | None = None
+
+        if runtime_entry:
+            inputs, outputs, io_pattern = self._ports_from_runtime_entry(runtime_entry)
+
+        if not inputs and not outputs:
+            if not io_pattern and adapter is not None:
+                try:
+                    module_name = sc.qualified_name.rsplit(".", 1)[0]
+                except Exception:
+                    module_name = ""
+                try:
+                    if source.adapter == "phasorpy":
+                        io_pattern = adapter.resolve_io_pattern(sc.name, module_name)
+                    else:
+                        io_pattern = adapter.resolve_io_pattern(sc.name, None)
+                except Exception:
+                    io_pattern = None
+
+            if not io_pattern:
+                io_pattern = self._guess_io_pattern(sc)
+
+            inputs, outputs = self.map_io_pattern_to_ports(io_pattern)
+
+        io_pattern_value = io_pattern.value if io_pattern else None
 
         # Filter out port names from parameters (enforce artifact separation)
         # We do this BEFORE deciding to fallback so we know if AST is truly incomplete
@@ -456,7 +479,7 @@ class DiscoveryEngine:
             params_schema=normalize_json_schema(params_schema),
             introspection_source=introspection_source,
             module=sc.qualified_name.rsplit(".", 1)[0],
-            io_pattern=str(io_pattern.value),
+            io_pattern=io_pattern_value,
         )
 
     def _generate_static_params_schema(self, sc: Any) -> dict[str, Any]:
@@ -512,9 +535,111 @@ class DiscoveryEngine:
 
     def _guess_io_pattern(self, sc: Any) -> IOPattern:
         name = sc.name.lower()
+        module_name = sc.qualified_name.rsplit(".", 1)[0].lower()
+        param_names = {p.name.lower() for p in sc.parameters}
+
+        if "plot_phasor" in name:
+            return IOPattern.PHASOR_PLOT
+        if "phasor" in name or "phasorpy" in module_name:
+            if "plot" in name or "phasorpy.plot" in module_name:
+                return IOPattern.PLOT
+            if "phasor_from_signal" in name or "signal" in param_names:
+                return IOPattern.SIGNAL_TO_PHASOR
+            if "transform" in name:
+                return IOPattern.PHASOR_TRANSFORM
+            if "calibrate" in name:
+                return IOPattern.PHASOR_CALIBRATE
+            if "to_apparent_lifetime" in name or "to_polar" in name:
+                return IOPattern.PHASOR_TO_SCALAR
+            if "from_lifetime" in name or "from_polar" in name:
+                return IOPattern.SCALAR_TO_PHASOR
+            return IOPattern.PHASOR_TO_OTHER
+
         if "segment" in name or "label" in name:
             return IOPattern.IMAGE_TO_LABELS
+        if "plot" in name or "plot" in module_name:
+            return IOPattern.PLOT
+        if "table" in name or "table" in module_name:
+            if "table" in param_names:
+                return IOPattern.TABLE_TO_TABLE
+            return IOPattern.IMAGE_TO_TABLE
+
         return IOPattern.GENERIC
+
+    def _build_runtime_function_map(
+        self,
+        manifest: ToolManifest,
+        source: Any,
+        runtime_functions: list[dict[str, Any]],
+    ) -> dict[str, dict[str, Any]]:
+        env_prefix = self._env_prefix_from_tool_id(manifest.tool_id)
+        source_prefix = f"{env_prefix}.{source.prefix}" if env_prefix else source.prefix
+        runtime_map: dict[str, dict[str, Any]] = {}
+        for fn_data in runtime_functions:
+            raw_fn_id = fn_data.get("fn_id", "")
+            final_fn_id = self._normalize_runtime_fn_id(
+                raw_fn_id,
+                source_prefix,
+                source.prefix,
+                env_prefix,
+            )
+            if final_fn_id:
+                runtime_map[final_fn_id] = fn_data
+        return runtime_map
+
+    def _normalize_runtime_fn_id(
+        self,
+        raw_fn_id: str,
+        source_prefix: str,
+        raw_source_prefix: str,
+        env_prefix: str | None,
+    ) -> str | None:
+        if not raw_fn_id:
+            return None
+
+        if raw_fn_id.startswith(f"{source_prefix}."):
+            return raw_fn_id
+
+        if raw_source_prefix and raw_fn_id.startswith(f"{raw_source_prefix}."):
+            if env_prefix and not raw_fn_id.startswith(f"{env_prefix}."):
+                return f"{env_prefix}.{raw_fn_id}"
+            return raw_fn_id
+
+        if raw_source_prefix == "" and env_prefix and raw_fn_id.startswith(f"{env_prefix}."):
+            return raw_fn_id
+
+        return None
+
+    def _ports_from_runtime_entry(
+        self, fn_data: dict[str, Any]
+    ) -> tuple[list[Port], list[Port], IOPattern | None]:
+        inputs: list[Port] = []
+        outputs: list[Port] = []
+
+        for p in fn_data.get("inputs", []):
+            if isinstance(p, dict):
+                inputs.append(Port(**p))
+            else:
+                inputs.append(Port(name=p, artifact_type="BioImageRef"))
+
+        for p in fn_data.get("outputs", []):
+            if isinstance(p, dict):
+                outputs.append(Port(**p))
+            else:
+                outputs.append(Port(name=p, artifact_type="BioImageRef"))
+
+        io_pattern: IOPattern | None = None
+        raw_pattern = fn_data.get("io_pattern")
+        if raw_pattern:
+            try:
+                io_pattern = IOPattern(raw_pattern)
+            except Exception:
+                io_pattern = None
+
+        if not inputs and not outputs and io_pattern:
+            inputs, outputs = self.map_io_pattern_to_ports(io_pattern)
+
+        return inputs, outputs, io_pattern
 
     def _env_prefix_from_tool_id(self, tool_id: str | None) -> str | None:
         if not tool_id:
