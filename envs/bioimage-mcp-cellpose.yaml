@@ -18,6 +18,7 @@ dependencies:
   # Standard image I/O
   - bioio
   - bioio-ome-tiff
+  - bioio-ome-zarr
   # Use conda pytorch-cpu to avoid CUDA dependency resolution issues
   - pytorch>=2.0
   - cpuonly

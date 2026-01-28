@@ -14,5 +14,6 @@ dependencies:
   - numpydoc
   - bioio
   - bioio-ome-tiff
+  - bioio-ome-zarr
   - pydantic>=2.0
   - pytest>=8.0
