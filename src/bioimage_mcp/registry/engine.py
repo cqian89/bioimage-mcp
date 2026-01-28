@@ -431,7 +431,7 @@ class DiscoveryEngine:
                 ]
 
         # Only fallback when params were expected but missing after filtering
-        artifact_only = not original_param_names or original_param_names.issubset(port_names)
+        artifact_only = bool(original_param_names) and original_param_names.issubset(port_names)
         is_ast_incomplete = not params_schema.get("properties") and not artifact_only
 
         # Only fallback to runtime describe if AST schema is incomplete

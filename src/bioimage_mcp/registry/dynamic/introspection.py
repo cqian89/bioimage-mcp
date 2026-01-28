@@ -19,6 +19,10 @@ from bioimage_mcp.registry.dynamic.models import (
 class Introspector:
     """Introspects Python functions to generate metadata."""
 
+    def _normalize_description(self, description: str) -> str:
+        """Normalize whitespace in descriptions to single spaces."""
+        return " ".join(description.split()).strip()
+
     def introspect(
         self,
         func: Callable,
@@ -103,8 +107,9 @@ class Introspector:
 
             doc = docstring_parser.parse(func.__doc__)
             for param in doc.params:
+                description = self._normalize_description(param.description or "")
                 param_info[param.arg_name] = {
-                    "description": param.description or "",
+                    "description": description,
                     "type": param.type_name or "",
                 }
             if param_info:
@@ -123,7 +128,7 @@ class Introspector:
                 # Parameter name may include type like "image : ndarray"
                 name = param.name.split(":")[0].strip()
                 # Description is a list of strings, join them
-                desc = " ".join(param.desc).strip()
+                desc = self._normalize_description(" ".join(param.desc))
                 # param.type contains the type annotation from docstring
                 doc_type = param.type if hasattr(param, "type") and param.type else ""
                 param_info[name] = {"description": desc, "type": doc_type}
