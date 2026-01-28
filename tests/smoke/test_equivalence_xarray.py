@@ -62,7 +62,7 @@ class TestXarrayEquivalence:
             assert da_result.get("status") == "success", (
                 f"DataArray instantiation failed: {da_result}"
             )
-            da_ref = da_result["outputs"]["da"]
+            da_ref = da_result["outputs"]["output"]
             # Verify initial dims are preserved (BioIO normalizes to uppercase, might expand to 5D)
             da_meta = da_ref.get("metadata") or da_ref
             mcp_dims = [d.upper() for d in da_meta["dims"]]

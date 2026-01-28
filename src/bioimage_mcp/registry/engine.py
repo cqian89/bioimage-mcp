@@ -700,7 +700,7 @@ class DiscoveryEngine:
             outputs = [Port(name="output", artifact_type="ObjectRef")]
         elif pattern == IOPattern.CONSTRUCTOR:
             inputs = [Port(name="image", artifact_type="BioImageRef")]
-            outputs = [Port(name="da", artifact_type="ObjectRef")]
+            outputs = [Port(name="output", artifact_type="ObjectRef")]
         elif pattern == IOPattern.MULTI_INPUT:
             inputs = [
                 Port(name="images", artifact_type=["BioImageRef", "ObjectRef"], is_array=True)

@@ -27,7 +27,7 @@ XARRAY_DATAARRAY_CLASS: dict[str, dict[str, Any]] = {
         "summary": "Instantiate DataArray from BioImageRef, return ObjectRef",
         "tags": ["initialization", "xarray"],
         "inputs": [{"name": "image", "type": "BioImageRef", "required": True}],
-        "outputs": [{"name": "da", "type": "ObjectRef"}],
+        "outputs": [{"name": "output", "type": "ObjectRef"}],
         "params": {},
         "bioimage_use": "Load image once for multiple sequential operations",
     },

@@ -579,7 +579,7 @@ class XarrayAdapterForRegistry(BaseAdapter):
                     "shape": list(da.shape),
                     "dims": list(da.dims),
                     "dtype": str(da.dtype),
-                    "output_name": "da",
+                    "output_name": "output",
                 },
             }
         ]

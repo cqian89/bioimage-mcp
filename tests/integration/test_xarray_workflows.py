@@ -48,7 +48,7 @@ def test_tile_stitching_workflow(mcp_test_client, create_test_image):
     # Note: In our system, native 2D is often YX. ZYX is (1, 64, 64).
     # Concat along "X"
     response = mcp_test_client.call_tool(
-        fn_id="base.xarray.concat", inputs={"image": tiles}, params={"dim": "X"}
+        fn_id="base.xarray.concat", inputs={"images": tiles}, params={"dim": "X"}
     )
 
     assert "outputs" in response
@@ -125,7 +125,7 @@ def test_max_projection_clip_workflow(mcp_test_client, create_test_image):
 
     # 1. Wrap in DataArray ObjectRef
     res_da = mcp_test_client.call_tool(fn_id="base.xarray.DataArray", inputs={"image": img_ref})
-    da_ref = res_da["outputs"]["da"]
+    da_ref = res_da["outputs"]["output"]
     assert da_ref["type"] == "ObjectRef"
 
     # 2. Max projection along Z
@@ -179,7 +179,7 @@ def test_quantile_threshold_workflow(mcp_test_client, create_test_image):
 
     # 1. Load as DataArray
     res_da = mcp_test_client.call_tool(fn_id="base.xarray.DataArray", inputs={"image": img_ref})
-    da_ref = res_da["outputs"]["da"]
+    da_ref = res_da["outputs"]["output"]
 
     # 2. Compute 0.9 quantile (should be 90.0)
     res_q = mcp_test_client.call_tool(
