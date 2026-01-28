@@ -51,6 +51,7 @@ Progress: █████████░ 87%
 | 13 | Lockfile hash invalidation | Use env/<env_id>.lock.yml hash as the primary invalidation key for dynamic introspection caching. |
 | 13 | Reuse Unified IntrospectionCache for trackpy | Avoid bespoke cache implementations in tool packs to ensure consistent invalidation logic. |
 | 13 | Robust project_root detection | Support env var and CWD-based project root detection for caching in installed tool envs. |
+| 13 | Core-side memoization | DiscoveryEngine now caches parsed meta.list results to avoid subprocess overhead on repeated listings. |
 
 ### Roadmap Evolution
 - Phase 12 added: Core Engine + AST-First
@@ -64,8 +65,8 @@ Progress: █████████░ 87%
 - Existing failures in bootstrap/test_install.py need investigation.
 
 ### Session Continuity
-Last session: 2026-01-28T23:14:42Z
-Stopped at: Completed 13-04-PLAN.md
+Last session: 2026-01-28T23:35:00Z
+Stopped at: Completed 13-03-PLAN.md and 13-04-PLAN.md
 Resume file: None
 
 ## Next Steps
