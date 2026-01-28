@@ -6,7 +6,7 @@
       inputs:
         image: "datasets/FLUTE_FLIM_data_tif/Embryo.tif"
       params:
-        dims: ["Z", "C", "T", "Y", "X"]
+        dims: ["Y", "X", "Z"]
       assertions:
         - type: "output_type"
           value: "BioImageRef"
@@ -34,7 +34,7 @@
       assertions:
         - type: "metadata_check"
           key: "axes"
-          value: "TCZYX"
+          value: "ZYX"
     - step_id: "remove_dim"
       fn_id: "base.xarray.squeeze"
       inputs:
@@ -44,7 +44,7 @@
       assertions:
         - type: "metadata_check"
           key: "axes"
-          value: "TCZYX"
+          value: "ZYX"
 
 - test_name: "axis_swap_test"
   description: "Verify transpose exchanges Z and Y axes"

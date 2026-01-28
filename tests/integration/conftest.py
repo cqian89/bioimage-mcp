@@ -13,6 +13,7 @@ from bioimage_mcp.api.execution import ExecutionService
 from bioimage_mcp.artifacts.store import ArtifactStore
 from bioimage_mcp.config.schema import Config
 from bioimage_mcp.registry.loader import load_manifests
+from bioimage_mcp.registry.loader import _MANIFEST_CACHE
 from bioimage_mcp.storage.sqlite import connect
 from bioimage_mcp.test_harness import WorkflowTestCase
 
@@ -80,7 +81,7 @@ class AsyncMCPTestClient:
 
 
 @pytest.fixture
-def mcp_services(tmp_path: Path):
+def mcp_services(tmp_path: Path, request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch):
     repo_root = Path(__file__).resolve().parents[2]
     tools_root = repo_root / "tools"
     datasets_root = repo_root / "datasets"
@@ -93,7 +94,19 @@ def mcp_services(tmp_path: Path):
         fs_denylist=[],
     )
 
+    use_mock = request.node.get_closest_marker("mock_execution") is not None
+    if use_mock:
+        from bioimage_mcp.registry.engine import DiscoveryEngine
+
+        def _empty_runtime_list(_self: DiscoveryEngine, _manifest) -> list[dict[str, Any]]:
+            return []
+
+        monkeypatch.setattr(DiscoveryEngine, "_runtime_list", _empty_runtime_list)
+
     conn = connect(config)
+    _MANIFEST_CACHE.pop(
+        tuple(sorted(str(root.resolve()) for root in config.tool_manifest_roots)), None
+    )
     manifests, _diagnostics = load_manifests(config.tool_manifest_roots)
 
     discovery = DiscoveryService(conn)
@@ -228,8 +241,8 @@ def sample_flim_image() -> dict[str, Any]:
         "type": "BioImageRef",
         "uri": f"file://{sample_path.absolute()}",
         "metadata": {
-            "axes": "TCZYX",
-            "shape": [1, 1, 56, 512, 512],
+            "axes": "ZYX",
+            "shape": [56, 512, 512],
         },
     }
 

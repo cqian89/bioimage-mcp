@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -40,6 +41,20 @@ def _load_workflow_cases() -> list[object]:
         return [pytest.param(None, id="no-workflow-cases")]
 
     return cases
+
+
+def _env_available(env_name: str) -> bool:
+    try:
+        proc = subprocess.run(
+            ["conda", "run", "-n", env_name, "python", "-c", "print('ok')"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        return proc.returncode == 0
+    except Exception:
+        return False
 
 
 def _resolve_inputs(inputs: dict[str, Any], refs: dict[str, Any]) -> dict[str, Any]:
@@ -145,6 +160,7 @@ def test_full_discovery_to_execution_flow(mcp_test_client, sample_flim_image) ->
 
 
 @pytest.mark.real_execution
+@pytest.mark.requires_env("bioimage-mcp-base")
 @pytest.mark.timeout(60)
 def test_flim_phasor_golden_path(mcp_test_client, sample_flim_image) -> None:
     sample_uri = sample_flim_image["uri"]
@@ -152,29 +168,26 @@ def test_flim_phasor_golden_path(mcp_test_client, sample_flim_image) -> None:
     if not sample_path.exists():
         pytest.skip(f"Missing FLIM dataset at {sample_path}")
 
-    mcp_test_client.activate_functions(
-        [
-            "base.xarray.transpose",
-            "base.phasorpy.phasor.phasor_from_signal",
-        ]
-    )
+    if not _env_available("bioimage-mcp-base"):
+        pytest.skip("Required tool environment missing: bioimage-mcp-base")
 
-    swapped = mcp_test_client.call_tool(
-        fn_id="base.xarray.transpose",
+    transposed = mcp_test_client.call_tool(
+        fn_id="base.xarray.DataArray.transpose",
         inputs={"image": sample_flim_image},
-        params={"dims": ["Z", "C", "T", "Y", "X"]},
+        params={"dims": ["Y", "X", "Z"]},
     )
-    if "outputs" not in swapped:
-        pytest.fail(f"Transpose failed: {swapped.get('error') or swapped}")
-    swapped_output = _coerce_output_ref(swapped["outputs"])
+    if transposed.get("status") != "success":
+        pytest.fail(f"Transpose failed: {transposed}")
+    transposed_output = _coerce_output_ref(transposed["outputs"])
 
     phasor = mcp_test_client.call_tool(
         fn_id="base.phasorpy.phasor.phasor_from_signal",
-        inputs={"signal": swapped_output},
-        params={"harmonic": 1, "axis": 0},
+        inputs={"signal": transposed_output},
+        params={"axis": 2, "harmonic": 1},
     )
-    if "outputs" not in phasor:
-        pytest.fail(f"Phasor failed: {phasor.get('error') or phasor}")
+    if phasor.get("status") != "success":
+        pytest.fail(f"Phasor failed: {phasor}")
+
     outputs = phasor["outputs"]
 
     assert "mean" in outputs
@@ -257,7 +270,7 @@ class TestSessionReplayObjectRef:
             lambda self, fn_id: True,
         )
         monkeypatch.setattr(
-            'bioimage_mcp.api.sessions.SessionService._env_installed',
+            "bioimage_mcp.api.sessions.SessionService._env_installed",
             lambda self, env_name: True,
         )
 
@@ -530,7 +543,7 @@ class TestGPUReplay:
             lambda self, fn_id: True,
         )
         monkeypatch.setattr(
-            'bioimage_mcp.api.sessions.SessionService._env_installed',
+            "bioimage_mcp.api.sessions.SessionService._env_installed",
             lambda self, env_name: True,
         )
 

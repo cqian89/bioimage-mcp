@@ -341,3 +341,21 @@ function_overlays:
   base.skimage.morphology.remove_small_objects:
     io_pattern: labels_to_labels
     tags: ["labels", "cleanup", "morphology"]
+
+  base.phasorpy.phasor.phasor_from_signal:
+    hints:
+      inputs:
+        signal:
+          type: BioImageRef
+          required: true
+          description: "Input signal to compute phasor values"
+          supported_storage_types: ["file", "zarr-temp"]
+
+  base.xarray.DataArray.transpose:
+    hints:
+      inputs:
+        image:
+          type: BioImageRef
+          required: true
+          description: "Input image to transpose"
+          supported_storage_types: ["file", "zarr-temp"]

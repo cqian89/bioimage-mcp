@@ -160,6 +160,8 @@ from bioimage_mcp.errors import BioimageMcpError
 - Dependency isolation: heavy deps (torch/cellpose/etc.) must NOT be added to the core server.
   They belong in tool-pack conda envs defined in `envs/` and run via `conda run -n ...`.
 - Reproducibility: workflows should be recordable/replayable (steps/params/versions).
+- Native dims: preserve and emit native axes/dimensionality end-to-end (no TCZYX padding).
+  Tests must not assume TCZYX unless the file truly includes those axes.
 
 ## Cursor / Copilot Rules
 

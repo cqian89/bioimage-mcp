@@ -64,8 +64,7 @@ def test_skimage_metadata_propagation(tmp_path: Path):
 
     # Assert metadata propagation
     assert "metadata" in output_ref, "Output artifact should have metadata"
-    assert output_ref["metadata"].get("axes") == "TCZYX", (
-        f"Axes should be 5D, got {output_ref['metadata'].get('axes')}"
+    assert output_ref["metadata"].get("axes") == "CYX", (
+        f"Axes should be native dims, got {output_ref['metadata'].get('axes')}"
     )
-    # bioio pads to 5D: [1, 10, 1, 100, 100] for CYX [10, 100, 100]
-    assert output_ref["metadata"].get("shape") == [1, 10, 1, 100, 100], "Shape should be 5D"
+    assert output_ref["metadata"].get("shape") == [10, 100, 100], "Shape should be native dims"

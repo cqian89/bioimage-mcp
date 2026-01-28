@@ -12,6 +12,7 @@ from bioimage_mcp.api.execution import ExecutionService
 from bioimage_mcp.artifacts.store import ArtifactStore
 from bioimage_mcp.config.schema import Config
 from bioimage_mcp.registry.loader import load_manifests
+from bioimage_mcp.registry.loader import _MANIFEST_CACHE
 from bioimage_mcp.storage.sqlite import connect
 
 sys.path.append(str(Path(__file__).parent))
@@ -35,6 +36,9 @@ def mcp_services(tmp_path: Path):
     )
 
     conn = connect(config)
+    _MANIFEST_CACHE.pop(
+        tuple(sorted(str(root.resolve()) for root in config.tool_manifest_roots)), None
+    )
     manifests, _diagnostics = load_manifests(config.tool_manifest_roots)
 
     discovery = DiscoveryService(conn)
