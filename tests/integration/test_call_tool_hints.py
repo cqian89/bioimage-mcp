@@ -1,12 +1,16 @@
 from pathlib import Path
 
+import numpy as np
+from bioio.writers import OmeTiffWriter
+
 from bioimage_mcp.api.execution import ExecutionService
 from bioimage_mcp.artifacts.store import ArtifactStore
 from bioimage_mcp.config.schema import Config
 
 
-def _repo_root() -> Path:
-    return Path(__file__).resolve().parents[2]
+def _write_test_ome_tiff(path: Path) -> None:
+    data = np.zeros((1, 1, 1, 4, 4), dtype=np.uint8)
+    OmeTiffWriter.save(data, str(path), dim_order="TCZYX")
 
 
 def _write_test_manifest(tool_root: Path, entrypoint: Path) -> None:
@@ -69,7 +73,7 @@ def _make_config(tmp_path: Path, tool_root: Path) -> Config:
     return Config(
         artifact_store_root=tmp_path / "artifacts",
         tool_manifest_roots=[tool_root],
-        fs_allowlist_read=[_repo_root()],
+        fs_allowlist_read=[tmp_path],
         fs_allowlist_write=[tmp_path],
         fs_denylist=[],
     )
@@ -116,9 +120,8 @@ def test_run_workflow_success_includes_hints(tmp_path: Path, monkeypatch) -> Non
 
 
 def test_run_workflow_error_includes_hints(tmp_path: Path, monkeypatch) -> None:
-    repo_root = _repo_root()
-    image_path = repo_root / "test_xr.ome.tiff"
-    assert image_path.exists(), f"Missing test image: {image_path}"
+    image_path = tmp_path / "test_xr.ome.tiff"
+    _write_test_ome_tiff(image_path)
 
     tool_root = tmp_path / "tools"
     tool_root.mkdir()
@@ -151,5 +154,5 @@ def test_run_workflow_error_includes_hints(tmp_path: Path, monkeypatch) -> None:
 
     assert response["status"] == "failed"
     assert response["hints"]["diagnosis"] == "Input axes do not match expected order."
-    assert response["hints"]["suggested_fix"]["id"] == "base.relabel_axes"
+    assert response["hints"]["suggested_fix"]["fn_id"] == "base.relabel_axes"
     assert response["hints"]["related_metadata"]["image"] == ref.metadata

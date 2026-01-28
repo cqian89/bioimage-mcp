@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -109,11 +110,28 @@ def test_io_bridge_create_materialization_path(io_bridge: IOBridge, tmp_path: Pa
     assert path_zarr == tmp_path / "session1" / "art2.zarr"
 
 
+def _env_available(env_name: str) -> bool:
+    try:
+        proc = subprocess.run(
+            ["conda", "run", "-n", env_name, "python", "-c", "print('ok')"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        return proc.returncode == 0
+    except Exception:
+        return False
+
+
 def test_cross_env_materialization_integration(tmp_path: Path):
     """Test that the system automatically materializes cross-env handoffs.
 
     Verified for T024.
     """
+    if not _env_available("env-other"):
+        pytest.skip("Required tool environment missing: env-other")
+
     import uuid
 
     from bioimage_mcp.api.execution import ExecutionService

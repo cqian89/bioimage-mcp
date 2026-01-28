@@ -8,8 +8,10 @@ Supports persistent worker mode (NDJSON).
 
 from __future__ import annotations
 
+import contextlib
 import importlib
 import inspect
+import io
 import json
 import os
 import sys
@@ -824,6 +826,22 @@ def handle_reconstruct(request: dict[str, Any]) -> dict[str, Any]:
 
 
 def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
+    capture = io.StringIO()
+    with contextlib.redirect_stdout(capture), contextlib.redirect_stderr(capture):
+        response = _process_execute_request(request)
+
+    captured_output = capture.getvalue()
+    if captured_output:
+        sys.stderr.write(captured_output)
+        sys.stderr.flush()
+        if response.get("log"):
+            response["log"] = f"{response['log']}\n{captured_output}".strip()
+        else:
+            response["log"] = captured_output.strip()
+    return response
+
+
+def _process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
     fn_id = request.get("fn_id", "")
     params = request.get("params") or {}
     inputs = request.get("inputs") or {}
@@ -1116,6 +1134,12 @@ def main() -> int:
     # 1. IMMEDIATE handshake for persistent mode
     is_persistent_mode = "BIOIMAGE_MCP_SESSION_ID" in os.environ
 
+    if is_persistent_mode:
+        initializing_message = json.dumps(
+            {"command": "ready", "status": "initializing", "version": TOOL_VERSION}
+        )
+        print(initializing_message, flush=True)
+
     # 2. Safe initialization / heavy imports
     try:
         # Simulation for testing
@@ -1123,15 +1147,22 @@ def main() -> int:
             raise ImportError("Simulated numpy import failure")
 
         # Heavy imports
-        import bioio  # noqa: F401
-        import cellpose  # noqa: F401
-        import numpy as np  # noqa: F401
+        capture = io.StringIO()
+        with contextlib.redirect_stdout(capture), contextlib.redirect_stderr(capture):
+            import bioio  # noqa: F401
+            import cellpose  # noqa: F401
+            import numpy as np  # noqa: F401
 
-        # Verify torch if needed
-        try:
-            import torch  # noqa: F401
-        except ImportError:
-            pass
+            # Verify torch if needed
+            try:
+                import torch  # noqa: F401
+            except ImportError:
+                pass
+
+        captured_output = capture.getvalue()
+        if captured_output:
+            sys.stderr.write(captured_output)
+            sys.stderr.flush()
 
     except Exception as exc:
         error_msg = f"Required library import failed: {str(exc)}"
@@ -1154,12 +1185,7 @@ def main() -> int:
 
     if is_persistent_mode:
         # NDJSON loop mode
-        # 3. Complete handshake
-        ready_message = json.dumps(
-            {"command": "ready", "status": "complete", "version": TOOL_VERSION}
-        )
-        print(ready_message, flush=True)
-
+        # Only emit a single ready handshake in persistent mode.
         for line in sys.stdin:
             line = line.strip()
             if not line:

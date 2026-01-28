@@ -117,6 +117,7 @@ class DiscoveryService:
         cursor: str | None = None,
         types: list[str] | None = None,
         include_counts: bool = True,
+        active_fn_ids: list[str] | None = None,
     ) -> dict[str, Any]:
         config = load_config()
         resolved_limit = resolve_limit(limit, config)
@@ -140,6 +141,9 @@ class DiscoveryService:
             after = after or None
 
         functions = self._index.list_functions()
+        if active_fn_ids:
+            active_set = set(active_fn_ids)
+            functions = [fn for fn in functions if fn.get("fn_id") in active_set]
         tool_index = ToolIndex(functions)
         tool_index.build_hierarchy()
 
@@ -237,6 +241,7 @@ class DiscoveryService:
         io_out: str | None = None,
         limit: int | None = None,
         cursor: str | None = None,
+        active_fn_ids: list[str] | None = None,
     ) -> dict[str, Any]:
         # Validate: query and keywords are mutually exclusive
         if query is not None and keywords is not None:
@@ -273,6 +278,7 @@ class DiscoveryService:
         resolved_limit = resolve_limit(limit, config)
 
         raw_keywords = keywords if keywords is not None else query
+        path_query = bool(query) and ("." in query or "/" in query)
 
         if raw_keywords is None:
             keyword_list = []
@@ -322,6 +328,7 @@ class DiscoveryService:
             offset = int(payload.get("offset") or 0)
 
         collected: list[dict] = []
+        active_set = set(active_fn_ids or [])
         scan_after: str | None = None
         batch_size = 200
         while True:
@@ -332,6 +339,8 @@ class DiscoveryService:
                 break
 
             for row in batch:
+                if active_set and row["fn_id"] not in active_set:
+                    continue
                 # T063: Add tags filtering
                 if not any_tag_matches(row["tags"], tags):
                     continue
@@ -354,7 +363,38 @@ class DiscoveryService:
             scan_after = batch[-1]["fn_id"]
 
         # T065: Add scoring and ranking
-        if normalized_keywords:
+        ranked: list[dict]
+        if path_query:
+            normalized_query = query.strip().lower().replace("/", ".") if query else ""
+            matched = [
+                candidate
+                for candidate in collected
+                if normalized_query and normalized_query in candidate["fn_id"].lower()
+            ]
+            if matched:
+                ranked = [
+                    {
+                        **candidate,
+                        "score": 1.0,
+                        "match_count": 1,
+                    }
+                    for candidate in matched
+                ]
+                ranked.sort(key=lambda item: item["fn_id"])
+            elif normalized_keywords:
+                index = SearchIndex()
+                ranked = index.rank(keywords=normalized_keywords, candidates=collected)
+            else:
+                ranked = [
+                    {
+                        **candidate,
+                        "score": 0.0,
+                        "match_count": 0,
+                    }
+                    for candidate in collected
+                ]
+                ranked.sort(key=lambda item: item["fn_id"])
+        elif normalized_keywords:
             index = SearchIndex()
             ranked = index.rank(keywords=normalized_keywords, candidates=collected)
         else:

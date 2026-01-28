@@ -17,8 +17,32 @@ def test_interactive_tool_error(tmp_path: Path, monkeypatch) -> None:
     entrypoint = tmp_path / "fail_tool.py"
     entrypoint.write_text(
         """
+import json
 import sys
-sys.exit(1)
+
+print(json.dumps({'command': 'ready', 'version': '0.1'}), flush=True)
+
+for line in sys.stdin:
+    if not line.strip():
+        continue
+    req = json.loads(line)
+    if req.get('command') != 'execute':
+        resp = {
+            'command': 'execute_result',
+            'ok': False,
+            'ordinal': req.get('ordinal'),
+            'error': {'code': 'bad_command', 'message': 'unsupported command'},
+        }
+        print(json.dumps(resp), flush=True)
+        continue
+
+    resp = {
+        'command': 'execute_result',
+        'ok': False,
+        'ordinal': req.get('ordinal'),
+        'error': {'code': 'tool_failed', 'message': 'intentional failure'},
+    }
+    print(json.dumps(resp), flush=True)
 """.lstrip()
     )
 
@@ -72,10 +96,8 @@ functions:
     assert result["session_id"] == session_id
     assert result["status"] == "failed"
     assert "error" in result
-    # ExecutionService sets error={"exit_code": 1} for non-zero exit OR "no output" if stdout empty
-    # In this case we get "no output" because sys.exit(1) produced no stdout
     assert result["error"] is not None
-    assert result["error"].get("message") == "no output" or result["error"].get("exit_code") == 1
+    assert result["error"].get("code") == "tool_failed"
 
     # Verify session step recorded as failed
     steps = session_store.list_step_attempts(session_id)

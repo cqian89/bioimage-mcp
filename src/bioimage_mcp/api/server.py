@@ -88,8 +88,17 @@ def create_server(
         limit: int | None = None,
         types: list[str] | None = None,
         include_counts: bool = True,
+        session_id: str | None = None,
+        ctx: Context | None = None,
     ) -> dict[str, Any]:
         """List catalog nodes (environments, packages, modules, functions)."""
+        if not session_id and ctx and ctx.session:
+            session_id = get_session_identifier(ctx)
+
+        active_fn_ids: list[str] = []
+        if session_id:
+            session_manager.ensure_session(session_id)
+            active_fn_ids = session_manager.store.get_active_functions(session_id)
         return discovery.list_tools(
             path=path,
             paths=paths,
@@ -98,6 +107,7 @@ def create_server(
             cursor=cursor,
             types=types,
             include_counts=include_counts,
+            active_fn_ids=active_fn_ids,
         )
 
     @mcp.tool()
@@ -117,8 +127,17 @@ def create_server(
         io_out: str | None = None,
         limit: int | None = None,
         cursor: str | None = None,
+        session_id: str | None = None,
+        ctx: Context | None = None,
     ) -> dict[str, Any]:
         """Search for functions by natural language query, keywords, or I/O types."""
+        if not session_id and ctx and ctx.session:
+            session_id = get_session_identifier(ctx)
+
+        active_fn_ids: list[str] = []
+        if session_id:
+            session_manager.ensure_session(session_id)
+            active_fn_ids = session_manager.store.get_active_functions(session_id)
         return discovery.search_functions(
             query=query,
             keywords=keywords,
@@ -127,6 +146,7 @@ def create_server(
             io_out=io_out,
             limit=limit,
             cursor=cursor,
+            active_fn_ids=active_fn_ids,
         )
 
     @mcp.tool()

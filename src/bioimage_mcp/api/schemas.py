@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from bioimage_mcp.artifacts.models import (
     ArtifactChecksum,
@@ -62,17 +62,39 @@ class OutputDescription(BaseModel):
 class NextStepHint(BaseModel):
     """Suggested next step in workflow."""
 
-    fn_id: str
+    id: str | None = None
+    fn_id: str | None = None
     reason: str
     required_inputs: list[str] | None = None
+
+    @model_validator(mode="after")
+    def _populate_ids(self) -> "NextStepHint":
+        if not self.id and not self.fn_id:
+            raise ValueError("Either 'id' or 'fn_id' must be provided")
+        if not self.id:
+            self.id = self.fn_id
+        if not self.fn_id:
+            self.fn_id = self.id
+        return self
 
 
 class SuggestedFix(BaseModel):
     """Suggested fix for an error."""
 
-    fn_id: str
+    id: str | None = None
+    fn_id: str | None = None
     params: dict
     explanation: str
+
+    @model_validator(mode="after")
+    def _populate_ids(self) -> "SuggestedFix":
+        if not self.id and not self.fn_id:
+            raise ValueError("Either 'id' or 'fn_id' must be provided")
+        if not self.id:
+            self.id = self.fn_id
+        if not self.fn_id:
+            self.fn_id = self.id
+        return self
 
 
 class InstallOffer(BaseModel):
@@ -477,7 +499,7 @@ class SessionReplayRequest(BaseModel):
 class SessionReplayResponse(BaseModel):
     run_id: str
     session_id: str
-    status: Literal["running", "ready", "validation_failed", "completed", "failed"]
+    status: Literal["running", "ready", "validation_failed", "success", "failed"]
     workflow_ref: ArtifactRef
     log_ref: ArtifactRef | None = None
     error: StructuredError | None = None

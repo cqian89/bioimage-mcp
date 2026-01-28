@@ -19,21 +19,38 @@ def test_run_workflow_e2e_with_test_toolpack(tmp_path: Path, monkeypatch) -> Non
 import json
 import sys
 
-req = json.loads(sys.stdin.read() or '{}')
-# Return a fake output ref + log metadata
-resp = {
-  'ok': True,
-  'outputs': {
-    'output': {
-      'type': 'LogRef',
-      'format': 'text',
-      'path': req.get('work_dir', '.') + '/out.txt',
-      'content': 'hello',
+print(json.dumps({'command': 'ready', 'version': '0.1'}), flush=True)
+
+for line in sys.stdin:
+    if not line.strip():
+        continue
+    req = json.loads(line)
+    if req.get('command') != 'execute':
+        resp = {
+            'command': 'execute_result',
+            'ok': False,
+            'ordinal': req.get('ordinal'),
+            'error': {'code': 'bad_command', 'message': 'unsupported command'},
+        }
+        print(json.dumps(resp), flush=True)
+        continue
+
+    # Return a fake output ref + log metadata
+    resp = {
+        'command': 'execute_result',
+        'ok': True,
+        'ordinal': req.get('ordinal'),
+        'outputs': {
+            'output': {
+                'type': 'LogRef',
+                'format': 'text',
+                'path': req.get('work_dir', '.') + '/out.txt',
+                'content': 'hello',
+            }
+        },
+        'log': 'ran ok',
     }
-  },
-  'log': 'ran ok'
-}
-print(json.dumps(resp))
+    print(json.dumps(resp), flush=True)
 """.lstrip()
     )
 

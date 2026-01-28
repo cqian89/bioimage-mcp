@@ -11,11 +11,18 @@ Run with: conda run -n bioimage-mcp-cellpose python /tmp/test_cellpose_standalon
 import sys
 import tempfile
 from pathlib import Path
+from unittest.mock import MagicMock
 
 # Add the tools/cellpose package to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "tools/cellpose"))
 # Fallback for running from project root
 sys.path.insert(0, "tools/cellpose")
+
+import pytest
+
+cellpose = pytest.importorskip("cellpose")
+if isinstance(cellpose, MagicMock):
+    pytest.skip("Cellpose is mocked; skipping integration test", allow_module_level=True)
 
 import numpy as np
 import tifffile

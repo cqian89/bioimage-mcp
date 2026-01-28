@@ -36,8 +36,8 @@ def test_load_image_fallback_returns_tuple(tmp_path: Path) -> None:
     assert reader_used == "bioio"  # Should always use bioio now
 
 
-def test_load_image_fallback_raises_on_bioimage_error(tmp_path: Path) -> None:
-    """Test that load_image_fallback raises when BioImage fails (no tifffile fallback)."""
+def test_load_image_fallback_tries_fallbacks_on_bioimage_error(tmp_path: Path) -> None:
+    """Test that load_image_fallback uses fallback readers when BioImage fails."""
     from bioimage_mcp_base.utils import load_image_fallback
 
     test_data = np.zeros((10, 10), dtype=np.uint8)
@@ -52,9 +52,13 @@ def test_load_image_fallback_raises_on_bioimage_error(tmp_path: Path) -> None:
     with patch("bioimage_mcp_base.utils.BioImage") as mock_bioimage:
         mock_bioimage.side_effect = Exception("BioImage error")
 
-        # Should raise since we removed tifffile fallback
-        try:
-            load_image_fallback(test_path)
-            assert False, "Expected Exception to be raised"
-        except Exception as e:
-            assert "BioImage error" in str(e)
+        data, warnings, reader_used = load_image_fallback(test_path)
+
+        assert data is not None
+        assert any(w.get("code") == "BIOIMAGE_FALLBACK" for w in warnings)
+        assert reader_used in {
+            "bioio+ome-tiff-reader",
+            "bioio+tifffile-reader",
+            "bioio+bioformats-reader",
+            "tifffile",
+        }

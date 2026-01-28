@@ -19,21 +19,45 @@ def test_interactive_retry_canonical(tmp_path: Path, monkeypatch) -> None:
     state_file = tmp_path / "state.txt"
     entrypoint.write_text(
         f"""
-import sys
 import json
+import sys
 from pathlib import Path
 
 state_file = Path("{state_file}")
-if not state_file.exists():
-    state_file.write_text("1")
-    sys.exit(1)
-else:
-    resp = {{
-      'ok': True,
-      'outputs': {{}},
-      'log': 'success'
-    }}
-    print(json.dumps(resp))
+
+print(json.dumps({{'command': 'ready', 'version': '0.1'}}), flush=True)
+
+for line in sys.stdin:
+    if not line.strip():
+        continue
+    req = json.loads(line)
+    if req.get('command') != 'execute':
+        resp = {{
+            'command': 'execute_result',
+            'ok': False,
+            'ordinal': req.get('ordinal'),
+            'error': {{'code': 'bad_command', 'message': 'unsupported command'}},
+        }}
+        print(json.dumps(resp), flush=True)
+        continue
+
+    if not state_file.exists():
+        state_file.write_text('1')
+        resp = {{
+            'command': 'execute_result',
+            'ok': False,
+            'ordinal': req.get('ordinal'),
+            'error': {{'code': 'tool_failed', 'message': 'transient failure'}},
+        }}
+    else:
+        resp = {{
+            'command': 'execute_result',
+            'ok': True,
+            'ordinal': req.get('ordinal'),
+            'outputs': {{}},
+            'log': 'success',
+        }}
+    print(json.dumps(resp), flush=True)
 """.lstrip()
     )
 

@@ -138,7 +138,11 @@ def test_mcp_test_client_list_and_search(mcp_services) -> None:
 
     search_result = client.search_functions("rename")
     fn_ids = [fn["id"] for fn in search_result["results"]]
-    assert "base.xarray.rename" in fn_ids
+    assert any("rename" in fn_id for fn_id in fn_ids)
+    assert any(
+        fn_id in {"base.xarray.DataArray.rename", "base.pandas.DataFrame.rename"}
+        for fn_id in fn_ids
+    )
 
 
 def test_mcp_test_client_call_tool_uses_mock_and_tracks_context(mcp_services) -> None:

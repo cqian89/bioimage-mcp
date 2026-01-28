@@ -84,7 +84,7 @@ def test_session_replay_basic(session_service, tmp_path):
     resp = service.replay_session(req)
 
     assert resp.run_id == "run-replay-1"
-    assert resp.status == "completed"
+    assert resp.status == "success"
     # Verify execution_service was called with mapped inputs
     call_args = execution_service.run_workflow.call_args[0][0]
     assert call_args["steps"][0]["inputs"]["image"]["ref_id"] == "new-ref-123"

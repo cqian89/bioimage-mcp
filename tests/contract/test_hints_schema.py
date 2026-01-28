@@ -89,10 +89,10 @@ def test_output_description_schema() -> None:
 def test_next_step_hint_schema() -> None:
     schema = NextStepHint.model_json_schema()
 
-    assert set(schema.get("required", [])) == {"fn_id", "reason"}
+    assert set(schema.get("required", [])) == {"reason"}
 
     props = schema.get("properties", {})
-    for field in ["fn_id", "reason", "required_inputs"]:
+    for field in ["id", "fn_id", "reason", "required_inputs"]:
         assert field in props
 
     required_inputs_schema = props["required_inputs"]
@@ -108,10 +108,10 @@ def test_next_step_hint_schema() -> None:
 def test_suggested_fix_schema() -> None:
     schema = SuggestedFix.model_json_schema()
 
-    assert set(schema.get("required", [])) == {"fn_id", "params", "explanation"}
+    assert set(schema.get("required", [])) == {"params", "explanation"}
 
     props = schema.get("properties", {})
-    for field in ["fn_id", "params", "explanation"]:
+    for field in ["id", "fn_id", "params", "explanation"]:
         assert field in props
 
     assert props["params"]["type"] == "object"

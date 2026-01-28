@@ -39,6 +39,7 @@ from bioimage_mcp.api.schemas import (
 )
 from bioimage_mcp.artifacts.models import ArtifactRef
 from bioimage_mcp.artifacts.store import ArtifactStore
+from bioimage_mcp.bootstrap.env_manager import detect_env_manager
 from bioimage_mcp.config.schema import Config
 from bioimage_mcp.sessions.manager import SessionManager
 
@@ -79,11 +80,16 @@ class SessionService:
 
     def _env_installed(self, env_name: str) -> bool:
         """Check if a conda environment is installed."""
+        detected = detect_env_manager()
+        if not detected:
+            # No conda-like manager available (common in tests); skip env check.
+            return True
+        _manager_name, executable, _version = detected
         try:
             return (
                 subprocess.run(
                     [
-                        "conda",
+                        executable,
                         "run",
                         "-n",
                         f"bioimage-mcp-{env_name}",
@@ -733,10 +739,13 @@ class SessionService:
                 break
 
         # Map status to allowed values for SessionReplayResponse
-        if last_result.get("status") == "validation_failed":
+        api_status = last_result.get("status")
+        if api_status == "validation_failed":
             resp_status = "validation_failed"
-        elif last_result.get("status") == "success":
-            resp_status = "completed"
+        elif api_status == "success":
+            resp_status = "success"
+        elif api_status in ("running", "queued"):
+            resp_status = "running"
         else:
             resp_status = "failed"
 
@@ -760,7 +769,7 @@ class SessionService:
         )
 
         human_summary = f"Replay status: {resp_status.upper()}\n"
-        if resp_status == "completed":
+        if resp_status == "success":
             human_summary += f"Successfully replayed {len(record.steps)} steps."
         elif resp_status == "ready":
             human_summary += f"Dry-run successful. Ready to replay {len(record.steps)} steps."

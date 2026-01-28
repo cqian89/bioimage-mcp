@@ -5,11 +5,14 @@ Run with: conda run -n bioimage-mcp-cellpose pytest tests/integration/test_cellp
 """
 
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 
 # Skip entire module if cellpose not available
 cellpose = pytest.importorskip("cellpose")
+if isinstance(cellpose, MagicMock):
+    pytest.skip("Cellpose is mocked; skipping integration test", allow_module_level=True)
 
 
 class TestCellposeAdapterE2E:
@@ -22,6 +25,12 @@ class TestCellposeAdapterE2E:
         sample = Path("datasets/FLUTE_FLIM_data_tif/hMSC control.tif")
         if not sample.exists():
             pytest.skip(f"Sample image not found: {sample}")
+        try:
+            from bioio import BioImage
+
+            BioImage(sample)
+        except Exception as exc:  # noqa: BLE001
+            pytest.skip(f"Sample image could not be read: {exc}")
         return sample
 
     @pytest.fixture

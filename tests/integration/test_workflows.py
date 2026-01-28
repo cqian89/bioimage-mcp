@@ -256,6 +256,10 @@ class TestSessionReplayObjectRef:
             "bioimage_mcp.api.sessions.SessionService._function_exists",
             lambda self, fn_id: True,
         )
+        monkeypatch.setattr(
+            'bioimage_mcp.api.sessions.SessionService._env_installed',
+            lambda self, env_name: True,
+        )
 
         return interactive_service, execution_service, artifact_store
 
@@ -278,6 +282,7 @@ class TestSessionReplayObjectRef:
                                 "type": "ObjectRef",
                                 "ref_id": "obj-123",
                                 "uri": "obj://session/env/obj-123",
+                                "storage_type": "memory",
                                 "python_class": "test.MyModel",
                                 "metadata": {"init_params": {"arg1": "val1"}},
                                 "format": "pickle",
@@ -302,6 +307,7 @@ class TestSessionReplayObjectRef:
                                 "type": "ObjectRef",
                                 "ref_id": "obj-123",
                                 "uri": "obj://session/env/obj-123",
+                                "storage_type": "memory",
                                 "python_class": py_class,
                                 "metadata": {"init_params": init_params},
                             }
@@ -399,6 +405,7 @@ class TestSessionReplayObjectRef:
                                 "type": "ObjectRef",
                                 "ref_id": "obj-456",
                                 "uri": "obj://session/env/obj-456",
+                                "storage_type": "memory",
                                 "python_class": "test.SpecialModel",
                                 "metadata": {"init_params": {"x": 10}},
                                 "format": "pickle",
@@ -420,6 +427,7 @@ class TestSessionReplayObjectRef:
                                 "type": "ObjectRef",
                                 "ref_id": "obj-456",
                                 "uri": "obj://session/env/obj-456",
+                                "storage_type": "memory",
                                 "python_class": class_ctx.get("python_class"),
                                 "metadata": {"init_params": class_ctx.get("init_params")},
                             }
@@ -521,6 +529,10 @@ class TestGPUReplay:
             "bioimage_mcp.api.sessions.SessionService._function_exists",
             lambda self, fn_id: True,
         )
+        monkeypatch.setattr(
+            'bioimage_mcp.api.sessions.SessionService._env_installed',
+            lambda self, env_name: True,
+        )
 
         return interactive_service, execution_service
 
@@ -560,6 +572,7 @@ class TestGPUReplay:
                                 "type": "ObjectRef",
                                 "ref_id": "gpu-model",
                                 "uri": "obj://s/e/gpu-model",
+                                "storage_type": "memory",
                                 "python_class": "cellpose.models.CellposeModel",
                                 "metadata": {
                                     "init_params": {"model_type": "cyto3", "gpu": True},
@@ -580,6 +593,7 @@ class TestGPUReplay:
                                 "type": "ObjectRef",
                                 "ref_id": "gpu-model",
                                 "uri": "obj://s/e/gpu-model",
+                                "storage_type": "memory",
                                 "python_class": "cellpose.models.CellposeModel",
                                 "metadata": {
                                     "init_params": {"model_type": "cyto3", "gpu": True},

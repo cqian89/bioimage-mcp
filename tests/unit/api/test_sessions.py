@@ -202,19 +202,21 @@ def test_replay_session_environment_missing(session_service):
 
     request = SessionReplayRequest(workflow_ref=workflow_ref, inputs={})
 
-    # Mock subprocess.run to simulate missing environment
-    with patch("subprocess.run") as mock_run:
-        mock_run.return_value = MagicMock(returncode=1)
+    # Mock env detection and subprocess.run to simulate missing environment
+    with patch("bioimage_mcp.api.sessions.detect_env_manager") as mock_detect:
+        mock_detect.return_value = ("conda", "conda", None)
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=1)
 
-        # Act
-        response = session_service.replay_session(request)
+            # Act
+            response = session_service.replay_session(request)
 
-        # Assert
-        assert response.status == "validation_failed"
-        assert response.error.code == "ENVIRONMENT_MISSING"
-        assert response.installable is not None
-        assert response.installable.env_name == "missing-env"
-        assert "bioimage-mcp install missing-env" in response.installable.command
+            # Assert
+            assert response.status == "validation_failed"
+            assert response.error.code == "ENVIRONMENT_MISSING"
+            assert response.installable is not None
+            assert response.installable.env_name == "missing-env"
+            assert "bioimage-mcp install missing-env" in response.installable.command
 
 
 def test_replay_session_function_not_found(session_service):
@@ -245,20 +247,22 @@ def test_replay_session_function_not_found(session_service):
 
     request = SessionReplayRequest(workflow_ref=workflow_ref, inputs={})
 
-    # Mock subprocess.run to simulate existing environment
-    with patch("subprocess.run") as mock_run:
-        mock_run.return_value = MagicMock(returncode=0)
+    # Mock env detection and subprocess.run to simulate existing environment
+    with patch("bioimage_mcp.api.sessions.detect_env_manager") as mock_detect:
+        mock_detect.return_value = ("conda", "conda", None)
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0)
 
-        # Mock _function_exists to return False
-        session_service._function_exists = MagicMock(return_value=False)
+            # Mock _function_exists to return False
+            session_service._function_exists = MagicMock(return_value=False)
 
-        # Act
-        response = session_service.replay_session(request)
+            # Act
+            response = session_service.replay_session(request)
 
-        # Assert
-        assert response.status == "validation_failed"
-        assert response.error.code == "NOT_FOUND"
-        assert "Function 'existing-env.missing-fn' not found" in response.error.message
+            # Assert
+            assert response.status == "validation_failed"
+            assert response.error.code == "NOT_FOUND"
+            assert "Function 'existing-env.missing-fn' not found" in response.error.message
 
 
 def test_replay_session_progress(session_service):
@@ -292,20 +296,22 @@ def test_replay_session_progress(session_service):
 
     request = SessionReplayRequest(workflow_ref=workflow_ref, inputs={})
 
-    with patch("subprocess.run") as mock_run:
-        mock_run.return_value = MagicMock(returncode=0)
+    with patch("bioimage_mcp.api.sessions.detect_env_manager") as mock_detect:
+        mock_detect.return_value = ("conda", "conda", None)
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0)
 
-        # Act
-        response = session_service.replay_session(request)
+            # Act
+            response = session_service.replay_session(request)
 
-        # Assert
-        assert response.status == "completed"
-        assert len(response.step_progress) == 2
-        assert response.step_progress[0].step_index == 0
-        assert response.step_progress[0].status == "success"
-        assert response.step_progress[1].step_index == 1
-        assert response.step_progress[1].status == "success"
-        assert "art-1" in response.outputs["output"].ref_id
+            # Assert
+            assert response.status == "success"
+            assert len(response.step_progress) == 2
+            assert response.step_progress[0].step_index == 0
+            assert response.step_progress[0].status == "success"
+            assert response.step_progress[1].step_index == 1
+            assert response.step_progress[1].status == "success"
+            assert "art-1" in response.outputs["output"].ref_id
 
 
 def test_replay_session_dry_run(session_service):
@@ -329,18 +335,20 @@ def test_replay_session_dry_run(session_service):
 
     request = SessionReplayRequest(workflow_ref=workflow_ref, inputs={}, dry_run=True)
 
-    with patch("subprocess.run") as mock_run:
-        mock_run.return_value = MagicMock(returncode=0)
+    with patch("bioimage_mcp.api.sessions.detect_env_manager") as mock_detect:
+        mock_detect.return_value = ("conda", "conda", None)
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0)
 
-        # Act
-        response = session_service.replay_session(request)
+            # Act
+            response = session_service.replay_session(request)
 
-        # Assert
-        assert response.status == "ready"
-        assert len(response.step_progress) == 1
-        assert response.step_progress[0].status == "pending"
-        # Verify no execution occurred
-        session_service.execution_service.run_workflow.assert_not_called()
+            # Assert
+            assert response.status == "ready"
+            assert len(response.step_progress) == 1
+            assert response.step_progress[0].status == "pending"
+            # Verify no execution occurred
+            session_service.execution_service.run_workflow.assert_not_called()
 
 
 def test_replay_session_tool_warnings(session_service):
@@ -369,16 +377,18 @@ def test_replay_session_tool_warnings(session_service):
 
     request = SessionReplayRequest(workflow_ref=workflow_ref, inputs={})
 
-    with patch("subprocess.run") as mock_run:
-        mock_run.return_value = MagicMock(returncode=0)
+    with patch("bioimage_mcp.api.sessions.detect_env_manager") as mock_detect:
+        mock_detect.return_value = ("conda", "conda", None)
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0)
 
-        # Act
-        response = session_service.replay_session(request)
+            # Act
+            response = session_service.replay_session(request)
 
-        # Assert
-        assert len(response.warnings) == 1
-        assert response.warnings[0].source == "tool"
-        assert "Low contrast" in response.warnings[0].message
+            # Assert
+            assert len(response.warnings) == 1
+            assert response.warnings[0].source == "tool"
+            assert "Low contrast" in response.warnings[0].message
 
 
 def test_replay_session_missing_inputs(session_service):
@@ -405,18 +415,20 @@ def test_replay_session_missing_inputs(session_service):
     # Request with missing 'input-1'
     request = SessionReplayRequest(workflow_ref=workflow_ref, inputs={})
 
-    with patch("subprocess.run") as mock_run:
-        mock_run.return_value = MagicMock(returncode=0)
+    with patch("bioimage_mcp.api.sessions.detect_env_manager") as mock_detect:
+        mock_detect.return_value = ("conda", "conda", None)
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0)
 
-        # Act
-        response = session_service.replay_session(request)
+            # Act
+            response = session_service.replay_session(request)
 
-        # Assert
-        assert response.status == "validation_failed"
-        assert response.error.code == "INPUT_MISSING"
-        assert len(response.error.details) == 1
-        assert response.error.details[0].path == "/inputs/input-1"
-        assert "input-1" in response.human_summary
+            # Assert
+            assert response.status == "validation_failed"
+            assert response.error.code == "INPUT_MISSING"
+            assert len(response.error.details) == 1
+            assert response.error.details[0].path == "/inputs/input-1"
+            assert "input-1" in response.human_summary
 
 
 def test_replay_session_resume(session_service):
@@ -464,18 +476,20 @@ def test_replay_session_resume(session_service):
         workflow_ref=workflow_ref, inputs={}, resume_session_id=replay_session_id
     )
 
-    with patch("subprocess.run") as mock_run:
-        mock_run.return_value = MagicMock(returncode=0)
+    with patch("bioimage_mcp.api.sessions.detect_env_manager") as mock_detect:
+        mock_detect.return_value = ("conda", "conda", None)
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0)
 
-        # Act
-        response = session_service.replay_session(request)
+            # Act
+            response = session_service.replay_session(request)
 
-        # Assert
-        assert response.status == "completed"
-        assert len(response.step_progress) == 2
-        assert response.step_progress[0].status == "skipped"
-        assert response.step_progress[1].status == "success"
-        assert response.step_progress[1].fn_id == "test.fn2"
+            # Assert
+            assert response.status == "success"
+            assert len(response.step_progress) == 2
+            assert response.step_progress[0].status == "skipped"
+            assert response.step_progress[1].status == "success"
+            assert response.step_progress[1].fn_id == "test.fn2"
 
-        # Verify execution_service.run_workflow was only called once (for step 1)
-        assert session_service.execution_service.run_workflow.call_count == 1
+            # Verify execution_service.run_workflow was only called once (for step 1)
+            assert session_service.execution_service.run_workflow.call_count == 1

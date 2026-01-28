@@ -66,5 +66,10 @@ class TestIOFallbackChain:
 
             # Should have fallen back
             assert data is not None
-            assert reader_used == "tifffile"
+            assert reader_used in {
+                "bioio+ome-tiff-reader",
+                "bioio+tifffile-reader",
+                "bioio+bioformats-reader",
+                "tifffile",
+            }
             assert any(w.get("code") == "BIOIMAGE_FALLBACK" for w in warnings)

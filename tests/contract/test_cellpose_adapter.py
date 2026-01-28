@@ -1,34 +1,41 @@
 import sys
 from unittest.mock import MagicMock, patch
 
-# Mock cellpose before importing the adapter if not present
-try:
-    import cellpose  # noqa: F401
-except ImportError:
-    mock_cellpose = MagicMock()
-    mock_cellpose_models = MagicMock()
-    mock_cellpose.models = mock_cellpose_models
-    sys.modules["cellpose"] = mock_cellpose
-    sys.modules["cellpose.models"] = mock_cellpose_models
-
-    # Mock CellposeModel.eval for introspection
-    def mock_eval(self, x, diameter=30.0, channels=None):
-        """Mock eval function for introspection."""
-        pass
-
-    mock_cellpose_models.CellposeModel.eval = mock_eval
-
-from bioimage_mcp.registry.dynamic.adapters import ADAPTER_REGISTRY
-from bioimage_mcp.registry.dynamic.models import IOPattern
+import pytest
 
 
-def test_cellpose_adapter_registered():
+@pytest.fixture
+def ensure_cellpose(monkeypatch):
+    """Ensure cellpose module is present for adapter discovery tests."""
+    try:
+        import cellpose  # noqa: F401
+
+        return cellpose
+    except ImportError:
+        mock_cellpose = MagicMock()
+        mock_cellpose_models = MagicMock()
+        mock_cellpose.models = mock_cellpose_models
+
+        # Mock CellposeModel.eval for introspection
+        def mock_eval(self, x, diameter=30.0, channels=None):
+            """Mock eval function for introspection."""
+            pass
+
+        mock_cellpose_models.CellposeModel.eval = mock_eval
+
+        monkeypatch.setitem(sys.modules, "cellpose", mock_cellpose)
+        monkeypatch.setitem(sys.modules, "cellpose.models", mock_cellpose_models)
+
+        return mock_cellpose
+
+
+def test_cellpose_adapter_registered(ensure_cellpose):
     """Cellpose adapter is registered."""
     # We mocked it above if it was missing, so it should be registered now
     # but wait, the registration happened when bioimage_mcp.registry.dynamic.adapters was imported
     # if it was imported before we mocked cellpose, it might not be there.
     # So we force re-population for the test.
-    from bioimage_mcp.registry.dynamic.adapters import _populate_default_adapters
+    from bioimage_mcp.registry.dynamic.adapters import ADAPTER_REGISTRY, _populate_default_adapters
 
     # Reset registry to force re-population
     ADAPTER_REGISTRY.clear()
@@ -37,9 +44,10 @@ def test_cellpose_adapter_registered():
     assert "cellpose" in ADAPTER_REGISTRY
 
 
-def test_cellpose_adapter_discover():
+def test_cellpose_adapter_discover(ensure_cellpose):
     """CellposeAdapter discovers eval function."""
     from bioimage_mcp.registry.dynamic.adapters.cellpose import CellposeAdapter
+    from bioimage_mcp.registry.dynamic.models import IOPattern
 
     adapter = CellposeAdapter()
 
@@ -62,16 +70,17 @@ def test_cellpose_adapter_discover():
         assert "model_type" in eval_meta.parameters
 
 
-def test_cellpose_adapter_io_pattern():
+def test_cellpose_adapter_io_pattern(ensure_cellpose):
     """eval maps to IMAGE_TO_LABELS pattern."""
     from bioimage_mcp.registry.dynamic.adapters.cellpose import CellposeAdapter
+    from bioimage_mcp.registry.dynamic.models import IOPattern
 
     adapter = CellposeAdapter()
     pattern = adapter.resolve_io_pattern("eval", None)
     assert pattern == IOPattern.IMAGE_TO_LABELS
 
 
-def test_cellpose_adapter_dimension_hints():
+def test_cellpose_adapter_dimension_hints(ensure_cellpose):
     """eval returns appropriate dimension hints."""
     from bioimage_mcp.registry.dynamic.adapters.cellpose import CellposeAdapter
 
@@ -85,7 +94,7 @@ def test_cellpose_adapter_dimension_hints():
     assert "X" in hints.expected_axes
 
 
-def test_cellpose_adapter_execute_logic():
+def test_cellpose_adapter_execute_logic(ensure_cellpose):
     """Test execute logic by mocking run_segment."""
     from bioimage_mcp.artifacts.base import Artifact
     from bioimage_mcp.registry.dynamic.adapters.cellpose import CellposeAdapter

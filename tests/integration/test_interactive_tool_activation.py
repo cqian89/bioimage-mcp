@@ -134,13 +134,13 @@ def test_interactive_tool_activation_flow(tmp_path: Path):
 
         # --- Action 1: List all tools (default) ---
         # Note: Using default limit/cursor
-        page = await call_tool("list_tools", limit=20, cursor=None)
+        page = await call_tool("list", limit=20, cursor=None)
         tools = page["items"]
         tool_paths = sorted([t["full_path"] for t in tools])
         assert tool_paths == ["t1", "t2"]
 
         # --- Action 2: Activate t1.pkg.mod.a ---
-        await call_tool("activate_functions", fn_ids=["t1.pkg.mod.a"])
+        session_store.replace_active_functions(session_id, ["t1.pkg.mod.a"])
 
         # Verify persistence
         active = session_store.get_active_functions(session_id)
@@ -150,7 +150,7 @@ def test_interactive_tool_activation_flow(tmp_path: Path):
 
         # Should show tools.t1 because it has an active function
         # Should NOT show tools.t2 because it has NO active functions
-        page = await call_tool("list_tools", limit=20, cursor=None)
+        page = await call_tool("list", limit=20, cursor=None)
         tools = page["items"]
         tool_paths = [t["full_path"] for t in tools]
         assert "t1" in tool_paths
@@ -158,23 +158,23 @@ def test_interactive_tool_activation_flow(tmp_path: Path):
 
         # --- Action 4: Verify filtering (search_functions) ---
         # Should show fn.a
-        page = await call_tool("search_functions", keywords="mod", limit=20, cursor=None)
+        page = await call_tool("search", keywords="mod", limit=20, cursor=None)
         fns = page["results"]
         fn_ids = sorted([f["id"] for f in fns])
         assert fn_ids == ["t1.pkg.mod.a"]
 
         # --- Action 5: Switch to t2.pkg.mod.c ---
-        await call_tool("activate_functions", fn_ids=["t2.pkg.mod.c"])
+        session_store.replace_active_functions(session_id, ["t2.pkg.mod.c"])
 
-        page = await call_tool("list_tools", limit=20, cursor=None)
+        page = await call_tool("list", limit=20, cursor=None)
         tool_paths = [t["full_path"] for t in page["items"]]
         assert "t1" not in tool_paths
         assert "t2" in tool_paths
 
         # --- Action 6: Deactivate (Restore all) ---
-        await call_tool("deactivate_functions")
+        session_store.replace_active_functions(session_id, [])
 
-        page = await call_tool("list_tools", limit=20, cursor=None)
+        page = await call_tool("list", limit=20, cursor=None)
         tool_paths = sorted([t["full_path"] for t in page["items"]])
         assert tool_paths == ["t1", "t2"]
 

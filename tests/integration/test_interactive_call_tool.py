@@ -23,20 +23,37 @@ def test_interactive_call_tool_success_flow(tmp_path: Path, monkeypatch) -> None
 import json
 import sys
 
-req = json.loads(sys.stdin.read() or '{}')
-resp = {
-  'ok': True,
-  'outputs': {
-    'output': {
-      'type': 'LogRef',
-      'format': 'text',
-      'path': req.get('work_dir', '.') + '/out.txt',
-      'content': 'hello interactive',
+print(json.dumps({'command': 'ready', 'version': '0.1'}), flush=True)
+
+for line in sys.stdin:
+    if not line.strip():
+        continue
+    req = json.loads(line)
+    if req.get('command') != 'execute':
+        resp = {
+            'command': 'execute_result',
+            'ok': False,
+            'ordinal': req.get('ordinal'),
+            'error': {'code': 'bad_command', 'message': 'unsupported command'},
+        }
+        print(json.dumps(resp), flush=True)
+        continue
+
+    resp = {
+        'command': 'execute_result',
+        'ok': True,
+        'ordinal': req.get('ordinal'),
+        'outputs': {
+            'output': {
+                'type': 'LogRef',
+                'format': 'text',
+                'path': req.get('work_dir', '.') + '/out.txt',
+                'content': 'hello interactive',
+            }
+        },
+        'log': 'ran interactive ok',
     }
-  },
-  'log': 'ran interactive ok'
-}
-print(json.dumps(resp))
+    print(json.dumps(resp), flush=True)
 """.lstrip()
     )
 

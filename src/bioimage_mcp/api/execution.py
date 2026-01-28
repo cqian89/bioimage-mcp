@@ -125,8 +125,9 @@ def _get_input_storage_requirements(
     """Get supported storage types for each input from manifest hints."""
     manifests, _diagnostics = load_manifests(config.tool_manifest_roots)
     for manifest in manifests:
+        env_prefix = _env_prefix_from_tool_id(manifest.tool_id)
         for fn in manifest.functions:
-            if fn.fn_id == fn_id and fn.hints:
+            if _matches_fn_id(fn_id, fn.fn_id, env_prefix) and fn.hints:
                 return {
                     name: req.supported_storage_types or ["file", "zarr-temp"]
                     for name, req in (fn.hints.inputs or {}).items()
@@ -141,18 +142,39 @@ def _needs_materialization(artifact_ref: dict, supported_types: list[str]) -> bo
     return storage_type == "zarr-temp" and "zarr-temp" not in supported_types
 
 
+def _env_prefix_from_tool_id(tool_id: str | None) -> str | None:
+    if not tool_id:
+        return None
+    if tool_id.startswith("tools."):
+        return tool_id.split(".", 1)[1]
+    return tool_id
+
+
+def _matches_fn_id(fn_id: str, candidate: str, env_prefix: str | None) -> bool:
+    if candidate == fn_id:
+        return True
+    if env_prefix and candidate.startswith(f"{env_prefix}."):
+        return candidate[len(env_prefix) + 1 :] == fn_id
+    return False
+
+
 def _get_function_metadata(config: Config, fn_id: str) -> tuple[Any, Any] | tuple[None, None]:
     """Find manifest and function definition (or overlay) for a given fn_id."""
     manifests, _ = load_manifests(config.tool_manifest_roots)
     for manifest in manifests:
+        env_prefix = _env_prefix_from_tool_id(manifest.tool_id)
         # 1. Check explicit functions
         for fn in manifest.functions:
-            if fn.fn_id == fn_id:
+            if _matches_fn_id(fn_id, fn.fn_id, env_prefix):
                 return manifest, fn
 
         # 2. Check overlays (for dynamic functions) (T048)
         if fn_id in manifest.function_overlays:
             return manifest, manifest.function_overlays[fn_id]
+        if env_prefix:
+            prefixed_id = f"{env_prefix}.{fn_id}"
+            if prefixed_id in manifest.function_overlays:
+                return manifest, manifest.function_overlays[prefixed_id]
 
         # 3. Check dynamic source prefixes
         if any(
@@ -271,8 +293,9 @@ def _get_function_ports(
 
     for fn_id in fn_ids:
         for manifest in manifests:
+            env_prefix = _env_prefix_from_tool_id(manifest.tool_id)
             for fn in manifest.functions:
-                if fn.fn_id == fn_id:
+                if _matches_fn_id(fn_id, fn.fn_id, env_prefix):
                     result[fn_id] = {
                         "inputs": [
                             {
@@ -293,6 +316,8 @@ def _get_function_ports(
                         ],
                     }
                     break
+            if fn_id in result:
+                break
 
     return result
 
@@ -436,8 +461,9 @@ class ExecutionService:
         """Load hints for a function from its manifest."""
         manifests, _diagnostics = load_manifests(self._config.tool_manifest_roots)
         for manifest in manifests:
+            env_prefix = _env_prefix_from_tool_id(manifest.tool_id)
             for fn in manifest.functions:
-                if fn.fn_id == fn_id:
+                if _matches_fn_id(fn_id, fn.fn_id, env_prefix):
                     return fn.hints.model_dump() if fn.hints else None
         return None
 
@@ -445,8 +471,9 @@ class ExecutionService:
         """Find the environment ID for a given function."""
         manifests, _ = load_manifests(self._config.tool_manifest_roots)
         for manifest in manifests:
+            env_prefix = _env_prefix_from_tool_id(manifest.tool_id)
             # Check explicit functions
-            if any(f.fn_id == fn_id for f in manifest.functions):
+            if any(_matches_fn_id(fn_id, f.fn_id, env_prefix) for f in manifest.functions):
                 return manifest.env_id
             # Check dynamic sources
             if any(
@@ -550,6 +577,7 @@ class ExecutionService:
                 "run_id": "none",
                 "status": "validation_failed",
                 "id": "none",
+                "outputs": {},
                 "error": validation_error(
                     message="Workflow must have at least one step",
                     path="/steps",
@@ -565,6 +593,7 @@ class ExecutionService:
                 "run_id": "none",
                 "status": "validation_failed",
                 "id": steps[0].get("fn_id", "unknown"),
+                "outputs": {},
                 "error": validation_error(
                     message="v0.0 supports exactly 1 step",
                     path="/steps",
@@ -587,6 +616,7 @@ class ExecutionService:
                     "run_id": "none",
                     "status": "validation_failed",
                     "id": fn_id,
+                    "outputs": {},
                     "error": {
                         "code": "VALIDATION_FAILED",
                         "message": f"Workflow validation failed: {len(validation_errors)} error(s)",
@@ -1196,12 +1226,13 @@ class ExecutionService:
             run = self._run_store.get(run_id)
         except KeyError:
             return {
+                "status": "failed",
                 "error": not_found_error(
                     message=f"Run not found: {run_id}",
                     path="/run_id",
                     expected="valid run ID",
                     hint="Ensure the run_id is correct and from a recent execution",
-                ).model_dump()
+                ).model_dump(),
             }
 
         log_ref = self._artifact_store.get(run.log_ref_id) if run.log_ref_id else None

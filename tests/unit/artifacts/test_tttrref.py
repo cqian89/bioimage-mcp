@@ -57,7 +57,17 @@ class TestTTTRRefValidation:
 
     @pytest.mark.parametrize(
         "valid_format",
-        ["PTU", "HT3", "SPC-130", "SPC-630_256", "SPC-630_4096", "PHOTON-HDF5", "CZ-RAW", "SM"],
+        [
+            "PTU",
+            "HT3",
+            "SPC-130",
+            "SPC-630_256",
+            "SPC-630_4096",
+            "PHOTON-HDF5",
+            "HDF",
+            "CZ-RAW",
+            "SM",
+        ],
     )
     def test_valid_tttr_formats(self, valid_format):
         """Test TTTRRef with each valid format."""
@@ -66,7 +76,10 @@ class TestTTTRRefValidation:
             uri=f"file:///data/sample.{valid_format.lower()}",
             format=valid_format,
         )
-        assert ref.format == valid_format
+        if valid_format == "HDF":
+            assert ref.format == "PHOTON-HDF5"
+        else:
+            assert ref.format == valid_format
 
     def test_invalid_tttr_format(self):
         """Test TTTRRef rejects invalid formats."""

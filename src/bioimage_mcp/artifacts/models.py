@@ -112,6 +112,26 @@ class ArtifactRef(BaseModel):
         """Check if artifact is memory-backed."""
         return self.uri.startswith("mem://")
 
+    @property
+    def ndim(self) -> int | None:
+        """Expose ndim from metadata when present."""
+        return self.metadata.get("ndim")
+
+    @property
+    def dims(self) -> list[str] | None:
+        """Expose dims from metadata when present."""
+        return self.metadata.get("dims")
+
+    @property
+    def shape(self) -> list[int] | None:
+        """Expose shape from metadata when present."""
+        return self.metadata.get("shape")
+
+    @property
+    def dtype(self) -> str | None:
+        """Expose dtype from metadata when present."""
+        return self.metadata.get("dtype")
+
     @classmethod
     def now(cls) -> str:
         return datetime.now(UTC).isoformat()
@@ -292,8 +312,22 @@ class TTTRRef(ArtifactRef):
     type: Literal["TTTRRef"] = "TTTRRef"
     format: (
         Literal[
-            "PTU", "HT3", "SPC-130", "SPC-630_256", "SPC-630_4096", "PHOTON-HDF5", "CZ-RAW", "SM"
+            "PTU",
+            "HT3",
+            "SPC-130",
+            "SPC-630_256",
+            "SPC-630_4096",
+            "PHOTON-HDF5",
+            "HDF",
+            "CZ-RAW",
+            "SM",
         ]
         | None
     ) = None
     metadata: TTTRMetadata = Field(default_factory=TTTRMetadata)
+
+    @model_validator(mode="after")
+    def normalize_format_aliases(self) -> TTTRRef:
+        if self.format == "HDF":
+            self.format = "PHOTON-HDF5"
+        return self
