@@ -44,12 +44,30 @@ Plans:
 ### Phase 13: Dynamic Introspection Cache Reuse (incl. trackpy)
 
 **Goal:** Reuse dynamic introspection results across meta.list calls via a lockfile-gated cache stored under ~/.bioimage-mcp/cache/dynamic/, including trackpy.
+**Status:** Complete (2026-01-28)
 **Depends on:** Phase 12
+**Plans:** 2/2 plans complete
+
+Plans:
+- [x] 13-01-PLAN.md — Wire IntrospectionCache into tools.base meta.list + tests
+- [x] 13-02-PLAN.md — Add trackpy cache reuse via IntrospectionCache + tests
+
+### Phase 14: OME-Zarr Standardization
+
+**Goal:** Standardize OME-Zarr as the primary interchange format and fix directory-backed artifact materialization.
+**Status:** Planning
+**Depends on:** Phase 13
 **Plans:** 2 plans
 
 Plans:
-- [ ] 13-01-PLAN.md — Wire IntrospectionCache into tools.base meta.list + tests
-- [ ] 13-02-PLAN.md — Add trackpy cache reuse via IntrospectionCache + tests
+- [ ] 14-01-PLAN.md — Standardize on OME-Zarr and Fix Directory Materialization
+- [ ] 14-02-PLAN.md — Update tttrlib/Cellpose for OME-Zarr + custom axes
+
+**Details:**
+- Standardizes IOBridge default format to OME-Zarr.
+- Enables core server to import directory-backed artifacts (OME-Zarr).
+- Relax 5D/TCZYX constraints in tool packs.
+- Switches tttrlib decay outputs to OME-Zarr with native 'bins' axis.
 
 **Details:**
 [To be added during planning]
