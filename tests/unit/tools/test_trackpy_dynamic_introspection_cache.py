@@ -7,6 +7,10 @@ import yaml
 from bioimage_mcp_trackpy.entrypoint import handle_meta_list
 
 
+import os
+from pathlib import Path
+
+
 @pytest.fixture
 def mock_trackpy_manifest_path(tmp_path):
     manifest_dir = tmp_path / "tools" / "trackpy"
@@ -29,6 +33,94 @@ def mock_trackpy_manifest_path(tmp_path):
     }
     manifest_path.write_text(yaml.dump(manifest_data))
     return manifest_path
+
+
+@patch("bioimage_mcp_trackpy.entrypoint.TRACKPY_TOOL_ROOT")
+@patch("bioimage_mcp_trackpy.dynamic_discovery.introspect_module")
+@patch("pathlib.Path.home")
+def test_trackpy_handle_meta_list_project_root_heuristics(
+    mock_home, mock_introspect, mock_tool_root, mock_trackpy_manifest_path, tmp_path
+):
+    """Test real project_root detection via CWD and env var."""
+    mock_home.return_value = tmp_path / "home"
+    mock_tool_root.__truediv__.return_value = mock_trackpy_manifest_path
+
+    # Setup project structure
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    envs_dir = project_root / "envs"
+    envs_dir.mkdir()
+    lockfile = envs_dir / "bioimage-mcp-trackpy.lock.yml"
+    lockfile.write_text("lockfile content")
+
+    # Setup mock introspection
+    mock_introspect.return_value = [
+        {"fn_id": "tp.test", "name": "test", "io_pattern": "image_to_table", "module": "trackpy"}
+    ]
+
+    # 1. Test CWD heuristic
+    deep_dir = project_root / "a" / "b"
+    deep_dir.mkdir(parents=True)
+
+    old_cwd = os.getcwd()
+    os.chdir(deep_dir)
+    try:
+        # First call: cache miss, should write cache because project_root found via CWD
+        result = handle_meta_list({})
+        assert result["ok"] is True
+        assert mock_introspect.call_count == 1
+
+        cache_file = (
+            mock_home.return_value
+            / ".bioimage-mcp"
+            / "cache"
+            / "dynamic"
+            / "tools.trackpy"
+            / "introspection_cache.json"
+        )
+        assert cache_file.exists()
+
+        # Second call: cache hit
+        handle_meta_list({})
+        assert mock_introspect.call_count == 1
+    finally:
+        os.chdir(old_cwd)
+
+    # 2. Test Env Var override
+    external_dir = tmp_path / "external"
+    external_dir.mkdir()
+    os.chdir(external_dir)
+    try:
+        # Change lockfile to force re-introspection if it finds project_root
+        lockfile.write_text("new content")
+
+        # Without env var, it won't find project_root from external_dir
+        # And manifest_path is in tmp_path/tools/trackpy, it won't find project_root at tmp_path/project
+        result_no_env = handle_meta_list({})
+        assert result_no_env["ok"] is True
+        # Should NOT write cache (or rather, use empty hash), so it might introspect again
+        # Actually, discover_functions uses lockfile_hash="" if project_root not found.
+        # IntrospectionCache.put/get will use "" as lockfile_hash.
+        # But wait, discover_functions only uses cache if lockfile_hash is truthy?
+        # Let's check src/bioimage_mcp/registry/dynamic/discovery.py
+        # line 63: if cache and lockfile_hash:
+        # So it BYPASSES cache if lockfile_hash is empty. Correct.
+
+        # Set env var
+        with patch.dict(os.environ, {"BIOIMAGE_MCP_PROJECT_ROOT": str(project_root)}):
+            handle_meta_list({})
+            # Should have found project_root via env var.
+            # It's a new lockfile content, so it should introspect.
+            # mock_introspect.call_count was already incremented by result_no_env
+            current_count = mock_introspect.call_count
+            assert current_count == 3  # 1 (CWD) + 1 (no env) + 1 (env first)
+
+            # Next call with env var should hit cache
+            handle_meta_list({})
+            assert mock_introspect.call_count == current_count
+
+    finally:
+        os.chdir(old_cwd)
 
 
 @patch("bioimage_mcp_trackpy.entrypoint.TRACKPY_TOOL_ROOT")
