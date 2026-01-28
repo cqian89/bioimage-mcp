@@ -24,6 +24,10 @@ TRACKPY_TOOL_ROOT = BASE_DIR.parent
 if str(TRACKPY_TOOL_ROOT) not in sys.path:
     sys.path.insert(0, str(TRACKPY_TOOL_ROOT))
 
+REPO_ROOT = TRACKPY_TOOL_ROOT.parent.parent
+if str(REPO_ROOT / "src") not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT / "src"))
+
 
 from bioimage_mcp_trackpy.introspect import (
     TRACKPY_MODULES,
@@ -54,21 +58,73 @@ def _initialize_worker(session_id: str, env_id: str, work_dir: str | None = None
     _WORK_DIR.mkdir(parents=True, exist_ok=True)
 
 
+def _find_project_root(start: Path) -> Path | None:
+    """Find project root by looking for envs/ or pyproject.toml."""
+    curr = start
+    for _ in range(5):
+        if (curr / "envs").exists() or (curr / "pyproject.toml").exists():
+            return curr
+        curr = curr.parent
+    return None
+
+
 def handle_meta_list(params: dict) -> dict:
     """Out-of-process function discovery for trackpy."""
-    functions = []
-    for module_name in TRACKPY_MODULES:
-        module_funcs = introspect_module(module_name)
-        functions.extend(module_funcs)
+    import hashlib
 
-    return {
-        "ok": True,
-        "result": {
-            "functions": functions,
-            "tool_version": get_trackpy_version(),
-            "introspection_source": "module_scan",
-        },
-    }
+    import yaml
+
+    from bioimage_mcp.registry.dynamic.cache import IntrospectionCache
+    from bioimage_mcp.registry.dynamic.discovery import discover_functions
+    from bioimage_mcp.registry.manifest_schema import ToolManifest
+    from bioimage_mcp_trackpy.dynamic_discovery import TrackpyAdapter
+
+    manifest_path = TRACKPY_TOOL_ROOT / "manifest.yaml"
+    try:
+        raw = manifest_path.read_bytes()
+        manifest_data = yaml.safe_load(raw)
+        checksum = hashlib.sha256(raw).hexdigest()
+
+        manifest = ToolManifest.model_validate(
+            {
+                **manifest_data,
+                "manifest_path": manifest_path,
+                "manifest_checksum": checksum,
+            }
+        )
+
+        project_root = _find_project_root(manifest_path.parent)
+        cache_dir = Path.home() / ".bioimage-mcp" / "cache" / "dynamic" / manifest.tool_id
+        cache = IntrospectionCache(cache_dir)
+
+        discovered = discover_functions(
+            manifest, {"trackpy": TrackpyAdapter()}, cache=cache, project_root=project_root
+        )
+
+        functions = []
+        for meta in discovered:
+            summary = meta.description.split("\n")[0] if meta.description else ""
+
+            functions.append(
+                {
+                    "fn_id": meta.fn_id,
+                    "name": meta.name,
+                    "module": meta.module,
+                    "summary": summary,
+                    "io_pattern": meta.io_pattern.value,
+                }
+            )
+
+        return {
+            "ok": True,
+            "result": {
+                "functions": functions,
+                "tool_version": get_trackpy_version(),
+                "introspection_source": "dynamic_discovery",
+            },
+        }
+    except Exception as exc:
+        return {"ok": False, "error": f"Discovery failed: {exc}"}
 
 
 def handle_meta_describe(params: dict) -> dict:
