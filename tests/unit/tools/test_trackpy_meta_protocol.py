@@ -21,7 +21,7 @@ def test_handle_meta_list_shape():
         assert "functions" in result
         assert len(result["functions"]) > 0
         assert result["tool_version"] == "1.2.3"
-        assert result["introspection_source"] == "module_scan"
+        assert result["introspection_source"] == "dynamic_discovery"
 
 
 def test_handle_meta_describe_missing_target():
