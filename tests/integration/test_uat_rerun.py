@@ -1,6 +1,5 @@
 """UAT Regression tests for stability and recovery."""
 
-
 import psutil
 import pytest
 

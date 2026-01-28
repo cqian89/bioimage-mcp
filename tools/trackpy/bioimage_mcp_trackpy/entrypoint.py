@@ -29,11 +29,9 @@ if str(REPO_ROOT / "src") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "src"))
 
 
-from bioimage_mcp_trackpy.introspect import (
-    TRACKPY_MODULES,
+from bioimage_mcp_trackpy.introspect import (  # noqa: E402
     get_trackpy_version,
     introspect_function,
-    introspect_module,
 )
 
 TOOL_VERSION = "0.1.0"
@@ -319,7 +317,7 @@ def _make_json_serializable(value: Any) -> Any:
     if hasattr(value, "tolist") and not isinstance(value, type):
         try:
             return value.tolist()
-        except:
+        except Exception:  # noqa: BLE001
             pass
     return str(value)
 

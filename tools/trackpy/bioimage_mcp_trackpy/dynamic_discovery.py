@@ -11,8 +11,8 @@ REPO_ROOT = BASE_DIR.parent.parent.parent
 if str(REPO_ROOT / "src") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "src"))
 
-from bioimage_mcp.registry.dynamic.models import FunctionMetadata, IOPattern
-from bioimage_mcp_trackpy.introspect import introspect_module
+from bioimage_mcp.registry.dynamic.models import FunctionMetadata, IOPattern  # noqa: E402
+from bioimage_mcp_trackpy.introspect import introspect_module  # noqa: E402
 
 
 class TrackpyAdapter:
@@ -34,9 +34,11 @@ class TrackpyAdapter:
             discovered = introspect_module(module_name)
             for item in discovered:
                 # Convert dict to FunctionMetadata
-                # item shape: {"fn_id": ..., "name": ..., "summary": ..., "module": ..., "io_pattern": ...}
+                # item shape: {"fn_id": ..., "name": ..., "summary": ..., "module": ...,
+                #              "io_pattern": ...}
 
                 # Map io_pattern string to IOPattern enum
+
                 io_pattern_str = item.get("io_pattern", "generic")
                 try:
                     io_pattern = IOPattern(io_pattern_str)

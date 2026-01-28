@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 import yaml
-
 from bioimage_mcp_trackpy.entrypoint import handle_meta_list
 
 

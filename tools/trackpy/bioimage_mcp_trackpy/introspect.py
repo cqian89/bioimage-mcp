@@ -249,6 +249,6 @@ def _make_json_serializable(value: Any) -> Any:
     if hasattr(value, "tolist") and not isinstance(value, type):
         try:
             return value.tolist()
-        except:
+        except Exception:  # noqa: BLE001
             pass
     return str(value)
