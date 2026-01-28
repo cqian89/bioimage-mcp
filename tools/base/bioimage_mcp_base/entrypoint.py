@@ -248,6 +248,16 @@ def _convert_memory_inputs_to_files(inputs: dict[str, Any], work_dir: Path) -> d
     return converted_inputs
 
 
+def _find_project_root(start: Path) -> Path | None:
+    """Find project root by looking for envs/ or pyproject.toml."""
+    curr = start
+    for _ in range(5):
+        if (curr / "envs").exists() or (curr / "pyproject.toml").exists():
+            return curr
+        curr = curr.parent
+    return None
+
+
 def handle_meta_list(params: dict[str, Any]) -> dict[str, Any]:
     """Out-of-process function discovery for base tool pack."""
     import hashlib
@@ -255,6 +265,7 @@ def handle_meta_list(params: dict[str, Any]) -> dict[str, Any]:
     import yaml
 
     from bioimage_mcp.registry.dynamic.adapters import ADAPTER_REGISTRY
+    from bioimage_mcp.registry.dynamic.cache import IntrospectionCache
     from bioimage_mcp.registry.dynamic.discovery import discover_functions
     from bioimage_mcp.registry.manifest_schema import ToolManifest
 
@@ -272,7 +283,14 @@ def handle_meta_list(params: dict[str, Any]) -> dict[str, Any]:
             }
         )
 
-        discovered = discover_functions(manifest, ADAPTER_REGISTRY)
+        # Wire introspection cache and project root (T13.01)
+        project_root = _find_project_root(manifest_path.parent)
+        cache_dir = Path.home() / ".bioimage-mcp" / "cache" / "dynamic" / manifest.tool_id
+        cache = IntrospectionCache(cache_dir)
+
+        discovered = discover_functions(
+            manifest, ADAPTER_REGISTRY, cache=cache, project_root=project_root
+        )
 
         functions = []
         for meta in discovered:
