@@ -76,7 +76,14 @@ class SessionService:
 
         # Use discovery service to check registry
         result = self.discovery_service.describe_function(fn_id=fn_id)
-        return "error" not in result
+        if "error" not in result:
+            return True
+
+        # Fall back to manifest inspection for dynamic functions
+        from bioimage_mcp.api.execution import _get_function_metadata
+
+        manifest, _fn_def = _get_function_metadata(self.config, fn_id)
+        return manifest is not None
 
     def _env_installed(self, env_name: str) -> bool:
         """Check if a conda environment is installed."""
@@ -604,6 +611,11 @@ class SessionService:
                 # Build input with available metadata to enable lazy
                 # reconstruction in execution service
                 resolved_input = {"ref_id": ref_id}
+                if source.source == "external":
+                    external_input = record.external_inputs.get(source.key)
+                    if external_input:
+                        resolved_input.update(external_input.model_dump())
+                        resolved_input["ref_id"] = ref_id
                 if original_art_ref:
                     original_data = original_art_ref.model_dump(exclude_none=True)
                     if source.source == "step":

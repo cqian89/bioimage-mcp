@@ -583,7 +583,67 @@ class DiscoveryService:
             else None
         )
 
-        params_schema = payload.get("schema", {})
+        def _prefer_params_schema(
+            base_schema: dict[str, Any],
+            candidate_schema: dict[str, Any] | None,
+        ) -> dict[str, Any]:
+            if not candidate_schema:
+                return base_schema
+            base_properties = (
+                base_schema.get("properties") if isinstance(base_schema, dict) else None
+            )
+            candidate_properties = (
+                candidate_schema.get("properties") if isinstance(candidate_schema, dict) else None
+            )
+            if base_properties and not candidate_properties:
+                return base_schema
+            return candidate_schema
+
+        def _merge_base_params_schema(
+            primary_schema: dict[str, Any],
+            base_schema: dict[str, Any],
+        ) -> dict[str, Any]:
+            if not isinstance(primary_schema, dict) or not isinstance(base_schema, dict):
+                return primary_schema
+            base_properties = base_schema.get("properties")
+            if not isinstance(base_properties, dict):
+                return primary_schema
+
+            merged = dict(primary_schema)
+            merged_properties = merged.get("properties")
+            if isinstance(merged_properties, dict):
+                merged_properties = dict(merged_properties)
+            else:
+                merged_properties = {}
+
+            for name, schema in base_properties.items():
+                if name not in merged_properties:
+                    merged_properties[name] = schema
+
+            merged["properties"] = merged_properties
+
+            base_required = base_schema.get("required")
+            if isinstance(base_required, list):
+                required = merged.get("required")
+                if isinstance(required, list):
+                    required = list(required)
+                else:
+                    required = []
+                required_set = set(required)
+                for name in base_required:
+                    if name in merged_properties and name not in required_set:
+                        required.append(name)
+                        required_set.add(name)
+                if required:
+                    merged["required"] = required
+
+            return merged
+
+        params_schema = (
+            function_def.params_schema
+            if function_def is not None and function_def.params_schema is not None
+            else payload.get("schema", {})
+        )
         introspection_source = payload.get("introspection_source", "manual")
         callable_fingerprint = None
 
@@ -608,6 +668,9 @@ class DiscoveryService:
 
                 module = node.module or (function_def.module if function_def else None)
                 callable_name = payload.get("name") or fn_id.split(".")[-1]
+                if callable_name == "eval" and module:
+                    # Normalize class methods to match static inspection naming
+                    callable_name = f"{module.split('.')[-1]}.{callable_name}"
                 source_hash = _compute_source_hash(
                     manifest,
                     module=module,
@@ -624,7 +687,10 @@ class DiscoveryService:
                     source_hash=source_hash,
                 )
                 if cached:
-                    params_schema = cached["params_schema"]
+                    params_schema = _prefer_params_schema(
+                        params_schema,
+                        cached.get("params_schema"),
+                    )
                     introspection_source = cached.get("introspection_source", "manual")
                     callable_fingerprint = cached.get("source_hash")
                 else:
@@ -651,7 +717,10 @@ class DiscoveryService:
                         )
                         result = parse_meta_describe_result(response)
                         if result:
-                            params_schema = result["params_schema"]
+                            params_schema = _prefer_params_schema(
+                                params_schema,
+                                result.get("params_schema"),
+                            )
                             introspection_source = result["introspection_source"]
                             callable_fingerprint = result.get("callable_fingerprint")
 
@@ -698,6 +767,9 @@ class DiscoveryService:
                             module=row["module"],
                             io_pattern=row["io_pattern"],
                         )
+
+        if function_def and function_def.params_schema:
+            params_schema = _merge_base_params_schema(params_schema, function_def.params_schema)
 
         # Contract T036: params_schema contains NO artifact port keys
         if params_schema and "properties" in params_schema:
