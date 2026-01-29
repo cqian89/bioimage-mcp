@@ -360,13 +360,15 @@ def _materialize_zarr_to_file(
     if not src_path.exists():
         raise FileNotFoundError(f"Artifact path does not exist: {src_path}")
 
-    if src_path.is_dir():
-        raise ValueError(
-            "Core cannot materialize directory-backed artifacts. "
-            "Use a tool pack (e.g., base.export) to convert formats."
-        )
-
     artifact_type = artifact_ref.get("type", "BioImageRef")
+    if src_path.is_dir():
+        # Core can now materialize directory-backed artifacts (OME-Zarr) (T049)
+        materialized_format = artifact_ref.get("format") or "OME-Zarr"
+        new_ref = artifact_store.import_directory(
+            src_path, artifact_type=artifact_type, format=materialized_format
+        )
+        return new_ref.model_dump()
+
     materialized_format = artifact_ref.get("format") or "OME-TIFF"
     new_ref = artifact_store.import_file(
         src_path, artifact_type=artifact_type, format=materialized_format
@@ -882,12 +884,20 @@ class ExecutionService:
                     )
 
                     if materialized_path:
-                        # Import as new artifact
-                        new_ref = self._artifact_store.import_file(
-                            Path(materialized_path),
-                            artifact_type=artifact.type,
-                            format=negotiated_format,
-                        )
+                        # Import as new artifact (T049: support directories)
+                        p = Path(materialized_path)
+                        if p.is_dir():
+                            new_ref = self._artifact_store.import_directory(
+                                p,
+                                artifact_type=artifact.type,
+                                format=negotiated_format,
+                            )
+                        else:
+                            new_ref = self._artifact_store.import_file(
+                                p,
+                                artifact_type=artifact.type,
+                                format=negotiated_format,
+                            )
 
                         # Record handoff
                         handoff = self._io_bridge.record_handoff(
