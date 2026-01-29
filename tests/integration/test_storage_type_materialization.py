@@ -90,8 +90,8 @@ def test_materializes_zarr_temp_input_to_file(tmp_path: Path, monkeypatch) -> No
         return {
             "ref_id": "mat1",
             "type": "BioImageRef",
-            "uri": (work_dir / "materialized.ome.tiff").as_uri(),
-            "format": "OME-TIFF",
+            "uri": (work_dir / "materialized.ome.zarr").as_uri(),
+            "format": "OME-Zarr",
             "storage_type": "file",
         }
 

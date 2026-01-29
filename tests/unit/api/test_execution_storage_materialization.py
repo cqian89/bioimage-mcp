@@ -123,8 +123,8 @@ def test_run_workflow_materializes_zarr_temp_input(tmp_path: Path, monkeypatch) 
             return {
                 "ref_id": "mat1",
                 "type": "BioImageRef",
-                "uri": (work_dir / "materialized.ome.tiff").as_uri(),
-                "format": "OME-TIFF",
+                "uri": (work_dir / "materialized.ome.zarr").as_uri(),
+                "format": "OME-Zarr",
                 "storage_type": "file",
             }
 

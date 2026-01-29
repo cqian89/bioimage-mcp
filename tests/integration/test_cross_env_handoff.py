@@ -68,14 +68,14 @@ def test_io_bridge_negotiate_format(io_bridge: IOBridge):
         created_at=ArtifactRef.now(),
     )
 
-    # Default is OME-TIFF
-    assert io_bridge.negotiate_format(ref) == "OME-TIFF"
+    # Default is OME-Zarr (T049)
+    assert io_bridge.negotiate_format(ref) == "OME-Zarr"
 
     # Specific supported format
     assert io_bridge.negotiate_format(ref, target_required_format="OME-Zarr") == "OME-Zarr"
 
-    # Fallback for unsupported format
-    assert io_bridge.negotiate_format(ref, target_required_format="PNG") == "OME-TIFF"
+    # Fallback for unsupported format (T049: fallback to new default)
+    assert io_bridge.negotiate_format(ref, target_required_format="PNG") == "OME-Zarr"
 
 
 def test_io_bridge_record_handoff(io_bridge: IOBridge):
@@ -107,7 +107,7 @@ def test_io_bridge_create_materialization_path(io_bridge: IOBridge, tmp_path: Pa
     assert path == tmp_path / "session1" / "art1.ome.tiff"
 
     path_zarr = io_bridge.create_materialization_path("session1", "art2", "OME-Zarr")
-    assert path_zarr == tmp_path / "session1" / "art2.zarr"
+    assert path_zarr == tmp_path / "session1" / "art2.ome.zarr"
 
 
 def _env_available(env_name: str) -> bool:
@@ -197,7 +197,7 @@ def test_cross_env_materialization_integration(tmp_path: Path):
         assert handoff["source_ref_id"] == ref_id_src
         assert handoff["source_env"] == env_id_src
         assert handoff["target_env"] == "bioimage-mcp-base"
-        assert handoff["negotiated_format"] == "OME-TIFF"
+        assert handoff["negotiated_format"] == "OME-Zarr"
 
         # 4. Verify that a new file-backed artifact was created
         materialized_ref_id = handoff["target_ref_id"]

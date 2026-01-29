@@ -101,8 +101,11 @@ class TestXarrayEquivalence:
             assert uri.startswith("file://")
             output_path = Path(uri[7:])
 
-            # Read back the 1x1 image
-            mcp_data = tifffile.imread(output_path)
+            # Read back the image (use BioImage to support OME-Zarr directories)
+            from bioio import BioImage
+
+            img = BioImage(output_path)
+            mcp_data = img.reader.data
             mcp_mean = float(mcp_data.mean())
 
             # 5. Compare
