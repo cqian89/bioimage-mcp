@@ -53,15 +53,19 @@ def discover_functions(
     """
     results: list[FunctionMetadata] = []
 
-    # Calculate lockfile hash if cache and project_root provided
-    lockfile_hash = ""
-    if cache and project_root:
-        lockfile_hash = _calculate_lockfile_hash(manifest, project_root)
+    # Calculate environment component for cache key
+    env_component = "no-lockfile"
+    if project_root:
+        env_component = _calculate_lockfile_hash(manifest, project_root) or "no-lockfile"
+
+    # Include manifest checksum in the composite cache key (T13.07)
+    manifest_checksum_16 = manifest.manifest_checksum[:16]
+    composite_key = f"{env_component}:{manifest_checksum_16}"
 
     for source in manifest.dynamic_sources:
         # Try cache first if available
-        if cache and lockfile_hash:
-            cached_results = cache.get(source.adapter, source.prefix, lockfile_hash)
+        if cache:
+            cached_results = cache.get(source.adapter, source.prefix, composite_key)
             if cached_results is not None:
                 results.extend(cached_results)
                 continue
@@ -90,8 +94,8 @@ def discover_functions(
         discovered = adapter.discover(source_config)
 
         # Store in cache if available
-        if cache and lockfile_hash:
-            cache.put(source.adapter, source.prefix, lockfile_hash, discovered)
+        if cache:
+            cache.put(source.adapter, source.prefix, composite_key, discovered)
 
         # Aggregate results
         results.extend(discovered)
