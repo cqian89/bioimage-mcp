@@ -143,3 +143,66 @@ def test_list_tools_disable_cache_env_var(mock_setup, monkeypatch):
     list_mod.list_tools(json_output=True)
     assert len(get_envs_calls) == 2
     assert len(load_calls) == 2
+
+
+def test_list_tools_dynamic_cache_fallback(mock_setup, monkeypatch):
+    manifest_file = mock_setup
+
+    # Track calls to load_manifests
+    load_calls = []
+
+    def mock_load(roots):
+        load_calls.append(roots)
+        from bioimage_mcp.registry.manifest_schema import Function, ToolManifest
+
+        m = ToolManifest(
+            manifest_version="1.0",
+            tool_id="test-tool",
+            tool_version="1.0.0",
+            env_id="bioimage-mcp-test_env",
+            entrypoint="main.py",
+            name="Test",
+            description="Test",
+            functions=[
+                Function(
+                    fn_id="test-tool.test_fn",
+                    tool_id="test-tool",
+                    name="test_fn",
+                    description="test",
+                    introspection_source="dynamic_discovery",
+                )
+            ],
+            manifest_path=manifest_file,
+            manifest_checksum="abc",
+        )
+        return [m], []
+
+    monkeypatch.setattr(list_mod, "load_manifests", mock_load)
+    monkeypatch.setattr(list_mod, "_get_installed_envs", lambda exe: {"bioimage-mcp-test_env"})
+
+    # 1. Cold path: populates list_tools.json
+    exit_code = list_mod.list_tools(json_output=True)
+    assert exit_code == 0
+    assert len(load_calls) == 1
+
+    # 2. Warm path, but dynamic cache missing (never created yet)
+    # The fix should detect missing introspection_cache.json and fall through
+    exit_code = list_mod.list_tools(json_output=True)
+    assert exit_code == 0
+    assert len(load_calls) == 2
+
+    # 3. Create dynamic cache
+    dynamic_cache_dir = Path.home() / ".bioimage-mcp" / "cache" / "dynamic" / "test-tool"
+    dynamic_cache_dir.mkdir(parents=True, exist_ok=True)
+    (dynamic_cache_dir / "introspection_cache.json").write_text("{}")
+
+    # 4. Warm path, dynamic cache exists -> Cache HIT
+    exit_code = list_mod.list_tools(json_output=True)
+    assert exit_code == 0
+    assert len(load_calls) == 2  # Still 2
+
+    # 5. Delete dynamic cache -> Cache MISS (repair/regeneration path)
+    (dynamic_cache_dir / "introspection_cache.json").unlink()
+    exit_code = list_mod.list_tools(json_output=True)
+    assert exit_code == 0
+    assert len(load_calls) == 3
