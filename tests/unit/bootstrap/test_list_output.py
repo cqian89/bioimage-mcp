@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -11,6 +12,9 @@ from bioimage_mcp.bootstrap import list as list_mod
 
 @pytest.fixture
 def mock_registry(tmp_path, monkeypatch):
+    # Setup sandbox home
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+
     # Create a minimal manifest
     manifest_root = tmp_path / "tools"
     manifest_root.mkdir()
