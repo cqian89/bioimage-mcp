@@ -661,18 +661,20 @@ def handle_get_fluorescence_decay(
         decay_data = clsm.get_fluorescence_decay(**decay_kwargs)
         decay_data = np.asarray(decay_data, dtype=np.float32)
 
+        # Move bins axis to front: (Y, X, bins) -> (bins, Y, X)
+        # or (Z, Y, X, bins) -> (bins, Z, Y, X)
+        decay_data = np.moveaxis(decay_data, -1, 0)
+
         micro_time_coarsening = params.get("micro_time_coarsening", 1)
 
-        # Keep native tttrlib output order - no moveaxis needed!
-        # tttrlib returns (Y, X, bins) or (Z, Y, X, bins)
-        if decay_data.ndim == 3:  # (Y, X, B)
-            axes_names = ["y", "x", "b"]
-            axes_types = ["space", "space", "other"]
-            dims = ["Y", "X", "B"]
-        elif decay_data.ndim == 4:  # (Z, Y, X, B)
-            axes_names = ["z", "y", "x", "b"]
-            axes_types = ["space", "space", "space", "other"]
-            dims = ["Z", "Y", "X", "B"]
+        if decay_data.ndim == 3:  # (bins, Y, X)
+            axes_names = ["bins", "y", "x"]
+            axes_types = ["other", "space", "space"]
+            dims = ["bins", "Y", "X"]
+        elif decay_data.ndim == 4:  # (bins, Z, Y, X)
+            axes_names = ["bins", "z", "y", "x"]
+            axes_types = ["other", "space", "space", "space"]
+            dims = ["bins", "Z", "Y", "X"]
         else:
             return {
                 "ok": False,
@@ -707,9 +709,9 @@ def handle_get_fluorescence_decay(
                 "shape": list(decay_data.shape),
                 "ndim": decay_data.ndim,
                 "dtype": str(decay_data.dtype),
-                "axis_roles": {"B": "microtime_histogram"},
+                "axis_roles": {"bins": "microtime_histogram"},
                 "micro_time_coarsening": micro_time_coarsening,
-                "n_microtime_bins": decay_data.shape[-1],
+                "n_microtime_bins": decay_data.shape[0],
             },
         }
 
