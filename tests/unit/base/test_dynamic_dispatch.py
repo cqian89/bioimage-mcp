@@ -123,7 +123,7 @@ class TestDynamicDispatch:
             "bioimage_mcp_base.dynamic_dispatch.get_adapter_for_fn_id",
             return_value=mock_adapter,
         ):
-            result = dispatch_dynamic(
+            dispatch_dynamic(
                 fn_id="skimage.filters.gaussian",
                 inputs=inputs,
                 params=params,

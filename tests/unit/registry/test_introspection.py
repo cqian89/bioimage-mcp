@@ -62,10 +62,23 @@ def gaussian_filter_numpy_style(
 def func_with_array_param(
     data: "ndarray",
     properties: tuple = ("label", "bbox"),
-    columns: list = ["a", "b"],
+    columns: list = None,
 ) -> dict:
     """Function with array-type parameters."""
+    if columns is None:
+        columns = ["a", "b"]
     return {}
+
+
+def verbose_docstring(value: int) -> int:
+    """Return the input value.
+
+    Parameters
+    ----------
+    value : int
+        Input integer value.
+    """
+    return value
 
 
 class TestIntrospector:
@@ -253,3 +266,15 @@ class TestIntrospector:
         param_columns = metadata.parameters["columns"]
         assert param_columns.type == "array"
         assert param_columns.default == ["a", "b"]
+
+    def test_introspect_summary_is_single_line(self):
+        """Introspector should keep only the first docstring line."""
+        introspector = Introspector()
+
+        metadata = introspector.introspect(
+            verbose_docstring,
+            source_adapter="test-adapter",
+        )
+
+        assert metadata.description == "Return the input value."
+        assert "\n" not in metadata.description

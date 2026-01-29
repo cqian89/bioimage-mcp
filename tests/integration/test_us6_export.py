@@ -60,7 +60,7 @@ def test_transparent_export(tmp_path):
     )
     fig_ref = results[0]
 
-    save_results = adapter.execute(
+    adapter.execute(
         "base.matplotlib.Figure.savefig",
         inputs=[("figure", fig_ref)],
         params={"format": "png", "transparent": True},

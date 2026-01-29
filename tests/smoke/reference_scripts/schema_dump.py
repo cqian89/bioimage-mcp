@@ -37,7 +37,7 @@ def dump_runtime_schema(fn_id: str) -> dict[str, Any] | None:
     conn = connect(config)
 
     try:
-        with DiscoveryService(conn) as service:
+        with DiscoveryService(conn):
             # We need to find the manifest to get the entrypoint and env_id
             manifests, _ = load_manifests(config.tool_manifest_roots)
             manifest = next(

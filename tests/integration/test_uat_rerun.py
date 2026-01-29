@@ -47,7 +47,7 @@ async def test_worker_crash_recovery_no_ordinal_mismatch(mcp_test_client):
 @pytest.mark.anyio
 async def test_sequential_requests_stability(mcp_test_client):
     """Verify stability over multiple sequential requests."""
-    for i in range(2):
+    for _i in range(2):
         res = mcp_test_client.call_tool(
             "meta.describe", {}, {"target_fn": "base.io.bioimage.export"}
         )

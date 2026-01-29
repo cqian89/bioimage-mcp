@@ -289,7 +289,7 @@ class TestPersistentWorkerLifecycle:
         assert len(spawned_workers) == 2, f"Expected 2 workers spawned, got {len(spawned_workers)}"
 
         # Start third thread - it should queue
-        thread3_started = time.time()
+        time.time()
         thread3 = threading.Thread(target=execute_simple_request, args=("session3", results, 0))
         thread3.start()
 

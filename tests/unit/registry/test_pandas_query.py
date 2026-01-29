@@ -51,7 +51,6 @@ def test_query_invalid_syntax(adapter, sample_df):
 
 def test_query_at_var_blocked(adapter, sample_df):
     """T020: Test that @var access is blocked for security."""
-    my_var = 100
     with pytest.raises(BioimageMcpError) as excinfo:
         adapter.execute("query", sample_df, expr="area > @my_var")
 

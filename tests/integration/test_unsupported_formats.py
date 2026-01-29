@@ -25,7 +25,7 @@ def _mock_execute_step_format_check(
 ) -> tuple[dict[str, Any], str, int]:
     """Mock execute_step that checks format and fails on OME-Zarr."""
     # Check inputs for unsupported format
-    for name, inp in inputs.items():
+    for _name, inp in inputs.items():
         fmt = inp.get("format", "").lower()
         if "zarr" in fmt or "ome-zarr" in fmt.lower():
             return (

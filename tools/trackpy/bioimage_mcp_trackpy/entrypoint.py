@@ -27,9 +27,7 @@ if str(REPO_ROOT / "src") not in sys.path:
 from bioimage_mcp_trackpy.introspect import (
     get_trackpy_version,
     introspect_function,
-    introspect_module,
 )
-
 
 TOOL_VERSION = "0.1.0"
 TOOL_ENV_NAME = "bioimage-mcp-trackpy"
@@ -289,7 +287,7 @@ def _load_input_artifact(artifact_ref: dict) -> Any:
 
 def _save_table_artifact(df: pd.DataFrame, name_hint: str) -> dict:
     import uuid
-    import pandas as pd
+
 
     ref_id = str(uuid.uuid4())
     filename = f"{name_hint}_{ref_id[:8]}.csv"
@@ -306,7 +304,6 @@ def _save_table_artifact(df: pd.DataFrame, name_hint: str) -> dict:
 
 def _save_image_artifact(arr: np.ndarray, name_hint: str) -> dict:
     import uuid
-    import numpy as np
 
     from bioio_ome_tiff import Writer
 

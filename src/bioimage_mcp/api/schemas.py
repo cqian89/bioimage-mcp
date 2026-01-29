@@ -43,7 +43,7 @@ class DimensionRequirement(BaseModel):
 class InputRequirement(BaseModel):
     """Schema for a single input requirement."""
 
-    type: ArtifactType
+    type: ArtifactType | list[ArtifactType]
     required: bool
     description: str
     expected_axes: list[AxisName] | None = None
@@ -68,7 +68,7 @@ class NextStepHint(BaseModel):
     required_inputs: list[str] | None = None
 
     @model_validator(mode="after")
-    def _populate_ids(self) -> "NextStepHint":
+    def _populate_ids(self) -> NextStepHint:
         if not self.id and not self.fn_id:
             raise ValueError("Either 'id' or 'fn_id' must be provided")
         if not self.id:
@@ -87,7 +87,7 @@ class SuggestedFix(BaseModel):
     explanation: str
 
     @model_validator(mode="after")
-    def _populate_ids(self) -> "SuggestedFix":
+    def _populate_ids(self) -> SuggestedFix:
         if not self.id and not self.fn_id:
             raise ValueError("Either 'id' or 'fn_id' must be provided")
         if not self.id:

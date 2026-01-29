@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -50,7 +49,6 @@ def test_list_tools_cache_hit_logic(mock_setup, monkeypatch, capsys):
 
     monkeypatch.setattr(list_mod, "_get_installed_envs", mock_get_envs)
 
-    original_load = list_mod.load_manifests
     load_calls = []
 
     def mock_load(roots):

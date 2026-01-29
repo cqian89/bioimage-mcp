@@ -35,7 +35,7 @@ class InstalledEnvsCache:
             return None
 
         try:
-            with open(self.cache_file, "r", encoding="utf-8") as f:
+            with open(self.cache_file, encoding="utf-8") as f:
                 data = json.load(f)
 
             if data.get("cache_version") != CACHE_VERSION:
@@ -106,7 +106,7 @@ class ListToolsCache:
             return None
 
         try:
-            with open(self.cache_file, "r", encoding="utf-8") as f:
+            with open(self.cache_file, encoding="utf-8") as f:
                 data = json.load(f)
 
             if data.get("cache_version") != CACHE_VERSION:

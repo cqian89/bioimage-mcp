@@ -281,6 +281,7 @@ class TestTTTRLibSmoke:
                 "fn_id": "tttrlib.CLSMImage.get_phasor",
                 "inputs": {"clsm": clsm_ref, "tttr_data": tttr_ref},
                 "params": {"frequency": 80.0, "stack_frames": True},
+                "verbosity": "full",
             },
         )
         if phasor_result.get("status") == "success":
@@ -437,6 +438,7 @@ class TestTTTRLibSmoke:
                 "fn_id": "tttrlib.CLSMImage.get_mean_lifetime",
                 "inputs": {"clsm": clsm_ref, "tttr_data": tttr_ref},
                 "params": {"stack_frames": True},
+                "verbosity": "full",
             },
         )
         if lifetime_result.get("status") != "success":

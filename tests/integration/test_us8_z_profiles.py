@@ -41,7 +41,7 @@ def test_z_stack_intensity_profile(mcp_test_client, tmp_path):
     # 2. Use MCP tools to load and inspect
     load_res = mcp_test_client.call_tool("base.io.bioimage.load", {}, {"path": str(img_path)})
     assert load_res["status"] == "success"
-    image_ref = load_res["outputs"]["image"]
+    load_res["outputs"]["image"]
 
     # 3. Compute mean intensity per Z-slice
     # For now, we do this in the test using numpy, as a "usage pattern"

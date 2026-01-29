@@ -3,8 +3,6 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-import pytest
-
 
 def test_install_rejects_invalid_profile() -> None:
     """Test that install returns nonzero for invalid profile."""

@@ -42,7 +42,7 @@ class TestCellposeCache:
             }
         )
         assert res2["status"] == "success"
-        model_ref2 = res2["outputs"]["model"]
+        res2["outputs"]["model"]
 
         # 2. Verify we can use at least one of them
         img_path = tmp_path / "test_image.ome.tif"

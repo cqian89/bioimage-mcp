@@ -67,7 +67,7 @@ def get_json_path_diffs(expected: Any, actual: Any, path: str = "$") -> list[str
                 f"{path}: List length mismatch. Expected {len(expected)}, got {len(actual)}"
             )
         else:
-            for i, (e, a) in enumerate(zip(expected, actual)):
+            for i, (e, a) in enumerate(zip(expected, actual, strict=False)):
                 diffs.extend(get_json_path_diffs(e, a, f"{path}[{i}]"))
     else:
         if expected != actual:

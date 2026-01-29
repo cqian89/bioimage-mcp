@@ -33,7 +33,7 @@ def create_synthetic_cell_image(size=256, n_cells=5, cell_radius=25):
     img = np.zeros((size, size), dtype=np.float32)
     np.random.seed(42)
 
-    for i in range(n_cells):
+    for _i in range(n_cells):
         cx = np.random.randint(cell_radius + 10, size - cell_radius - 10)
         cy = np.random.randint(cell_radius + 10, size - cell_radius - 10)
         r = cell_radius + np.random.randint(-5, 5)

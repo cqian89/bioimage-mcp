@@ -1,14 +1,11 @@
 from __future__ import annotations
 
+import os
 from unittest.mock import patch
 
 import pytest
 import yaml
 from bioimage_mcp_trackpy.entrypoint import handle_meta_list
-
-
-import os
-from pathlib import Path
 
 
 @pytest.fixture

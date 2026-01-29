@@ -11,8 +11,7 @@ from bioimage_mcp.api.discovery import DiscoveryService
 from bioimage_mcp.api.execution import ExecutionService
 from bioimage_mcp.artifacts.store import ArtifactStore
 from bioimage_mcp.config.schema import Config
-from bioimage_mcp.registry.loader import load_manifests
-from bioimage_mcp.registry.loader import _MANIFEST_CACHE
+from bioimage_mcp.registry.loader import _MANIFEST_CACHE, load_manifests
 from bioimage_mcp.storage.sqlite import connect
 
 sys.path.append(str(Path(__file__).parent))

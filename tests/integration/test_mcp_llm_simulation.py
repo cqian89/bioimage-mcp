@@ -255,7 +255,7 @@ class TestMCPLLMSimulation:
         references.
         """
         execution = mcp_environment["execution"]
-        tmp_path = mcp_environment["tmp_path"]
+        mcp_environment["tmp_path"]
 
         # Get an image from the dataset
         tiff_files = list(FLUTE_DATASET_PATH.glob("*.tif"))
@@ -322,7 +322,7 @@ class TestMCPLLMSimulation:
         Demonstrates exporting artifacts to user-specified paths.
         """
         execution = mcp_environment["execution"]
-        artifacts_svc = mcp_environment["artifacts"]
+        mcp_environment["artifacts"]
         artifact_store = mcp_environment["artifact_store"]
         tmp_path = mcp_environment["tmp_path"]
 
@@ -381,7 +381,7 @@ class TestMCPLLMSimulation:
         """
         discovery = mcp_environment["discovery"]
         execution = mcp_environment["execution"]
-        artifacts_svc = mcp_environment["artifacts"]
+        mcp_environment["artifacts"]
         tmp_path = mcp_environment["tmp_path"]
 
         # === LLM Step 1: Query for segmentation capabilities ===

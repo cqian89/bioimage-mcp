@@ -101,7 +101,7 @@ def test_table_export_object_ref(sample_df, tmp_path, monkeypatch):
     monkeypatch.setenv("BIOIMAGE_MCP_FS_ALLOWLIST_WRITE", f'["{str(tmp_path.resolve())}"]')
 
     try:
-        result = table_export(
+        table_export(
             inputs={"data": obj_ref}, params={"dest_path": str(dest_path)}, work_dir=tmp_path
         )
 

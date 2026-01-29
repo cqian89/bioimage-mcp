@@ -54,7 +54,7 @@ def test_imsave_autogenerates_path():
         params = {"format": "png"}  # No fname
 
         with patch("bioimage_mcp_base.ops.matplotlib_ops.plt.imsave") as mock_imsave:
-            result = imsave(inputs, params, work_dir=Path(tmpdir))
+            imsave(inputs, params, work_dir=Path(tmpdir))
 
         mock_imsave.assert_called_once()
         call_path = mock_imsave.call_args[0][0]

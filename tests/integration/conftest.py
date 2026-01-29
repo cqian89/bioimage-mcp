@@ -12,8 +12,7 @@ from bioimage_mcp.api.discovery import DiscoveryService
 from bioimage_mcp.api.execution import ExecutionService
 from bioimage_mcp.artifacts.store import ArtifactStore
 from bioimage_mcp.config.schema import Config
-from bioimage_mcp.registry.loader import load_manifests
-from bioimage_mcp.registry.loader import _MANIFEST_CACHE
+from bioimage_mcp.registry.loader import _MANIFEST_CACHE, load_manifests
 from bioimage_mcp.storage.sqlite import connect
 from bioimage_mcp.test_harness import WorkflowTestCase
 
@@ -96,9 +95,9 @@ def mcp_services(tmp_path: Path, request: pytest.FixtureRequest, monkeypatch: py
 
     use_mock = request.node.get_closest_marker("mock_execution") is not None
     if use_mock:
-        from bioimage_mcp.registry.engine import DiscoveryEngine
-        from bioimage_mcp.registry.dynamic.xarray_allowlists import XARRAY_DATAARRAY_ALLOWLIST
         import bioimage_mcp.api.discovery as discovery_module
+        from bioimage_mcp.registry.dynamic.xarray_allowlists import XARRAY_DATAARRAY_ALLOWLIST
+        from bioimage_mcp.registry.engine import DiscoveryEngine
 
         def _mock_runtime_list(_self: DiscoveryEngine, _manifest) -> list[dict[str, Any]]:
             if _manifest.tool_id != "tools.base":

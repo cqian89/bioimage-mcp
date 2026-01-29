@@ -220,9 +220,13 @@ class DiscoveryEngine:
                 try:
                     inputs, outputs, io_pattern = self._ports_from_runtime_entry(fn_data)
 
-                    description = fn_data.get("description")
+                    description = self._summary_from_docstring(fn_data.get("summary"))
                     if not description:
-                        description = fn_data.get("summary") or fn_data.get("name") or final_fn_id
+                        description = self._summary_from_docstring(fn_data.get("description"))
+                    if not description:
+                        description = self._summary_from_docstring(
+                            fn_data.get("name") or final_fn_id
+                        )
 
                     params_schema = fn_data.get("params_schema")
                     if not params_schema:
@@ -385,14 +389,13 @@ class DiscoveryEngine:
         runtime_entry = runtime_map.get(fn_id)
 
         # Basic AST-derived info
-        description = sc.docstring or ""
+        description = self._summary_from_docstring(sc.docstring)
         if not description and runtime_entry:
-            description = (
-                runtime_entry.get("description")
-                or runtime_entry.get("summary")
-                or runtime_entry.get("name")
-                or ""
-            )
+            description = self._summary_from_docstring(runtime_entry.get("summary"))
+            if not description:
+                description = self._summary_from_docstring(runtime_entry.get("description"))
+            if not description:
+                description = self._summary_from_docstring(runtime_entry.get("name"))
         if not description:
             self._events.append(
                 EngineEvent(
@@ -910,6 +913,16 @@ class DiscoveryEngine:
             schema["required"] = required
 
         return schema
+
+    @staticmethod
+    def _summary_from_docstring(docstring: str | None) -> str:
+        if not docstring:
+            return ""
+        for line in docstring.splitlines():
+            stripped = line.strip()
+            if stripped:
+                return " ".join(stripped.split())
+        return ""
 
     @staticmethod
     def deep_merge_dict(base: dict, overlay: dict) -> dict:

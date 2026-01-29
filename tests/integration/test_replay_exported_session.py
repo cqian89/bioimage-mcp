@@ -122,7 +122,7 @@ class TestReplayExportedSession:
         assert replay_result["run_id"] != res1["run_id"]  # Should be a new run
 
         # Verify provenance
-        run = execution.get_run_status(replay_result["run_id"])
+        execution.get_run_status(replay_result["run_id"])
         # If implemented, provenance should link to original session export?
         # The replay_workflow implementation I saw links to 'original_workflow_record_ref_id'
 
@@ -145,7 +145,7 @@ class TestReplayExportedSession:
             pytest.skip("export_session not implemented yet")
 
         export_response = interactive.export_session(session_id)
-        export_ref = export_response["workflow_ref"]
+        export_response["workflow_ref"]
 
         # 3. Delete the artifact produced in the session
         # This simulates a cleanup or lost storage scenario
@@ -158,7 +158,7 @@ class TestReplayExportedSession:
         # So we need a 2-step workflow where step 2 uses step 1's output.
 
         # Let's add step 2
-        res2 = interactive.call_tool(
+        interactive.call_tool(
             session_id=session_id,
             fn_id="tool.step2",
             inputs={"prev": res["outputs"]["result"]},

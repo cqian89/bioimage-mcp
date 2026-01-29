@@ -351,7 +351,7 @@ class TestCacheIntegration:
 
         # Call discover_functions
         adapter_registry = {"test-adapter": mock_adapter}
-        results = discover_functions(manifest, adapter_registry, cache=cache, project_root=tmp_path)
+        discover_functions(manifest, adapter_registry, cache=cache, project_root=tmp_path)
 
         # Verify results were stored in cache
         lockfile_content = lockfile_path.read_text()
@@ -399,6 +399,7 @@ class TestCacheIntegration:
 
         # Pre-populate cache for checksum_A
         import hashlib
+
         from bioimage_mcp.registry.dynamic.cache import IntrospectionCache
 
         cache_dir = tmp_path / ".bioimage-mcp" / "cache"

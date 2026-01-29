@@ -38,7 +38,7 @@ class MetaListCache:
             return None
 
         try:
-            with open(self.cache_file, "r", encoding="utf-8") as f:
+            with open(self.cache_file, encoding="utf-8") as f:
                 data = json.load(f)
 
             if not isinstance(data, dict):
@@ -71,7 +71,7 @@ class MetaListCache:
             data: dict[str, Any] = {}
             if self.cache_file.exists():
                 try:
-                    with open(self.cache_file, "r", encoding="utf-8") as f:
+                    with open(self.cache_file, encoding="utf-8") as f:
                         data = json.load(f)
                 except (json.JSONDecodeError, OSError):
                     data = {}

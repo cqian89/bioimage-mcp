@@ -97,7 +97,7 @@ functions:
     inputs: []
     outputs:
       - name: image
-        artifact_type: BioImageRef
+        artifact_type: [BioImageRef, LabelImageRef, ObjectRef]
         description: Loaded image artifact with metadata
     params_schema:
       type: object
@@ -145,12 +145,12 @@ functions:
           supported_storage_types: ["file", "zarr-temp"]
     inputs:
       - name: image
-        artifact_type: BioImageRef
+        artifact_type: [BioImageRef, LabelImageRef, ObjectRef]
         required: true
         description: Input image artifact to slice
     outputs:
       - name: output
-        artifact_type: BioImageRef
+        artifact_type: [BioImageRef, LabelImageRef, ObjectRef]
         description: Sliced image artifact
     params_schema:
       type: object
@@ -231,12 +231,12 @@ functions:
           supported_storage_types: ["file", "zarr-temp"]
     inputs:
       - name: image
-        artifact_type: BioImageRef
+        artifact_type: [BioImageRef, LabelImageRef, ObjectRef]
         required: true
         description: Image or label artifact to export
     outputs:
       - name: output
-        artifact_type: BioImageRef
+        artifact_type: [BioImageRef, LabelImageRef, ObjectRef]
         description: Exported file artifact
     params_schema:
       type: object

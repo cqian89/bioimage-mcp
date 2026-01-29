@@ -102,7 +102,6 @@ def test_flim_phasor_e2e(tmp_path: Path) -> None:
     # We need the intensity (mean) for segmentation
     intensity_ref = outputs1["mean"]
 
-    seg_input = intensity_ref
     axes = (intensity_ref.get("metadata") or {}).get("axes", "")
     shape = (intensity_ref.get("metadata") or {}).get("shape", [])
 
@@ -122,7 +121,7 @@ def test_flim_phasor_e2e(tmp_path: Path) -> None:
                 compression="zlib",
                 metadata={"axes": out_axes},
             )
-            seg_input = {
+            {
                 "type": "BioImageRef",
                 "format": "OME-TIFF",
                 "uri": _path_to_uri(out_path),

@@ -75,10 +75,6 @@ class TestMetaDescribeRequestContract:
 
     def test_request_requires_fn_id_meta_describe(self) -> None:
         """Test that fn_id must be 'meta.describe'."""
-        request = {
-            "fn_id": "meta.describe",
-            "params": {"target_fn": "cellpose.models.CellposeModel.eval"},
-        }
         with pytest.raises(ValueError, match="fn_id must be 'meta.describe'"):
             # This is tricky because the model_validator checks fn_id == "meta.describe"
             # but we want to test what happens if it's NOT that.

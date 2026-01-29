@@ -1032,6 +1032,7 @@ class ExecutionService:
 
             if output_mode == "memory" and out_type in ["BioImageRef", "LabelImageRef"]:
                 # Requesting memory artifact (T016)
+                logger.info("DEBUG: memory output %s, tool_meta: %s", name, out.get("metadata"))
                 # PHASE 1 SIMULATION: mem:// URIs are backed by files, not worker memory.
                 # The _simulated_path metadata tracks the actual file location.
                 # Phase 2 will replace this with true in-memory storage in persistent workers.
@@ -1044,6 +1045,7 @@ class ExecutionService:
                 if path:
                     # Keep track of the simulated file path (T016 simulation)
                     meta["_simulated_path"] = str(Path(path).absolute())
+                    logger.info("DEBUG: tool_metadata for %s: %s", name, out.get("metadata"))
                     try:
                         file_meta = extract_image_metadata(Path(path))
                         if file_meta:
@@ -1077,6 +1079,12 @@ class ExecutionService:
                 "AxesImageRef",
                 "GroupByRef",
             ]:
+                logger.info(
+                    "DEBUG: object output %s, type %s, tool_meta: %s",
+                    name,
+                    out_type,
+                    out.get("metadata"),
+                )
                 # Handle ObjectRef and its subclasses (T018-T024)
                 # Register in memory store so it can be resolved for next steps
                 ref_id = out.get("ref_id")
@@ -1116,6 +1124,7 @@ class ExecutionService:
                 )
                 outputs_payload[name] = ref.model_dump()
             elif path:
+                logger.info("DEBUG: tool_metadata for %s (path): %s", name, out.get("metadata"))
                 p = Path(path)
                 out_type = out.get("type", "BioImageRef")
                 fmt = out.get("format", "OME-TIFF")
