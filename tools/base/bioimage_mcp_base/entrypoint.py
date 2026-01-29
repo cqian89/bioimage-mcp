@@ -35,8 +35,8 @@ DYNAMIC_FN_PREFIXES = ("base.", f"{TOOL_ENV_NAME}.")
 # ==============================================================================
 
 # Global memory store in worker process
-# artifact_id -> numpy array
-_MEMORY_ARTIFACTS: dict[str, Any] = {}
+# artifact_id -> {"data": numpy array, "dims": list[str] | None}
+_MEMORY_ARTIFACTS: dict[str, dict[str, Any]] = {}
 
 # Worker identity (set by initialization handshake or env vars)
 _SESSION_ID: str | None = None
@@ -84,11 +84,12 @@ def _initialize_worker(session_id: str, env_id: str) -> None:
     _ENV_ID = env_id
 
 
-def _store_in_memory(data: Any) -> tuple[str, str]:
+def _store_in_memory(data: Any, dims: list[str] | str | None = None) -> tuple[str, str]:
     """Store data in memory, return (artifact_id, mem:// URI).
 
     Args:
         data: Numpy array to store
+        dims: Optional dimension labels
 
     Returns:
         Tuple of (artifact_id, mem://session/env/artifact_id URI)
@@ -96,13 +97,15 @@ def _store_in_memory(data: Any) -> tuple[str, str]:
     Raises:
         RuntimeError: If worker identity not initialized
     """
-    import numpy as np
-
     if _SESSION_ID is None or _ENV_ID is None:
         raise RuntimeError("Worker identity not initialized. Cannot create mem:// URI.")
 
+    # Standardize dims to list[str]
+    if isinstance(dims, str):
+        dims = list(dims)
+
     artifact_id = uuid.uuid4().hex
-    _MEMORY_ARTIFACTS[artifact_id] = data
+    _MEMORY_ARTIFACTS[artifact_id] = {"data": data, "dims": dims}
 
     mem_uri = f"mem://{_SESSION_ID}/{_ENV_ID}/{artifact_id}"
     return artifact_id, mem_uri
@@ -115,13 +118,11 @@ def _load_from_memory(uri: str) -> Any:
         uri: mem://session/env/artifact_id URI
 
     Returns:
-        Numpy array
+        Numpy array (or object)
 
     Raises:
         ValueError: If URI is invalid or artifact not found
     """
-    import numpy as np
-
     if not uri.startswith("mem://"):
         raise ValueError(f"Invalid memory URI: {uri}")
 
@@ -142,7 +143,10 @@ def _load_from_memory(uri: str) -> Any:
     if artifact_id not in _MEMORY_ARTIFACTS:
         raise KeyError(f"Memory artifact not found: {artifact_id}")
 
-    return _MEMORY_ARTIFACTS[artifact_id]
+    entry = _MEMORY_ARTIFACTS[artifact_id]
+    if isinstance(entry, dict) and "data" in entry:
+        return entry["data"]
+    return entry
 
 
 def _load_input_data(input_ref: str | dict) -> Any:
@@ -154,7 +158,6 @@ def _load_input_data(input_ref: str | dict) -> Any:
     Returns:
         Numpy array (native dimensions)
     """
-    import numpy as np
     from bioio import BioImage
 
     # Handle dict refs (artifact references)
@@ -226,6 +229,7 @@ def _convert_memory_inputs_to_files(inputs: dict[str, Any], work_dir: Path) -> d
     """Convert mem:// artifact inputs to temporary file paths.
 
     This allows functions that expect file paths to work with memory artifacts.
+    Defaults to OME-Zarr (zarr-temp) for interchange. (T049)
 
     Args:
         inputs: Dict of input artifacts (may contain mem:// URIs)
@@ -239,25 +243,58 @@ def _convert_memory_inputs_to_files(inputs: dict[str, Any], work_dir: Path) -> d
     for key, value in inputs.items():
         if isinstance(value, dict) and value.get("uri", "").startswith("mem://"):
             # Load from memory and save to temp file
-            from bioio_ome_tiff import OmeTiffWriter
+            from bioio_ome_zarr.writers import OMEZarrWriter
 
             mem_uri = value["uri"]
             data = _load_from_memory(mem_uri)
 
-            # Save to temporary file with unique name
+            # Retrieve dims from memory store if available
+            artifact_id = _extract_artifact_id(mem_uri)
+            entry = _MEMORY_ARTIFACTS.get(artifact_id)
+            dims = None
+            if isinstance(entry, dict):
+                dims = entry.get("dims")
+
+            if dims is None:
+                dims = _infer_dims_from_shape(data.shape)
+
+            # Standardize dims for OME-Zarr (list of lowercase strings)
+            if isinstance(dims, str):
+                axes_names = [d.lower() for d in dims]
+            else:
+                axes_names = [str(d).lower() for d in dims]
+
+            # Save to temporary directory with unique name
             import uuid
 
             temp_id = uuid.uuid4().hex[:8]
-            temp_path = work_dir / f"_mem_{key}_{temp_id}.ome.tif"
-            dims_str = _infer_dims_from_shape(data.shape)
-            OmeTiffWriter.save(data, temp_path, dim_order=dims_str)
+            temp_path = work_dir / f"_mem_{key}_{temp_id}.ome.zarr"
+
+            type_map = {
+                "t": "time",
+                "c": "channel",
+                "z": "space",
+                "y": "space",
+                "x": "space",
+            }
+            axes_types = [type_map.get(d, "other") for d in axes_names]
+
+            writer = OMEZarrWriter(
+                store=str(temp_path),
+                level_shapes=[data.shape],
+                dtype=data.dtype,
+                axes_names=axes_names,
+                axes_types=axes_types,
+            )
+            writer.write_full_volume(data)
 
             # Replace with file URI
             converted_inputs[key] = {
                 "ref_id": value.get("ref_id"),
                 "uri": f"file://{temp_path}",
                 "type": value.get("type", "BioImageRef"),
-                "format": "OME-TIFF",
+                "format": "OME-Zarr",
+                "storage_type": "zarr-temp",
             }
         else:
             # Keep as-is
@@ -424,6 +461,7 @@ def _extract_artifact_id(ref_id: str | None) -> str:
 
 def handle_materialize(request: dict[str, Any]) -> dict[str, Any]:
     """Handle materialize command - export mem:// artifact to OME-Zarr or OME-TIFF.
+    Defaults to OME-Zarr. (T049)
 
     Args:
         request: MaterializeRequest dict with ref_id, target_format, dest_path, and ordinal
@@ -432,7 +470,7 @@ def handle_materialize(request: dict[str, Any]) -> dict[str, Any]:
         MaterializeResponse dict
     """
     ref_id = request.get("ref_id")
-    target_format = request.get("target_format", "OME-TIFF")
+    target_format = request.get("target_format", "OME-Zarr")
     dest_path = request.get("dest_path")
     ordinal = request.get("ordinal")
 
@@ -462,7 +500,13 @@ def handle_materialize(request: dict[str, Any]) -> dict[str, Any]:
             },
         }
 
-    data = _MEMORY_ARTIFACTS[artifact_id]
+    entry = _MEMORY_ARTIFACTS[artifact_id]
+    if isinstance(entry, dict) and "data" in entry:
+        data = entry["data"]
+        dims = entry.get("dims")
+    else:
+        data = entry
+        dims = None
 
     # Generate destination path if not provided
     if dest_path is None:
@@ -480,15 +524,29 @@ def handle_materialize(request: dict[str, Any]) -> dict[str, Any]:
         if target_format == "OME-TIFF":
             from bioio.writers import OmeTiffWriter
 
-            dims_str = _infer_dims_from_shape(data.shape)
+            dims_str = dims or _infer_dims_from_shape(data.shape)
+            if isinstance(dims_str, list):
+                dims_str = "".join(dims_str)
             OmeTiffWriter.save(data, dest_path, dim_order=dims_str)
         elif target_format == "OME-Zarr":
             from bioio_ome_zarr.writers import OMEZarrWriter
 
-            dims_str = _infer_dims_from_shape(data.shape)
-            axes_names = [d.lower() for d in dims_str]
-            type_map = {"t": "time", "c": "channel", "z": "space", "y": "space", "x": "space"}
-            axes_types = [type_map[d] for d in axes_names]
+            if dims is None:
+                dims = _infer_dims_from_shape(data.shape)
+
+            if isinstance(dims, str):
+                axes_names = [d.lower() for d in dims]
+            else:
+                axes_names = [str(d).lower() for d in dims]
+
+            type_map = {
+                "t": "time",
+                "c": "channel",
+                "z": "space",
+                "y": "space",
+                "x": "space",
+            }
+            axes_types = [type_map.get(d, "other") for d in axes_names]
 
             # OME-Zarr requires specific writer setup
             writer = OMEZarrWriter(
@@ -903,8 +961,6 @@ def _convert_outputs_to_memory(outputs: dict[str, Any], work_dir: Path) -> dict[
     Returns:
         Dict of memory artifact references
     """
-    import numpy as np
-
     mem_outputs = {}
 
     for key, value in outputs.items():
@@ -914,7 +970,11 @@ def _convert_outputs_to_memory(outputs: dict[str, Any], work_dir: Path) -> dict[
             if "path" in value:
                 path = Path(value["path"])
                 data = _load_input_data(str(path))
-                artifact_id, mem_uri = _store_in_memory(data)
+
+                # Preserve dims if available in artifact metadata (T049)
+                dims = value.get("dims") or (value.get("metadata") or {}).get("dims")
+
+                artifact_id, mem_uri = _store_in_memory(data, dims=dims)
 
                 # Clean up the temporary file
                 try:
@@ -934,7 +994,7 @@ def _convert_outputs_to_memory(outputs: dict[str, Any], work_dir: Path) -> dict[
                     "metadata": {
                         "shape": list(data.shape),
                         "dtype": str(data.dtype),
-                        "dims": _infer_dims_from_shape(data.shape),
+                        "dims": dims or _infer_dims_from_shape(data.shape),
                     },
                 }
             else:
