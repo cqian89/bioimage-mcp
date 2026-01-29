@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 
 Phase: 13 of 14 (Dynamic Introspection Cache Reuse)
 **Next Phase:** 14 (OME-Zarr Standardization)
-Plan: 7 of 7 in current phase
+Plan: 8 of 8 in current phase
 Status: Phase complete (verified)
-Last activity: 2026-01-29 — Completed 13-07-PLAN.md
+Last activity: 2026-01-29 — Completed 13-08-PLAN.md
 
-Progress: █████████▓ 93%
+Progress: ██████████ 100%
 
 ## Accumulated Context
 
@@ -55,6 +55,8 @@ Progress: █████████▓ 93%
 | 13 | Persistent CLI List Cache | Used ~/.bioimage-mcp/cache/cli with manifest fingerprinting to achieve <1.5s warm list. |
 | 13 | Composite cache key: env:manifest | Force refresh on metadata changes by including manifest checksum. |
 | 13 | no-lockfile sentinel | Enable cache reuse even when environment indicators are missing. |
+| 13 | Validate dynamic cache presence on CLI cache-hit | Ensures that deleting a per-tool cache file triggers its regeneration even when the higher-level CLI cache is still valid. |
+| 13 | Propagate top-level introspection_source in meta.list | Critical for detecting tools that use dynamic discovery (like trackpy) from the cached function metadata. |
 
 ### Roadmap Evolution
 - Phase 12 added: Core Engine + AST-First
@@ -68,8 +70,8 @@ Progress: █████████▓ 93%
 - Existing failures in bootstrap/test_install.py need investigation.
 
 ### Session Continuity
-Last session: 2026-01-29T10:13:30Z
-Stopped at: Completed 13-07-PLAN.md
+Last session: 2026-01-29T11:25:00Z
+Stopped at: Completed 13-08-PLAN.md
 Resume file: None
 
 ## Next Steps

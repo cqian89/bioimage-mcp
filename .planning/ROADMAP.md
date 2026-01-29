@@ -42,20 +42,22 @@ Plans:
 [To be added during planning]
 
 ### Phase 13: Dynamic Introspection Cache Reuse (incl. trackpy)
+ 
+ Goal: Reuse dynamic introspection results across meta.list calls via a lockfile-gated cache stored under ~/.bioimage-mcp/cache/dynamic/, including trackpy.
+ Status: Complete (2026-01-29)
+ Depends on: Phase 12
+ Plans: 8/8 plans complete
+ 
+ Plans:
+ - [x] 13-01-PLAN.md — Wire IntrospectionCache into tools.base meta.list + tests
+ - [x] 13-02-PLAN.md — Add trackpy cache reuse via IntrospectionCache + tests
+ - [x] 13-03-PLAN.md — Core-side cache for runtime meta.list (avoid subprocess on repeat list)
+ - [x] 13-04-PLAN.md — Fix trackpy project_root detection for lockfile cache writes
+ - [x] 13-05-PLAN.md — Speed up CLI `bioimage-mcp list` via persistent manifest/env cache
+ - [x] 13-06-PLAN.md — Add `bioimage-mcp list --tool ...` filtering
+ - [x] 13-07-PLAN.md — Fix dynamic introspection cache key (manifest invalidation + no-lockfile fallback)
+ - [x] 13-08-PLAN.md — Fix CLI cache short-circuiting dynamic cache repair
 
-**Goal:** Reuse dynamic introspection results across meta.list calls via a lockfile-gated cache stored under ~/.bioimage-mcp/cache/dynamic/, including trackpy.
-**Status:** Complete (2026-01-29)
-**Depends on:** Phase 12
-**Plans:** 7/7 plans complete
-
-Plans:
-- [x] 13-01-PLAN.md — Wire IntrospectionCache into tools.base meta.list + tests
-- [x] 13-02-PLAN.md — Add trackpy cache reuse via IntrospectionCache + tests
-- [x] 13-03-PLAN.md — Core-side cache for runtime meta.list (avoid subprocess on repeat list)
-- [x] 13-04-PLAN.md — Fix trackpy project_root detection for lockfile cache writes
-- [x] 13-05-PLAN.md — Speed up CLI `bioimage-mcp list` via persistent manifest/env cache
-- [x] 13-06-PLAN.md — Add `bioimage-mcp list --tool ...` filtering
-- [x] 13-07-PLAN.md — Fix dynamic introspection cache key (manifest invalidation + no-lockfile fallback)
 
 ### Phase 14: OME-Zarr Standardization
 
