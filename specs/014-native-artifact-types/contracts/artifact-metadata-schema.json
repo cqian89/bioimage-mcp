@@ -43,25 +43,25 @@
           "type": "array",
           "items": {"type": "integer", "minimum": 1},
           "minItems": 2,
-          "maxItems": 5,
+          "maxItems": 10,
           "description": "Array shape (e.g., [512, 512] for 2D)"
         },
         "ndim": {
           "type": "integer",
           "minimum": 2,
-          "maximum": 5,
+          "maximum": 10,
           "description": "Number of dimensions"
         },
         "dims": {
           "type": "array",
           "items": {
             "type": "string",
-            "pattern": "^[A-Z]$",
-            "description": "Single uppercase letter dimension label (T, C, Z, Y, X standard; B, H for custom)"
+            "pattern": "^[a-zA-Z][a-zA-Z0-9]*$",
+            "description": "Dimension label (e.g., T, C, Z, Y, X or bins, harmonic)"
           },
           "minItems": 2,
-          "maxItems": 5,
-          "description": "Dimension labels in order. Standard: T, C, Z, Y, X. Custom: B (microtime bins), H (harmonics), etc."
+          "maxItems": 10,
+          "description": "Dimension labels in order. Supports multi-character names for OME-Zarr."
         },
         "dtype": {
           "type": "string",
@@ -69,8 +69,8 @@
         },
         "axes": {
           "type": "string",
-          "pattern": "^[A-Z]+$",
-          "description": "Legacy axes string (e.g., 'YX', 'TCZYX', 'YXB'). Single uppercase letters."
+          "pattern": "^[a-zA-Z0-9]+$",
+          "description": "Legacy axes string (e.g., 'YX', 'TCZYX'). Standardized to single characters for TIFF."
         },
         "axis_roles": {
           "type": "object",

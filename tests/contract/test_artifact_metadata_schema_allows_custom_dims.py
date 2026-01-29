@@ -86,6 +86,55 @@ class TestArtifactMetadataSchemaCustomDims:
         # This should NOT raise - H must be accepted
         jsonschema.validate(instance=artifact, schema=schema)
 
+    def test_schema_accepts_multi_char_axis(self) -> None:
+        """Schema must accept dims=['bins','y','x'] for OME-Zarr data. (T049)"""
+        schema = _load_schema()
+
+        artifact = {
+            "ref_id": "d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1",
+            "type": "BioImageRef",
+            "uri": "file:///path/to/decay.ome.zarr",
+            "format": "OME-Zarr",
+            "storage_type": "zarr-temp",
+            "mime_type": "application/zarr+ome",
+            "size_bytes": 2097152,
+            "created_at": "2026-01-16T12:00:00Z",
+            "metadata": {
+                "shape": [64, 32, 32],
+                "ndim": 3,
+                "dims": ["bins", "y", "x"],  # Multi-character axis names
+                "dtype": "float32",
+                "axis_roles": {"bins": "microtime_histogram"},
+            },
+        }
+
+        # This should NOT raise
+        jsonschema.validate(instance=artifact, schema=schema)
+
+    def test_schema_accepts_6d_zarr(self) -> None:
+        """Schema must accept >5D for OME-Zarr data. (T049)"""
+        schema = _load_schema()
+
+        artifact = {
+            "ref_id": "e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+            "type": "BioImageRef",
+            "uri": "file:///path/to/hyperstack.ome.zarr",
+            "format": "OME-Zarr",
+            "storage_type": "zarr-temp",
+            "mime_type": "application/zarr+ome",
+            "size_bytes": 4194304,
+            "created_at": "2026-01-16T12:03:00Z",
+            "metadata": {
+                "shape": [2, 1, 3, 10, 512, 512],
+                "ndim": 6,
+                "dims": ["S", "T", "C", "Z", "Y", "X"],
+                "dtype": "uint16",
+            },
+        }
+
+        # This should NOT raise
+        jsonschema.validate(instance=artifact, schema=schema)
+
     def test_schema_still_accepts_standard_tczyx(self) -> None:
         """Schema must still accept standard TCZYX dimensions."""
         schema = _load_schema()
