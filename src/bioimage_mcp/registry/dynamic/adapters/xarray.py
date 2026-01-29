@@ -617,8 +617,8 @@ class XarrayAdapterForRegistry(BaseAdapter):
     ) -> list[dict]:
         """Save output DataArray with native dimensions (T018).
 
-        Prefers OME-TIFF for maximum downstream compatibility (e.g., with Cellpose).
-        Falls back to OME-Zarr only if OME-TIFF save fails.
+        Prefers OME-Zarr for standard interchange. (T049)
+        Falls back to OME-TIFF only if explicitly requested or if Zarr write fails.
         """
         if work_dir is None:
             work_dir = Path(tempfile.gettempdir())
@@ -649,35 +649,30 @@ class XarrayAdapterForRegistry(BaseAdapter):
         if data.dtype == np.uint64 or data.dtype == np.int64:
             data = data.astype(np.float32)
 
-        # Prefer OME-TIFF for maximum downstream compatibility
-        ome_tiff_success = False
-        ext = ".ome.tiff"
-        fmt = "OME-TIFF"
+        # Default to OME-Zarr (T049)
+        ome_zarr_success = False
+        ext = ".ome.zarr"
+        fmt = "OME-Zarr"
         out_path = work_dir / f"output_{method_name}{ext}"
 
         try:
+            save_native_ome_zarr(data, out_path, dims)
+            ome_zarr_success = True
+        except Exception as e:
+            logger.warning("OME-Zarr write failed, falling back to OME-TIFF: %s", e)
+            ome_zarr_success = False
+
+        if not ome_zarr_success:
+            ext = ".ome.tiff"
+            fmt = "OME-TIFF"
+            out_path = work_dir / f"output_{method_name}{ext}"
+
             from bioio.writers import OmeTiffWriter
 
             # OME-TIFF supports 2D-6D and specific names (TCZYXS)
-            # If any dimension name is multi-character, it's definitely not OME-TIFF compatible
-            if len(dims) > 5 or any(len(d) > 1 for d in dims):
-                raise ValueError("Incompatible with OME-TIFF")
-
-            # Use native dimensions (2D-6D supported by OmeTiffWriter)
-            save_data = data
-            save_dim_order = "".join(dims)
-
-            OmeTiffWriter.save(save_data, str(out_path), dim_order=save_dim_order)
-            ome_tiff_success = True
-        except Exception:
-            # Fallback to OME-Zarr if OME-TIFF save fails
-            ome_tiff_success = False
-
-        if not ome_tiff_success:
-            ext = ".ome.zarr"
-            fmt = "OME-Zarr"
-            out_path = work_dir / f"output_{method_name}{ext}"
-            save_native_ome_zarr(data, out_path, dims)
+            # Use single-character axes for OME-TIFF if possible
+            save_dim_order = "".join([d[0].upper() for d in dims])
+            OmeTiffWriter.save(data, str(out_path), dim_order=save_dim_order)
 
         # Populate native dimension metadata
         metadata = {
