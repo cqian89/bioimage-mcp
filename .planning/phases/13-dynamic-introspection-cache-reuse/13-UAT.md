@@ -1,9 +1,9 @@
 ---
-status: complete
+status: diagnosed
 phase: 13-dynamic-introspection-cache-reuse
 source: [13-01-SUMMARY.md, 13-02-SUMMARY.md, 13-03-SUMMARY.md, 13-04-SUMMARY.md]
 started: 2026-01-28T23:45:15Z
-updated: 2026-01-29T00:10:36Z
+updated: 2026-01-29T00:15:20Z
 ---
 
 ## Current Test
@@ -45,7 +45,14 @@ skipped: 0
   reason: "User reported: Second run onwards still take more than 5s. Not much faster than first if any"
   severity: major
   test: 1
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+  root_cause: "CLI `bioimage-mcp list` lacks persistent caching for manifest discovery and environment listing (only has in-memory cache)."
+  artifacts:
+    - path: "src/bioimage_mcp/cli.py"
+      issue: "CLI list calls bootstrap.list.list_tools in a fresh process."
+    - path: "src/bioimage_mcp/bootstrap/list.py"
+      issue: "list path always loads manifests and calls env manager subprocess."
+    - path: "src/bioimage_mcp/registry/loader.py"
+      issue: "_MANIFEST_CACHE is process-local only."
+  missing:
+    - "Persistent cache for CLI list (manifest discovery + env list results)."
+  debug_session: ".planning/debug/warm-cache-slow.md"
