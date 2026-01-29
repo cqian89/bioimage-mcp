@@ -136,6 +136,13 @@ functions:
       Preserves physical metadata (pixel sizes) in the output artifact.
     tags: [image, io, slice, transform]
     input_mode: xarray
+    hints:
+      inputs:
+        image:
+          type: BioImageRef
+          required: true
+          description: Input image artifact to slice
+          supported_storage_types: ["file", "zarr-temp"]
     inputs:
       - name: image
         artifact_type: BioImageRef
@@ -215,14 +222,21 @@ functions:
       Replaces deprecated base.bioio.export function.
     tags: [image, io, export]
     input_mode: xarray
+    hints:
+      inputs:
+        image:
+          type: BioImageRef
+          required: true
+          description: Image or label artifact to export
+          supported_storage_types: ["file", "zarr-temp"]
     inputs:
       - name: image
-        artifact_type: [BioImageRef, LabelImageRef, ObjectRef]
+        artifact_type: BioImageRef
         required: true
         description: Image or label artifact to export
     outputs:
       - name: output
-        artifact_type: [BioImageRef, LabelImageRef]
+        artifact_type: BioImageRef
         description: Exported file artifact
     params_schema:
       type: object
