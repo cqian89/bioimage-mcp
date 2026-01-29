@@ -113,6 +113,10 @@ async def test_cellpose_pipeline(live_server, cellpose_image, interaction_logger
     )
     assert export_result is not None
 
+    if export_result.get("status") != "success":
+        print(f"EXPORT RESULT: {export_result}")
+        print(f"SERVER STDERR:\n{live_server.get_stderr()}")
+
     # Validate and extract export output
     assert isinstance(export_result, dict) and "outputs" in export_result, (
         f"Expected dict with 'outputs', got {type(export_result)}: {export_result}"
@@ -166,6 +170,10 @@ async def test_cellpose_pipeline(live_server, cellpose_image, interaction_logger
     outputs = segment_result["outputs"]
     assert outputs, f"Segment result outputs is empty: {segment_result}"
 
-    # Check for ref_id in all outputs
+    # Check for ref_id in all outputs and verify format
     for key, value in outputs.items():
         assert_valid_artifact_ref(value, f"segment output '{key}'")
+        if key == "labels":
+            assert value.get("format") == "OME-Zarr", (
+                f"Expected OME-Zarr for labels, got {value.get('format')}"
+            )

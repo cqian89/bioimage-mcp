@@ -17,11 +17,8 @@ HDF_FILE = TTTR_DATA_ROOT / "hdf" / "1a_1b_Mix.hdf5"
 
 
 def is_valid_dataset(path: Path) -> bool:
-    """Check if a dataset file looks usable.
-
-    Treat Git LFS pointer files as unavailable so smoke tests
-    don't fail in environments without LFS data checkout.
-    """
+    """Check if a dataset file looks usable."""
+    print(f"Checking path: {path} (exists: {path.exists()})")
     if not path.exists():
         return False
 
@@ -172,12 +169,14 @@ class TestTTTRLibSmoke:
         ics_ref = ics_result["outputs"]["ics"]
         assert_valid_artifact_ref(ics_ref, "BioImageRef")
 
-        # Assertion: file exists as OME-TIFF
+        # Assertion: file exists as OME-Zarr
         uri = ics_ref["uri"]
         assert uri.startswith("file://")
         path = Path(uri[7:])
         assert path.exists()
-        assert path.suffix.lower() in [".tif", ".tiff"]
+        assert path.is_dir()
+        assert str(path).lower().endswith((".ome.zarr", ".zarr"))
+        assert ics_ref.get("format") == "OME-Zarr"
 
     @pytest.mark.anyio
     @pytest.mark.skipif(not is_valid_dataset(PTU_FILE), reason="PTU dataset not available or empty")
@@ -234,7 +233,9 @@ class TestTTTRLibSmoke:
         assert uri.startswith("file://")
         path = Path(uri[7:])
         assert path.exists()
-        assert path.suffix.lower() in [".tif", ".tiff"]
+        assert path.is_dir()
+        assert str(path).lower().endswith((".ome.zarr", ".zarr"))
+        assert intensity_ref.get("format") == "OME-Zarr"
 
     @pytest.mark.anyio
     @pytest.mark.skipif(not is_valid_dataset(PTU_FILE), reason="PTU dataset not available or empty")
@@ -282,6 +283,8 @@ class TestTTTRLibSmoke:
                 "params": {"frequency": 80.0, "stack_frames": True},
             },
         )
+        if phasor_result.get("status") == "success":
+            print(f"PHASOR OUTPUT: {phasor_result['outputs']['phasor']}")
         assert phasor_result.get("status") == "success", f"Phasor failed: {phasor_result}"
         phasor_ref = phasor_result["outputs"]["phasor"]
         assert_valid_artifact_ref(phasor_ref, "BioImageRef")
@@ -291,7 +294,9 @@ class TestTTTRLibSmoke:
         assert uri.startswith("file://")
         path = Path(uri[7:])
         assert path.exists()
-        assert path.suffix.lower() in [".tif", ".tiff"]
+        assert path.is_dir()
+        assert str(path).lower().endswith((".ome.zarr", ".zarr"))
+        assert phasor_ref.get("format") == "OME-Zarr"
 
         # Check metadata indicates 2 channels (g, s)
         metadata = phasor_ref.get("metadata", {})
@@ -368,15 +373,15 @@ class TestTTTRLibSmoke:
             f"Expected format='OME-Zarr', got {decay_ref.get('format')}"
         )
 
-        # Verify metadata uses B axis for microtime bins (spec 026)
+        # Verify metadata uses 'bins' axis for microtime bins (spec 026)
         metadata = decay_ref.get("metadata", {})
         dims = metadata.get("dims", [])
-        assert "B" in dims, f"Expected 'B' in dims for microtime bins, got {dims}"
+        assert "bins" in dims, f"Expected 'bins' in dims for microtime bins, got {dims}"
 
         # Verify axis roles
         axis_roles = metadata.get("axis_roles", {})
-        assert axis_roles.get("B") == "microtime_histogram", (
-            f"Expected axis_roles['B']='microtime_histogram', got {axis_roles}"
+        assert axis_roles.get("bins") == "microtime_histogram", (
+            f"Expected axis_roles['bins']='microtime_histogram', got {axis_roles}"
         )
 
         # Verify microtime bins count
@@ -434,6 +439,8 @@ class TestTTTRLibSmoke:
                 "params": {"stack_frames": True},
             },
         )
+        if lifetime_result.get("status") != "success":
+            print(f"LIFETIME SERVER STDERR:\n{live_server.get_stderr()}")
         assert lifetime_result.get("status") == "success", f"Lifetime failed: {lifetime_result}"
         lifetime_ref = lifetime_result["outputs"]["lifetime"]
         assert_valid_artifact_ref(lifetime_ref, "BioImageRef")
@@ -443,6 +450,9 @@ class TestTTTRLibSmoke:
         assert uri.startswith("file://")
         path = Path(uri[7:])
         assert path.exists()
+        assert path.is_dir()
+        assert str(path).lower().endswith((".ome.zarr", ".zarr"))
+        assert lifetime_ref.get("format") == "OME-Zarr"
 
         # Check metadata indicates nanoseconds unit
         metadata = lifetime_ref.get("metadata", {})
@@ -636,3 +646,5 @@ class TestTTTRLibSmoke:
             assert uri.startswith("file://")
             path = Path(uri[7:])
             assert path.exists(), f"Output file not found: {path}"
+            assert path.is_dir(), f"Output should be OME-Zarr directory: {path}"
+            assert ref.get("format") == "OME-Zarr"
