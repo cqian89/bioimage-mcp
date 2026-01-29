@@ -54,7 +54,7 @@ Plans:
 - [x] 13-03-PLAN.md — Core-side cache for runtime meta.list (avoid subprocess on repeat list)
 - [x] 13-04-PLAN.md — Fix trackpy project_root detection for lockfile cache writes
 - [x] 13-05-PLAN.md — Speed up CLI `bioimage-mcp list` via persistent manifest/env cache
-- [ ] 13-06-PLAN.md — Add `bioimage-mcp list --tool ...` filtering
+- [x] 13-06-PLAN.md — Add `bioimage-mcp list --tool ...` filtering
 - [ ] 13-07-PLAN.md — Fix dynamic introspection cache key (manifest invalidation + no-lockfile fallback)
 
 ### Phase 14: OME-Zarr Standardization
