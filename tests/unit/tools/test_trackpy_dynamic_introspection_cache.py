@@ -98,22 +98,20 @@ def test_trackpy_handle_meta_list_project_root_heuristics(
         # And manifest_path is in tmp_path/tools/trackpy, it won't find project_root at tmp_path/project
         result_no_env = handle_meta_list({})
         assert result_no_env["ok"] is True
-        # Should NOT write cache (or rather, use empty hash), so it might introspect again
-        # Actually, discover_functions uses lockfile_hash="" if project_root not found.
-        # IntrospectionCache.put/get will use "" as lockfile_hash.
-        # But wait, discover_functions only uses cache if lockfile_hash is truthy?
-        # Let's check src/bioimage_mcp/registry/dynamic/discovery.py
-        # line 63: if cache and lockfile_hash:
-        # So it BYPASSES cache if lockfile_hash is empty. Correct.
+        # Now it caches using 'no-lockfile' sentinel
+        current_count = mock_introspect.call_count
+
+        # Second call without env should hit cache
+        handle_meta_list({})
+        assert mock_introspect.call_count == current_count
 
         # Set env var
         with patch.dict(os.environ, {"BIOIMAGE_MCP_PROJECT_ROOT": str(project_root)}):
             handle_meta_list({})
             # Should have found project_root via env var.
-            # It's a new lockfile content, so it should introspect.
-            # mock_introspect.call_count was already incremented by result_no_env
+            # It's a new lockfile content relative to the CWD run, so it should introspect.
+            assert mock_introspect.call_count == current_count + 1
             current_count = mock_introspect.call_count
-            assert current_count == 3  # 1 (CWD) + 1 (no env) + 1 (env first)
 
             # Next call with env var should hit cache
             handle_meta_list({})

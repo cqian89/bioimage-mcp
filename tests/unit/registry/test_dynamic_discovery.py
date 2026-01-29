@@ -233,7 +233,8 @@ class TestCacheIntegration:
                 source_adapter="test-adapter",
             )
         ]
-        cache.put("test-adapter", "test", lockfile_hash, cached_results)
+        composite_key = f"{lockfile_hash}:{manifest.manifest_checksum[:16]}"
+        cache.put("test-adapter", "test", composite_key, cached_results)
 
         # Call discover_functions with cache and project_root
         adapter_registry = {"test-adapter": mock_adapter}
@@ -355,8 +356,131 @@ class TestCacheIntegration:
         # Verify results were stored in cache
         lockfile_content = lockfile_path.read_text()
         lockfile_hash = hashlib.sha256(lockfile_content.encode()).hexdigest()[:16]
-        cached_results = cache.get("test-adapter", "test", lockfile_hash)
+        composite_key = f"{lockfile_hash}:{manifest.manifest_checksum[:16]}"
+        cached_results = cache.get("test-adapter", "test", composite_key)
 
         assert cached_results is not None
         assert len(cached_results) == 1
         assert cached_results[0].fn_id == "test.new_func"
+
+    def test_discover_invalidates_on_manifest_change(self, tmp_path):
+        """discover_functions should trigger cache miss when manifest checksum changes."""
+        from bioimage_mcp.registry.dynamic.discovery import discover_functions
+
+        # Create a mock adapter
+        mock_adapter = Mock()
+        mock_adapter.discover.return_value = [
+            FunctionMetadata(
+                name="fresh_func",
+                module="test_module",
+                qualified_name="test_module.fresh_func",
+                fn_id="test.fresh_func",
+                source_adapter="test-adapter",
+            )
+        ]
+
+        # Create manifest with lockfile
+        lockfile_path = tmp_path / "envs" / "bioimage-mcp-test.lock.yml"
+        lockfile_path.parent.mkdir(parents=True)
+        lockfile_path.write_text("lockfile content")
+
+        manifest_a = ToolManifest(
+            manifest_version="1.0",
+            tool_id="test-tool",
+            tool_version="0.1.0",
+            env_id="bioimage-mcp-test",
+            entrypoint="test_module",
+            dynamic_sources=[
+                DynamicSource(adapter="test-adapter", prefix="test", modules=["test_module"])
+            ],
+            manifest_path=Path("/fake/manifest.yaml"),
+            manifest_checksum="checksum_A",
+        )
+
+        # Pre-populate cache for checksum_A
+        import hashlib
+        from bioimage_mcp.registry.dynamic.cache import IntrospectionCache
+
+        cache_dir = tmp_path / ".bioimage-mcp" / "cache"
+        cache = IntrospectionCache(cache_dir)
+        lockfile_hash = hashlib.sha256(lockfile_path.read_text().encode()).hexdigest()[:16]
+        composite_key_a = f"{lockfile_hash}:checksum_A"
+
+        cached_results = [
+            FunctionMetadata(
+                name="cached_func",
+                module="test_module",
+                qualified_name="test_module.cached_func",
+                fn_id="test.cached_func",
+                source_adapter="test-adapter",
+            )
+        ]
+        cache.put("test-adapter", "test", composite_key_a, cached_results)
+
+        # Call discover_functions with different manifest checksum (checksum_B)
+        manifest_b = manifest_a.model_copy(update={"manifest_checksum": "checksum_B"})
+        adapter_registry = {"test-adapter": mock_adapter}
+        results = discover_functions(
+            manifest_b, adapter_registry, cache=cache, project_root=tmp_path
+        )
+
+        # Verify adapter WAS called (cache miss due to checksum change)
+        assert mock_adapter.discover.call_count == 1
+        assert results[0].fn_id == "test.fresh_func"
+
+        # Verify new cache entry created for checksum_B
+        composite_key_b = f"{lockfile_hash}:checksum_B"
+        cached_results_b = cache.get("test-adapter", "test", composite_key_b)
+        assert cached_results_b is not None
+        assert cached_results_b[0].fn_id == "test.fresh_func"
+
+    def test_discover_functions_caches_without_lockfile(self, tmp_path):
+        """discover_functions should cache results even when lockfile is missing."""
+        from bioimage_mcp.registry.dynamic.discovery import discover_functions
+
+        mock_adapter = Mock()
+        mock_adapter.discover.return_value = [
+            FunctionMetadata(
+                name="func",
+                module="m",
+                qualified_name="m.f",
+                fn_id="t.f",
+                source_adapter="test-adapter",
+            )
+        ]
+
+        manifest = ToolManifest(
+            manifest_version="1.0",
+            tool_id="test-tool",
+            tool_version="0.1.0",
+            env_id="bioimage-mcp-test",
+            entrypoint="test_module",
+            dynamic_sources=[
+                DynamicSource(adapter="test-adapter", prefix="test", modules=["test_module"])
+            ],
+            manifest_path=Path("/fake/manifest.yaml"),
+            manifest_checksum="abc123",
+        )
+
+        from bioimage_mcp.registry.dynamic.cache import IntrospectionCache
+
+        cache_dir = tmp_path / ".bioimage-mcp" / "cache"
+        cache = IntrospectionCache(cache_dir)
+
+        # Call without project_root (so no lockfile found)
+        adapter_registry = {"test-adapter": mock_adapter}
+        results = discover_functions(manifest, adapter_registry, cache=cache, project_root=None)
+
+        assert mock_adapter.discover.call_count == 1
+
+        # Verify cache was written with 'no-lockfile' sentinel
+        composite_key = f"no-lockfile:{manifest.manifest_checksum[:16]}"
+        cached_results = cache.get("test-adapter", "test", composite_key)
+        assert cached_results is not None
+        assert cached_results[0].fn_id == "t.f"
+
+        # Second call should hit cache
+        mock_adapter.reset_mock()
+        results2 = discover_functions(manifest, adapter_registry, cache=cache, project_root=None)
+        assert mock_adapter.discover.call_count == 0
+        assert results2 == results

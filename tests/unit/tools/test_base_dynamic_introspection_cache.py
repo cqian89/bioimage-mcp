@@ -140,3 +140,13 @@ def test_handle_meta_list_cache_reuse(mock_manifest_path, tmp_path):
         assert result3["ok"] is True
         assert discover_count == 2  # Incremented
         assert len(result3["result"]["functions"]) == 1
+
+        # 4. Change manifest - should be a cache miss (T13.07)
+        manifest_data = yaml.safe_load(mock_manifest_path.read_text())
+        manifest_data["description"] = "new description"
+        mock_manifest_path.write_text(yaml.dump(manifest_data))
+
+        result4 = handle_meta_list({})
+        assert result4["ok"] is True
+        assert discover_count == 3  # Incremented
+        assert len(result4["result"]["functions"]) == 1
