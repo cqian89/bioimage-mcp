@@ -29,6 +29,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     list_cmd = subparsers.add_parser("list", help="List installed tools and their status")
     list_cmd.add_argument("--json", action="store_true", help="Output machine-readable JSON")
+    list_cmd.add_argument("--tool", help="Filter by tool ID or short name (e.g. trackpy)")
     list_cmd.set_defaults(_handler=_handle_list)
 
     configure = subparsers.add_parser("configure", help="Write starter configuration")
@@ -75,7 +76,7 @@ def _handle_doctor(args: argparse.Namespace) -> int:
 def _handle_list(args: argparse.Namespace) -> int:
     from bioimage_mcp.bootstrap.list import list_tools
 
-    return list_tools(json_output=args.json)
+    return list_tools(json_output=args.json, tool=args.tool)
 
 
 def _handle_configure(args: argparse.Namespace) -> int:

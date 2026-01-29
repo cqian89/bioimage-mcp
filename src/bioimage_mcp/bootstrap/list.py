@@ -63,9 +63,16 @@ def _render_list(tool_details: list[dict[str, Any]], json_output: bool) -> int:
     return 0
 
 
-def list_tools(*, json_output: bool) -> int:
+def list_tools(*, json_output: bool, tool: str | None = None) -> int:
     """List installed tools and their status."""
     config = load_config()
+
+    def _filter_tools(
+        details: list[dict[str, Any]], filter_val: str | None
+    ) -> list[dict[str, Any]]:
+        if not filter_val:
+            return details
+        return [t for t in details if t["id"] == filter_val or t["id"] == f"tools.{filter_val}"]
 
     # Cache setup
     cache_dir = get_cli_cache_dir()
@@ -88,7 +95,8 @@ def list_tools(*, json_output: bool) -> int:
         fingerprint = tools_cache.get_fingerprint(manifest_paths, envs_hash)
         cached_payload = tools_cache.get(fingerprint)
         if cached_payload is not None:
-            return _render_list(cached_payload, json_output)
+            filtered = _filter_tools(cached_payload, tool)
+            return _render_list(filtered, json_output)
 
     # 3. Cache miss (either envs or tools)
     if installed_envs is None:
@@ -136,4 +144,5 @@ def list_tools(*, json_output: bool) -> int:
     fingerprint = tools_cache.get_fingerprint(manifest_paths, envs_hash)
     tools_cache.put(fingerprint, tool_details)
 
-    return _render_list(tool_details, json_output)
+    filtered = _filter_tools(tool_details, tool)
+    return _render_list(filtered, json_output)
