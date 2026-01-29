@@ -69,6 +69,7 @@ Progress: ██████████ 100%
 - Phase 14 added: OME-Zarr Standardization
 
 ### Pending Todos
+- [ ] Implement artifact store retention and quota management (general)
 - [ ] Update bioimage-mcp list table formatting and versioning (tooling)
 - [ ] Strategize and execute test consolidation (testing)
 
