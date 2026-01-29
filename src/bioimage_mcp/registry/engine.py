@@ -15,6 +15,7 @@ from bioimage_mcp.registry.dynamic.models import IOPattern, ParameterSchema
 from bioimage_mcp.registry.manifest_schema import Function, FunctionOverlay, Port, ToolManifest
 from bioimage_mcp.registry.static.inspector import inspect_module
 from bioimage_mcp.registry.static.schema_normalize import normalize_json_schema
+from bioimage_mcp.registry.utils import summarize_docstring
 from bioimage_mcp.runtimes.executor import execute_tool
 from bioimage_mcp.runtimes.meta_protocol import parse_meta_describe_result, parse_meta_list_result
 
@@ -206,7 +207,7 @@ class DiscoveryEngine:
         source_prefix = f"{env_prefix}.{source.prefix}" if env_prefix else source.prefix
 
         for fn_data in runtime_functions:
-            raw_fn_id = fn_data.get("fn_id", "")
+            raw_fn_id = fn_data.get("id") or fn_data.get("fn_id", "")
 
             final_fn_id = self._normalize_runtime_fn_id(
                 raw_fn_id,
@@ -220,13 +221,11 @@ class DiscoveryEngine:
                 try:
                     inputs, outputs, io_pattern = self._ports_from_runtime_entry(fn_data)
 
-                    description = self._summary_from_docstring(fn_data.get("summary"))
+                    description = summarize_docstring(fn_data.get("summary"))
                     if not description:
-                        description = self._summary_from_docstring(fn_data.get("description"))
+                        description = summarize_docstring(fn_data.get("description"))
                     if not description:
-                        description = self._summary_from_docstring(
-                            fn_data.get("name") or final_fn_id
-                        )
+                        description = summarize_docstring(fn_data.get("name") or final_fn_id)
 
                     params_schema = fn_data.get("params_schema")
                     if not params_schema:
@@ -389,13 +388,13 @@ class DiscoveryEngine:
         runtime_entry = runtime_map.get(fn_id)
 
         # Basic AST-derived info
-        description = self._summary_from_docstring(sc.docstring)
+        description = summarize_docstring(sc.docstring)
         if not description and runtime_entry:
-            description = self._summary_from_docstring(runtime_entry.get("summary"))
+            description = summarize_docstring(runtime_entry.get("summary"))
             if not description:
-                description = self._summary_from_docstring(runtime_entry.get("description"))
+                description = summarize_docstring(runtime_entry.get("description"))
             if not description:
-                description = self._summary_from_docstring(runtime_entry.get("name"))
+                description = summarize_docstring(runtime_entry.get("name"))
         if not description:
             self._events.append(
                 EngineEvent(
@@ -607,7 +606,7 @@ class DiscoveryEngine:
         source_prefix = f"{env_prefix}.{source.prefix}" if env_prefix else source.prefix
         runtime_map: dict[str, dict[str, Any]] = {}
         for fn_data in runtime_functions:
-            raw_fn_id = fn_data.get("fn_id", "")
+            raw_fn_id = fn_data.get("id") or fn_data.get("fn_id", "")
             final_fn_id = self._normalize_runtime_fn_id(
                 raw_fn_id,
                 source_prefix,
@@ -913,16 +912,6 @@ class DiscoveryEngine:
             schema["required"] = required
 
         return schema
-
-    @staticmethod
-    def _summary_from_docstring(docstring: str | None) -> str:
-        if not docstring:
-            return ""
-        for line in docstring.splitlines():
-            stripped = line.strip()
-            if stripped:
-                return " ".join(stripped.split())
-        return ""
 
     @staticmethod
     def deep_merge_dict(base: dict, overlay: dict) -> dict:

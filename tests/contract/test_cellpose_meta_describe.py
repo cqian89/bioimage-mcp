@@ -145,7 +145,7 @@ class TestCellposeDescribeObjectRef:
 
     def test_describe_cellpose_model_eval_has_objectref_input(self, discovery_service):
         """T049: Test that cellpose.models.CellposeModel.eval has ObjectRef input port."""
-        described = discovery_service.describe_function(fn_id="cellpose.models.CellposeModel.eval")
+        described = discovery_service.describe_function(id="cellpose.models.CellposeModel.eval")
 
         assert "inputs" in described
         assert "model" in described["inputs"]
@@ -163,7 +163,7 @@ class TestCellposeDescribeObjectRef:
 
     def test_describe_objectref_not_in_params_schema(self, discovery_service):
         """T049: Test that ObjectRef and other artifact ports are NOT in params_schema."""
-        described = discovery_service.describe_function(fn_id="cellpose.models.CellposeModel.eval")
+        described = discovery_service.describe_function(id="cellpose.models.CellposeModel.eval")
 
         assert "params_schema" in described
         properties = described["params_schema"].get("properties", {})

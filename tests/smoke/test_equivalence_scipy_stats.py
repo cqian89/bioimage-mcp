@@ -36,7 +36,7 @@ async def test_scipy_stats_ttest_ind_equivalence(live_server, native_executor, t
         load_a = await live_server.call_tool_checked(
             "run",
             {
-                "fn_id": "base.io.table.load",
+                "id": "base.io.table.load",
                 "inputs": {},
                 "params": {"path": str(table_a_path.absolute())},
             },
@@ -44,7 +44,7 @@ async def test_scipy_stats_ttest_ind_equivalence(live_server, native_executor, t
         load_b = await live_server.call_tool_checked(
             "run",
             {
-                "fn_id": "base.io.table.load",
+                "id": "base.io.table.load",
                 "inputs": {},
                 "params": {"path": str(table_b_path.absolute())},
             },
@@ -57,7 +57,7 @@ async def test_scipy_stats_ttest_ind_equivalence(live_server, native_executor, t
         mcp_result = await live_server.call_tool_checked(
             "run",
             {
-                "fn_id": "base.scipy.stats.ttest_ind_table",
+                "id": "base.scipy.stats.ttest_ind_table",
                 "inputs": {"table_a": table_a_ref, "table_b": table_b_ref},
                 "params": {"column": "val", "equal_var": True, "alternative": "two-sided"},
             },

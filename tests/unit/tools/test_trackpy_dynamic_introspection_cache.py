@@ -52,7 +52,7 @@ def test_trackpy_handle_meta_list_project_root_heuristics(
 
     # Setup mock introspection
     mock_introspect.return_value = [
-        {"fn_id": "tp.test", "name": "test", "io_pattern": "image_to_table", "module": "trackpy"}
+        {"id": "tp.test", "name": "test", "io_pattern": "image_to_table", "module": "trackpy"}
     ]
 
     # 1. Test CWD heuristic
@@ -141,7 +141,7 @@ def test_trackpy_handle_meta_list_cache_reuse(
     # Setup mock introspection return
     mock_introspect.return_value = [
         {
-            "fn_id": "trackpy.locate",
+            "id": "trackpy.locate",
             "name": "locate",
             "summary": "Locate features in image",
             "module": "trackpy",
@@ -160,7 +160,7 @@ def test_trackpy_handle_meta_list_cache_reuse(
         assert mock_introspect.call_count == 1
         assert len(result1["result"]["functions"]) == 1
         assert result1["result"]["introspection_source"] == "dynamic_discovery"
-        assert result1["result"]["functions"][0]["fn_id"] == "trackpy.locate"
+        assert result1["result"]["functions"][0]["id"] == "trackpy.locate"
 
         # 2. Second call - should be a cache hit (lockfile unchanged)
         result2 = handle_meta_list({})
@@ -175,7 +175,7 @@ def test_trackpy_handle_meta_list_cache_reuse(
         assert result3["ok"] is True
         assert mock_introspect.call_count == 2  # Incremented
         assert len(result3["result"]["functions"]) == 1
-        assert result3["result"]["functions"][0]["fn_id"] == "trackpy.locate"
+        assert result3["result"]["functions"][0]["id"] == "trackpy.locate"
 
 
 @patch("bioimage_mcp_trackpy.entrypoint.TRACKPY_TOOL_ROOT")
@@ -190,7 +190,7 @@ def test_trackpy_handle_meta_list_canonical_shape(
 
     mock_introspect.return_value = [
         {
-            "fn_id": "trackpy.batch",
+            "id": "trackpy.batch",
             "name": "batch",
             "summary": "Batch processing",
             "module": "trackpy",

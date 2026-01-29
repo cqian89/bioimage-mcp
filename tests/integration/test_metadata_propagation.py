@@ -37,7 +37,7 @@ def test_skimage_metadata_propagation(tmp_path: Path):
     workflow = {
         "steps": [
             {
-                "fn_id": "base.skimage.filters.gaussian",
+                "id": "base.skimage.filters.gaussian",
                 "inputs": {
                     "image": {
                         "type": "BioImageRef",

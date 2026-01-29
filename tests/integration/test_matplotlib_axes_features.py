@@ -39,11 +39,7 @@ def test_axes_styling_workflow(execution_service):
 
     # Step 1: Create subplots
     result1 = execution_service.run_workflow(
-        {
-            "steps": [
-                {"fn_id": "base.matplotlib.pyplot.subplots", "params": {"nrows": 1, "ncols": 1}}
-            ]
-        }
+        {"steps": [{"id": "base.matplotlib.pyplot.subplots", "params": {"nrows": 1, "ncols": 1}}]}
     )
     assert result1["status"] == "success", f"subplots failed: {result1.get('error')}"
     outputs1 = execution_service.get_run_status(result1["run_id"])["outputs"]
@@ -56,7 +52,7 @@ def test_axes_styling_workflow(execution_service):
         {
             "steps": [
                 {
-                    "fn_id": "base.matplotlib.Axes.set_title",
+                    "id": "base.matplotlib.Axes.set_title",
                     "inputs": {"axes": ax_ref},
                     "params": {"label": "Styled Axes Test"},
                 }
@@ -70,7 +66,7 @@ def test_axes_styling_workflow(execution_service):
         {
             "steps": [
                 {
-                    "fn_id": "base.matplotlib.Axes.set_xlabel",
+                    "id": "base.matplotlib.Axes.set_xlabel",
                     "inputs": {"axes": ax_ref},
                     "params": {"xlabel": "X Axis Label"},
                 }
@@ -83,7 +79,7 @@ def test_axes_styling_workflow(execution_service):
         {
             "steps": [
                 {
-                    "fn_id": "base.matplotlib.Axes.set_ylabel",
+                    "id": "base.matplotlib.Axes.set_ylabel",
                     "inputs": {"axes": ax_ref},
                     "params": {"ylabel": "Y Axis Label"},
                 }
@@ -97,7 +93,7 @@ def test_axes_styling_workflow(execution_service):
         {
             "steps": [
                 {
-                    "fn_id": "base.matplotlib.Axes.grid",
+                    "id": "base.matplotlib.Axes.grid",
                     "inputs": {"axes": ax_ref},
                     "params": {"visible": True, "linestyle": "--"},
                 }
@@ -111,7 +107,7 @@ def test_axes_styling_workflow(execution_service):
         {
             "steps": [
                 {
-                    "fn_id": "base.matplotlib.Axes.set_xlim",
+                    "id": "base.matplotlib.Axes.set_xlim",
                     "inputs": {"axes": ax_ref},
                     "params": {"left": 0, "right": 100},
                 }
@@ -124,7 +120,7 @@ def test_axes_styling_workflow(execution_service):
         {
             "steps": [
                 {
-                    "fn_id": "base.matplotlib.Axes.set_ylim",
+                    "id": "base.matplotlib.Axes.set_ylim",
                     "inputs": {"axes": ax_ref},
                     "params": {"bottom": 0, "top": 50},
                 }
@@ -138,7 +134,7 @@ def test_axes_styling_workflow(execution_service):
         {
             "steps": [
                 {
-                    "fn_id": "base.matplotlib.Figure.savefig",
+                    "id": "base.matplotlib.Figure.savefig",
                     "inputs": {"figure": fig_ref},
                     "params": {"format": "png"},
                 }
@@ -159,9 +155,7 @@ def test_annotation_and_legend(execution_service):
     """T043: Integration test for annotations and legend (FR-012, FR-013)."""
 
     # Step 1: Create subplots
-    result1 = execution_service.run_workflow(
-        {"steps": [{"fn_id": "base.matplotlib.pyplot.subplots"}]}
-    )
+    result1 = execution_service.run_workflow({"steps": [{"id": "base.matplotlib.pyplot.subplots"}]})
     assert result1["status"] == "success"
     outputs1 = execution_service.get_run_status(result1["run_id"])["outputs"]
     fig_ref = outputs1["figure"]
@@ -172,7 +166,7 @@ def test_annotation_and_legend(execution_service):
         {
             "steps": [
                 {
-                    "fn_id": "base.matplotlib.Axes.plot",
+                    "id": "base.matplotlib.Axes.plot",
                     "inputs": {"axes": ax_ref},
                     "params": {"x": [1, 2, 3, 4, 5], "y": [1, 4, 9, 16, 25], "label": "y = x^2"},
                 }
@@ -186,7 +180,7 @@ def test_annotation_and_legend(execution_service):
         {
             "steps": [
                 {
-                    "fn_id": "base.matplotlib.Axes.legend",
+                    "id": "base.matplotlib.Axes.legend",
                     "inputs": {"axes": ax_ref},
                     "params": {},
                 }
@@ -200,7 +194,7 @@ def test_annotation_and_legend(execution_service):
         {
             "steps": [
                 {
-                    "fn_id": "base.matplotlib.Axes.annotate",
+                    "id": "base.matplotlib.Axes.annotate",
                     "inputs": {"axes": ax_ref},
                     "params": {"text": "Peak", "xy": [5, 25], "xytext": [4, 20]},
                 }
@@ -216,7 +210,7 @@ def test_annotation_and_legend(execution_service):
         {
             "steps": [
                 {
-                    "fn_id": "base.matplotlib.Axes.text",
+                    "id": "base.matplotlib.Axes.text",
                     "inputs": {"axes": ax_ref},
                     "params": {"x": 1, "y": 20, "s": "Quadratic Curve"},
                 }
@@ -230,7 +224,7 @@ def test_annotation_and_legend(execution_service):
         {
             "steps": [
                 {
-                    "fn_id": "base.matplotlib.Figure.savefig",
+                    "id": "base.matplotlib.Figure.savefig",
                     "inputs": {"figure": fig_ref},
                     "params": {"format": "png"},
                 }

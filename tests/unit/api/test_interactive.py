@@ -52,7 +52,7 @@ def _make_service(
 
 
 def test_call_tool_returns_hints_on_success(tmp_path: Path) -> None:
-    hints = {"next_steps": ["do_next"], "related_metadata": {"fn_id": "fn.test"}}
+    hints = {"next_steps": ["do_next"], "related_metadata": {"id": "fn.test"}}
     execution = FakeExecutionService(
         run_result={"run_id": "run-1", "status": "success", "hints": hints},
         run_status={"status": "success", "outputs": {}},
@@ -70,7 +70,7 @@ def test_call_tool_returns_hints_on_failure(tmp_path: Path) -> None:
     hints = {
         "diagnosis": "bad inputs",
         "suggested_fix": "check inputs",
-        "related_metadata": {"fn_id": "fn.test"},
+        "related_metadata": {"id": "fn.test"},
     }
     execution = FakeExecutionService(
         run_result={"run_id": "run-2", "status": "failed", "hints": hints},

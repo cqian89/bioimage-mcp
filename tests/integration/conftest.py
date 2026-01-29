@@ -72,8 +72,8 @@ class AsyncMCPTestClient:
     def activate_functions(self, fn_ids: list[str]) -> dict[str, Any]:
         return self._client.activate_functions(fn_ids)
 
-    def describe_function(self, fn_id: str) -> dict[str, Any]:
-        return self._client.describe_function(fn_id)
+    def describe_function(self, id: str) -> dict[str, Any]:
+        return self._client.describe_function(id)
 
     def call_tool(self, fn_id: str, inputs: dict, params: dict | None = None) -> dict[str, Any]:
         return self._client.call_tool(fn_id, inputs, params)
@@ -108,7 +108,7 @@ def mcp_services(tmp_path: Path, request: pytest.FixtureRequest, monkeypatch: py
                 info = XARRAY_DATAARRAY_ALLOWLIST.get(name, {})
                 entries.append(
                     {
-                        "fn_id": f"base.xarray.DataArray.{name}",
+                        "id": f"base.xarray.DataArray.{name}",
                         "name": name,
                         "summary": info.get("summary", ""),
                         "module": "xarray.DataArray",
@@ -118,7 +118,7 @@ def mcp_services(tmp_path: Path, request: pytest.FixtureRequest, monkeypatch: py
 
             entries.append(
                 {
-                    "fn_id": "base.phasorpy.phasor.phasor_from_signal",
+                    "id": "base.phasorpy.phasor.phasor_from_signal",
                     "name": "phasor_from_signal",
                     "summary": "Compute phasor coordinates from a signal",
                     "module": "phasorpy.phasor",

@@ -26,7 +26,7 @@ def test_run_workflow_uses_run_scoped_work_dir(tmp_path: Path, monkeypatch) -> N
 
     with ExecutionService(config) as svc:
         result = svc.run_workflow(
-            {"steps": [{"fn_id": "base.project_sum", "inputs": {}, "params": {}}]},
+            {"steps": [{"id": "base.project_sum", "inputs": {}, "params": {}}]},
             skip_validation=True,
         )
 

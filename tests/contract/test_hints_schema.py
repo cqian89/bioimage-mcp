@@ -10,6 +10,7 @@ from bioimage_mcp.api.discovery import DiscoveryService
 from bioimage_mcp.api.schemas import (
     ErrorHints,
     FunctionHints,
+    InputPort,
     InputRequirement,
     NextStepHint,
     OutputDescription,
@@ -92,7 +93,7 @@ def test_next_step_hint_schema() -> None:
     assert set(schema.get("required", [])) == {"reason"}
 
     props = schema.get("properties", {})
-    for field in ["id", "fn_id", "reason", "required_inputs"]:
+    for field in ["id", "reason", "required_inputs"]:
         assert field in props
 
     required_inputs_schema = props["required_inputs"]
@@ -111,7 +112,7 @@ def test_suggested_fix_schema() -> None:
     assert set(schema.get("required", [])) == {"params", "explanation"}
 
     props = schema.get("properties", {})
-    for field in ["id", "fn_id", "params", "explanation"]:
+    for field in ["id", "params", "explanation"]:
         assert field in props
 
     assert props["params"]["type"] == "object"
@@ -151,7 +152,7 @@ def test_function_hints_schema() -> None:
 def test_describe_function_response_structure() -> None:
     """Validate describe_function response includes inputs and outputs with hints."""
     response = {
-        "fn_id": "base.phasorpy.phasor.phasor_from_signal",
+        "id": "base.phasorpy.phasor.phasor_from_signal",
         "name": "Phasor transform",
         "description": "Convert FLIM dataset to phasor coordinates",
         "schema": {"type": "object", "properties": {}},
@@ -160,8 +161,10 @@ def test_describe_function_response_structure() -> None:
                 "type": "BioImageRef",
                 "required": True,
                 "description": "FLIM image data",
-                "expected_axes": ["T", "Y", "X"],
-                "preprocessing_hint": ("If T has only 1 sample, check if FLIM bins are in Z"),
+                "hints": {
+                    "expected_axes": ["T", "Y", "X"],
+                    "preprocessing_hint": ("If T has only 1 sample, check if FLIM bins are in Z"),
+                },
             }
         },
         "outputs": {
@@ -176,12 +179,13 @@ def test_describe_function_response_structure() -> None:
         },
     }
 
-    assert "fn_id" in response
+    assert "id" in response
     assert "inputs" in response
     assert "outputs" in response
 
     for input_requirement in response["inputs"].values():
-        InputRequirement.model_validate(input_requirement)
+        assert "description" in input_requirement
+        InputPort.model_validate(input_requirement)
 
     for output_description in response["outputs"].values():
         OutputDescription.model_validate(output_description)
@@ -196,7 +200,7 @@ def test_run_function_success_response_with_hints() -> None:
             "hints": {
                 "next_steps": [
                     {
-                        "fn_id": "base.phasorpy.phasor.phasor_transform",
+                        "id": "base.phasorpy.phasor.phasor_transform",
                         "reason": "Apply calibration using reference standard",
                     }
                 ],
@@ -223,7 +227,7 @@ def test_run_function_error_response_with_hints() -> None:
             "hints": {
                 "diagnosis": "The T axis has only 1 sample",
                 "suggested_fix": {
-                    "fn_id": "base.xarray.rename",
+                    "id": "base.xarray.rename",
                     "params": {"mapping": {"Z": "T", "T": "Z"}},
                     "explanation": "Swap Z and T axes",
                 },
@@ -243,7 +247,7 @@ def test_run_function_error_response_with_hints() -> None:
 
 def test_function_response_includes_inputs_outputs_hints() -> None:
     payload = {
-        "fn_id": "sample.function",
+        "id": "sample.function",
         "schema": {"type": "object", "properties": {}},
         "inputs": {
             "image": {
@@ -262,7 +266,7 @@ def test_function_response_includes_inputs_outputs_hints() -> None:
             "success_hints": {
                 "next_steps": [
                     {
-                        "fn_id": "sample.next",
+                        "id": "sample.next",
                         "reason": "Continue processing",
                     }
                 ]
@@ -296,7 +300,7 @@ def test_describe_function_includes_manifest_hints_inputs_outputs(
                 "entrypoint": "sample/entrypoint.py",
                 "functions": [
                     {
-                        "fn_id": "sample.function",
+                        "id": "sample.function",
                         "tool_id": "tools.sample",
                         "name": "Sample Function",
                         "description": "Sample function",
@@ -337,7 +341,7 @@ def test_describe_function_includes_manifest_hints_inputs_outputs(
                             "success_hints": {
                                 "next_steps": [
                                     {
-                                        "fn_id": "sample.next",
+                                        "id": "sample.next",
                                         "reason": "Continue processing",
                                     }
                                 ]
@@ -396,8 +400,8 @@ def test_describe_function_includes_manifest_hints_inputs_outputs(
         params_schema={"type": "object", "properties": {}},
     )
 
-    described = service.describe_function("sample.function")
+    described = service.describe_function(id="sample.function")
     assert described["inputs"]["image"]["description"] == "Input image"
     assert described["outputs"]["output"]["description"] == "Output image"
-    assert described["hints"]["inputs"]["image"]["expected_axes"] == ["T", "Y", "X"]
+    assert described["inputs"]["image"]["hints"]["expected_axes"] == ["T", "Y", "X"]
     conn.close()

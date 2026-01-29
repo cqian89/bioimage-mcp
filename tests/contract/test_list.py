@@ -57,7 +57,7 @@ def test_list_returns_deterministic_order_with_pagination():
     page2_repeat = service.list_tools(limit=2, cursor=page1["next_cursor"])
     assert page2["items"] == page2_repeat["items"]
 
-    # Ensure ordered by id (full_path)
+    # Ensure ordered by id
     ids = [item["id"] for item in page1["items"]] + [item["id"] for item in page2["items"]]
     assert ids == sorted(ids)
 

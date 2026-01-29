@@ -17,10 +17,10 @@ def test_run_store_lifecycle(tmp_path: Path) -> None:
 
     with RunStore(config) as store:
         run = store.create_run(
-            workflow_spec={"steps": [{"fn_id": "fn.one"}]},
+            workflow_spec={"steps": [{"id": "fn.one"}]},
             inputs={},
             params={},
-            provenance={"tool_id": "t", "tool_version": "0", "fn_id": "fn.one", "env_id": "e"},
+            provenance={"tool_id": "t", "tool_version": "0", "id": "fn.one", "env_id": "e"},
             log_ref_id="log1",
         )
 

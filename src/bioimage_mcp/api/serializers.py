@@ -17,7 +17,7 @@ class RunResponseSerializer:
         self,
         result: dict[str, Any],
         *,
-        fn_id: str,
+        id: str,
         verbosity: Literal["minimal", "standard", "full"] | str = "minimal",
     ) -> dict[str, Any]:
         """Serialize a run result with the specified verbosity level."""
@@ -28,13 +28,16 @@ class RunResponseSerializer:
             )
             verbosity = "minimal"
 
-        # Top-level fields: run_id, status, fn_id, outputs
+        # Top-level fields: run_id, status, id, outputs
         serialized = {
             "run_id": result["run_id"],
             "status": result["status"],
-            "fn_id": fn_id,
+            "id": id,
             "outputs": {},
         }
+
+        if result.get("session_id"):
+            serialized["session_id"] = result["session_id"]
 
         # Handle outputs - filter workflow_record from outputs in minimal/standard
         outputs = result.get("outputs", {})

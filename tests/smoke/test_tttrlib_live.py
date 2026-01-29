@@ -70,7 +70,7 @@ class TestTTTRLibSmoke:
         open_result = await live_server.call_tool(
             "run",
             {
-                "fn_id": "tttrlib.TTTR",
+                "id": "tttrlib.TTTR",
                 "inputs": {},
                 "params": {
                     "filename": str(SPC_FILE.absolute()),
@@ -87,7 +87,7 @@ class TestTTTRLibSmoke:
         correlate_result = await live_server.call_tool(
             "run",
             {
-                "fn_id": "tttrlib.Correlator",
+                "id": "tttrlib.Correlator",
                 "inputs": {"tttr": tttr_ref},
                 "params": {
                     "channels": [[0], [8]],
@@ -123,7 +123,7 @@ class TestTTTRLibSmoke:
         open_result = await live_server.call_tool(
             "run",
             {
-                "fn_id": "tttrlib.TTTR",
+                "id": "tttrlib.TTTR",
                 "inputs": {},
                 "params": {
                     "filename": str(PTU_FILE.absolute()),
@@ -139,7 +139,7 @@ class TestTTTRLibSmoke:
         clsm_result = await live_server.call_tool(
             "run",
             {
-                "fn_id": "tttrlib.CLSMImage",
+                "id": "tttrlib.CLSMImage",
                 "inputs": {"tttr": tttr_ref},
                 "params": {
                     "reading_routine": "SP5",
@@ -158,7 +158,7 @@ class TestTTTRLibSmoke:
         ics_result = await live_server.call_tool(
             "run",
             {
-                "fn_id": "tttrlib.CLSMImage.compute_ics",
+                "id": "tttrlib.CLSMImage.compute_ics",
                 "inputs": {"clsm": clsm_ref},
                 "params": {
                     "subtract_average": "frame",
@@ -186,7 +186,7 @@ class TestTTTRLibSmoke:
         open_result = await live_server.call_tool(
             "run",
             {
-                "fn_id": "tttrlib.TTTR",
+                "id": "tttrlib.TTTR",
                 "inputs": {},
                 "params": {
                     "filename": str(PTU_FILE.absolute()),
@@ -201,7 +201,7 @@ class TestTTTRLibSmoke:
         clsm_result = await live_server.call_tool(
             "run",
             {
-                "fn_id": "tttrlib.CLSMImage",
+                "id": "tttrlib.CLSMImage",
                 "inputs": {"tttr": tttr_ref},
                 "params": {
                     "reading_routine": "SP5",
@@ -219,7 +219,7 @@ class TestTTTRLibSmoke:
         intensity_result = await live_server.call_tool(
             "run",
             {
-                "fn_id": "tttrlib.CLSMImage.get_intensity",
+                "id": "tttrlib.CLSMImage.get_intensity",
                 "inputs": {"clsm": clsm_ref},
                 "params": {"stack_frames": True},
             },
@@ -245,7 +245,7 @@ class TestTTTRLibSmoke:
         open_result = await live_server.call_tool(
             "run",
             {
-                "fn_id": "tttrlib.TTTR",
+                "id": "tttrlib.TTTR",
                 "inputs": {},
                 "params": {
                     "filename": str(PTU_FILE.absolute()),
@@ -260,7 +260,7 @@ class TestTTTRLibSmoke:
         clsm_result = await live_server.call_tool(
             "run",
             {
-                "fn_id": "tttrlib.CLSMImage",
+                "id": "tttrlib.CLSMImage",
                 "inputs": {"tttr": tttr_ref},
                 "params": {
                     "reading_routine": "SP5",
@@ -278,7 +278,7 @@ class TestTTTRLibSmoke:
         phasor_result = await live_server.call_tool(
             "run",
             {
-                "fn_id": "tttrlib.CLSMImage.get_phasor",
+                "id": "tttrlib.CLSMImage.get_phasor",
                 "inputs": {"clsm": clsm_ref, "tttr_data": tttr_ref},
                 "params": {"frequency": 80.0, "stack_frames": True},
                 "verbosity": "full",
@@ -316,7 +316,7 @@ class TestTTTRLibSmoke:
         open_result = await live_server.call_tool(
             "run",
             {
-                "fn_id": "tttrlib.TTTR",
+                "id": "tttrlib.TTTR",
                 "inputs": {},
                 "params": {
                     "filename": str(PTU_FILE.absolute()),
@@ -331,7 +331,7 @@ class TestTTTRLibSmoke:
         clsm_result = await live_server.call_tool(
             "run",
             {
-                "fn_id": "tttrlib.CLSMImage",
+                "id": "tttrlib.CLSMImage",
                 "inputs": {"tttr": tttr_ref},
                 "params": {
                     "reading_routine": "SP5",
@@ -349,7 +349,7 @@ class TestTTTRLibSmoke:
         decay_result = await live_server.call_tool(
             "run",
             {
-                "fn_id": "tttrlib.CLSMImage.get_fluorescence_decay",
+                "id": "tttrlib.CLSMImage.get_fluorescence_decay",
                 "inputs": {"clsm": clsm_ref, "tttr_data": tttr_ref},
                 "params": {"micro_time_coarsening": 4, "stack_frames": True},
                 "verbosity": "full",
@@ -402,7 +402,7 @@ class TestTTTRLibSmoke:
         open_result = await live_server.call_tool(
             "run",
             {
-                "fn_id": "tttrlib.TTTR",
+                "id": "tttrlib.TTTR",
                 "inputs": {},
                 "params": {
                     "filename": str(PTU_FILE.absolute()),
@@ -417,7 +417,7 @@ class TestTTTRLibSmoke:
         clsm_result = await live_server.call_tool(
             "run",
             {
-                "fn_id": "tttrlib.CLSMImage",
+                "id": "tttrlib.CLSMImage",
                 "inputs": {"tttr": tttr_ref},
                 "params": {
                     "reading_routine": "SP5",
@@ -435,7 +435,7 @@ class TestTTTRLibSmoke:
         lifetime_result = await live_server.call_tool(
             "run",
             {
-                "fn_id": "tttrlib.CLSMImage.get_mean_lifetime",
+                "id": "tttrlib.CLSMImage.get_mean_lifetime",
                 "inputs": {"clsm": clsm_ref, "tttr_data": tttr_ref},
                 "params": {"stack_frames": True},
                 "verbosity": "full",
@@ -468,7 +468,7 @@ class TestTTTRLibSmoke:
         open_result = await live_server.call_tool(
             "run",
             {
-                "fn_id": "tttrlib.TTTR",
+                "id": "tttrlib.TTTR",
                 "inputs": {},
                 "params": {
                     "filename": str(SPC_FILE.absolute()),
@@ -484,7 +484,7 @@ class TestTTTRLibSmoke:
         ranges_result = await live_server.call_tool(
             "run",
             {
-                "fn_id": "tttrlib.TTTR.get_time_window_ranges",
+                "id": "tttrlib.TTTR.get_time_window_ranges",
                 "inputs": {"tttr": tttr_ref},
                 "params": {
                     "minimum_window_length": 0.002,
@@ -515,7 +515,7 @@ class TestTTTRLibSmoke:
         open_result = await live_server.call_tool(
             "run",
             {
-                "fn_id": "tttrlib.TTTR",
+                "id": "tttrlib.TTTR",
                 "inputs": {},
                 "params": {
                     "filename": str(HDF_FILE.absolute()),
@@ -530,7 +530,7 @@ class TestTTTRLibSmoke:
         header_result = await live_server.call_tool(
             "run",
             {
-                "fn_id": "tttrlib.TTTR.header",
+                "id": "tttrlib.TTTR.header",
                 "inputs": {"tttr": tttr_hdf_ref},
             },
         )
@@ -561,7 +561,7 @@ class TestTTTRLibSmoke:
         open_result = await live_server.call_tool(
             "run",
             {
-                "fn_id": "tttrlib.TTTR",
+                "id": "tttrlib.TTTR",
                 "inputs": {},
                 "params": {
                     "filename": str(PTU_FILE.absolute()),
@@ -576,7 +576,7 @@ class TestTTTRLibSmoke:
         clsm_result = await live_server.call_tool(
             "run",
             {
-                "fn_id": "tttrlib.CLSMImage",
+                "id": "tttrlib.CLSMImage",
                 "inputs": {"tttr": tttr_ref},
                 "params": {
                     "reading_routine": "SP5",
@@ -594,7 +594,7 @@ class TestTTTRLibSmoke:
         intensity_result = await live_server.call_tool(
             "run",
             {
-                "fn_id": "tttrlib.CLSMImage.get_intensity",
+                "id": "tttrlib.CLSMImage.get_intensity",
                 "inputs": {"clsm": clsm_ref},
                 "params": {"stack_frames": True},
             },
@@ -607,7 +607,7 @@ class TestTTTRLibSmoke:
         model_result = await live_server.call_tool(
             "run",
             {
-                "fn_id": "cellpose.models.CellposeModel",
+                "id": "cellpose.models.CellposeModel",
                 "inputs": {},
                 "params": {"model_type": "cyto3"},
             },
@@ -620,7 +620,7 @@ class TestTTTRLibSmoke:
         seg_result = await live_server.call_tool(
             "run",
             {
-                "fn_id": "cellpose.models.CellposeModel.eval",
+                "id": "cellpose.models.CellposeModel.eval",
                 "inputs": {"model": model_ref, "x": intensity_ref},
                 "params": {"diameter": 30.0},
             },
@@ -633,7 +633,7 @@ class TestTTTRLibSmoke:
         lifetime_result = await live_server.call_tool(
             "run",
             {
-                "fn_id": "tttrlib.CLSMImage.get_mean_lifetime",
+                "id": "tttrlib.CLSMImage.get_mean_lifetime",
                 "inputs": {"clsm": clsm_ref, "tttr_data": tttr_ref},
                 "params": {"stack_frames": True},
             },

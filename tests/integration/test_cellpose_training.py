@@ -35,7 +35,7 @@ class TestCellposeTraining:
             {
                 "steps": [
                     {
-                        "fn_id": "cellpose.train.train_seg",
+                        "id": "cellpose.train.train_seg",
                         "inputs": {
                             "image": {"type": "BioImageRef", "uri": f"file://{train_img_path}"},
                             "mask": {"type": "LabelImageRef", "uri": f"file://{train_mask_path}"},
@@ -84,7 +84,7 @@ class TestCellposeTraining:
             {
                 "steps": [
                     {
-                        "fn_id": "cellpose.train.train_seg",
+                        "id": "cellpose.train.train_seg",
                         "inputs": {
                             "image": {"type": "BioImageRef", "uri": f"file://{img_path}"},
                             "mask": {"type": "LabelImageRef", "uri": f"file://{mask_path}"},
@@ -107,7 +107,7 @@ class TestCellposeTraining:
             {
                 "steps": [
                     {
-                        "fn_id": "cellpose.models.CellposeModel",
+                        "id": "cellpose.models.CellposeModel",
                         "params": {
                             "pretrained_model": weights_ref,
                             "gpu": False,
@@ -132,7 +132,7 @@ class TestCellposeTraining:
             {
                 "steps": [
                     {
-                        "fn_id": "cellpose.models.CellposeModel.eval",
+                        "id": "cellpose.models.CellposeModel.eval",
                         "inputs": {
                             "model": model_ref,
                             "x": {"type": "BioImageRef", "uri": f"file://{test_img_path}"},

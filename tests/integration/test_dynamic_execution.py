@@ -45,7 +45,7 @@ def test_skimage_dynamic_execution_gaussian(tmp_path: Path):
     workflow = {
         "steps": [
             {
-                "fn_id": "base.skimage.filters.gaussian",
+                "id": "base.skimage.filters.gaussian",
                 "inputs": {
                     "image": {
                         "type": "BioImageRef",
@@ -127,7 +127,7 @@ def test_removed_wrappers_fail(tmp_path: Path):
     workflow = {
         "steps": [
             {
-                "fn_id": "base.bioimage_mcp_base.preprocess.gaussian",
+                "id": "base.bioimage_mcp_base.preprocess.gaussian",
                 "inputs": {
                     "image": {
                         "type": "BioImageRef",

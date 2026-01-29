@@ -145,7 +145,7 @@ async def test_schema_alignment_describe_vs_vector(live_server, fn_id):
     expected = SCHEMA_VECTORS[fn_id]
 
     # Call describe()
-    describe_result = await live_server.call_tool("describe", {"fn_id": fn_id})
+    describe_result = await live_server.call_tool("describe", {"id": fn_id})
     if "error" in describe_result:
         pytest.fail(f"describe({fn_id}) failed: {describe_result['error']}")
 
@@ -212,7 +212,7 @@ async def test_schema_alignment_describe_vs_runtime(live_server, fn_id):
     """Verify MCP describe() matches the live meta.describe() runtime output."""
 
     # 1. Call describe() via MCP
-    describe_result = await live_server.call_tool("describe", {"fn_id": fn_id})
+    describe_result = await live_server.call_tool("describe", {"id": fn_id})
     if "error" in describe_result:
         pytest.fail(f"describe({fn_id}) failed: {describe_result['error']}")
 

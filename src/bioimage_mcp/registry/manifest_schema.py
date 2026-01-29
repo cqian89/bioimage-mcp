@@ -4,7 +4,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import AliasChoices, BaseModel, Field, field_validator, model_validator
 
 from bioimage_mcp.api.schemas import FunctionHints
 from bioimage_mcp.registry.dynamic.models import IOPattern
@@ -65,7 +65,7 @@ class Function(BaseModel):
     fetched on-demand via the meta.describe protocol.
     """
 
-    fn_id: str
+    fn_id: str = Field(validation_alias=AliasChoices("fn_id", "id"))
     tool_id: str
     name: str
     description: str
@@ -97,7 +97,7 @@ class Function(BaseModel):
 class FunctionOverlay(BaseModel):
     """Override/supplement fields for a dynamically discovered function."""
 
-    fn_id: str | None = None
+    fn_id: str | None = Field(default=None, validation_alias=AliasChoices("fn_id", "id"))
     description: str | None = None
     tags: list[str] | None = None
     io_pattern: IOPattern | None = None
@@ -188,7 +188,7 @@ class FunctionResponse(BaseModel):
     """Function details returned to clients via describe_function."""
 
     model_config = {"populate_by_name": True}
-    fn_id: str
+    id: str = Field(validation_alias=AliasChoices("id", "fn_id"))
     params_schema: dict = Field(alias="schema")
     introspection_source: str | None = None
     inputs: dict | None = None

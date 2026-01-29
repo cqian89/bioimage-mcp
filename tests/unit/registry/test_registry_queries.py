@@ -35,11 +35,11 @@ def test_list_tools_paginates_by_cursor() -> None:
         )
 
     page1 = service.list_tools(limit=2, cursor=None)
-    assert [t["full_path"] for t in page1["items"]] == ["a", "b"]
+    assert [t["id"] for t in page1["items"]] == ["a", "b"]
     assert page1["next_cursor"]
 
     page2 = service.list_tools(limit=2, cursor=page1["next_cursor"])
-    assert [t["full_path"] for t in page2["items"]] == ["c"]
+    assert [t["id"] for t in page2["items"]] == ["c"]
     conn.close()
 
 

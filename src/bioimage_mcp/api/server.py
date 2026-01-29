@@ -112,11 +112,11 @@ def create_server(
 
     @mcp.tool()
     def describe(
-        id: str | None = None, fn_id: str | None = None, fn_ids: list[str] | None = None
+        id: str | None = None,
+        ids: list[str] | None = None,
     ) -> dict[str, Any]:
         """Get full details for a function or catalog node."""
-        target_id = id or fn_id
-        return discovery.describe_function(fn_id=target_id, fn_ids=fn_ids)
+        return discovery.describe_function(id=id, ids=ids)
 
     @mcp.tool()
     def search(
@@ -156,7 +156,7 @@ def create_server(
 
     @mcp.tool()
     def run(
-        fn_id: str,
+        id: str,
         inputs: dict[str, Any],
         params: dict[str, Any] | None = None,
         session_id: str | None = None,
@@ -187,7 +187,7 @@ def create_server(
 
         result = interactive.call_tool(
             session_id=session_id,
-            fn_id=fn_id,
+            fn_id=id,
             inputs=inputs,
             params=params,
             ordinal=ordinal,
@@ -212,7 +212,7 @@ def create_server(
 
         # Apply verbosity-aware serialization
         serializer = RunResponseSerializer()
-        response = serializer.serialize(base_result, fn_id=fn_id, verbosity=verbosity)
+        response = serializer.serialize(base_result, id=id, verbosity=verbosity)
 
         return response
 

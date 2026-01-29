@@ -148,7 +148,7 @@ class TestCLSMImage:
                 {
                     "steps": [
                         {
-                            "fn_id": "tttrlib.TTTR",
+                            "id": "tttrlib.TTTR",
                             "inputs": {},
                             "params": {
                                 "filename": str(PTU_FILE)
@@ -169,7 +169,7 @@ class TestCLSMImage:
                 {
                     "steps": [
                         {
-                            "fn_id": "tttrlib.CLSMImage",
+                            "id": "tttrlib.CLSMImage",
                             "inputs": {"tttr": tttr_ref},
                             "params": {
                                 "reading_routine": "SP5",
@@ -225,7 +225,7 @@ class TestICS:
                 {
                     "steps": [
                         {
-                            "fn_id": "tttrlib.CLSMImage.compute_ics",
+                            "id": "tttrlib.CLSMImage.compute_ics",
                             "inputs": {"clsm": mock_clsm},
                             "params": {
                                 "subtract_average": "frame",
@@ -277,7 +277,7 @@ class TestICS:
                 {
                     "steps": [
                         {
-                            "fn_id": "tttrlib.CLSMImage.compute_ics",
+                            "id": "tttrlib.CLSMImage.compute_ics",
                             "inputs": {"clsm": mock_clsm},
                             "params": {
                                 "include_summary": True,

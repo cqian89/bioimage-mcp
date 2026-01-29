@@ -67,13 +67,13 @@ class TestToolPaginationStability:
     def test_cursor_returns_next_page(self, discovery_service_with_data: DiscoveryService) -> None:
         """Test that using cursor returns the next page of results."""
         first_page = discovery_service_with_data.list_tools(limit=3, cursor=None)
-        first_tool_ids = {t["full_path"] for t in first_page["items"]}
+        first_tool_ids = {t["id"] for t in first_page["items"]}
 
         second_page = discovery_service_with_data.list_tools(
             limit=3,
             cursor=first_page["next_cursor"],
         )
-        second_tool_ids = {t["full_path"] for t in second_page["items"]}
+        second_tool_ids = {t["id"] for t in second_page["items"]}
 
         # Pages should not overlap
         assert len(first_tool_ids & second_tool_ids) == 0
@@ -97,7 +97,7 @@ class TestToolPaginationStability:
         # Should have all 10 tools
         assert len(all_tools) == 10
         # All should be unique
-        tool_ids = [t["full_path"] for t in all_tools]
+        tool_ids = [t["id"] for t in all_tools]
         assert len(set(tool_ids)) == 10
 
     def test_same_cursor_returns_same_results(
@@ -112,8 +112,8 @@ class TestToolPaginationStability:
         second_page_2 = discovery_service_with_data.list_tools(limit=3, cursor=cursor)
 
         # Should return identical results
-        ids_1 = [t["full_path"] for t in second_page_1["items"]]
-        ids_2 = [t["full_path"] for t in second_page_2["items"]]
+        ids_1 = [t["id"] for t in second_page_1["items"]]
+        ids_2 = [t["id"] for t in second_page_2["items"]]
         assert ids_1 == ids_2
 
     def test_empty_result_no_cursor(self, discovery_service_with_data: DiscoveryService) -> None:

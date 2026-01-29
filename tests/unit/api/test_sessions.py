@@ -161,7 +161,7 @@ def test_check_version_mismatches(session_service):
 
     # Assert
     assert len(mismatches) == 1
-    assert mismatches[0]["fn_id"] == "test.fn"
+    assert mismatches[0]["id"] == "test.fn"
     assert mismatches[0]["recorded"] == recorded_hash
     assert mismatches[0]["current"] == current_hash
 
@@ -170,7 +170,7 @@ def test_version_mismatch_warning_helper():
     from bioimage_mcp.api.errors import version_mismatch_warning
 
     error = version_mismatch_warning(
-        message="Version mismatch", fn_id="test.fn", recorded_hash="old", current_hash="new"
+        message="Version mismatch", id="test.fn", recorded_hash="old", current_hash="new"
     )
 
     assert error.code == "VERSION_MISMATCH"
@@ -489,7 +489,7 @@ def test_replay_session_resume(session_service):
             assert len(response.step_progress) == 2
             assert response.step_progress[0].status == "skipped"
             assert response.step_progress[1].status == "success"
-            assert response.step_progress[1].fn_id == "test.fn2"
+            assert response.step_progress[1].id == "test.fn2"
 
             # Verify execution_service.run_workflow was only called once (for step 1)
             assert session_service.execution_service.run_workflow.call_count == 1

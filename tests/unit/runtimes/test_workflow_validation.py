@@ -21,7 +21,7 @@ class TestWorkflowValidation:
         workflow_spec = {
             "steps": [
                 {
-                    "fn_id": "cellpose.models.CellposeModel.eval",
+                    "id": "cellpose.models.CellposeModel.eval",
                     "inputs": {
                         "x": {
                             "type": "BioImageRef",
@@ -50,7 +50,7 @@ class TestWorkflowValidation:
         workflow_spec = {
             "steps": [
                 {
-                    "fn_id": "cellpose.models.CellposeModel.eval",
+                    "id": "cellpose.models.CellposeModel.eval",
                     "inputs": {
                         "x": {
                             "type": "LogRef",  # Wrong type!
@@ -79,7 +79,7 @@ class TestWorkflowValidation:
         workflow_spec = {
             "steps": [
                 {
-                    "fn_id": "cellpose.models.CellposeModel.eval",
+                    "id": "cellpose.models.CellposeModel.eval",
                     "inputs": {},  # Missing required 'image' input
                     "params": {},
                 }
@@ -105,7 +105,7 @@ class TestWorkflowValidation:
         workflow_spec = {
             "steps": [
                 {
-                    "fn_id": "unknown.function",
+                    "id": "unknown.function",
                     "inputs": {},
                     "params": {},
                 }
@@ -122,7 +122,7 @@ class TestWorkflowValidation:
         workflow_spec = {
             "steps": [
                 {
-                    "fn_id": "cellpose.models.CellposeModel.eval",
+                    "id": "cellpose.models.CellposeModel.eval",
                     "inputs": {"x": {"type": "BioImageRef"}},
                     "params": {},
                 }
@@ -155,7 +155,7 @@ class TestWorkflowValidation:
         workflow_spec = {
             "steps": [
                 {
-                    "fn_id": "cellpose.models.CellposeModel.eval",
+                    "id": "cellpose.models.CellposeModel.eval",
                     "inputs": {
                         "x": {"type": "LogRef"}  # Wrong type
                     },

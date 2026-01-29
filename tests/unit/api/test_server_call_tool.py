@@ -92,7 +92,7 @@ def test_run_params_optional(monkeypatch, tmp_path) -> None:
     ctx = SimpleNamespace(session=SimpleNamespace(id="session-1"))
 
     result = mcp.tools["run"](
-        fn_id="fn.test",
+        id="fn.test",
         inputs={},
         session_id="session-1",
         ctx=ctx,

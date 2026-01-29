@@ -51,13 +51,13 @@ def test_scatter_workflow_with_table(execution_service, tmp_path):
     df.to_csv(csv_path, index=False)
 
     # Step 1: Load TableRef
-    workflow_load = {"steps": [{"fn_id": "base.io.table.load", "params": {"path": str(csv_path)}}]}
+    workflow_load = {"steps": [{"id": "base.io.table.load", "params": {"path": str(csv_path)}}]}
     result_load = execution_service.run_workflow(workflow_load)
     assert result_load["status"] == "success"
     table_ref = execution_service.get_run_status(result_load["run_id"])["outputs"]["table"]
 
     # Step 2: subplots
-    workflow_fig = {"steps": [{"fn_id": "base.matplotlib.pyplot.subplots"}]}
+    workflow_fig = {"steps": [{"id": "base.matplotlib.pyplot.subplots"}]}
     result_fig = execution_service.run_workflow(workflow_fig)
     assert result_fig["status"] == "success"
     outputs_fig = execution_service.get_run_status(result_fig["run_id"])["outputs"]
@@ -68,7 +68,7 @@ def test_scatter_workflow_with_table(execution_service, tmp_path):
     workflow_scatter = {
         "steps": [
             {
-                "fn_id": "base.matplotlib.Axes.scatter",
+                "id": "base.matplotlib.Axes.scatter",
                 "inputs": {"axes": ax_ref, "x": "area", "y": "circularity", "table": table_ref},
                 "params": {"s": "intensity", "c": "intensity", "cmap": "viridis", "alpha": 0.5},
             }
@@ -81,7 +81,7 @@ def test_scatter_workflow_with_table(execution_service, tmp_path):
     workflow_save = {
         "steps": [
             {
-                "fn_id": "base.matplotlib.Figure.savefig",
+                "id": "base.matplotlib.Figure.savefig",
                 "inputs": {"figure": fig_ref},
                 "params": {"format": "png"},
             }
@@ -116,12 +116,12 @@ def test_scatter_empty_table(execution_service, tmp_path):
     df.to_csv(csv_path, index=False)
 
     # Load TableRef
-    workflow_load = {"steps": [{"fn_id": "base.io.table.load", "params": {"path": str(csv_path)}}]}
+    workflow_load = {"steps": [{"id": "base.io.table.load", "params": {"path": str(csv_path)}}]}
     result_load = execution_service.run_workflow(workflow_load)
     table_ref = execution_service.get_run_status(result_load["run_id"])["outputs"]["table"]
 
     # subplots
-    workflow_fig = {"steps": [{"fn_id": "base.matplotlib.pyplot.subplots"}]}
+    workflow_fig = {"steps": [{"id": "base.matplotlib.pyplot.subplots"}]}
     result_fig = execution_service.run_workflow(workflow_fig)
     ax_ref = execution_service.get_run_status(result_fig["run_id"])["outputs"]["axes"]
 
@@ -129,7 +129,7 @@ def test_scatter_empty_table(execution_service, tmp_path):
     workflow_scatter = {
         "steps": [
             {
-                "fn_id": "base.matplotlib.Axes.scatter",
+                "id": "base.matplotlib.Axes.scatter",
                 "inputs": {"axes": ax_ref, "x": "x", "y": "y", "table": table_ref},
             }
         ]

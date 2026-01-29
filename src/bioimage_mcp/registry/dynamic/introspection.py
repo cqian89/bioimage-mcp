@@ -14,14 +14,11 @@ from bioimage_mcp.registry.dynamic.models import (
     IOPattern,
     ParameterSchema,
 )
+from bioimage_mcp.registry.utils import summarize_docstring
 
 
 class Introspector:
     """Introspects Python functions to generate metadata."""
-
-    def _normalize_description(self, description: str) -> str:
-        """Normalize whitespace in descriptions to single spaces."""
-        return " ".join(description.split()).strip()
 
     def introspect(
         self,
@@ -75,9 +72,7 @@ class Introspector:
         if not func.__doc__:
             return ""
 
-        # Get first line of docstring as description
-        lines = func.__doc__.strip().split("\n")
-        return lines[0].strip() if lines else ""
+        return summarize_docstring(func.__doc__)
 
     def _extract_return_type(self, func: Callable) -> str | None:
         """Extract return type annotation from function."""
@@ -107,7 +102,7 @@ class Introspector:
 
             doc = docstring_parser.parse(func.__doc__)
             for param in doc.params:
-                description = self._normalize_description(param.description or "")
+                description = " ".join((param.description or "").split()).strip()
                 param_info[param.arg_name] = {
                     "description": description,
                     "type": param.type_name or "",
@@ -128,7 +123,7 @@ class Introspector:
                 # Parameter name may include type like "image : ndarray"
                 name = param.name.split(":")[0].strip()
                 # Description is a list of strings, join them
-                desc = self._normalize_description(" ".join(param.desc))
+                desc = " ".join(" ".join(param.desc).split()).strip()
                 # param.type contains the type annotation from docstring
                 doc_type = param.type if hasattr(param, "type") and param.type else ""
                 param_info[name] = {"description": desc, "type": doc_type}

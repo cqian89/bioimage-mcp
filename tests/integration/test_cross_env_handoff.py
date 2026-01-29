@@ -176,7 +176,7 @@ def test_cross_env_materialization_integration(tmp_path: Path):
         spec = {
             "steps": [
                 {
-                    "fn_id": "base.xarray.rename",
+                    "id": "base.xarray.rename",
                     "inputs": {"image": {"ref_id": ref_id_src}},
                     "params": {"mapping": {"Z": "T", "T": "Z"}},
                 }

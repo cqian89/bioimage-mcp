@@ -47,7 +47,7 @@ def test_batch_describe_returns_schemas_and_errors() -> None:
         params_schema={"type": "object", "properties": {"radius": {"type": "number"}}},
     )
 
-    result = service.describe_function(fn_ids=[fn_id_a, fn_id_b, missing_id])
+    result = service.describe_function(ids=[fn_id_a, fn_id_b, missing_id])
 
     assert set(result.keys()) == {"schemas", "errors"}
     assert set(result["schemas"].keys()) == {fn_id_a, fn_id_b}

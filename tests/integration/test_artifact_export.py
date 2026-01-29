@@ -62,7 +62,7 @@ def test_base_io_bioimage_export_materializes_mem_to_file(mcp_services):
     workflow = {
         "steps": [
             {
-                "fn_id": "base.xarray.DataArray.rename",
+                "id": "base.xarray.DataArray.rename",
                 "params": {"mapping": {"Z": "T", "T": "Z"}},
                 "inputs": {"image": {"ref_id": ref.ref_id}},
             }
@@ -86,7 +86,7 @@ def test_base_io_bioimage_export_materializes_mem_to_file(mcp_services):
     export_workflow = {
         "steps": [
             {
-                "fn_id": "base.io.bioimage.export",
+                "id": "base.io.bioimage.export",
                 "params": {"format": "OME-TIFF"},
                 "inputs": {"image": {"ref_id": mem_ref["ref_id"]}},
             }

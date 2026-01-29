@@ -45,14 +45,14 @@ def test_us7_boxplot_violinplot_with_grouping(execution_service, tmp_path):
     pd.DataFrame(data).to_csv(csv_path, index=False)
 
     # Step 1: Load TableRef
-    workflow_load = {"steps": [{"fn_id": "base.io.table.load", "params": {"path": str(csv_path)}}]}
+    workflow_load = {"steps": [{"id": "base.io.table.load", "params": {"path": str(csv_path)}}]}
     result_load = execution_service.run_workflow(workflow_load)
     assert result_load["status"] == "success"
     table_ref = execution_service.get_run_status(result_load["run_id"])["outputs"]["table"]
 
     # Step 2: subplots
     workflow_fig = {
-        "steps": [{"fn_id": "base.matplotlib.pyplot.subplots", "params": {"nrows": 1, "ncols": 2}}]
+        "steps": [{"id": "base.matplotlib.pyplot.subplots", "params": {"nrows": 1, "ncols": 2}}]
     }
     result_fig = execution_service.run_workflow(workflow_fig)
     assert result_fig["status"] == "success"
@@ -65,7 +65,7 @@ def test_us7_boxplot_violinplot_with_grouping(execution_service, tmp_path):
     workflow_boxplot = {
         "steps": [
             {
-                "fn_id": "base.matplotlib.Axes.boxplot",
+                "id": "base.matplotlib.Axes.boxplot",
                 "inputs": {"axes": ax1_ref, "x": "value", "table": table_ref},
                 "params": {"positions": "treatment", "patch_artist": True},
             }
@@ -78,7 +78,7 @@ def test_us7_boxplot_violinplot_with_grouping(execution_service, tmp_path):
     workflow_violin = {
         "steps": [
             {
-                "fn_id": "base.matplotlib.Axes.violinplot",
+                "id": "base.matplotlib.Axes.violinplot",
                 "inputs": {"axes": ax2_ref, "dataset": "value", "table": table_ref},
                 "params": {"positions": "treatment", "showmeans": True},
             }
@@ -91,7 +91,7 @@ def test_us7_boxplot_violinplot_with_grouping(execution_service, tmp_path):
     workflow_save = {
         "steps": [
             {
-                "fn_id": "base.matplotlib.Figure.savefig",
+                "id": "base.matplotlib.Figure.savefig",
                 "inputs": {"figure": fig_ref},
                 "params": {"format": "png"},
             }

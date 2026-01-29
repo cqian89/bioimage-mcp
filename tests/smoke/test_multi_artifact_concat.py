@@ -33,7 +33,7 @@ async def test_multi_artifact_concat(live_server, sample_image):
     load_result = await live_server.call_tool(
         "run",
         {
-            "fn_id": "base.io.bioimage.load",
+            "id": "base.io.bioimage.load",
             "inputs": {},
             "params": {"path": str(sample_image.absolute())},
         },
@@ -48,7 +48,7 @@ async def test_multi_artifact_concat(live_server, sample_image):
     phasor_result = await live_server.call_tool(
         "run",
         {
-            "fn_id": "base.phasorpy.phasor.phasor_from_signal",
+            "id": "base.phasorpy.phasor.phasor_from_signal",
             "inputs": {"signal": img_ref},
             "params": {"axis": 2},
         },
@@ -71,7 +71,7 @@ async def test_multi_artifact_concat(live_server, sample_image):
     concat_result = await live_server.call_tool(
         "run",
         {
-            "fn_id": "base.xarray.concat",
+            "id": "base.xarray.concat",
             "inputs": {"images": [real_ref_id, imag_ref_id]},
             "params": {"dim": "C"},
         },

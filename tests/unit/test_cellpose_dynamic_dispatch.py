@@ -16,7 +16,7 @@ import bioimage_mcp_cellpose.entrypoint as entrypoint
 def test_dynamic_dispatch_segment():
     request = {
         "command": "execute",
-        "fn_id": "cellpose.models.CellposeModel.eval",
+        "id": "cellpose.models.CellposeModel.eval",
         "inputs": {},
         "params": {},
         "work_dir": "/tmp/work_segment",
@@ -39,7 +39,7 @@ def test_dynamic_dispatch_segment():
 def test_dynamic_dispatch_eval():
     request = {
         "command": "execute",
-        "fn_id": "cellpose.models.CellposeModel.eval",
+        "id": "cellpose.models.CellposeModel.eval",
         "inputs": {},
         "params": {},
         "work_dir": "/tmp/work_eval",
@@ -62,7 +62,7 @@ def test_dynamic_dispatch_eval():
 def test_dynamic_dispatch_train_seg():
     request = {
         "command": "execute",
-        "fn_id": "cellpose.train.train_seg",
+        "id": "cellpose.train.train_seg",
         "inputs": {},
         "params": {},
         "work_dir": "/tmp/work_train",
@@ -87,7 +87,7 @@ def test_dynamic_dispatch_train_seg():
 def test_dynamic_dispatch_unknown():
     request = {
         "command": "execute",
-        "fn_id": "unknown",
+        "id": "unknown",
         "inputs": {},
         "params": {},
         "work_dir": "/tmp/work_unknown",

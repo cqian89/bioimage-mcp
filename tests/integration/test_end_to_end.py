@@ -76,7 +76,7 @@ def test_discover_describe_run_flow(end_to_end_context, monkeypatch):
     assert target_fn in fn_ids
 
     # 3. describe_function(fn_id="base.xarray.squeeze") to get full details
-    details = discovery.describe_function(fn_id=target_fn)
+    details = discovery.describe_function(id=target_fn)
     assert details["id"] == target_fn
     assert "params_schema" in details
 
@@ -128,7 +128,7 @@ def test_search_describe_run_flow(end_to_end_context, monkeypatch):
     fn_id = top_result["id"]
 
     # 2. describe the top result
-    details = discovery.describe_function(fn_id=fn_id)
+    details = discovery.describe_function(id=fn_id)
     assert details["id"] == fn_id
 
     # 3. run the function

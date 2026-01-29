@@ -35,7 +35,7 @@ async def test_locate_link_batch_workflow(live_server, trackpy_image):
     load_res = await live_server.call_tool(
         "run",
         {
-            "fn_id": "base.io.bioimage.load",
+            "id": "base.io.bioimage.load",
             "inputs": {},
             "params": {"path": str(trackpy_image.absolute())},
         },
@@ -50,7 +50,7 @@ async def test_locate_link_batch_workflow(live_server, trackpy_image):
     locate_res = await live_server.call_tool(
         "run",
         {
-            "fn_id": "trackpy.locate",
+            "id": "trackpy.locate",
             "inputs": {"image": img_ref},
             "params": {"diameter": 11, "invert": True, "minmass": 100},
         },
@@ -65,7 +65,7 @@ async def test_locate_link_batch_workflow(live_server, trackpy_image):
     batch_res = await live_server.call_tool(
         "run",
         {
-            "fn_id": "trackpy.batch",
+            "id": "trackpy.batch",
             "inputs": {"image": img_ref},
             "params": {"diameter": 11, "invert": True, "minmass": 100},
             "verbosity": "full",
@@ -81,7 +81,7 @@ async def test_locate_link_batch_workflow(live_server, trackpy_image):
     link_res = await live_server.call_tool(
         "run",
         {
-            "fn_id": "trackpy.link",
+            "id": "trackpy.link",
             "inputs": {"table": batch_features_ref},
             "params": {"search_range": 5},
             "verbosity": "full",

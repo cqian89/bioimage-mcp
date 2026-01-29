@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 class MetaListFunction(BaseModel):
     model_config = ConfigDict(extra="allow")
 
-    fn_id: str
+    id: str
     name: str
     summary: str
     module: str | None = None

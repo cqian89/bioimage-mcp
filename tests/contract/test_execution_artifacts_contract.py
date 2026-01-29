@@ -25,7 +25,7 @@ def test_run_workflow_contract_shape(tmp_path: Path, monkeypatch) -> None:
     )
 
     svc = ExecutionService(config, artifact_store=store)
-    response = svc.run_workflow({"steps": [{"fn_id": "fn.one", "params": {}, "inputs": {}}]})
+    response = svc.run_workflow({"steps": [{"id": "fn.one", "params": {}, "inputs": {}}]})
 
     allowed_keys = {
         "run_id",

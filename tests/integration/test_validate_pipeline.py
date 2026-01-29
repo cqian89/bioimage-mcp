@@ -71,7 +71,7 @@ class TestValidatePipeline:
                 {
                     "steps": [
                         {
-                            "fn_id": "cellpose.models.CellposeModel.eval",
+                            "id": "cellpose.models.CellposeModel.eval",
                             "inputs": {
                                 "x": {
                                     "type": "BioImageRef",
@@ -115,7 +115,7 @@ class TestValidatePipeline:
             result = svc.run_workflow(
                 {
                     "steps": [
-                        {"fn_id": "cellpose.models.CellposeModel.eval", "inputs": {}, "params": {}}
+                        {"id": "cellpose.models.CellposeModel.eval", "inputs": {}, "params": {}}
                     ]
                 },
                 skip_validation=True,
@@ -166,7 +166,7 @@ class TestValidatePipeline:
                     {
                         "steps": [
                             {
-                                "fn_id": "cellpose.models.CellposeModel.eval",
+                                "id": "cellpose.models.CellposeModel.eval",
                                 "inputs": {
                                     "x": {
                                         "type": "BioImageRef",

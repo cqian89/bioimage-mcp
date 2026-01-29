@@ -23,7 +23,7 @@ def _write_manifest(manifest_dir: Path, supported_storage_types: list[str]) -> N
                 "entrypoint": "storage/entrypoint.py",
                 "functions": [
                     {
-                        "fn_id": "storage.fn",
+                        "id": "storage.fn",
                         "tool_id": "tools.storage",
                         "name": "Storage Function",
                         "description": "Function for storage tests",
@@ -94,7 +94,7 @@ def test_run_workflow_resolves_ref_id_to_full_artifact(tmp_path: Path, monkeypat
         monkeypatch.setattr("bioimage_mcp.api.execution.execute_step", _fake_execute_step)
 
         result = svc.run_workflow(
-            {"steps": [{"fn_id": "storage.fn", "inputs": inputs, "params": {}}]},
+            {"steps": [{"id": "storage.fn", "inputs": inputs, "params": {}}]},
             skip_validation=True,
         )
 
@@ -138,7 +138,7 @@ def test_run_workflow_materializes_zarr_temp_input(tmp_path: Path, monkeypatch) 
         monkeypatch.setattr("bioimage_mcp.api.execution.execute_step", _fake_execute_step)
 
         result = svc.run_workflow(
-            {"steps": [{"fn_id": "storage.fn", "inputs": inputs, "params": {}}]},
+            {"steps": [{"id": "storage.fn", "inputs": inputs, "params": {}}]},
             skip_validation=True,
         )
 
@@ -177,7 +177,7 @@ def test_run_workflow_skips_materialization_when_supported(tmp_path: Path, monke
         monkeypatch.setattr("bioimage_mcp.api.execution.execute_step", _fake_execute_step)
 
         result = svc.run_workflow(
-            {"steps": [{"fn_id": "storage.fn", "inputs": inputs, "params": {}}]},
+            {"steps": [{"id": "storage.fn", "inputs": inputs, "params": {}}]},
             skip_validation=True,
         )
 

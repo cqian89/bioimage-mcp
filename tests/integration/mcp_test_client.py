@@ -99,14 +99,14 @@ class MCPTestClient:
         self._active_fn_ids = set(fn_ids)
         return {"active_fn_ids": sorted(self._active_fn_ids)}
 
-    def describe_function(self, fn_id: str) -> dict[str, Any]:
-        return self._discovery.describe_function(fn_id)
+    def describe_function(self, id: str) -> dict[str, Any]:
+        return self._discovery.describe_function(id=id)
 
     def call_tool(self, fn_id: str, inputs: dict, params: dict | None = None) -> dict[str, Any]:
         if self._active_fn_ids and fn_id not in self._active_fn_ids:
             raise ValueError(f"Function not activated: {fn_id}")
 
-        step: dict[str, Any] = {"fn_id": fn_id, "inputs": inputs}
+        step: dict[str, Any] = {"id": fn_id, "inputs": inputs}
         if params:
             step["params"] = params
 

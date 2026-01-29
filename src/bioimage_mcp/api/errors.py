@@ -48,7 +48,7 @@ def validation_error(
 
 def version_mismatch_warning(
     message: str,
-    fn_id: str,
+    id: str,
     recorded_hash: str,
     current_hash: str,
     hint: str = "Results may differ from original run",
@@ -70,7 +70,7 @@ def version_mismatch_warning(
 def environment_missing_error(
     message: str,
     env_name: str,
-    fn_id: str,
+    id: str,
     hint: str = "",
 ) -> StructuredError:
     """Create an ENVIRONMENT_MISSING error with install suggestion."""

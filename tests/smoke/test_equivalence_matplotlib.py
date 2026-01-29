@@ -17,7 +17,7 @@ async def test_matplotlib_equivalence(live_server, helper, native_executor, tmp_
     # Step 1: Create figure and axes
     subplots_result = await live_server.call_tool(
         "run",
-        {"fn_id": "base.matplotlib.pyplot.subplots", "inputs": {}, "params": {"figsize": [6, 4]}},
+        {"id": "base.matplotlib.pyplot.subplots", "inputs": {}, "params": {"figsize": [6, 4]}},
     )
     assert "outputs" in subplots_result, f"Expected 'outputs' in result, got {subplots_result}"
     fig_ref = subplots_result["outputs"]["figure"]
@@ -30,7 +30,7 @@ async def test_matplotlib_equivalence(live_server, helper, native_executor, tmp_
     await live_server.call_tool(
         "run",
         {
-            "fn_id": "base.matplotlib.Axes.plot",
+            "id": "base.matplotlib.Axes.plot",
             "inputs": {"axes": axes_ref},
             "params": {"x": x, "y": y, "label": "Sine Wave"},
         },
@@ -40,7 +40,7 @@ async def test_matplotlib_equivalence(live_server, helper, native_executor, tmp_
     await live_server.call_tool(
         "run",
         {
-            "fn_id": "base.matplotlib.Axes.set_title",
+            "id": "base.matplotlib.Axes.set_title",
             "inputs": {"axes": axes_ref},
             "params": {"label": "Matplotlib Baseline"},
         },
@@ -48,7 +48,7 @@ async def test_matplotlib_equivalence(live_server, helper, native_executor, tmp_
     await live_server.call_tool(
         "run",
         {
-            "fn_id": "base.matplotlib.Axes.legend",
+            "id": "base.matplotlib.Axes.legend",
             "inputs": {"axes": axes_ref},
             "params": {},
         },
@@ -60,7 +60,7 @@ async def test_matplotlib_equivalence(live_server, helper, native_executor, tmp_
     save_result = await live_server.call_tool(
         "run",
         {
-            "fn_id": "base.matplotlib.Figure.savefig",
+            "id": "base.matplotlib.Figure.savefig",
             "inputs": {"figure": fig_ref},
             "params": {"dpi": 150},
         },

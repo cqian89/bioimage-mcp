@@ -75,7 +75,7 @@ class SessionService:
             return True  # Cannot verify, assume exists
 
         # Use discovery service to check registry
-        result = self.discovery_service.describe_function(fn_id=fn_id)
+        result = self.discovery_service.describe_function(id=fn_id)
         if "error" not in result:
             return True
 
@@ -125,7 +125,7 @@ class SessionService:
         # 1. Validate params_overrides (by fn_id)
         if params_overrides:
             for fn_id, override_params in params_overrides.items():
-                result = self.discovery_service.describe_function(fn_id=fn_id)
+                result = self.discovery_service.describe_function(id=fn_id)
                 if isinstance(result, dict) and "error" in result:
                     continue
 
@@ -169,7 +169,7 @@ class SessionService:
                 if not override_params:
                     continue
 
-                result = self.discovery_service.describe_function(fn_id=step.id)
+                result = self.discovery_service.describe_function(id=step.id)
                 if isinstance(result, dict) and "error" in result:
                     continue
 
@@ -210,7 +210,7 @@ class SessionService:
             if step.provenance.lock_hash != current_hash:
                 mismatches.append(
                     {
-                        "fn_id": step.id,
+                        "id": step.id,
                         "step_index": step.index,
                         "recorded": step.provenance.lock_hash,
                         "current": current_hash,
@@ -393,7 +393,7 @@ class SessionService:
                     level="warning",
                     source="version_check",
                     step_index=mismatch["step_index"],
-                    fn_id=mismatch["fn_id"],
+                    id=mismatch["fn_id"],
                     message=(
                         f"Tool version changed: recorded lock_hash={mismatch['recorded'][:8]}..., "
                         f"current={mismatch['current'][:8]}..."
@@ -441,7 +441,7 @@ class SessionService:
                 error = environment_missing_error(
                     message=f"Environment '{env_name}' not installed",
                     env_name=env_name,
-                    fn_id=fn_id,
+                    id=fn_id,
                 )
                 return SessionReplayResponse(
                     run_id="none",
@@ -483,7 +483,7 @@ class SessionService:
                 step_progress.append(
                     StepProgress(
                         step_index=idx,
-                        fn_id=step.id,
+                        id=step.id,
                         status="pending",
                         message=f"Step {idx + 1}/{len(record.steps)}: Would run {step.id}",
                     )
@@ -570,7 +570,7 @@ class SessionService:
                     step_progress.append(
                         StepProgress(
                             step_index=i,
-                            fn_id=record.steps[i].id,
+                            id=record.steps[i].id,
                             status="skipped",
                             message=(
                                 f"Step {i + 1}/{len(record.steps)}: Skipped (already completed)"
@@ -667,7 +667,7 @@ class SessionService:
             started_at = datetime.now(UTC).isoformat()
             progress = StepProgress(
                 step_index=idx,
-                fn_id=step.id,
+                id=step.id,
                 status="running",
                 started_at=started_at,
                 message=f"Step {idx + 1}/{len(record.steps)}: Running {step.id}",
@@ -726,7 +726,7 @@ class SessionService:
                             level="warning",
                             source="tool",
                             step_index=idx,
-                            fn_id=step.id,
+                            id=step.id,
                             message=warning_msg,
                         )
                     )

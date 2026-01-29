@@ -56,7 +56,7 @@ def test_run_success_returns_outputs(tmp_path: Path, monkeypatch):
     spec = {
         "steps": [
             {
-                "fn_id": "base.ops.gaussian",
+                "id": "base.ops.gaussian",
                 "inputs": {"image": {"ref_id": "ref123"}},
                 "params": {"sigma": 1.0},
             }
@@ -96,7 +96,7 @@ def test_run_validation_failed_for_missing_input(tmp_path: Path, monkeypatch):
         ],
     )
 
-    spec = {"steps": [{"fn_id": "base.ops.gaussian", "inputs": {}, "params": {}}]}
+    spec = {"steps": [{"id": "base.ops.gaussian", "inputs": {}, "params": {}}]}
     response = svc.run_workflow(spec)
 
     assert response["status"] == "validation_failed"
@@ -130,7 +130,7 @@ def test_run_error_follows_structured_format(tmp_path: Path, monkeypatch):
         ],
     )
 
-    spec = {"steps": [{"fn_id": "base.ops.gaussian", "inputs": {"image": "ref123"}, "params": {}}]}
+    spec = {"steps": [{"id": "base.ops.gaussian", "inputs": {"image": "ref123"}, "params": {}}]}
     response = svc.run_workflow(spec)
 
     assert response["error"]["details"][0]["path"] == "/steps/0/inputs/image"
@@ -168,7 +168,7 @@ def test_run_failed_includes_log_reference(tmp_path: Path, monkeypatch):
 
     svc = ExecutionService(config, artifact_store=store)
 
-    spec = {"steps": [{"fn_id": "base.ops.gaussian", "inputs": {}, "params": {}}]}
+    spec = {"steps": [{"id": "base.ops.gaussian", "inputs": {}, "params": {}}]}
     response = svc.run_workflow(spec, skip_validation=True)
 
     assert response["status"] == "failed"
@@ -203,7 +203,7 @@ def test_dry_run_success(tmp_path: Path, monkeypatch):
         lambda _c, _id: (MagicMock(env_id="env1", entrypoint="main.py"), MagicMock()),
     )
 
-    spec = {"steps": [{"fn_id": "base.ops.gaussian", "inputs": {"image": "ref1"}, "params": {}}]}
+    spec = {"steps": [{"id": "base.ops.gaussian", "inputs": {"image": "ref1"}, "params": {}}]}
     response = svc.run_workflow(spec, dry_run=True)
 
     assert response["status"] == "success"
@@ -245,7 +245,7 @@ def test_dry_run_validation_failed_missing_input(tmp_path: Path, monkeypatch):
         lambda _c, _id: (MagicMock(env_id="env1", entrypoint="main.py"), MagicMock()),
     )
 
-    spec = {"steps": [{"fn_id": "base.ops.gaussian", "inputs": {}, "params": {}}]}
+    spec = {"steps": [{"id": "base.ops.gaussian", "inputs": {}, "params": {}}]}
     response = svc.run_workflow(spec, dry_run=True)
 
     assert response["status"] == "validation_failed"
@@ -283,7 +283,7 @@ def test_dry_run_validation_parity(tmp_path: Path, monkeypatch):
         lambda _c, _id: (MagicMock(env_id="env1", entrypoint="main.py"), MagicMock()),
     )
 
-    spec = {"steps": [{"fn_id": "base.ops.gaussian", "inputs": {"image": "ref1"}, "params": {}}]}
+    spec = {"steps": [{"id": "base.ops.gaussian", "inputs": {"image": "ref1"}, "params": {}}]}
 
     # Run dry
     dry_response = svc.run_workflow(spec, dry_run=True)
@@ -305,11 +305,11 @@ def test_run_returns_not_found_for_invalid_id(tmp_path: Path):
     )
     svc = ExecutionService(config)
 
-    spec = {"steps": [{"fn_id": "invalid.function.id", "inputs": {}, "params": {}}]}
+    spec = {"steps": [{"id": "invalid.function.id", "inputs": {}, "params": {}}]}
     response = svc.run_workflow(spec, skip_validation=True)
 
     assert response["status"] == "failed"
     assert "error" in response
     assert response["error"]["code"] == "NOT_FOUND"
     assert "details" in response["error"]
-    assert response["error"]["details"][0]["path"] == "/steps/0/fn_id"
+    assert response["error"]["details"][0]["path"] == "/steps/0/id"

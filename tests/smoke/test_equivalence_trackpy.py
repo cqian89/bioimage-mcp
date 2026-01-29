@@ -48,7 +48,7 @@ async def test_trackpy_locate_equivalence(
     load_result = await live_server.call_tool(
         "run",
         {
-            "fn_id": "base.io.bioimage.load",
+            "id": "base.io.bioimage.load",
             "inputs": {},
             "params": {"path": str(vendored_trackpy_image)},
         },
@@ -60,7 +60,7 @@ async def test_trackpy_locate_equivalence(
     mcp_result = await live_server.call_tool(
         "run",
         {
-            "fn_id": "trackpy.locate",
+            "id": "trackpy.locate",
             "inputs": {"image": img_ref},
             "params": {"diameter": diameter, "minmass": minmass, "invert": invert},
         },

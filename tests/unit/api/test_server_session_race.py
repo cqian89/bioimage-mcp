@@ -25,9 +25,8 @@ class _DummyDiscovery:
             "tools": [
                 {
                     "name": "base",
-                    "full_path": "base",
+                    "id": "base",
                     "type": "environment",
-                    "has_children": True,
                 }
             ],
             "next_cursor": None,
@@ -62,4 +61,4 @@ def test_list_ensures_session(monkeypatch, tmp_path) -> None:
 
     result = mcp.tools["list"]()
 
-    assert result["tools"][0]["full_path"] == "base"
+    assert result["tools"][0]["id"] == "base"

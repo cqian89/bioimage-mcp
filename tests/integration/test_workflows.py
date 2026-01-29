@@ -133,7 +133,7 @@ def test_full_discovery_to_execution_flow(mcp_test_client, sample_flim_image) ->
         ]
     )
 
-    schema = mcp_test_client.describe_function("base.xarray.DataArray.rename")
+    schema = mcp_test_client.describe_function(id="base.xarray.DataArray.rename")
     assert schema["id"] == "base.xarray.DataArray.rename"
     assert schema["params_schema"]["type"] == "object"
 
@@ -285,7 +285,7 @@ class TestSessionReplayObjectRef:
         mock_calls = []
 
         def _mock_execute_step(fn_id, inputs, params, **kwargs):
-            mock_calls.append({"fn_id": fn_id, "inputs": inputs, "params": params})
+            mock_calls.append({"id": fn_id, "inputs": inputs, "params": params})
             if fn_id == "test.create":
                 return (
                     {
@@ -385,7 +385,7 @@ class TestSessionReplayObjectRef:
         original_run_workflow = execution.run_workflow
 
         def _mock_run_workflow(spec, **kwargs):
-            if spec["steps"][0]["fn_id"] == "test.use":
+            if spec["steps"][0]["id"] == "test.use":
                 execution._memory_store._artifacts.clear()
             return original_run_workflow(spec, **kwargs)
 
@@ -495,7 +495,7 @@ class TestSessionReplayObjectRef:
         original_run_workflow = execution.run_workflow
 
         def _mock_run_workflow(spec, **kwargs):
-            if spec["steps"][0]["fn_id"] != "test.create":
+            if spec["steps"][0]["id"] != "test.create":
                 execution._memory_store._artifacts.clear()
             return original_run_workflow(spec, **kwargs)
 

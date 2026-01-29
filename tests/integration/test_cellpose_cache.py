@@ -22,7 +22,7 @@ class TestCellposeCache:
             {
                 "steps": [
                     {
-                        "fn_id": "cellpose.models.CellposeModel",
+                        "id": "cellpose.models.CellposeModel",
                         "params": {"model_type": "cyto3"},
                     }
                 ]
@@ -35,7 +35,7 @@ class TestCellposeCache:
             {
                 "steps": [
                     {
-                        "fn_id": "cellpose.models.CellposeModel",
+                        "id": "cellpose.models.CellposeModel",
                         "params": {"model_type": "nuclei"},
                     }
                 ]
@@ -53,7 +53,7 @@ class TestCellposeCache:
             {
                 "steps": [
                     {
-                        "fn_id": "cellpose.models.CellposeModel.eval",
+                        "id": "cellpose.models.CellposeModel.eval",
                         "inputs": {
                             "model": model_ref1,
                             "x": {"type": "BioImageRef", "uri": f"file://{img_path}"},
@@ -65,7 +65,7 @@ class TestCellposeCache:
         assert res3["status"] == "success"
 
         # 3. Call cellpose.cache.clear
-        res4 = execution.run_workflow({"steps": [{"fn_id": "cellpose.cache.clear", "params": {}}]})
+        res4 = execution.run_workflow({"steps": [{"id": "cellpose.cache.clear", "params": {}}]})
         assert res4["status"] == "success", f"cellpose.cache.clear failed: {res4.get('error')}"
 
         # 4. Verify cached objects are gone
@@ -74,7 +74,7 @@ class TestCellposeCache:
             {
                 "steps": [
                     {
-                        "fn_id": "cellpose.models.CellposeModel.eval",
+                        "id": "cellpose.models.CellposeModel.eval",
                         "inputs": {
                             "model": model_ref1,
                             "x": {"type": "BioImageRef", "uri": f"file://{img_path}"},

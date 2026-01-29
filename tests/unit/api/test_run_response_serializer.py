@@ -71,14 +71,14 @@ class TestRunResponseSerializer:
     def test_serialize_minimal_success(self, success_result):
         """Test minimal verbosity for a successful run."""
         serializer = RunResponseSerializer()
-        serialized = serializer.serialize(success_result, fn_id="base.gauss", verbosity="minimal")
+        serialized = serializer.serialize(success_result, id="base.gauss", verbosity="minimal")
 
         # Top-level fields
         assert "run_id" in serialized
         assert "status" in serialized
-        assert "fn_id" in serialized
+        assert "id" in serialized
         assert "outputs" in serialized
-        assert "session_id" not in serialized
+        assert "session_id" in serialized
         assert "warnings" not in serialized  # Empty warnings should be excluded
         assert "log_ref" not in serialized  # Success log_ref should be excluded in minimal
 
@@ -113,7 +113,7 @@ class TestRunResponseSerializer:
             "outputs": {"model": memory_artifact_ref},
         }
         serializer = RunResponseSerializer()
-        serialized = serializer.serialize(result, fn_id="cellpose.train", verbosity="minimal")
+        serialized = serializer.serialize(result, id="cellpose.train", verbosity="minimal")
 
         artifact = serialized["outputs"]["model"]
         assert artifact["uri"] == "obj://cellpose_model_123"
@@ -121,7 +121,7 @@ class TestRunResponseSerializer:
     def test_serialize_minimal_failed(self, failed_result):
         """Test minimal verbosity for a failed run."""
         serializer = RunResponseSerializer()
-        serialized = serializer.serialize(failed_result, fn_id="base.gauss", verbosity="minimal")
+        serialized = serializer.serialize(failed_result, id="base.gauss", verbosity="minimal")
 
         assert serialized["status"] == "failed"
         assert "warnings" in serialized
@@ -131,7 +131,7 @@ class TestRunResponseSerializer:
     def test_serialize_standard_success(self, success_result):
         """Test standard verbosity level."""
         serializer = RunResponseSerializer()
-        serialized = serializer.serialize(success_result, fn_id="base.gauss", verbosity="standard")
+        serialized = serializer.serialize(success_result, id="base.gauss", verbosity="standard")
 
         artifact = serialized["outputs"]["image"]
         assert "uri" in artifact
@@ -150,7 +150,7 @@ class TestRunResponseSerializer:
     def test_serialize_full_success(self, success_result):
         """Test full verbosity level."""
         serializer = RunResponseSerializer()
-        serialized = serializer.serialize(success_result, fn_id="base.gauss", verbosity="full")
+        serialized = serializer.serialize(success_result, id="base.gauss", verbosity="full")
 
         assert "log_ref" in serialized
         assert "workflow_record" in serialized
@@ -164,9 +164,7 @@ class TestRunResponseSerializer:
         """Test that invalid verbosity is coerced to minimal with a warning."""
         serializer = RunResponseSerializer()
         with caplog.at_level("WARNING"):
-            serialized = serializer.serialize(
-                success_result, fn_id="base.gauss", verbosity="invalid"
-            )
+            serialized = serializer.serialize(success_result, id="base.gauss", verbosity="invalid")
 
         assert "Invalid verbosity 'invalid', coercing to 'minimal'" in caplog.text
         # Should match minimal output
@@ -189,7 +187,7 @@ class TestRunResponseSerializer:
         }
         result = {"run_id": "run_1", "status": "success", "outputs": {"image": artifact}}
         serializer = RunResponseSerializer()
-        serialized = serializer.serialize(result, fn_id="test", verbosity="minimal")
+        serialized = serializer.serialize(result, id="test", verbosity="minimal")
 
         out = serialized["outputs"]["image"]
         assert out["shape"] == [1, 1, 1, 20, 20]
@@ -205,15 +203,15 @@ class TestRunResponseSerializer:
         serializer = RunResponseSerializer()
 
         # Minimal: should be filtered
-        serialized_min = serializer.serialize(success_result, fn_id="test", verbosity="minimal")
+        serialized_min = serializer.serialize(success_result, id="test", verbosity="minimal")
         assert "workflow_record" not in serialized_min["outputs"]
 
         # Standard: should be filtered
-        serialized_std = serializer.serialize(success_result, fn_id="test", verbosity="standard")
+        serialized_std = serializer.serialize(success_result, id="test", verbosity="standard")
         assert "workflow_record" not in serialized_std["outputs"]
 
         # Full: should be included
-        serialized_full = serializer.serialize(success_result, fn_id="test", verbosity="full")
+        serialized_full = serializer.serialize(success_result, id="test", verbosity="full")
         assert "workflow_record" in serialized_full["outputs"]
 
     def test_sanitize_artifact_removes_summary_and_content(self):
@@ -229,7 +227,7 @@ class TestRunResponseSerializer:
         serializer = RunResponseSerializer()
 
         for verbosity in ["minimal", "standard", "full"]:
-            serialized = serializer.serialize(result, fn_id="test", verbosity=verbosity)
+            serialized = serializer.serialize(result, id="test", verbosity=verbosity)
             out = serialized["outputs"]["log"]
             assert "summary" not in out
             assert "content" not in out
@@ -245,7 +243,7 @@ class TestRunResponseSerializer:
         serializer = RunResponseSerializer()
 
         # Even with minimal verbosity
-        serialized = serializer.serialize(result, fn_id="base.gauss", verbosity="minimal")
+        serialized = serializer.serialize(result, id="base.gauss", verbosity="minimal")
         assert "log_ref" in serialized
 
     def test_size_mb_helper(self):
@@ -276,7 +274,7 @@ class TestRunResponseSerializer:
         success_result["outputs"]["image"]["channel_names"] = [f"Ch{i}" for i in range(12)]
 
         serializer = RunResponseSerializer()
-        serialized = serializer.serialize(success_result, fn_id="base.gauss", verbosity="minimal")
+        serialized = serializer.serialize(success_result, id="base.gauss", verbosity="minimal")
 
         artifact = serialized["outputs"]["image"]
         assert len(artifact["channel_names"]) == 11

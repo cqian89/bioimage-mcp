@@ -594,7 +594,7 @@ class ExecutionService:
                 "session_id": session_id,
                 "run_id": "none",
                 "status": "validation_failed",
-                "id": steps[0].get("fn_id", "unknown"),
+                "id": steps[0].get("id") or steps[0].get("fn_id", "unknown"),
                 "outputs": {},
                 "error": validation_error(
                     message="v0.0 supports exactly 1 step",
@@ -605,6 +605,8 @@ class ExecutionService:
             }
 
         step = steps[0]
+        if "id" in step and "fn_id" not in step:
+            step = {**step, "fn_id": step["id"]}
         fn_id = step["fn_id"]
         params = step.get("params") or {}
         inputs = step.get("inputs") or {}
@@ -946,7 +948,7 @@ class ExecutionService:
         except KeyError as exc:
             error_payload = not_found_error(
                 message=f"Function not found: {exc}",
-                path="/steps/0/fn_id",
+                path="/steps/0/id",
                 expected="valid function ID",
                 hint="Use 'search' or 'list' to find valid function IDs",
             ).model_dump()
@@ -1001,9 +1003,13 @@ class ExecutionService:
             error_code = error_payload.get("code") or "GENERAL"
             if error_hints or input_metadata:
                 selected_hints = error_hints.get(error_code) or error_hints.get("GENERAL", {})
+                suggested_fix = selected_hints.get("suggested_fix")
+                if isinstance(suggested_fix, dict) and suggested_fix.get("fn_id"):
+                    suggested_fix = {**suggested_fix, "id": suggested_fix["fn_id"]}
+                    suggested_fix.pop("fn_id", None)
                 error_response_hints = {
                     "diagnosis": selected_hints.get("diagnosis"),
-                    "suggested_fix": selected_hints.get("suggested_fix"),
+                    "suggested_fix": suggested_fix,
                     "related_metadata": input_metadata,
                 }
             return {
@@ -1229,6 +1235,16 @@ class ExecutionService:
         self._run_store.set_status(run.run_id, "succeeded", outputs=outputs_payload)
         hints = self._get_function_hints(fn_id)
         success_hints = hints.get("success_hints") if hints else None
+        if success_hints and success_hints.get("next_steps"):
+            normalized_next_steps = []
+            for step in success_hints["next_steps"]:
+                if isinstance(step, dict) and step.get("fn_id"):
+                    normalized = {**step, "id": step["fn_id"]}
+                    normalized.pop("fn_id", None)
+                    normalized_next_steps.append(normalized)
+                else:
+                    normalized_next_steps.append(step)
+            success_hints = {**success_hints, "next_steps": normalized_next_steps}
 
         return {
             "session_id": session_id,
@@ -1370,12 +1386,7 @@ class ExecutionService:
 
         for step in replay_spec.get("steps", []):
             step_spec = replay_spec.copy()
-            # Map 'id' to 'fn_id' for compatibility with run_workflow if using new schema
-            single_step = step.copy()
-            if "id" in single_step and "fn_id" not in single_step:
-                single_step["fn_id"] = single_step["id"]
-
-            step_spec["steps"] = [single_step]
+            step_spec["steps"] = [step.copy()]
 
             result = self.run_workflow(step_spec, skip_validation=True)
 

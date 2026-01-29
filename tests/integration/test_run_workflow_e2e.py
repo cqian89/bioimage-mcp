@@ -96,7 +96,7 @@ functions:
     assert manifests
 
     with ExecutionService(config) as svc:
-        resp = svc.run_workflow({"steps": [{"fn_id": "fn.test", "params": {}, "inputs": {}}]})
+        resp = svc.run_workflow({"steps": [{"id": "fn.test", "params": {}, "inputs": {}}]})
         assert resp["status"] in {"queued", "running", "success"}
 
         status = svc.get_run_status(resp["run_id"])

@@ -46,13 +46,13 @@ def test_mcp_list_and_describe_include_trackpy(mcp_test_client):
     # The hierarchy path starts with the env name (trackpy)
     list_result = mcp_test_client.list_tools(path="trackpy", flatten=True, limit=200)
     items = list_result.get("items", [])
-    fn_ids = {i.get("id") or i.get("fn_id") for i in items}
+    fn_ids = {i.get("id") for i in items}
     print(f"Discovered IDs count under 'trackpy': {len(fn_ids)}")
 
     assert "trackpy.locate" in fn_ids
     assert "trackpy.link" in fn_ids
 
     # describe: schema exists
-    describe_locate = mcp_test_client.describe_function("trackpy.locate")
+    describe_locate = mcp_test_client.describe_function(id="trackpy.locate")
     assert "params_schema" in describe_locate
     assert "diameter" in (describe_locate.get("params_schema") or {}).get("properties", {})

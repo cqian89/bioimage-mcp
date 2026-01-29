@@ -130,7 +130,7 @@ def test_io_bioimage_export_works(tmp_path):
     OmeTiffWriter.save(data, str(img_path), dim_order="TCZYX")
 
     request = {
-        "fn_id": "base.io.bioimage.export",
+        "id": "base.io.bioimage.export",
         "inputs": {
             "image": {"type": "BioImageRef", "format": "OME-TIFF", "uri": img_path.as_uri()}
         },

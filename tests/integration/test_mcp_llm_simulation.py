@@ -241,7 +241,7 @@ class TestMCPLLMSimulation:
         assert "segmentation" in fn_summary["tags"]
 
         # Get parameter schema via describe_function
-        fn_details = discovery.describe_function("cellpose.models.CellposeModel.eval")
+        fn_details = discovery.describe_function(id="cellpose.models.CellposeModel.eval")
 
         assert fn_details is not None
         assert fn_details["id"] == "cellpose.models.CellposeModel.eval"
@@ -274,7 +274,7 @@ class TestMCPLLMSimulation:
         workflow = {
             "steps": [
                 {
-                    "fn_id": "cellpose.models.CellposeModel.eval",
+                    "id": "cellpose.models.CellposeModel.eval",
                     "inputs": {
                         "x": {
                             "type": "BioImageRef",
@@ -333,7 +333,7 @@ class TestMCPLLMSimulation:
         workflow = {
             "steps": [
                 {
-                    "fn_id": "cellpose.models.CellposeModel.eval",
+                    "id": "cellpose.models.CellposeModel.eval",
                     "inputs": {
                         "x": {
                             "type": "BioImageRef",
@@ -409,7 +409,7 @@ class TestMCPLLMSimulation:
         print(f"[LLM] Function produces outputs: {fn_summary.get('io', {}).get('outputs', [])}")
 
         # Get parameter schema via describe_function
-        fn_details = discovery.describe_function("cellpose.models.CellposeModel.eval")
+        fn_details = discovery.describe_function(id="cellpose.models.CellposeModel.eval")
         print(f"[LLM] Parameter schema: {fn_details.get('params_schema', {})}")
 
         # === LLM Step 3: Prepare input image ===
@@ -424,7 +424,7 @@ class TestMCPLLMSimulation:
         workflow = {
             "steps": [
                 {
-                    "fn_id": "cellpose.models.CellposeModel.eval",
+                    "id": "cellpose.models.CellposeModel.eval",
                     "inputs": {
                         "image": {
                             "type": "BioImageRef",
@@ -522,7 +522,7 @@ class TestMCPToolsAvailability:
         """Verify cellpose tool pack is registered."""
         result = discovery_service.list_tools(limit=20, cursor=None)
 
-        tool_paths = [t["full_path"] for t in result["items"]]
+        tool_paths = [t["id"] for t in result["items"]]
         assert "cellpose" in tool_paths, "Cellpose environment not found"
 
     def test_search_functions_finds_cellpose_eval(self, discovery_service):
@@ -545,7 +545,7 @@ class TestMCPToolsAvailability:
         Summary fields are available from search_functions.
         """
         # Get parameter schema via describe_function
-        fn = discovery_service.describe_function("cellpose.models.CellposeModel.eval")
+        fn = discovery_service.describe_function(id="cellpose.models.CellposeModel.eval")
 
         assert fn["id"] == "cellpose.models.CellposeModel.eval"
         assert "params_schema" in fn  # params_schema (per NFR-001)

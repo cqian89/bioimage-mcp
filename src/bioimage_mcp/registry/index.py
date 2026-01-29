@@ -638,15 +638,9 @@ class ToolIndex:
                     outputs.append({"name": out.get("name"), "type": out.get("artifact_type")})
 
             payload["io"] = {"inputs": inputs, "outputs": outputs}
-            # Keep fn_id for backward compatibility if needed, but the new schema uses 'id'
-            payload["fn_id"] = node.fn_id or node.full_path
-
-            if node.module:
-                payload["module"] = node.module
-            if node.io_pattern:
-                payload["io_pattern"] = node.io_pattern
-            if node.introspection_source:
-                payload["introspection_source"] = node.introspection_source
+            # Never expose internal metadata in list outputs.
+            payload.pop("module", None)
+            payload.pop("io_pattern", None)
 
         # Add full_path for pagination logic in DiscoveryService
         payload["full_path"] = node.full_path

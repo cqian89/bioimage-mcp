@@ -58,7 +58,7 @@ def test_roi_overlay_workflow(execution_service, sample_image):
 
     # Step 1: subplots
     res1 = execution_service.run_workflow(
-        {"steps": [{"fn_id": "base.matplotlib.pyplot.subplots", "params": {"figsize": [5, 5]}}]}
+        {"steps": [{"id": "base.matplotlib.pyplot.subplots", "params": {"figsize": [5, 5]}}]}
     )
     assert res1["status"] == "success"
     out1 = execution_service.get_run_status(res1["run_id"])["outputs"]
@@ -70,7 +70,7 @@ def test_roi_overlay_workflow(execution_service, sample_image):
         {
             "steps": [
                 {
-                    "fn_id": "base.matplotlib.Axes.imshow",
+                    "id": "base.matplotlib.Axes.imshow",
                     "inputs": {"axes": ax_ref},
                     "params": {"X": sample_image, "cmap": "gray", "origin": "upper"},
                 }
@@ -84,7 +84,7 @@ def test_roi_overlay_workflow(execution_service, sample_image):
         {
             "steps": [
                 {
-                    "fn_id": "base.matplotlib.patches.Circle",
+                    "id": "base.matplotlib.patches.Circle",
                     "params": {"xy": [50, 50], "radius": 10, "color": "red", "fill": False},
                 }
             ]
@@ -100,7 +100,7 @@ def test_roi_overlay_workflow(execution_service, sample_image):
         {
             "steps": [
                 {
-                    "fn_id": "base.matplotlib.patches.Rectangle",
+                    "id": "base.matplotlib.patches.Rectangle",
                     "params": {
                         "xy": [30, 30],
                         "width": 40,
@@ -122,7 +122,7 @@ def test_roi_overlay_workflow(execution_service, sample_image):
         {
             "steps": [
                 {
-                    "fn_id": "base.matplotlib.Axes.add_patch",
+                    "id": "base.matplotlib.Axes.add_patch",
                     "inputs": {"axes": ax_ref},
                     "params": {"p": circle_ref},
                 }
@@ -136,7 +136,7 @@ def test_roi_overlay_workflow(execution_service, sample_image):
         {
             "steps": [
                 {
-                    "fn_id": "base.matplotlib.Axes.add_patch",
+                    "id": "base.matplotlib.Axes.add_patch",
                     "inputs": {"axes": ax_ref},
                     "params": {"p": rect_ref},
                 }
@@ -150,7 +150,7 @@ def test_roi_overlay_workflow(execution_service, sample_image):
         {
             "steps": [
                 {
-                    "fn_id": "base.matplotlib.Figure.savefig",
+                    "id": "base.matplotlib.Figure.savefig",
                     "inputs": {"figure": fig_ref},
                     "params": {"format": "png"},
                 }
@@ -176,7 +176,7 @@ def test_roi_clipping_and_origin(execution_service, sample_image):
     """T015: Test out-of-bounds clipping (FR-018) and coordinate conventions (FR-020)."""
 
     # Step 1: subplots
-    res1 = execution_service.run_workflow({"steps": [{"fn_id": "base.matplotlib.pyplot.subplots"}]})
+    res1 = execution_service.run_workflow({"steps": [{"id": "base.matplotlib.pyplot.subplots"}]})
     out1 = execution_service.get_run_status(res1["run_id"])["outputs"]
     fig_ref = out1["figure"]
     ax_ref = out1["axes"]
@@ -186,7 +186,7 @@ def test_roi_clipping_and_origin(execution_service, sample_image):
         {
             "steps": [
                 {
-                    "fn_id": "base.matplotlib.Axes.imshow",
+                    "id": "base.matplotlib.Axes.imshow",
                     "inputs": {"axes": ax_ref},
                     "params": {"X": sample_image},
                 }
@@ -200,7 +200,7 @@ def test_roi_clipping_and_origin(execution_service, sample_image):
         {
             "steps": [
                 {
-                    "fn_id": "base.matplotlib.patches.Circle",
+                    "id": "base.matplotlib.patches.Circle",
                     "params": {"xy": [150, 150], "radius": 20, "color": "yellow"},
                 }
             ]
@@ -215,7 +215,7 @@ def test_roi_clipping_and_origin(execution_service, sample_image):
         {
             "steps": [
                 {
-                    "fn_id": "base.matplotlib.Axes.add_patch",
+                    "id": "base.matplotlib.Axes.add_patch",
                     "inputs": {"axes": ax_ref},
                     "params": {"p": circle_ref},
                 }
@@ -226,6 +226,6 @@ def test_roi_clipping_and_origin(execution_service, sample_image):
 
     # Step 4: savefig
     res4 = execution_service.run_workflow(
-        {"steps": [{"fn_id": "base.matplotlib.Figure.savefig", "inputs": {"figure": fig_ref}}]}
+        {"steps": [{"id": "base.matplotlib.Figure.savefig", "inputs": {"figure": fig_ref}}]}
     )
     assert res4["status"] == "success"

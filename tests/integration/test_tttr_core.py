@@ -124,7 +124,7 @@ class TestTTTRCore:
                 {
                     "steps": [
                         {
-                            "fn_id": "tttrlib.TTTR",
+                            "id": "tttrlib.TTTR",
                             "inputs": {},
                             "params": {
                                 "filename": str(SPC_FILE),
@@ -172,7 +172,7 @@ class TestTTTRCore:
                 {
                     "steps": [
                         {
-                            "fn_id": "tttrlib.TTTR",
+                            "id": "tttrlib.TTTR",
                             "inputs": {},
                             "params": {
                                 "filename": str(PTU_FILE),
@@ -224,7 +224,7 @@ class TestTTTRCore:
                 {
                     "steps": [
                         {
-                            "fn_id": "tttrlib.TTTR.header",
+                            "id": "tttrlib.TTTR.header",
                             "inputs": {"tttr": mock_tttr},
                             "params": {},
                         }
@@ -276,7 +276,7 @@ class TestTTTRCore:
                 {
                     "steps": [
                         {
-                            "fn_id": "tttrlib.TTTR",
+                            "id": "tttrlib.TTTR",
                             "inputs": {},
                             "params": {
                                 "filename": str(non_existent_file),

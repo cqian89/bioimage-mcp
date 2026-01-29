@@ -50,7 +50,7 @@ def test_1x2_subplots_workflow(execution_service, tmp_path):
     workflow_fig = {
         "steps": [
             {
-                "fn_id": "base.matplotlib.pyplot.subplots",
+                "id": "base.matplotlib.pyplot.subplots",
                 "params": {"nrows": 1, "ncols": 2, "figsize": [10, 5]},
             }
         ]
@@ -75,7 +75,7 @@ def test_1x2_subplots_workflow(execution_service, tmp_path):
     workflow_imshow0 = {
         "steps": [
             {
-                "fn_id": "base.matplotlib.Axes.imshow",
+                "id": "base.matplotlib.Axes.imshow",
                 "inputs": {"axes": ax0_ref, "X": {"type": "BioImageRef", "path": str(img1_path)}},
                 "params": {"cmap": "gray"},
             }
@@ -90,7 +90,7 @@ def test_1x2_subplots_workflow(execution_service, tmp_path):
     workflow_imshow1 = {
         "steps": [
             {
-                "fn_id": "base.matplotlib.Axes.imshow",
+                "id": "base.matplotlib.Axes.imshow",
                 "inputs": {"axes": ax1_ref, "X": {"type": "BioImageRef", "path": str(img2_path)}},
                 "params": {"cmap": "viridis"},
             }
@@ -103,7 +103,7 @@ def test_1x2_subplots_workflow(execution_service, tmp_path):
     workflow_scatter = {
         "steps": [
             {
-                "fn_id": "base.matplotlib.Axes.scatter",
+                "id": "base.matplotlib.Axes.scatter",
                 "inputs": {"axes": ax0_ref},
                 "params": {"x": [2, 5, 8], "y": [3, 6, 9], "c": "red", "s": 100},
             }
@@ -116,7 +116,7 @@ def test_1x2_subplots_workflow(execution_service, tmp_path):
     workflow_save = {
         "steps": [
             {
-                "fn_id": "base.matplotlib.Figure.savefig",
+                "id": "base.matplotlib.Figure.savefig",
                 "inputs": {"figure": fig_ref},
                 "params": {"format": "png"},
             }

@@ -76,7 +76,7 @@ def test_live_workflow_project_sum_cellpose(tmp_path: Path) -> None:
     workflow1 = {
         "steps": [
             {
-                "fn_id": "base.xarray.sum",
+                "id": "base.xarray.sum",
                 "inputs": {
                     "image": {
                         "type": "BioImageRef",
@@ -99,7 +99,7 @@ def test_live_workflow_project_sum_cellpose(tmp_path: Path) -> None:
     workflow1b = {
         "steps": [
             {
-                "fn_id": "base.io.bioimage.export",
+                "id": "base.io.bioimage.export",
                 "inputs": {"image": output_ref},
                 "params": {"format": "OME-TIFF"},
             }
@@ -114,7 +114,7 @@ def test_live_workflow_project_sum_cellpose(tmp_path: Path) -> None:
     workflow2 = {
         "steps": [
             {
-                "fn_id": "cellpose.models.CellposeModel.eval",
+                "id": "cellpose.models.CellposeModel.eval",
                 "inputs": {"x": tiff_output_ref},
                 "params": {"model_type": "cyto3", "diameter": 30.0},
             }

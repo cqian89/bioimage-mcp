@@ -65,7 +65,7 @@ def test_overlay_applied_to_gaussian(discovery_service: DiscoveryService):
     are merged into dynamically discovered functions.
     """
     # 1) Overlay-applied hints.success_hints shows up in describe_function response.
-    resp = discovery_service.describe_function(fn_id="base.skimage.filters.gaussian")
+    resp = discovery_service.describe_function(id="base.skimage.filters.gaussian")
 
     assert "hints" in resp, "Hints should be present in describe_function response"
     assert "success_hints" in resp["hints"]
@@ -92,7 +92,7 @@ def test_overlay_applied_to_remove_small_objects(discovery_service: DiscoverySer
     T026: Assert that io_pattern affects ports for a label op.
     """
     # 3) Overlay-applied io_pattern affects described ports for a label op.
-    resp = discovery_service.describe_function(fn_id="base.skimage.morphology.remove_small_objects")
+    resp = discovery_service.describe_function(id="base.skimage.morphology.remove_small_objects")
 
     # We want labels_to_labels which should be LabelImageRef -> LabelImageRef
     assert resp["inputs"]["image"]["type"] == "LabelImageRef"

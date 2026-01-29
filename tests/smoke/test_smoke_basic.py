@@ -25,7 +25,7 @@ async def test_smoke_discovery(live_server):
     assert isinstance(items, list), f"items must be a list: {type(items)}"
 
     # Validate counts for non-leaf nodes (Constitution I)
-    non_leaf_items = [item for item in items if item.get("has_children")]
+    non_leaf_items = [item for item in items if item.get("children")]
     for item in non_leaf_items:
         children = item.get("children", {})
         assert isinstance(children, dict), f"children field must be a dict: {item}"
@@ -35,7 +35,7 @@ async def test_smoke_discovery(live_server):
         assert "by_type" in children, f"Non-leaf item missing by_type counts: {item}"
 
     # Test describe() for a known function (Constitution I: Full schemas)
-    describe_result = await live_server.call_tool("describe", {"fn_id": "base.io.bioimage.load"})
+    describe_result = await live_server.call_tool("describe", {"id": "base.io.bioimage.load"})
     assert "inputs" in describe_result, f"describe() missing 'inputs': {describe_result}"
     assert "outputs" in describe_result, f"describe() missing 'outputs': {describe_result}"
     assert "params_schema" in describe_result, (
@@ -51,7 +51,7 @@ async def test_smoke_basic_run(live_server, sample_image):
     load_result = await live_server.call_tool(
         "run",
         {
-            "fn_id": "base.io.bioimage.load",
+            "id": "base.io.bioimage.load",
             "inputs": {},
             "params": {"path": str(sample_image)},
         },
@@ -73,7 +73,7 @@ async def test_smoke_basic_run(live_server, sample_image):
     squeeze_result = await live_server.call_tool(
         "run",
         {
-            "fn_id": "base.xarray.DataArray.squeeze",
+            "id": "base.xarray.DataArray.squeeze",
             "inputs": {"image": img_ref},
         },
     )

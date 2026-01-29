@@ -84,7 +84,7 @@ class TestFailedRunLogs:
             result = svc.run_workflow(
                 {
                     "steps": [
-                        {"fn_id": "cellpose.models.CellposeModel.eval", "inputs": {}, "params": {}}
+                        {"id": "cellpose.models.CellposeModel.eval", "inputs": {}, "params": {}}
                     ]
                 },
                 skip_validation=True,
@@ -115,7 +115,7 @@ class TestFailedRunLogs:
             result = svc.run_workflow(
                 {
                     "steps": [
-                        {"fn_id": "cellpose.models.CellposeModel.eval", "inputs": {}, "params": {}}
+                        {"id": "cellpose.models.CellposeModel.eval", "inputs": {}, "params": {}}
                     ]
                 },
                 skip_validation=True,
@@ -147,7 +147,7 @@ class TestFailedRunLogs:
             result = svc.run_workflow(
                 {
                     "steps": [
-                        {"fn_id": "cellpose.models.CellposeModel.eval", "inputs": {}, "params": {}}
+                        {"id": "cellpose.models.CellposeModel.eval", "inputs": {}, "params": {}}
                     ]
                 },
                 skip_validation=True,
@@ -176,7 +176,7 @@ class TestFailedRunLogs:
             result = svc.run_workflow(
                 {
                     "steps": [
-                        {"fn_id": "cellpose.models.CellposeModel.eval", "inputs": {}, "params": {}}
+                        {"id": "cellpose.models.CellposeModel.eval", "inputs": {}, "params": {}}
                     ]
                 },
                 skip_validation=True,
@@ -208,7 +208,7 @@ class TestFailedRunLogs:
             result = svc.run_workflow(
                 {
                     "steps": [
-                        {"fn_id": "cellpose.models.CellposeModel.eval", "inputs": {}, "params": {}}
+                        {"id": "cellpose.models.CellposeModel.eval", "inputs": {}, "params": {}}
                     ]
                 },
                 skip_validation=True,

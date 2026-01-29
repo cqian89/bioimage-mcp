@@ -40,11 +40,7 @@ def test_imshow_returns_axes_image_ref(execution_service):
 
     # Step 1: Create subplots
     result1 = execution_service.run_workflow(
-        {
-            "steps": [
-                {"fn_id": "base.matplotlib.pyplot.subplots", "params": {"nrows": 1, "ncols": 1}}
-            ]
-        }
+        {"steps": [{"id": "base.matplotlib.pyplot.subplots", "params": {"nrows": 1, "ncols": 1}}]}
     )
     assert result1["status"] == "success"
     outputs1 = execution_service.get_run_status(result1["run_id"])["outputs"]
@@ -57,7 +53,7 @@ def test_imshow_returns_axes_image_ref(execution_service):
         {
             "steps": [
                 {
-                    "fn_id": "base.matplotlib.Axes.imshow",
+                    "id": "base.matplotlib.Axes.imshow",
                     "inputs": {"axes": ax_ref},
                     "params": {
                         "X": data,
@@ -96,12 +92,12 @@ def test_imshow_with_gca_ref_id(execution_service):
 
     # Step 1: Create figure (gca() will work on this)
     execution_service.run_workflow(
-        {"steps": [{"fn_id": "base.matplotlib.pyplot.figure", "params": {}}]}
+        {"steps": [{"id": "base.matplotlib.pyplot.figure", "params": {}}]}
     )
 
     # Step 2: Get current axes
     result_gca = execution_service.run_workflow(
-        {"steps": [{"fn_id": "base.matplotlib.pyplot.gca", "params": {}}]}
+        {"steps": [{"id": "base.matplotlib.pyplot.gca", "params": {}}]}
     )
     assert result_gca["status"] == "success"
     outputs_gca = execution_service.get_run_status(result_gca["run_id"])["outputs"]
@@ -114,7 +110,7 @@ def test_imshow_with_gca_ref_id(execution_service):
         {
             "steps": [
                 {
-                    "fn_id": "base.matplotlib.Axes.imshow",
+                    "id": "base.matplotlib.Axes.imshow",
                     "inputs": {"axes": ax_ref},
                     "params": {"X": data},
                 }

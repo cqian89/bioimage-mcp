@@ -251,7 +251,7 @@ def test_allowlist_enforcement_negative(tmp_path: Path) -> None:
         workflow = {
             "steps": [
                 {
-                    "fn_id": "base.phasorpy.phasor.phasor_from_signal",
+                    "id": "base.phasorpy.phasor.phasor_from_signal",
                     "inputs": {
                         "signal": {
                             "type": "BioImageRef",
@@ -680,7 +680,7 @@ def test_plot_phasor_e2e_execution_service(tmp_path: Path) -> None:
         workflow1 = {
             "steps": [
                 {
-                    "fn_id": "base.phasorpy.phasor.phasor_from_signal",
+                    "id": "base.phasorpy.phasor.phasor_from_signal",
                     "inputs": {
                         "signal": {
                             "type": "BioImageRef",
@@ -705,7 +705,7 @@ def test_plot_phasor_e2e_execution_service(tmp_path: Path) -> None:
         workflow2a = {
             "steps": [
                 {
-                    "fn_id": "base.phasorpy.plot.plot_phasor",
+                    "id": "base.phasorpy.plot.plot_phasor",
                     "inputs": {
                         "real": outputs1["real"],
                         "imag": outputs1["imag"],
@@ -734,7 +734,7 @@ def test_plot_phasor_e2e_execution_service(tmp_path: Path) -> None:
         workflow2b = {
             "steps": [
                 {
-                    "fn_id": "base.matplotlib.Figure.savefig",
+                    "id": "base.matplotlib.Figure.savefig",
                     "inputs": {
                         "figure": fig_ref,
                     },

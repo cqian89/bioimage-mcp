@@ -56,7 +56,7 @@ def test_hierarchical_listing_skimage(tmp_path):
     # Now list base.skimage
     # This should include the dynamically discovered sub-modules.
     result_skimage = discovery.list_tools(path="base.skimage")
-    paths_skimage = [t["full_path"] for t in result_skimage["items"]]
+    paths_skimage = [t["id"] for t in result_skimage["items"]]
     print(f"\nPATHS SKIMAGE: {paths_skimage}")
 
     assert "base.skimage.filters" in paths_skimage

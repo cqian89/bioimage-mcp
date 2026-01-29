@@ -55,7 +55,7 @@ class TestXarrayEquivalence:
             da_result = await live_server.call_tool(
                 "run",
                 {
-                    "fn_id": "base.xarray.DataArray",
+                    "id": "base.xarray.DataArray",
                     "inputs": {"image": image_ref},
                 },
             )
@@ -72,7 +72,7 @@ class TestXarrayEquivalence:
             mean_result = await live_server.call_tool(
                 "run",
                 {
-                    "fn_id": "base.xarray.DataArray.mean",
+                    "id": "base.xarray.DataArray.mean",
                     "inputs": {"image": da_ref},
                 },
             )
@@ -87,7 +87,7 @@ class TestXarrayEquivalence:
             materialize_result = await live_server.call_tool(
                 "run",
                 {
-                    "fn_id": "base.xarray.DataArray.to_bioimage",
+                    "id": "base.xarray.DataArray.to_bioimage",
                     "inputs": {"image": mean_obj_ref},
                 },
             )

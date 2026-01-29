@@ -27,7 +27,7 @@ def _write_manifest(manifest_dir: Path, error_hints: dict[str, dict]) -> None:
                 "entrypoint": "hints/entrypoint.py",
                 "functions": [
                     {
-                        "fn_id": "hints.fn",
+                        "id": "hints.fn",
                         "tool_id": "tools.hints",
                         "name": "Hints Function",
                         "description": "Function for hints tests",
@@ -61,7 +61,7 @@ def test_error_hints_selected_by_error_code(tmp_path: Path, monkeypatch) -> None
             "GENERAL": {
                 "diagnosis": "General failure",
                 "suggested_fix": {
-                    "fn_id": "base.retry",
+                    "id": "base.retry",
                     "params": {},
                     "explanation": "Retry with defaults.",
                 },
@@ -69,7 +69,7 @@ def test_error_hints_selected_by_error_code(tmp_path: Path, monkeypatch) -> None
             "AXIS_SAMPLES_ERROR": {
                 "diagnosis": "Time axis has too few samples",
                 "suggested_fix": {
-                    "fn_id": "base.io.bioimage.export",
+                    "id": "base.io.bioimage.export",
                     "params": {"format": "OME-TIFF"},
                     "explanation": "Provide a dataset with multiple time samples.",
                 },
@@ -89,13 +89,13 @@ def test_error_hints_selected_by_error_code(tmp_path: Path, monkeypatch) -> None
 
     with ExecutionService(config) as svc:
         response = svc.run_workflow(
-            {"steps": [{"fn_id": "hints.fn", "inputs": {}, "params": {}}]},
+            {"steps": [{"id": "hints.fn", "inputs": {}, "params": {}}]},
             skip_validation=True,
         )
 
     assert response["status"] == "failed"
     assert response["hints"]["diagnosis"] == "Time axis has too few samples"
-    assert response["hints"]["suggested_fix"]["fn_id"] == "base.io.bioimage.export"
+    assert response["hints"]["suggested_fix"]["id"] == "base.io.bioimage.export"
 
 
 def test_error_hints_fallback_to_general(tmp_path: Path, monkeypatch) -> None:
@@ -106,7 +106,7 @@ def test_error_hints_fallback_to_general(tmp_path: Path, monkeypatch) -> None:
             "GENERAL": {
                 "diagnosis": "General failure",
                 "suggested_fix": {
-                    "fn_id": "base.retry",
+                    "id": "base.retry",
                     "params": {},
                     "explanation": "Retry with defaults.",
                 },
@@ -126,7 +126,7 @@ def test_error_hints_fallback_to_general(tmp_path: Path, monkeypatch) -> None:
 
     with ExecutionService(config) as svc:
         response = svc.run_workflow(
-            {"steps": [{"fn_id": "hints.fn", "inputs": {}, "params": {}}]},
+            {"steps": [{"id": "hints.fn", "inputs": {}, "params": {}}]},
             skip_validation=True,
         )
 

@@ -100,7 +100,7 @@ def test_flim_calibration_workflow(tmp_path: Path) -> None:
     workflow_reference = {
         "steps": [
             {
-                "fn_id": "phasorpy.phasor.phasor_from_signal",
+                "id": "phasorpy.phasor.phasor_from_signal",
                 "inputs": {
                     "signal": {
                         "type": "BioImageRef",
@@ -143,7 +143,7 @@ def test_flim_calibration_workflow(tmp_path: Path) -> None:
     workflow_sample = {
         "steps": [
             {
-                "fn_id": "phasorpy.phasor.phasor_from_signal",
+                "id": "phasorpy.phasor.phasor_from_signal",
                 "inputs": {
                     "signal": {
                         "type": "BioImageRef",
@@ -178,7 +178,7 @@ def test_flim_calibration_workflow(tmp_path: Path) -> None:
     workflow_calibration = {
         "steps": [
             {
-                "fn_id": "phasorpy.phasor.phasor_transform",
+                "id": "phasorpy.phasor.phasor_transform",
                 "inputs": {
                     "real": {
                         "type": "BioImageRef",

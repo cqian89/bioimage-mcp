@@ -136,7 +136,7 @@ def test_interactive_tool_activation_flow(tmp_path: Path):
         # Note: Using default limit/cursor
         page = await call_tool("list", limit=20, cursor=None)
         tools = page["items"]
-        tool_paths = sorted([t["full_path"] for t in tools])
+        tool_paths = sorted([t["id"] for t in tools])
         assert tool_paths == ["t1", "t2"]
 
         # --- Action 2: Activate t1.pkg.mod.a ---
@@ -152,7 +152,7 @@ def test_interactive_tool_activation_flow(tmp_path: Path):
         # Should NOT show tools.t2 because it has NO active functions
         page = await call_tool("list", limit=20, cursor=None)
         tools = page["items"]
-        tool_paths = [t["full_path"] for t in tools]
+        tool_paths = [t["id"] for t in tools]
         assert "t1" in tool_paths
         assert "t2" not in tool_paths
 
@@ -167,7 +167,7 @@ def test_interactive_tool_activation_flow(tmp_path: Path):
         session_store.replace_active_functions(session_id, ["t2.pkg.mod.c"])
 
         page = await call_tool("list", limit=20, cursor=None)
-        tool_paths = [t["full_path"] for t in page["items"]]
+        tool_paths = [t["id"] for t in page["items"]]
         assert "t1" not in tool_paths
         assert "t2" in tool_paths
 
@@ -175,7 +175,7 @@ def test_interactive_tool_activation_flow(tmp_path: Path):
         session_store.replace_active_functions(session_id, [])
 
         page = await call_tool("list", limit=20, cursor=None)
-        tool_paths = sorted([t["full_path"] for t in page["items"]])
+        tool_paths = sorted([t["id"] for t in page["items"]])
         assert tool_paths == ["t1", "t2"]
 
     asyncio.run(run_test())

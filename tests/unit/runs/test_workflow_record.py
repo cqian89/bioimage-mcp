@@ -20,11 +20,11 @@ class TestWorkflowRecordSerialization:
             schema_version="0.1",
             run_id="run-123",
             created_at="2024-01-01T00:00:00Z",
-            workflow_spec={"steps": [{"fn_id": "test.fn", "inputs": {}, "params": {}}]},
+            workflow_spec={"steps": [{"id": "test.fn", "inputs": {}, "params": {}}]},
             inputs={"image": {"ref_id": "img-001"}},
             params={"diameter": 30.0},
             outputs={"labels": {"ref_id": "lbl-001"}},
-            provenance={"fn_id": "test.fn"},
+            provenance={"id": "test.fn"},
         )
 
         # Serialize to JSON
@@ -62,7 +62,7 @@ class TestWorkflowRecordSerialization:
             workflow_spec={
                 "steps": [
                     {
-                        "fn_id": "cellpose.models.CellposeModel.eval",
+                        "id": "cellpose.models.CellposeModel.eval",
                         "inputs": {"x": {"type": "BioImageRef"}},
                         "params": {"diameter": 30.0, "flow_threshold": 0.4},
                     }
@@ -74,7 +74,7 @@ class TestWorkflowRecordSerialization:
                 "labels": {"ref_id": "lbl-001", "type": "LabelImageRef"},
                 "workflow_record": {"ref_id": "wr-001", "type": "NativeOutputRef"},
             },
-            provenance={"fn_id": "cellpose.models.CellposeModel.eval", "tool_version": "4.0.1"},
+            provenance={"id": "cellpose.models.CellposeModel.eval", "tool_version": "4.0.1"},
             tool_manifests=[{"tool_id": "tools.cellpose", "tool_version": "4.0.1"}],
             env_fingerprint={"python_version": "3.13", "platform": "linux-64"},
         )

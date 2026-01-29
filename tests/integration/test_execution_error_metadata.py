@@ -40,7 +40,7 @@ def test_run_workflow_error_includes_input_metadata(tmp_path: Path, monkeypatch)
             {
                 "steps": [
                     {
-                        "fn_id": "fn.fail",
+                        "id": "fn.fail",
                         "params": {},
                         "inputs": {"image": {"ref_id": ref.ref_id}},
                     }

@@ -76,7 +76,7 @@ async def test_cellpose_equivalence(
     load_result = await live_server.call_tool(
         "run",
         {
-            "fn_id": "base.io.bioimage.load",
+            "id": "base.io.bioimage.load",
             "inputs": {},
             "params": {"path": str(synthetic_cell_image)},
         },
@@ -88,7 +88,7 @@ async def test_cellpose_equivalence(
     model_init_result = await live_server.call_tool(
         "run",
         {
-            "fn_id": "cellpose.models.CellposeModel",
+            "id": "cellpose.models.CellposeModel",
             "inputs": {},
             "params": {"model_type": model_type, "gpu": False},
         },
@@ -101,7 +101,7 @@ async def test_cellpose_equivalence(
     mcp_result = await live_server.call_tool(
         "run",
         {
-            "fn_id": "cellpose.models.CellposeModel.eval",
+            "id": "cellpose.models.CellposeModel.eval",
             "inputs": {"model": model_ref, "x": img_ref},
             "params": {"diameter": str(diameter)},
         },

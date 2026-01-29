@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import AliasChoices, BaseModel, Field, model_validator
 
 from bioimage_mcp.artifacts.models import (
     ArtifactChecksum,
@@ -62,39 +62,17 @@ class OutputDescription(BaseModel):
 class NextStepHint(BaseModel):
     """Suggested next step in workflow."""
 
-    id: str | None = None
-    fn_id: str | None = None
+    id: str = Field(validation_alias=AliasChoices("id", "fn_id"))
     reason: str
     required_inputs: list[str] | None = None
-
-    @model_validator(mode="after")
-    def _populate_ids(self) -> NextStepHint:
-        if not self.id and not self.fn_id:
-            raise ValueError("Either 'id' or 'fn_id' must be provided")
-        if not self.id:
-            self.id = self.fn_id
-        if not self.fn_id:
-            self.fn_id = self.id
-        return self
 
 
 class SuggestedFix(BaseModel):
     """Suggested fix for an error."""
 
-    id: str | None = None
-    fn_id: str | None = None
+    id: str = Field(validation_alias=AliasChoices("id", "fn_id"))
     params: dict
     explanation: str
-
-    @model_validator(mode="after")
-    def _populate_ids(self) -> SuggestedFix:
-        if not self.id and not self.fn_id:
-            raise ValueError("Either 'id' or 'fn_id' must be provided")
-        if not self.id:
-            self.id = self.fn_id
-        if not self.fn_id:
-            self.fn_id = self.id
-        return self
 
 
 class InstallOffer(BaseModel):
@@ -109,7 +87,7 @@ class StepProgress(BaseModel):
     """Progress report for a single replay step."""
 
     step_index: int
-    fn_id: str
+    id: str = Field(validation_alias=AliasChoices("id", "fn_id"))
     status: Literal["pending", "running", "success", "failed", "skipped"]
     started_at: str | None = None
     ended_at: str | None = None
@@ -122,7 +100,7 @@ class ReplayWarning(BaseModel):
     level: Literal["info", "warning"]
     source: str  # "version_check", "tool", "system"
     step_index: int | None = None  # None for global warnings
-    fn_id: str | None = None
+    id: str | None = Field(default=None, validation_alias=AliasChoices("id", "fn_id"))
     message: str
 
 
@@ -185,10 +163,8 @@ class ToolHierarchyNode(BaseModel):
     """Single node in the tool hierarchy tree."""
 
     name: str
-    full_path: str
     type: Literal["environment", "package", "module", "function"]
-    has_children: bool
-    fn_id: str | None = None
+    id: str | None = Field(default=None, validation_alias=AliasChoices("id", "fn_id"))
     summary: str | None = None
 
 
@@ -203,7 +179,7 @@ class ListToolsResponse(BaseModel):
 class ScoredFunction(BaseModel):
     """Search result entry with ranking score."""
 
-    fn_id: str
+    id: str = Field(validation_alias=AliasChoices("id", "fn_id"))
     name: str
     description: str
     score: float
@@ -278,6 +254,9 @@ class InputHints(BaseModel):
     min_ndim: int | None = None
     max_ndim: int | None = None
     squeeze_singleton: bool = False
+    supported_storage_types: list[StorageType] | None = None
+    preprocessing_hint: str | None = None
+    dimension_requirements: DimensionRequirement | None = None
 
 
 class InputPort(BaseModel):
@@ -384,7 +363,8 @@ class ListResponse(BaseModel):
 
 # Describe (use Union return type in handler)
 class DescribeRequest(BaseModel):
-    id: str
+    id: str | None = Field(default=None, validation_alias=AliasChoices("id", "fn_id"))
+    ids: list[str] | None = Field(default=None, validation_alias=AliasChoices("ids", "fn_ids"))
 
 
 # Search

@@ -108,7 +108,7 @@ class TestFCSCorrelation:
                 {
                     "steps": [
                         {
-                            "fn_id": "tttrlib.Correlator",
+                            "id": "tttrlib.Correlator",
                             "inputs": {"tttr": mock_tttr},
                             "params": {
                                 "channels": [[0], [8]],
@@ -158,7 +158,7 @@ class TestFCSCorrelation:
                 {
                     "steps": [
                         {
-                            "fn_id": "tttrlib.Correlator",
+                            "id": "tttrlib.Correlator",
                             "inputs": {"tttr": mock_tttr},
                             "params": {
                                 "channels": [[0], [8]],
@@ -197,7 +197,7 @@ class TestFCSCorrelation:
                 {
                     "steps": [
                         {
-                            "fn_id": "tttrlib.Correlator",
+                            "id": "tttrlib.Correlator",
                             "inputs": {"tttr": mock_tttr},
                             "params": {
                                 "channels": [[0], [8]],  # Cross-correlation
@@ -231,7 +231,7 @@ class TestFCSCorrelation:
                 {
                     "steps": [
                         {
-                            "fn_id": "tttrlib.Correlator",
+                            "id": "tttrlib.Correlator",
                             "inputs": {"tttr": mock_tttr},
                             "params": {"channels": [[0], [0]]},
                         }

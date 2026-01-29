@@ -50,7 +50,7 @@ def test_io_function_discovery(mcp_test_client):
 
     # 4. Verify describe_function returns valid schema for each
     for fn_id in EXPECTED_IO_FUNCTIONS:
-        desc = mcp_test_client.describe_function(fn_id)
+        desc = mcp_test_client.describe_function(id=fn_id)
         assert desc, f"Could not describe function {fn_id}"
         assert "id" in desc
         assert desc["id"] == fn_id

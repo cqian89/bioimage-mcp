@@ -52,7 +52,7 @@ def test_matplotlib_memory_leak(execution_service):
     for i in range(num_iterations):
         # 1. Create figure
         workflow1 = {
-            "steps": [{"fn_id": "base.matplotlib.pyplot.figure", "params": {"figsize": [2, 2]}}]
+            "steps": [{"id": "base.matplotlib.pyplot.figure", "params": {"figsize": [2, 2]}}]
         }
         result1 = execution_service.run_workflow(workflow1, session_id=session_id)
         assert result1["status"] == "success", (
@@ -64,7 +64,7 @@ def test_matplotlib_memory_leak(execution_service):
         workflow3 = {
             "steps": [
                 {
-                    "fn_id": "base.matplotlib.Figure.savefig",
+                    "id": "base.matplotlib.Figure.savefig",
                     "inputs": {"figure": fig_ref},
                     "params": {"format": "png"},
                 }
@@ -88,7 +88,7 @@ def test_matplotlib_memory_leak_comprehensive(execution_service):
     for i in range(num_iterations):
         # 1. Create figure
         workflow1 = {
-            "steps": [{"fn_id": "base.matplotlib.pyplot.figure", "params": {"figsize": [2, 2]}}]
+            "steps": [{"id": "base.matplotlib.pyplot.figure", "params": {"figsize": [2, 2]}}]
         }
         result1 = execution_service.run_workflow(workflow1, session_id=session_id)
         assert result1["status"] == "success", (
@@ -100,7 +100,7 @@ def test_matplotlib_memory_leak_comprehensive(execution_service):
         workflow2 = {
             "steps": [
                 {
-                    "fn_id": "base.matplotlib.Figure.savefig",
+                    "id": "base.matplotlib.Figure.savefig",
                     "inputs": {"figure": fig_ref},
                     "params": {"format": "png"},
                 }

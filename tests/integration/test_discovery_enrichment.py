@@ -120,7 +120,7 @@ def test_describe_function_uses_db_cache(tmp_path: Path, monkeypatch) -> None:
     )
 
     fn_id = "base.skimage.filters.gaussian"
-    first = service.describe_function(fn_id)
+    first = service.describe_function(id=fn_id)
     assert first["id"] == fn_id
     assert "params_schema" in first
     assert first["params_schema"]["properties"]["sigma"]["type"] == "number"
@@ -129,7 +129,7 @@ def test_describe_function_uses_db_cache(tmp_path: Path, monkeypatch) -> None:
     assert calls[0]["fn_id"] == "meta.describe"
 
     # Verify cache hit
-    second = service.describe_function(fn_id)
+    second = service.describe_function(id=fn_id)
     assert second["id"] == fn_id
     assert "params_schema" in second
     assert second["params_schema"]["properties"]["sigma"]["type"] == "number"
@@ -137,7 +137,7 @@ def test_describe_function_uses_db_cache(tmp_path: Path, monkeypatch) -> None:
 
     # Verify invalidation on source hash change
     source_hash_container["value"] = "src-hash-v2"
-    third = service.describe_function(fn_id)
+    third = service.describe_function(id=fn_id)
     assert third["id"] == fn_id
     assert len(calls) == 2
 
@@ -179,12 +179,12 @@ def test_describe_function_supports_worker_response(tmp_path: Path, monkeypatch)
     )
 
     fn_id = "base.skimage.filters.gaussian"
-    res = service.describe_function(fn_id)
+    res = service.describe_function(id=fn_id)
     assert res["params_schema"]["properties"]["sigma"]["type"] == "number"
     assert res["meta"]["introspection_source"] == "python_api"
     assert len(calls) == 1
 
     # Verify caching
-    res2 = service.describe_function(fn_id)
+    res2 = service.describe_function(id=fn_id)
     assert res2["params_schema"]["properties"]["sigma"]["type"] == "number"
     assert len(calls) == 1

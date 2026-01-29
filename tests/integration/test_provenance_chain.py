@@ -41,7 +41,7 @@ class TestProvenanceChain:
             workflow_step1 = {
                 "steps": [
                     {
-                        "fn_id": "base.xarray.squeeze",
+                        "id": "base.xarray.squeeze",
                         "inputs": {
                             "image": {
                                 "type": "BioImageRef",
@@ -70,7 +70,7 @@ class TestProvenanceChain:
             workflow_step2 = {
                 "steps": [
                     {
-                        "fn_id": "base.skimage.filters.gaussian",
+                        "id": "base.skimage.filters.gaussian",
                         "inputs": {"image": squeeze_out},
                         "params": {"sigma": 1.0},
                     }
@@ -85,7 +85,7 @@ class TestProvenanceChain:
             run2 = svc._run_store.get(result2["run_id"])
             provenance = run2.provenance
 
-            assert "fn_id" in provenance
+            assert "id" in provenance
             assert provenance["id"] == "base.skimage.filters.gaussian"
 
             # Check for handoffs because we passed a memory artifact
@@ -133,7 +133,7 @@ class TestProvenanceChain:
                 {
                     "steps": [
                         {
-                            "fn_id": "base.xarray.squeeze",
+                            "id": "base.xarray.squeeze",
                             "inputs": {
                                 "image": {
                                     "type": "BioImageRef",
@@ -159,7 +159,7 @@ class TestProvenanceChain:
                 {
                     "steps": [
                         {
-                            "fn_id": "base.skimage.filters.gaussian",
+                            "id": "base.skimage.filters.gaussian",
                             "inputs": {"image": out1},
                             "params": {"sigma": 1.0},
                         }
@@ -179,7 +179,7 @@ class TestProvenanceChain:
                 {
                     "steps": [
                         {
-                            "fn_id": "base.skimage.filters.gaussian",
+                            "id": "base.skimage.filters.gaussian",
                             "inputs": {"image": out2},
                             "params": {"sigma": 0.5},
                         }

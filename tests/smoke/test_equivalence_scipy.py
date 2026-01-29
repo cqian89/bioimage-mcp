@@ -47,7 +47,7 @@ async def test_scipy_ndimage_gaussian_filter_equivalence(
     load_result = await live_server.call_tool_checked(
         "run",
         {
-            "fn_id": "base.io.bioimage.load",
+            "id": "base.io.bioimage.load",
             "inputs": {},
             "params": {"path": str(SYNTHETIC_IMAGE.absolute())},
         },
@@ -59,7 +59,7 @@ async def test_scipy_ndimage_gaussian_filter_equivalence(
     mcp_result = await live_server.call_tool_checked(
         "run",
         {
-            "fn_id": "base.scipy.ndimage.gaussian_filter",
+            "id": "base.scipy.ndimage.gaussian_filter",
             "inputs": {"image": img_ref},
             "params": {"sigma": sigma},
         },

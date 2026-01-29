@@ -46,7 +46,7 @@ def test_describe_function_separates_inputs_outputs_params():
         },
     )
 
-    described = service.describe_function(fn_id="base.ops.gaussian")
+    described = service.describe_function(id="base.ops.gaussian")
 
     assert "inputs" in described
     assert "outputs" in described
@@ -91,7 +91,7 @@ def test_describe_non_function_node_returns_catalog_node():
         params_schema={},
     )
 
-    described = service.describe_function(fn_id="base.ops")
+    described = service.describe_function(id="base.ops")
     assert described["id"] == "base.ops"
     assert described["type"] == "package"
     assert "children" in described
@@ -106,7 +106,7 @@ def test_describe_returns_not_found_for_invalid_id():
     init_schema(conn)
     service = DiscoveryService(conn)
 
-    described = service.describe_function(fn_id="invalid.function.id")
+    described = service.describe_function(id="invalid.function.id")
     assert "error" in described
     assert described["error"]["code"] == "NOT_FOUND"
     assert "details" in described["error"]

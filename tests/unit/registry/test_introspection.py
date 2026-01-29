@@ -62,16 +62,14 @@ def gaussian_filter_numpy_style(
 def func_with_array_param(
     data: "ndarray",
     properties: tuple = ("label", "bbox"),
-    columns: list = None,
+    columns: tuple = ("a", "b"),
 ) -> dict:
     """Function with array-type parameters."""
-    if columns is None:
-        columns = ["a", "b"]
     return {}
 
 
 def verbose_docstring(value: int) -> int:
-    """Return the input value.
+    """Return   the   input    value.
 
     Parameters
     ----------

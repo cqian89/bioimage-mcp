@@ -46,7 +46,7 @@ async def test_phasorpy_equivalence(live_server):
         # 2. Run MCP Tool
         load_result = await live_server.call_tool(
             "run",
-            {"fn_id": "base.io.bioimage.load", "inputs": {}, "params": {"path": str(input_path)}},
+            {"id": "base.io.bioimage.load", "inputs": {}, "params": {"path": str(input_path)}},
         )
         assert load_result.get("status") == "success", f"Load failed: {load_result}"
         image_artifact = load_result["outputs"]["image"]
@@ -62,7 +62,7 @@ async def test_phasorpy_equivalence(live_server):
         run_result = await live_server.call_tool(
             "run",
             {
-                "fn_id": "base.phasorpy.phasor.phasor_from_signal",
+                "id": "base.phasorpy.phasor.phasor_from_signal",
                 "inputs": {"signal": image_artifact},
                 "params": {"axis": mcp_axis},
             },
@@ -108,7 +108,7 @@ async def test_phasorpy_equivalence(live_server):
             res = await live_server.call_tool(
                 "run",
                 {
-                    "fn_id": "base.io.bioimage.export",
+                    "id": "base.io.bioimage.export",
                     "inputs": {"image": phasor_result[name]},
                     "params": {"format": "NPY", "path": str(path)},
                 },

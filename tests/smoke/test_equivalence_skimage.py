@@ -44,7 +44,7 @@ async def test_skimage_gaussian_equivalence(
     load_result = await live_server.call_tool(
         "run",
         {
-            "fn_id": "base.io.bioimage.load",
+            "id": "base.io.bioimage.load",
             "inputs": {},
             "params": {"path": str(synthetic_image)},
         },
@@ -56,7 +56,7 @@ async def test_skimage_gaussian_equivalence(
     mcp_result = await live_server.call_tool(
         "run",
         {
-            "fn_id": "base.skimage.filters.gaussian",
+            "id": "base.skimage.filters.gaussian",
             "inputs": {"image": img_ref},
             "params": {"sigma": sigma},
         },
@@ -108,7 +108,7 @@ async def test_skimage_sobel_equivalence(
     load_result = await live_server.call_tool(
         "run",
         {
-            "fn_id": "base.io.bioimage.load",
+            "id": "base.io.bioimage.load",
             "inputs": {},
             "params": {"path": str(synthetic_image)},
         },
@@ -119,7 +119,7 @@ async def test_skimage_sobel_equivalence(
     mcp_result = await live_server.call_tool(
         "run",
         {
-            "fn_id": "base.skimage.filters.sobel",
+            "id": "base.skimage.filters.sobel",
             "inputs": {"image": img_ref},
         },
     )

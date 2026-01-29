@@ -39,9 +39,7 @@ def test_discovery_list_tools_contract_shape() -> None:
     assert isinstance(page["items"], list)
 
     assert page["items"][0]["name"] == "base"
-    assert page["items"][0]["full_path"] == "base"
     assert page["items"][0]["type"] == "environment"
-    assert page["items"][0]["has_children"] is True
     conn.close()
 
 
@@ -108,7 +106,7 @@ def test_discovery_describe_function_returns_schema() -> None:
         params_schema={"type": "object", "properties": {"sigma": {"type": "number"}}},
     )
 
-    described = service.describe_function("base.bioimage_mcp_base.preprocess.gaussian")
+    described = service.describe_function(id="base.bioimage_mcp_base.preprocess.gaussian")
     allowed_keys = {
         "id",
         "type",
@@ -171,7 +169,6 @@ def test_list_tools_returns_without_session_error() -> None:
     assert isinstance(result["items"], list)
     assert len(result["items"]) > 0
     assert result["items"][0]["name"] == "base"
-    assert result["items"][0]["full_path"] == "base"
     conn.close()
 
 

@@ -49,9 +49,8 @@ def test_list_function_metadata_fields():
     node = result["items"][0]
 
     assert node["id"] == "cellpose.models"
-    assert node["module"] == "cellpose.models"
-    assert node["io_pattern"] == "pure_constructor"
-    assert node["introspection_source"] == "python_api"
+    assert "module" not in node
+    assert "io_pattern" not in node
 
 
 def test_list_describe_alignment(monkeypatch, tmp_path):
@@ -132,9 +131,10 @@ functions:
         introspection_source="ast",
     )
 
-    # 3. Verify list shows "ast"
+    # 3. Verify list includes no module/io_pattern fields
     res1 = service.list_tools(path=fn_id)
-    assert res1["items"][0]["introspection_source"] == "ast"
+    assert "module" not in res1["items"][0]
+    assert "io_pattern" not in res1["items"][0]
 
     # 4. Mock execute_tool and hashes to return "python_api" enrichment
     def _fake_execute_tool(*args, **kwargs):
@@ -159,9 +159,10 @@ functions:
     monkeypatch.setattr("bioimage_mcp.api.discovery._compute_source_hash", lambda *a, **k: "src")
 
     # 5. Call describe_function (triggers enrichment)
-    desc = service.describe_function(fn_id)
+    desc = service.describe_function(id=fn_id)
     assert desc["meta"]["introspection_source"] == "python_api"
 
-    # 6. Verify list now shows "python_api" (synchronized)
+    # 6. Verify list still excludes module/io_pattern after enrichment
     res2 = service.list_tools(path=fn_id)
-    assert res2["items"][0]["introspection_source"] == "python_api"
+    assert "module" not in res2["items"][0]
+    assert "io_pattern" not in res2["items"][0]

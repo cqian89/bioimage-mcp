@@ -52,7 +52,7 @@ async def test_cellpose_pipeline(live_server, cellpose_image, interaction_logger
 
     # Step 2: Fetch schema for Cellpose function
     describe_result = await live_server.call_tool(
-        "describe", {"fn_id": "cellpose.models.CellposeModel.eval"}
+        "describe", {"id": "cellpose.models.CellposeModel.eval"}
     )
     assert describe_result is not None
 
@@ -60,7 +60,7 @@ async def test_cellpose_pipeline(live_server, cellpose_image, interaction_logger
     load_result = await live_server.call_tool(
         "run",
         {
-            "fn_id": "base.io.bioimage.load",
+            "id": "base.io.bioimage.load",
             "inputs": {},
             "params": {"path": str(cellpose_image.absolute())},
         },
@@ -83,7 +83,7 @@ async def test_cellpose_pipeline(live_server, cellpose_image, interaction_logger
     sum_result = await live_server.call_tool(
         "run",
         {
-            "fn_id": "base.xarray.DataArray.sum",
+            "id": "base.xarray.DataArray.sum",
             "inputs": {"image": img_ref},
             "params": {"dim": "Z"},
         },
@@ -106,7 +106,7 @@ async def test_cellpose_pipeline(live_server, cellpose_image, interaction_logger
     export_result = await live_server.call_tool(
         "run",
         {
-            "fn_id": "base.io.bioimage.export",
+            "id": "base.io.bioimage.export",
             "inputs": {"image": summed_ref},
             "params": {"format": "OME-TIFF"},
         },
@@ -136,7 +136,7 @@ async def test_cellpose_pipeline(live_server, cellpose_image, interaction_logger
     model_init_result = await live_server.call_tool(
         "run",
         {
-            "fn_id": "cellpose.models.CellposeModel",
+            "id": "cellpose.models.CellposeModel",
             "inputs": {},
             "params": {"model_type": "cyto3", "gpu": False},
         },
@@ -156,7 +156,7 @@ async def test_cellpose_pipeline(live_server, cellpose_image, interaction_logger
     segment_result = await live_server.call_tool(
         "run",
         {
-            "fn_id": "cellpose.models.CellposeModel.eval",
+            "id": "cellpose.models.CellposeModel.eval",
             "inputs": {"model": model_ref, "x": exported_ref},
             "params": {"diameter": 0},
         },

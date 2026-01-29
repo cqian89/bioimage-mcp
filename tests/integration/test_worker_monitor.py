@@ -55,7 +55,7 @@ class TestBackgroundMonitor:
 
         # Create a mem:// artifact in worker
         request = {
-            "fn_id": "base.io.bioimage.export",
+            "id": "base.io.bioimage.export",
             "inputs": {"image": {"uri": f"file://{test_image}"}},
             "params": {
                 "format": "OME-TIFF",

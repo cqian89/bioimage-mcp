@@ -62,7 +62,7 @@ async def test_pandas_equivalence(live_server, helper, executor, sample_csv, tmp
     load_res = await live_server.call_tool(
         "run",
         {
-            "fn_id": "base.io.table.load",
+            "id": "base.io.table.load",
             "inputs": {},
             "params": {"path": str(sample_csv)},
         },
@@ -75,7 +75,7 @@ async def test_pandas_equivalence(live_server, helper, executor, sample_csv, tmp
     to_df_res = await live_server.call_tool(
         "run",
         {
-            "fn_id": "base.pandas.DataFrame",
+            "id": "base.pandas.DataFrame",
             "inputs": {"image": table_ref["ref_id"]},
         },
     )
@@ -86,7 +86,7 @@ async def test_pandas_equivalence(live_server, helper, executor, sample_csv, tmp
     describe_res = await live_server.call_tool(
         "run",
         {
-            "fn_id": "base.pandas.DataFrame.describe",
+            "id": "base.pandas.DataFrame.describe",
             "inputs": {"image": df_ref},
         },
     )
@@ -97,7 +97,7 @@ async def test_pandas_equivalence(live_server, helper, executor, sample_csv, tmp
     groupby_res = await live_server.call_tool(
         "run",
         {
-            "fn_id": "base.pandas.DataFrame.groupby",
+            "id": "base.pandas.DataFrame.groupby",
             "inputs": {"image": df_ref},
             "params": {"by": "class_name"},
         },
@@ -108,7 +108,7 @@ async def test_pandas_equivalence(live_server, helper, executor, sample_csv, tmp
     mean_res = await live_server.call_tool(
         "run",
         {
-            "fn_id": "base.pandas.GroupBy.mean",
+            "id": "base.pandas.GroupBy.mean",
             "inputs": {"image": gb_obj_ref},
         },
     )
@@ -127,7 +127,7 @@ async def test_pandas_equivalence(live_server, helper, executor, sample_csv, tmp
         export_res = await live_server.call_tool(
             "run",
             {
-                "fn_id": "base.io.table.export",
+                "id": "base.io.table.export",
                 "inputs": {"data": ref},
                 "params": {"dest_path": str(dest_path)},
             },

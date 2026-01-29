@@ -23,7 +23,7 @@ def _write_manifest(manifest_dir: Path, supported_storage_types: list[str]) -> N
                 "entrypoint": "storage/entrypoint.py",
                 "functions": [
                     {
-                        "fn_id": "storage.fn",
+                        "id": "storage.fn",
                         "tool_id": "tools.storage",
                         "name": "Storage Function",
                         "description": "Function for storage tests",
@@ -109,7 +109,7 @@ def test_materializes_zarr_temp_input_to_file(tmp_path: Path, monkeypatch) -> No
         inputs = {"image": ref.model_dump()}
 
         result = svc.run_workflow(
-            {"steps": [{"fn_id": "storage.fn", "inputs": inputs, "params": {}}]},
+            {"steps": [{"id": "storage.fn", "inputs": inputs, "params": {}}]},
             skip_validation=True,
         )
 

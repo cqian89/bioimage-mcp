@@ -27,7 +27,7 @@ def test_status_returns_run_state(tmp_path: Path):
         workflow_spec={"steps": []},
         inputs={},
         params={},
-        provenance={"fn_id": "test.fn"},
+        provenance={"id": "test.fn"},
         log_ref_id=store.write_log("init").ref_id,
     )
     run_store.set_status(

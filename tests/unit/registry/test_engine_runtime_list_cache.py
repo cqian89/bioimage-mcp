@@ -51,7 +51,7 @@ def test_runtime_list_cache_hit_miss(mock_home, project_root, manifest):
         "result": {
             "functions": [
                 {
-                    "fn_id": "test.func1",
+                    "id": "test.func1",
                     "name": "func1",
                     "summary": "Summary 1",
                     "module": "mod1",
@@ -68,7 +68,7 @@ def test_runtime_list_cache_hit_miss(mock_home, project_root, manifest):
         # First call: cache miss
         results1 = engine._runtime_list(manifest)
         assert len(results1) == 1
-        assert results1[0]["fn_id"] == "test.func1"
+        assert results1[0]["id"] == "test.func1"
         assert mock_execute.call_count == 1
 
         # Verify cache file exists
@@ -98,7 +98,7 @@ def test_runtime_list_cache_invalidation_lockfile(mock_home, project_root, manif
 
     runtime_response = {
         "ok": True,
-        "result": {"functions": [{"fn_id": "f1", "name": "n1", "summary": "s1"}]},
+        "result": {"functions": [{"id": "f1", "name": "n1", "summary": "s1"}]},
     }
 
     engine = DiscoveryEngine(project_root=project_root)
@@ -125,7 +125,7 @@ def test_runtime_list_cache_invalidation_manifest(mock_home, project_root, manif
 
     runtime_response = {
         "ok": True,
-        "result": {"functions": [{"fn_id": "f1", "name": "n1", "summary": "s1"}]},
+        "result": {"functions": [{"id": "f1", "name": "n1", "summary": "s1"}]},
     }
 
     engine = DiscoveryEngine(project_root=project_root)
@@ -151,7 +151,7 @@ def test_runtime_list_no_cache_no_lockfile(mock_home, project_root, manifest):
 
     runtime_response = {
         "ok": True,
-        "result": {"functions": [{"fn_id": "f1", "name": "n1", "summary": "s1"}]},
+        "result": {"functions": [{"id": "f1", "name": "n1", "summary": "s1"}]},
     }
 
     engine = DiscoveryEngine(project_root=project_root)

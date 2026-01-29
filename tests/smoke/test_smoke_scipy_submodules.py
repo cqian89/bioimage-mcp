@@ -24,7 +24,7 @@ async def get_test_image(live_server):
     res = await live_server.call_tool_checked(
         "run",
         {
-            "fn_id": "base.io.bioimage.load",
+            "id": "base.io.bioimage.load",
             "inputs": {},
             "params": {"path": "datasets/synthetic/test.tif"},
         },
@@ -63,7 +63,7 @@ async def get_test_table(live_server, tmp_dir, name="test", data=None):
     rel_path = csv_path.relative_to(Path.cwd())
 
     res = await live_server.call_tool_checked(
-        "run", {"fn_id": "base.io.table.load", "inputs": {}, "params": {"path": str(rel_path)}}
+        "run", {"id": "base.io.table.load", "inputs": {}, "params": {"path": str(rel_path)}}
     )
     assert res.get("status") == "success"
     assert "outputs" in res
@@ -118,7 +118,7 @@ async def test_scipy_minimal_matrix(
         )
 
     res = await live_server.call_tool_checked(
-        "run", {"fn_id": fn_id, "inputs": inputs, "params": params}
+        "run", {"id": fn_id, "inputs": inputs, "params": params}
     )
     if res.get("status") != "success":
         pytest.fail(f"Tool {fn_id} failed: {res}")
@@ -225,7 +225,7 @@ async def test_scipy_full_matrix(
         )
 
     res = await live_server.call_tool_checked(
-        "run", {"fn_id": fn_id, "inputs": inputs, "params": params}
+        "run", {"id": fn_id, "inputs": inputs, "params": params}
     )
     if res.get("status") != "success":
         pytest.fail(f"Tool {fn_id} failed: {res}")
@@ -255,7 +255,7 @@ async def test_scipy_spatial_kdtree_lifecycle(live_server, smoke_tmp_dir):
     build_res = await live_server.call_tool_checked(
         "run",
         {
-            "fn_id": "base.scipy.spatial.cKDTree",
+            "id": "base.scipy.spatial.cKDTree",
             "inputs": {"table": table_ref},
             "params": {"columns": ["x", "y"]},
         },
@@ -274,7 +274,7 @@ async def test_scipy_spatial_kdtree_lifecycle(live_server, smoke_tmp_dir):
     query_res = await live_server.call_tool_checked(
         "run",
         {
-            "fn_id": "base.scipy.spatial.cKDTree.query",
+            "id": "base.scipy.spatial.cKDTree.query",
             "inputs": {"object": obj_ref, "table": query_table},
             "params": {"columns": ["x", "y"], "k": 1},
         },

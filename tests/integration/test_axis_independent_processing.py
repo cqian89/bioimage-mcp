@@ -51,7 +51,7 @@ class TestAxisIndependentProcessing:
         workflow = {
             "steps": [
                 {
-                    "fn_id": "base.skimage.filters.gaussian",
+                    "id": "base.skimage.filters.gaussian",
                     "params": {"sigma": 1.0},
                     "inputs": {"image": {"ref_id": ref.ref_id}},
                 }
@@ -153,7 +153,7 @@ class TestAxisIndependentProcessing:
         workflow = {
             "steps": [
                 {
-                    "fn_id": "base.skimage.filters.gaussian",
+                    "id": "base.skimage.filters.gaussian",
                     "params": {"sigma": 1.0},
                     "inputs": {"image": {"ref_id": ref.ref_id}},
                 }

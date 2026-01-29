@@ -21,7 +21,7 @@ class TestCellposeStateful:
             {
                 "steps": [
                     {
-                        "fn_id": "cellpose.models.CellposeModel",
+                        "id": "cellpose.models.CellposeModel",
                         "params": {"model_type": "cyto3", "gpu": False},
                     }
                 ]
@@ -46,7 +46,7 @@ class TestCellposeStateful:
             {
                 "steps": [
                     {
-                        "fn_id": "cellpose.models.CellposeModel",
+                        "id": "cellpose.models.CellposeModel",
                         "params": {"model_type": "cyto3"},
                     }
                 ]
@@ -67,7 +67,7 @@ class TestCellposeStateful:
             {
                 "steps": [
                     {
-                        "fn_id": "cellpose.models.CellposeModel.eval",
+                        "id": "cellpose.models.CellposeModel.eval",
                         "inputs": {
                             "model": model_ref,
                             "x": {"type": "BioImageRef", "uri": f"file://{img_path}"},
@@ -91,7 +91,7 @@ class TestCellposeStateful:
             {
                 "steps": [
                     {
-                        "fn_id": "cellpose.models.CellposeModel",
+                        "id": "cellpose.models.CellposeModel",
                         "params": {"model_type": "cyto3"},
                     }
                 ]
@@ -113,7 +113,7 @@ class TestCellposeStateful:
                 {
                     "steps": [
                         {
-                            "fn_id": "cellpose.models.CellposeModel.eval",
+                            "id": "cellpose.models.CellposeModel.eval",
                             "inputs": {
                                 "model": model_ref,
                                 "x": {"type": "BioImageRef", "uri": f"file://{img_path}"},

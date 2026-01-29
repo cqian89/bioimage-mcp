@@ -76,7 +76,7 @@ def test_flim_phasor_e2e(tmp_path: Path) -> None:
     workflow1 = {
         "steps": [
             {
-                "fn_id": "base.phasorpy.phasor.phasor_from_signal",
+                "id": "base.phasorpy.phasor.phasor_from_signal",
                 "inputs": {
                     "signal": {
                         "type": "BioImageRef",
@@ -130,7 +130,7 @@ def test_flim_phasor_e2e(tmp_path: Path) -> None:
     # workflow2 = {
     #     "steps": [
     #         {
-    #             "fn_id": "cellpose.models.CellposeModel.eval",
+    #             "id": "cellpose.models.CellposeModel.eval",
     #             "inputs": {"x": seg_input},
     #             "params": {"model_type": "cyto3", "diameter": 30.0},
     #         }

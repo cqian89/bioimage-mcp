@@ -85,7 +85,7 @@ class TestUnsupportedFormats:
                 {
                     "steps": [
                         {
-                            "fn_id": "cellpose.models.CellposeModel.eval",
+                            "id": "cellpose.models.CellposeModel.eval",
                             "inputs": {
                                 "x": {
                                     "type": "BioImageRef",
@@ -124,7 +124,7 @@ class TestUnsupportedFormats:
                 {
                     "steps": [
                         {
-                            "fn_id": "cellpose.models.CellposeModel.eval",
+                            "id": "cellpose.models.CellposeModel.eval",
                             "inputs": {
                                 "x": {
                                     "type": "BioImageRef",
@@ -172,7 +172,7 @@ class TestUnsupportedFormats:
                 {
                     "steps": [
                         {
-                            "fn_id": "cellpose.models.CellposeModel.eval",
+                            "id": "cellpose.models.CellposeModel.eval",
                             "inputs": {
                                 "x": {
                                     "type": "BioImageRef",
@@ -210,7 +210,7 @@ class TestUnsupportedFormats:
                 {
                     "steps": [
                         {
-                            "fn_id": "cellpose.models.CellposeModel.eval",
+                            "id": "cellpose.models.CellposeModel.eval",
                             "inputs": {
                                 "x": {
                                     "type": "BioImageRef",
@@ -248,7 +248,7 @@ class TestUnsupportedFormats:
                 {
                     "steps": [
                         {
-                            "fn_id": "cellpose.models.CellposeModel.eval",
+                            "id": "cellpose.models.CellposeModel.eval",
                             "inputs": {
                                 "x": {
                                     "type": "BioImageRef",

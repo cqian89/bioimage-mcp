@@ -161,9 +161,9 @@ def test_list_tools_flatten_paginates() -> None:
     assert len(first["items"]) == 1
     assert first["next_cursor"] is not None
 
-    first_path = first["items"][0]["full_path"]
+    first_path = first["items"][0]["id"]
     second = service.list_tools(path="base", flatten=True, limit=1, cursor=first["next_cursor"])
 
     assert len(second["items"]) == 1
-    assert second["items"][0]["full_path"] > first_path
+    assert second["items"][0]["id"] > first_path
     conn.close()

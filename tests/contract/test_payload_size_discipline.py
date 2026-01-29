@@ -54,5 +54,5 @@ def test_run_workflow_payload_contains_refs_only(tmp_path: Path, monkeypatch) ->
     (tmp_path / "x.tif").write_bytes(b"not_a_real_tiff_but_fine_for_contract_test")
 
     svc = ExecutionService(config, artifact_store=store)
-    resp = svc.run_workflow({"steps": [{"fn_id": "fn.one", "params": {}, "inputs": {}}]})
+    resp = svc.run_workflow({"steps": [{"id": "fn.one", "params": {}, "inputs": {}}]})
     _assert_no_pixel_arrays(resp)

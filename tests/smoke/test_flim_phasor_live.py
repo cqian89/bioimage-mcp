@@ -48,7 +48,7 @@ async def test_flim_phasor_workflow(live_server, flim_image):
 
     # Step 2: Fetch schema for phasor function
     describe_result = await live_server.call_tool(
-        "describe", {"fn_id": "base.phasorpy.phasor.phasor_from_signal"}
+        "describe", {"id": "base.phasorpy.phasor.phasor_from_signal"}
     )
     assert describe_result is not None
 
@@ -56,7 +56,7 @@ async def test_flim_phasor_workflow(live_server, flim_image):
     load_result = await live_server.call_tool(
         "run",
         {
-            "fn_id": "base.io.bioimage.load",
+            "id": "base.io.bioimage.load",
             "inputs": {},
             "params": {"path": str(flim_image.absolute())},
         },
@@ -77,7 +77,7 @@ async def test_flim_phasor_workflow(live_server, flim_image):
     transpose_result = await live_server.call_tool(
         "run",
         {
-            "fn_id": "base.xarray.DataArray.transpose",
+            "id": "base.xarray.DataArray.transpose",
             "inputs": {"image": img_ref},
             "params": {"dims": ["Y", "X", "Z"]},
         },
@@ -102,7 +102,7 @@ async def test_flim_phasor_workflow(live_server, flim_image):
     phasor_result = await live_server.call_tool(
         "run",
         {
-            "fn_id": "base.phasorpy.phasor.phasor_from_signal",
+            "id": "base.phasorpy.phasor.phasor_from_signal",
             "inputs": {"signal": transposed_ref},
             "params": {"harmonic": 1, "axis": -1},
         },

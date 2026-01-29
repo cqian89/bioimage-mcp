@@ -39,7 +39,7 @@ functions:
     hints:
       success_hints:
         next_steps:
-          - fn_id: base.next
+          - id: base.next
             reason: "Continue with next step"
         common_issues:
           - "Watch for downstream validation"
@@ -59,7 +59,7 @@ functions:
         GENERAL:
           diagnosis: "Input axes do not match expected order."
           suggested_fix:
-            fn_id: base.relabel_axes
+            id: base.relabel_axes
             params:
               axis_mapping:
                 Z: "T"
@@ -110,9 +110,7 @@ def test_run_workflow_success_includes_hints(tmp_path: Path, monkeypatch) -> Non
     monkeypatch.setattr("bioimage_mcp.api.execution.execute_step", _fake_execute_step)
 
     with ExecutionService(config) as svc:
-        response = svc.run_workflow(
-            {"steps": [{"fn_id": "fn.success", "params": {}, "inputs": {}}]}
-        )
+        response = svc.run_workflow({"steps": [{"id": "fn.success", "params": {}, "inputs": {}}]})
 
     assert response["status"] == "success"
     assert response["hints"]["next_steps"]
@@ -144,7 +142,7 @@ def test_run_workflow_error_includes_hints(tmp_path: Path, monkeypatch) -> None:
             {
                 "steps": [
                     {
-                        "fn_id": "fn.fail",
+                        "id": "fn.fail",
                         "params": {},
                         "inputs": {"image": {"ref_id": ref.ref_id}},
                     }
@@ -154,5 +152,5 @@ def test_run_workflow_error_includes_hints(tmp_path: Path, monkeypatch) -> None:
 
     assert response["status"] == "failed"
     assert response["hints"]["diagnosis"] == "Input axes do not match expected order."
-    assert response["hints"]["suggested_fix"]["fn_id"] == "base.relabel_axes"
+    assert response["hints"]["suggested_fix"]["id"] == "base.relabel_axes"
     assert response["hints"]["related_metadata"]["image"] == ref.metadata

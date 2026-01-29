@@ -210,12 +210,13 @@ class DiscoveryService:
         # and we want to match CatalogNode schema
         items = []
         for n in page:
-            item = {k: v for k, v in n.items() if k != "full_path" and k != "has_children"}
+            item = {
+                k: v
+                for k, v in n.items()
+                if k not in {"full_path", "has_children", "module", "io_pattern"}
+            }
             if not include_counts and "children" in item:
                 del item["children"]
-            # Backward compatibility (T032)
-            item["full_path"] = n["full_path"]
-            item["has_children"] = n["has_children"]
             items.append(item)
 
         return {
@@ -461,15 +462,15 @@ class DiscoveryService:
 
     def describe_function(
         self,
-        fn_id: str | None = None,
-        fn_ids: list[str] | None = None,
+        id: str | None = None,
+        ids: list[str] | None = None,
     ) -> dict[str, Any]:
-        if fn_ids is not None:
+        if ids is not None:
             schemas: dict[str, Any] = {}
             errors: dict[str, str] = {}
-            for target_id in fn_ids:
+            for target_id in ids:
                 try:
-                    result = self.describe_function(fn_id=target_id)
+                    result = self.describe_function(id=target_id)
                     if "error" in result:
                         errors[target_id] = result["error"]["message"]
                     else:
@@ -478,20 +479,20 @@ class DiscoveryService:
                     errors[target_id] = f"Function not found: {target_id}"
             return {"schemas": schemas, "errors": errors}
 
-        if fn_id is None:
-            raise ValueError("fn_id is required when fn_ids is not provided")
+        if id is None:
+            raise ValueError("id is required when ids is not provided")
 
         # Handle non-function nodes (T037, T046)
         functions = self._index.list_functions()
         tool_index = ToolIndex(functions)
         tool_index.build_hierarchy()
-        node = tool_index._resolve_path(fn_id)
+        node = tool_index._resolve_path(id)
 
         if node is None:
             # Contract T038: Return NOT_FOUND error for invalid IDs
             return {
                 "error": not_found_error(
-                    message=f"ID not found: {fn_id}",
+                    message=f"ID not found: {id}",
                     path="/id",
                     expected="valid function or node ID",
                     hint="Use 'search' or 'list' to find valid IDs",
@@ -502,12 +503,12 @@ class DiscoveryService:
             return tool_index._to_payload(node)
 
         # For function nodes
-        payload = self._index.get_function(fn_id)
+        payload = self._index.get_function(id)
         if payload is None:
             # Should not happen if node was found, but for safety:
             return {
                 "error": not_found_error(
-                    message=f"Function metadata not found: {fn_id}",
+                    message=f"Function metadata not found: {id}",
                     path="/id",
                     expected="function with valid metadata in registry",
                     hint="Ensure the tool pack is correctly installed and indexed",
@@ -517,32 +518,73 @@ class DiscoveryService:
         config = load_config()
         manifests, _diagnostics = load_manifests(config.tool_manifest_roots)
         manifest = next(
-            (m for m in manifests if any(fn.fn_id == fn_id for fn in m.functions)),
+            (m for m in manifests if any(fn.fn_id == id for fn in m.functions)),
             None,
         )
         # If no manifest found, use what we have in DB
         function_def = None
         if manifest:
-            function_def = next((fn for fn in manifest.functions if fn.fn_id == fn_id), None)
+            function_def = next((fn for fn in manifest.functions if fn.fn_id == id), None)
 
         inputs: dict[str, Any] = {}
         input_names = set()
+        function_hint_inputs = {}
+        if function_def and function_def.hints:
+            function_hint_inputs = function_def.hints.inputs or {}
         if function_def:
             for port in function_def.inputs:
                 input_names.add(port.name)
                 description = port.description or f"{port.name} input"
+                hints_payload = (
+                    port.hints.model_dump(exclude_none=True)
+                    if hasattr(port, "hints") and port.hints
+                    else None
+                )
+                hint_input = function_hint_inputs.get(port.name)
+                if hint_input:
+                    hint_payload_from_manifest = hint_input.model_dump(exclude_none=True)
+                    hint_payload_from_manifest = {
+                        key: value
+                        for key, value in hint_payload_from_manifest.items()
+                        if key
+                        in {
+                            "expected_axes",
+                            "min_ndim",
+                            "max_ndim",
+                            "squeeze_singleton",
+                            "supported_storage_types",
+                            "preprocessing_hint",
+                            "dimension_requirements",
+                        }
+                    }
+                    if hints_payload:
+                        for key, value in hint_payload_from_manifest.items():
+                            hints_payload.setdefault(key, value)
+                    else:
+                        hints_payload = hint_payload_from_manifest
+
+                if hints_payload and hints_payload.get("dimension_requirements"):
+                    dim_req = hints_payload.get("dimension_requirements")
+                    if isinstance(dim_req, dict):
+                        for key in (
+                            "min_ndim",
+                            "max_ndim",
+                            "squeeze_singleton",
+                            "expected_axes",
+                        ):
+                            if key in dim_req:
+                                hints_payload.setdefault(key, dim_req[key])
+
                 inputs[port.name] = {
                     "type": port.artifact_type,
                     "required": port.required,
                     "description": description,
-                    "hints": port.hints.model_dump(exclude_none=True)
-                    if hasattr(port, "hints") and port.hints
-                    else None,
+                    "hints": hints_payload,
                 }
         else:
             # Fallback to DB inputs if manifest not available
             raw_inputs = self._index._conn.execute(
-                "SELECT inputs_json FROM functions WHERE fn_id = ?", (fn_id,)
+                "SELECT inputs_json FROM functions WHERE fn_id = ?", (id,)
             ).fetchone()
             if raw_inputs:
                 db_inputs = json.loads(raw_inputs[0])
@@ -566,7 +608,7 @@ class DiscoveryService:
         else:
             # Fallback to DB outputs
             raw_outputs = self._index._conn.execute(
-                "SELECT outputs_json FROM functions WHERE fn_id = ?", (fn_id,)
+                "SELECT outputs_json FROM functions WHERE fn_id = ?", (id,)
             ).fetchone()
             if raw_outputs:
                 db_outputs = json.loads(raw_outputs[0])
@@ -577,11 +619,20 @@ class DiscoveryService:
                         "description": port.get("description", ""),
                     }
 
-        hints = (
-            function_def.hints.model_dump(exclude_none=True)
-            if function_def and function_def.hints
-            else None
-        )
+        hints = None
+        if function_def and function_def.hints:
+            success_hints = function_def.hints.success_hints
+            error_hints = function_def.hints.error_hints
+            if success_hints or error_hints:
+                hints_payload: dict[str, Any] = {}
+                if success_hints:
+                    hints_payload["success_hints"] = success_hints.model_dump(exclude_none=True)
+                if error_hints:
+                    hints_payload["error_hints"] = {
+                        key: value.model_dump(exclude_none=True)
+                        for key, value in error_hints.items()
+                    }
+                hints = hints_payload
 
         def _prefer_params_schema(
             base_schema: dict[str, Any],
@@ -667,7 +718,7 @@ class DiscoveryService:
                 env_lock_hash = _compute_env_lock_hash(project_root, manifest.env_id)
 
                 module = node.module or (function_def.module if function_def else None)
-                callable_name = payload.get("name") or fn_id.split(".")[-1]
+                callable_name = payload.get("name") or id.split(".")[-1]
                 if callable_name == "eval" and module:
                     # Normalize class methods to match static inspection naming
                     callable_name = f"{module.split('.')[-1]}.{callable_name}"
@@ -682,7 +733,7 @@ class DiscoveryService:
                 cached = self._index.get_cached_schema(
                     tool_id=manifest.tool_id,
                     tool_version=manifest.tool_version,
-                    fn_id=fn_id,
+                    fn_id=id,
                     env_lock_hash=env_lock_hash,
                     source_hash=source_hash,
                 )
@@ -705,7 +756,7 @@ class DiscoveryService:
                         "command": "execute",
                         "ordinal": 0,
                         "fn_id": "meta.describe",
-                        "params": {"target_fn": fn_id},
+                        "params": {"target_fn": id},
                         "inputs": {},
                         "work_dir": str(config.artifact_store_root / "work" / "describe"),
                     }
@@ -728,7 +779,7 @@ class DiscoveryService:
                             self._index.upsert_schema_cache(
                                 tool_id=manifest.tool_id,
                                 tool_version=manifest.tool_version,
-                                fn_id=fn_id,
+                                fn_id=id,
                                 params_schema=params_schema,
                                 introspection_source=introspection_source,
                                 env_lock_hash=env_lock_hash,
@@ -741,7 +792,7 @@ class DiscoveryService:
                         logger = logging.getLogger(__name__)
                         logger.warning(
                             "meta.describe call failed for %s: %s",
-                            fn_id,
+                            id,
                             exc,
                         )
                         # Continue with manifest schema as fallback
@@ -751,22 +802,22 @@ class DiscoveryService:
                     row = self._index._conn.execute(
                         "SELECT name, description, tags_json, inputs_json, outputs_json, "
                         "module, io_pattern FROM functions WHERE fn_id = ?",
-                        (fn_id,),
+                        (id,),
                     ).fetchone()
-                    if row:
-                        self._index.upsert_function(
-                            fn_id=fn_id,
-                            tool_id=manifest.tool_id,
-                            name=row["name"],
-                            description=row["description"],
-                            tags=json.loads(row["tags_json"]),
-                            inputs=json.loads(row["inputs_json"]),
-                            outputs=json.loads(row["outputs_json"]),
-                            params_schema=params_schema,
-                            introspection_source=introspection_source,
-                            module=row["module"],
-                            io_pattern=row["io_pattern"],
-                        )
+                if row:
+                    self._index.upsert_function(
+                        fn_id=id,
+                        tool_id=manifest.tool_id,
+                        name=row["name"],
+                        description=row["description"],
+                        tags=json.loads(row["tags_json"]),
+                        inputs=json.loads(row["inputs_json"]),
+                        outputs=json.loads(row["outputs_json"]),
+                        params_schema=params_schema,
+                        introspection_source=introspection_source,
+                        module=row["module"],
+                        io_pattern=row["io_pattern"],
+                    )
 
         if function_def and function_def.params_schema:
             params_schema = _merge_base_params_schema(params_schema, function_def.params_schema)
@@ -801,7 +852,7 @@ class DiscoveryService:
                 ]
 
         return {
-            "id": fn_id,
+            "id": id,
             "type": "function",
             "summary": node.summary or "",
             "inputs": inputs,

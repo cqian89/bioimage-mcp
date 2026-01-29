@@ -194,7 +194,7 @@ class TestIntensityTrace:
                 {
                     "steps": [
                         {
-                            "fn_id": "tttrlib.TTTR.get_intensity_trace",
+                            "id": "tttrlib.TTTR.get_intensity_trace",
                             "inputs": {"tttr": {"type": "TTTRRef", "uri": "file:///fake.ptu"}},
                             "params": {"time_window_length": 0.010},
                         }
@@ -237,7 +237,7 @@ class TestMicrotimeHistogram:
                 {
                     "steps": [
                         {
-                            "fn_id": "tttrlib.TTTR.get_microtime_histogram",
+                            "id": "tttrlib.TTTR.get_microtime_histogram",
                             "inputs": {"tttr": {"type": "TTTRRef", "uri": "file:///fake.ptu"}},
                             "params": {"micro_time_coarsening": 1},
                         }
@@ -279,7 +279,7 @@ class TestChannelSelection:
                 {
                     "steps": [
                         {
-                            "fn_id": "tttrlib.TTTR.get_selection_by_channel",
+                            "id": "tttrlib.TTTR.get_selection_by_channel",
                             "inputs": {"tttr": {"type": "TTTRRef", "uri": "file:///fake.ptu"}},
                             "params": {"channels": [0, 1]},
                         }
@@ -321,7 +321,7 @@ class TestCLSMIntensity:
                 {
                     "steps": [
                         {
-                            "fn_id": "tttrlib.CLSMImage.intensity",
+                            "id": "tttrlib.CLSMImage.intensity",
                             "inputs": {"clsm": {"type": "ObjectRef", "uri": "obj://fake/clsm"}},
                             "params": {},
                         }
@@ -359,7 +359,7 @@ class TestMeanMicrotime:
                 {
                     "steps": [
                         {
-                            "fn_id": "tttrlib.CLSMImage.get_mean_micro_time",
+                            "id": "tttrlib.CLSMImage.get_mean_micro_time",
                             "inputs": {
                                 "clsm": {"type": "ObjectRef", "uri": "obj://fake/clsm"},
                                 "tttr": {"type": "TTTRRef", "uri": "file:///fake.ptu"},
@@ -400,7 +400,7 @@ class TestTTTRExport:
                 {
                     "steps": [
                         {
-                            "fn_id": "tttrlib.TTTR.write",
+                            "id": "tttrlib.TTTR.write",
                             "inputs": {"tttr": {"type": "TTTRRef", "uri": "file:///fake.ptu"}},
                             "params": {"filename": "exported.h5"},
                         }

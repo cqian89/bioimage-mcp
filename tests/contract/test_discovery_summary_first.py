@@ -63,9 +63,7 @@ class TestListToolsSummaryOnly:
         for tool in result["items"]:
             # Should only have summary fields
             assert "name" in tool
-            assert "full_path" in tool
             assert "type" in tool
-            assert "has_children" in tool
             # Should NOT have detailed schema fields
             assert "params_schema" not in tool
 
@@ -73,7 +71,7 @@ class TestListToolsSummaryOnly:
         """Test that list_tools returns only the expected summary fields."""
         result = discovery_service.list_tools(limit=10, cursor=None)
 
-        expected_fields = {"name", "full_path", "type", "has_children", "id", "summary", "children"}
+        expected_fields = {"name", "type", "id", "summary", "children"}
         for tool in result["items"]:
             actual_fields = set(tool.keys())
             # We allow io field for function nodes
@@ -144,7 +142,7 @@ class TestDescribeFunctionHasSchema:
 
     def test_describe_function_includes_schema(self, discovery_service: DiscoveryService) -> None:
         """Test that describe_function returns the params_schema (on-demand)."""
-        result = discovery_service.describe_function("sample.function")
+        result = discovery_service.describe_function(id="sample.function")
 
         # describe_function should include the schema
         assert "id" in result

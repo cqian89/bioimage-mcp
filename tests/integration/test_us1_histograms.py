@@ -43,7 +43,7 @@ def test_histogram_workflow(execution_service):
 
     # Step 1: subplots
     workflow1 = {
-        "steps": [{"fn_id": "base.matplotlib.pyplot.subplots", "params": {"figsize": [6, 4]}}]
+        "steps": [{"id": "base.matplotlib.pyplot.subplots", "params": {"figsize": [6, 4]}}]
     }
     result1 = execution_service.run_workflow(workflow1)
     assert result1["status"] == "success", f"Step 1 failed: {result1.get('error')}"
@@ -65,7 +65,7 @@ def test_histogram_workflow(execution_service):
     workflow2 = {
         "steps": [
             {
-                "fn_id": "base.matplotlib.Axes.hist",
+                "id": "base.matplotlib.Axes.hist",
                 "inputs": {"axes": ax_ref, "x": [1, 2, 2, 3, 3, 3, 4, 4, 5]},
                 "params": {"bins": 5, "color": "blue", "alpha": 0.7},
             }
@@ -78,7 +78,7 @@ def test_histogram_workflow(execution_service):
     workflow3 = {
         "steps": [
             {
-                "fn_id": "base.matplotlib.Figure.savefig",
+                "id": "base.matplotlib.Figure.savefig",
                 "inputs": {"figure": fig_ref},
                 "params": {"format": "png"},
             }
@@ -101,7 +101,7 @@ def test_histogram_constant_image(execution_service):
     """T011: Test edge case: constant-value data (FR-016)."""
 
     # Step 1: subplots
-    workflow1 = {"steps": [{"fn_id": "base.matplotlib.pyplot.subplots"}]}
+    workflow1 = {"steps": [{"id": "base.matplotlib.pyplot.subplots"}]}
     result1 = execution_service.run_workflow(workflow1)
     assert result1["status"] == "success"
     outputs1 = execution_service.get_run_status(result1["run_id"])["outputs"]
@@ -116,7 +116,7 @@ def test_histogram_constant_image(execution_service):
     workflow2 = {
         "steps": [
             {
-                "fn_id": "base.matplotlib.Axes.hist",
+                "id": "base.matplotlib.Axes.hist",
                 "inputs": {"axes": ax_ref, "x": [10, 10, 10, 10, 10]},
                 "params": {"bins": 10},
             }
@@ -126,8 +126,6 @@ def test_histogram_constant_image(execution_service):
     assert result2["status"] == "success"
 
     # Step 3: savefig
-    workflow3 = {
-        "steps": [{"fn_id": "base.matplotlib.Figure.savefig", "inputs": {"figure": fig_ref}}]
-    }
+    workflow3 = {"steps": [{"id": "base.matplotlib.Figure.savefig", "inputs": {"figure": fig_ref}}]}
     result3 = execution_service.run_workflow(workflow3)
     assert result3["status"] == "success"

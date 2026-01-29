@@ -16,12 +16,12 @@ def test_interaction_model_request_validation():
         timestamp=datetime.now(UTC).isoformat(),
         direction="request",
         tool="run",
-        params={"fn_id": "base.gaussian_blur", "inputs": {}},
+        params={"id": "base.gaussian_blur", "inputs": {}},
         correlation_id="test-id",
     )
     assert interaction.direction == "request"
     assert interaction.tool == "run"
-    assert interaction.params["fn_id"] == "base.gaussian_blur"
+    assert interaction.params["id"] == "base.gaussian_blur"
 
 
 def test_interaction_model_response_validation():
