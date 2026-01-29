@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 ## Current Position
 
 Phase: 14 of 14 (OME-Zarr Standardization)
-Plan: 1 of 2 in current phase
-Status: In progress
-Last activity: 2026-01-29 - Completed 14-01-PLAN.md
+Plan: 2 of 2 in current phase
+Status: Phase complete
+Last activity: 2026-01-29 - Completed 14-02-PLAN.md
 
 Progress: ██████████ 100%
 
@@ -59,6 +59,9 @@ Progress: ██████████ 100%
 | 14 | Standardize on OME-Zarr (.ome.zarr) | Default interchange format for all cross-env handoffs. |
 | 14 | Enable import_directory in core | Support materializing directory-backed artifacts (OME-Zarr). |
 | 14 | Relax metadata schema constraints | Support multi-character axis names (e.g. 'bins') and >5D datasets. |
+| 14 | Standardized bins axis name | Standardized on 'bins' for TTTR decay data to avoid 'T' axis hijacking. |
+| 14 | Default Cellpose to OME-Zarr | Defaulted Cellpose output formats to OME-Zarr to align with project standard. |
+| 14 | Verbisity-aware smoke tests | Updated smoke tests to use 'full' verbosity for detailed metadata validation. |
 
 ### Roadmap Evolution
 - Phase 12 added: Core Engine + AST-First
@@ -76,8 +79,8 @@ Progress: ██████████ 100%
 - Existing failures in bootstrap/test_install.py need investigation.
 
 ### Session Continuity
-Last session: 2026-01-29T12:44:03Z
-Stopped at: Completed 14-01-PLAN.md
+Last session: 2026-01-29T15:59:55Z
+Stopped at: Completed 14-02-PLAN.md
 Resume file: None
 
 ## Next Steps
