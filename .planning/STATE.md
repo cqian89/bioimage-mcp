@@ -65,6 +65,7 @@ Progress: ██████████ 100%
 
 ### Pending Todos
 - [ ] Update bioimage-mcp list table formatting and versioning (tooling)
+- [ ] Strategize and execute test consolidation (testing)
 
 ### Blockers/Concerns Carried Forward
 - trackpy schema descriptions missing (contract test failure).
