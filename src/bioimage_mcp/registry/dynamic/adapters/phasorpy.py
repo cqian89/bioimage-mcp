@@ -325,10 +325,12 @@ class PhasorPyAdapter:
         array: np.ndarray,
         work_dir: Path | None = None,
         name: str = "output",
-        axes: str | None = None,  # Changed from "TCZYX"
+        axes: str | None = None,
         extra_metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        """Save image array to file and return artifact reference dict."""
+        """Save image array to file and return artifact reference dict.
+        Defaults to OME-Zarr. (T049)
+        """
         # Coerce axes to string if it's a list of single-char strings
         if isinstance(axes, list):
             if all(isinstance(a, str) and len(a) == 1 for a in axes):
@@ -336,16 +338,10 @@ class PhasorPyAdapter:
             else:
                 axes = None  # Invalid format, let inference handle it
 
-        ext = ".ome.tiff"
         if work_dir is None:
-            fd, path_str = tempfile.mkstemp(suffix=ext)
-            import os
+            work_dir = Path(tempfile.gettempdir())
 
-            os.close(fd)
-            path = Path(path_str)
-        else:
-            work_dir.mkdir(parents=True, exist_ok=True)
-            path = work_dir / f"{name}{ext}"
+        work_dir.mkdir(parents=True, exist_ok=True)
 
         # Only use passed axes if they match the output array dimensions (inheritance)
         if axes and len(axes) == array.ndim:
@@ -356,24 +352,64 @@ class PhasorPyAdapter:
             if array.ndim in axes_map:
                 inferred_axes = axes_map[array.ndim]
             else:
-                if array.ndim > 6:
-                    raise ValueError(
-                        f"Cannot infer axes for {array.ndim}D array (max 6 dimensions supported). "
-                        "Provide explicit axes metadata."
-                    )
+                # OME-Zarr supports arbitrary axes, but we use a reasonable fallback
                 inferred_axes = (
-                    "TCZYX"[-array.ndim :] if array.ndim <= 5 else "STCZYX"[: array.ndim]
+                    "TCZYX"[-array.ndim :]
+                    if array.ndim <= 5
+                    else [f"d{i}" for i in range(array.ndim)]
                 )
 
-        axes = inferred_axes
+        # Default to OME-Zarr (T049)
+        ome_zarr_success = False
+        ext = ".ome.zarr"
+        fmt = "OME-Zarr"
+        path = work_dir / f"{name}{ext}"
 
-        from bioio.writers import OmeTiffWriter
+        try:
+            from bioio_ome_zarr.writers import OMEZarrWriter
 
-        OmeTiffWriter.save(array, str(path), dim_order=axes)
+            axes_names = (
+                [d.lower() for d in inferred_axes]
+                if isinstance(inferred_axes, str)
+                else [str(d).lower() for d in inferred_axes]
+            )
+            type_map = {"t": "time", "c": "channel", "z": "space", "y": "space", "x": "space"}
+            axes_types = [type_map.get(d, "other") for d in axes_names]
+
+            writer = OMEZarrWriter(
+                store=str(path),
+                level_shapes=[array.shape],
+                dtype=array.dtype,
+                axes_names=axes_names,
+                axes_types=axes_types,
+                zarr_format=2,
+            )
+            writer.write_full_volume(array)
+            ome_zarr_success = True
+        except Exception as e:
+            logger.warning("OME-Zarr write failed, falling back to OME-TIFF: %s", e)
+            ome_zarr_success = False
+
+        if not ome_zarr_success:
+            ext = ".ome.tiff"
+            fmt = "OME-TIFF"
+            path = work_dir / f"{name}{ext}"
+
+            from bioio.writers import OmeTiffWriter
+
+            # OME-TIFF supports 2D-6D and specific names (TCZYXS)
+            save_dim_order = (
+                "".join([d[0].upper() for d in inferred_axes])
+                if isinstance(inferred_axes, str)
+                else None
+            )
+            OmeTiffWriter.save(array, str(path), dim_order=save_dim_order)
 
         metadata = {
-            "axes": axes,
-            "dims": list(axes),
+            "axes": inferred_axes
+            if isinstance(inferred_axes, str)
+            else "".join(str(ax) for ax in inferred_axes),
+            "dims": list(inferred_axes),
             "shape": list(array.shape),
             "ndim": array.ndim,
             "dtype": str(array.dtype),
@@ -384,7 +420,7 @@ class PhasorPyAdapter:
 
         return {
             "type": "BioImageRef",
-            "format": "OME-TIFF",
+            "format": fmt,
             "uri": path.absolute().as_uri(),
             "path": str(path.absolute()),
             "metadata": metadata,

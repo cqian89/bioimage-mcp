@@ -208,14 +208,16 @@ class ScipyNdimageAdapter(BaseAdapter):
         work_dir: Path | None = None,
         axes: str | None = None,
         metadata_override: dict[str, Any] | None = None,
-        filename: str = "output.ome.tiff",
+        filename: str = "output.ome.zarr",
     ) -> dict:
-        """Save image array to file and return artifact reference dict."""
+        """Save image array to file and return artifact reference dict.
+        Defaults to OME-Zarr. (T049)
+        """
         # Handle scalar outputs
         if np.isscalar(array):
             array = np.array([array])
 
-        # Ensure at least 2D for tifffile/OME-TIFF compatibility if it's 1D
+        # Ensure at least 2D for OME-Zarr compatibility if it's 1D
         if array.ndim == 1:
             array = array[np.newaxis, :]  # Convert to (1, N)
             if axes == "X":
@@ -223,16 +225,13 @@ class ScipyNdimageAdapter(BaseAdapter):
             elif not axes:
                 axes = "YX"
 
-        # Dtype safety: If the output dtype is int64, cast to int32/uint32 for OME-TIFF compatibility
-        if array.dtype == np.int64:
-            array = array.astype(np.int32)
-        elif array.dtype == np.uint64:
-            array = array.astype(np.uint32)
+        # Dtype safety: If the output dtype is int64, cast to float32
+        if array.dtype == np.int64 or array.dtype == np.uint64:
+            array = array.astype(np.float32)
 
         if work_dir is None:
             # Use system temp directory
-            # Use .ome.tiff extension for better compatibility if not provided in filename
-            ext = Path(filename).suffix if "." in filename else ".ome.tiff"
+            ext = Path(filename).suffix if "." in filename else ".ome.zarr"
             fd, path_str = tempfile.mkstemp(suffix=ext)
             import os
 
@@ -249,9 +248,41 @@ class ScipyNdimageAdapter(BaseAdapter):
         else:
             inferred_axes = self._infer_axes(array)
 
-        # Save image using OmeTiffWriter for consistency
-        saved = False
+        # Default to OME-Zarr (T049)
+        ome_zarr_success = False
+        fmt = "OME-Zarr"
+
         try:
+            from bioio_ome_zarr.writers import OMEZarrWriter
+
+            axes_names = (
+                [d.lower() for d in inferred_axes]
+                if inferred_axes
+                else [f"d{i}" for i in range(array.ndim)]
+            )
+            type_map = {"t": "time", "c": "channel", "z": "space", "y": "space", "x": "space"}
+            axes_types = [type_map.get(d, "other") for d in axes_names]
+
+            writer = OMEZarrWriter(
+                store=str(path),
+                level_shapes=[array.shape],
+                dtype=array.dtype,
+                axes_names=axes_names,
+                axes_types=axes_types,
+                zarr_format=2,
+            )
+            writer.write_full_volume(array)
+            ome_zarr_success = True
+        except Exception as e:
+            logger.warning("OME-Zarr write failed, falling back to OME-TIFF: %s", e)
+            ome_zarr_success = False
+
+        if not ome_zarr_success:
+            # Update path if it was originally Zarr but we're falling back to TIFF
+            if path.suffix == ".zarr":
+                path = path.with_suffix(".ome.tiff")
+
+            fmt = "OME-TIFF"
             from bioio.writers import OmeTiffWriter
 
             pps = None
@@ -276,23 +307,13 @@ class ScipyNdimageAdapter(BaseAdapter):
 
                 channels = metadata_override.get("channel_names")
 
-            if len(inferred_axes) == array.ndim:
-                save_kwargs: dict[str, Any] = {"dim_order": inferred_axes}
-                if pps:
-                    save_kwargs["physical_pixel_sizes"] = pps
-                if channels:
-                    save_kwargs["channel_names"] = channels
+            save_kwargs: dict[str, Any] = {"dim_order": inferred_axes}
+            if pps:
+                save_kwargs["physical_pixel_sizes"] = pps
+            if channels:
+                save_kwargs["channel_names"] = channels
 
-                OmeTiffWriter.save(array, str(path), **save_kwargs)
-                saved = True
-        except Exception as e:
-            logger.warning(f"Failed to save via OmeTiffWriter: {e}")
-
-        if not saved:
-            if tifffile is None:
-                raise RuntimeError("tifffile is required for saving images")
-            metadata = {"axes": inferred_axes} if inferred_axes else None
-            tifffile.imwrite(path, array, metadata=metadata, photometric="minisblack")
+            OmeTiffWriter.save(array, str(path), **save_kwargs)
 
         # Return artifact reference as dict
         meta = {
@@ -313,7 +334,7 @@ class ScipyNdimageAdapter(BaseAdapter):
 
         ref = {
             "type": "BioImageRef",
-            "format": "OME-TIFF",
+            "format": fmt,
             "uri": path.absolute().as_uri(),
             "path": str(path.absolute()),
             "metadata": meta,
@@ -535,10 +556,10 @@ class ScipyNdimageAdapter(BaseAdapter):
             elif isinstance(zoom_val, (list, tuple)):
                 if len(zoom_val) == len(axes):
                     # Rule 2: direct zip
-                    zoom_map = {a: float(z) for a, z in zip(axes, zoom_val)}
+                    zoom_map = {a: float(z) for a, z in zip(axes, zoom_val, strict=False)}
                 elif len(zoom_val) == len(spatial_axes):
                     # Rule 3: map to spatial axes in order
-                    zoom_map = {a: float(z) for a, z in zip(spatial_axes, zoom_val)}
+                    zoom_map = {a: float(z) for a, z in zip(spatial_axes, zoom_val, strict=False)}
 
             if zoom_map and "physical_pixel_sizes" in metadata_override:
                 pps = metadata_override["physical_pixel_sizes"]

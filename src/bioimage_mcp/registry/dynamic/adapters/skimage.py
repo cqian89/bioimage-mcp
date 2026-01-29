@@ -7,6 +7,7 @@ from __future__ import annotations
 import csv
 import importlib
 import inspect
+import logging
 import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -22,6 +23,8 @@ from bioimage_mcp.registry.dynamic.adapters import BaseAdapter
 from bioimage_mcp.registry.dynamic.introspection import Introspector
 from bioimage_mcp.registry.dynamic.models import FunctionMetadata, IOPattern
 from bioimage_mcp.registry.dynamic.object_cache import OBJECT_CACHE
+
+logger = logging.getLogger(__name__)
 
 try:
     import tifffile
@@ -328,25 +331,16 @@ class SkimageAdapter(BaseAdapter):
         work_dir: Path | None = None,
         axes: str | None = None,
     ) -> dict:
-        """Save image array to file and return artifact reference dict."""
-        # Use .ome.tiff extension for better compatibility
-        ext = ".ome.tiff"
-
+        """Save image array to file and return artifact reference dict.
+        Defaults to OME-Zarr for standard interchange. (T049)
+        """
         if array.dtype == np.int64 or array.dtype == np.uint64:
-            # OME-TIFF/tifffile doesn't support 64-bit ints in OME-XML
-            array = array.astype(np.uint32)
+            array = array.astype(np.float32)
 
         if work_dir is None:
-            # Use system temp directory
-            fd, path_str = tempfile.mkstemp(suffix=ext)
-            import os
+            work_dir = Path(tempfile.gettempdir())
 
-            os.close(fd)
-            path = Path(path_str)
-        else:
-            # Use provided work directory
-            work_dir.mkdir(parents=True, exist_ok=True)
-            path = work_dir / f"output{ext}"
+        work_dir.mkdir(parents=True, exist_ok=True)
 
         # Only use passed axes if they match the output array dimensions
         if axes and len(axes) == array.ndim:
@@ -354,29 +348,58 @@ class SkimageAdapter(BaseAdapter):
         else:
             inferred_axes = self._infer_axes(array)
 
-        # Save image using OmeTiffWriter for consistency
-        saved = False
+        # Default to OME-Zarr (T049)
+        ome_zarr_success = False
+        ext = ".ome.zarr"
+        fmt = "OME-Zarr"
+        out_path = work_dir / f"output{ext}"
+
         try:
+            from bioio_ome_zarr.writers import OMEZarrWriter
+
+            # Standardize dims for OME-Zarr (list of lowercase strings)
+            axes_names = (
+                [d.lower() for d in inferred_axes]
+                if inferred_axes
+                else [f"d{i}" for i in range(array.ndim)]
+            )
+            type_map = {"t": "time", "c": "channel", "z": "space", "y": "space", "x": "space"}
+            axes_types = [type_map.get(d, "other") for d in axes_names]
+
+            writer = OMEZarrWriter(
+                store=str(out_path),
+                level_shapes=[array.shape],
+                dtype=array.dtype,
+                axes_names=axes_names,
+                axes_types=axes_types,
+                zarr_format=2,
+            )
+            writer.write_full_volume(array)
+            ome_zarr_success = True
+        except Exception as e:
+            logger.warning("OME-Zarr write failed, falling back to OME-TIFF: %s", e)
+            ome_zarr_success = False
+
+        if not ome_zarr_success:
+            ext = ".ome.tiff"
+            fmt = "OME-TIFF"
+            out_path = work_dir / f"output{ext}"
+
             from bioio.writers import OmeTiffWriter
 
-            if len(inferred_axes) == array.ndim:
-                OmeTiffWriter.save(array, str(path), dim_order=inferred_axes)
-                saved = True
-        except Exception:
-            pass
-
-        if not saved:
-            if tifffile is None:
-                raise RuntimeError("tifffile is required for saving images")
-            metadata = {"axes": inferred_axes} if inferred_axes else None
-            tifffile.imwrite(path, array, metadata=metadata, photometric="minisblack")
+            # OME-TIFF supports 2D-6D and specific names (TCZYXS)
+            # Use single-character axes for OME-TIFF if possible
+            save_dim_order = (
+                "".join([d[0].upper() for d in inferred_axes]) if inferred_axes else None
+            )
+            OmeTiffWriter.save(array, str(out_path), dim_order=save_dim_order)
 
         # Return artifact reference as dict (compatible with entrypoint protocol)
         ref = {
             "type": "BioImageRef",
-            "format": "OME-TIFF",
-            "uri": path.absolute().as_uri(),
-            "path": str(path.absolute()),
+            "format": fmt,
+            "uri": out_path.absolute().as_uri(),
+            "path": str(out_path.absolute()),
             "metadata": {
                 "axes": inferred_axes,
                 "dims": list(inferred_axes) if inferred_axes else [],
