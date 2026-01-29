@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 
 Phase: 13 of 14 (Dynamic Introspection Cache Reuse)
 **Next Phase:** 14 (OME-Zarr Standardization)
-Plan: 4 of 4 in current phase
+Plan: 5 of 5 in current phase
 Status: Phase complete (verified)
-Last activity: 2026-01-29 — Verified Phase 13
+Last activity: 2026-01-29 — Completed 13-05-PLAN.md
 
-Progress: █████████░ 87%
+Progress: █████████░ 87.5%
 
 ## Accumulated Context
 
@@ -52,6 +52,7 @@ Progress: █████████░ 87%
 | 13 | Reuse Unified IntrospectionCache for trackpy | Avoid bespoke cache implementations in tool packs to ensure consistent invalidation logic. |
 | 13 | Robust project_root detection | Support env var and CWD-based project root detection for caching in installed tool envs. |
 | 13 | Core-side memoization | DiscoveryEngine now caches parsed meta.list results to avoid subprocess overhead on repeated listings. |
+| 13 | Persistent CLI List Cache | Used ~/.bioimage-mcp/cache/cli with manifest fingerprinting to achieve <1.5s warm list. |
 
 ### Roadmap Evolution
 - Phase 12 added: Core Engine + AST-First
@@ -65,8 +66,8 @@ Progress: █████████░ 87%
 - Existing failures in bootstrap/test_install.py need investigation.
 
 ### Session Continuity
-Last session: 2026-01-28T23:35:00Z
-Stopped at: Completed 13-03-PLAN.md and 13-04-PLAN.md
+Last session: 2026-01-29T07:30:00Z
+Stopped at: Completed 13-05-PLAN.md
 Resume file: None
 
 ## Next Steps

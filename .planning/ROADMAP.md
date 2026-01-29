@@ -44,16 +44,16 @@ Plans:
 ### Phase 13: Dynamic Introspection Cache Reuse (incl. trackpy)
 
 **Goal:** Reuse dynamic introspection results across meta.list calls via a lockfile-gated cache stored under ~/.bioimage-mcp/cache/dynamic/, including trackpy.
-**Status:** Gap closure pending (UAT perf)
+**Status:** Complete (2026-01-29)
 **Depends on:** Phase 12
-**Plans:** 4/5 plans complete
+**Plans:** 5/5 plans complete
 
 Plans:
 - [x] 13-01-PLAN.md — Wire IntrospectionCache into tools.base meta.list + tests
 - [x] 13-02-PLAN.md — Add trackpy cache reuse via IntrospectionCache + tests
 - [x] 13-03-PLAN.md — Core-side cache for runtime meta.list (avoid subprocess on repeat list)
 - [x] 13-04-PLAN.md — Fix trackpy project_root detection for lockfile cache writes
-- [ ] 13-05-PLAN.md — Speed up CLI `bioimage-mcp list` via persistent manifest/env cache
+- [x] 13-05-PLAN.md — Speed up CLI `bioimage-mcp list` via persistent manifest/env cache
 
 ### Phase 14: OME-Zarr Standardization
 
