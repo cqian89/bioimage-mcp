@@ -41,7 +41,7 @@ class IOBridge:
         - .specify/memory/constitution.md Constitution III (Artifact References Only)
     """
 
-    DEFAULT_INTERCHANGE_FORMAT = "OME-TIFF"
+    DEFAULT_INTERCHANGE_FORMAT = "OME-Zarr"
     SUPPORTED_FORMATS = {"OME-TIFF", "OME-Zarr"}
 
     def __init__(self, artifact_store_path: Path | str | None = None):
@@ -90,8 +90,8 @@ class IOBridge:
 
     def create_materialization_path(self, session_id: str, artifact_id: str, format: str) -> Path:
         """Generate a path for materializing an artifact to disk."""
-        # Return: artifact_store_path / session_id / f"{artifact_id}.ome.tiff" (or .zarr)
-        ext = ".ome.tiff" if format == "OME-TIFF" else ".zarr"
+        # Return: artifact_store_path / session_id / f"{artifact_id}.ome.zarr" (or .ome.tiff)
+        ext = ".ome.zarr" if format == "OME-Zarr" else ".ome.tiff"
         return self.artifact_store_path / session_id / f"{artifact_id}{ext}"
 
     def record_handoff(
