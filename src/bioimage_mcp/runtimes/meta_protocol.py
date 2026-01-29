@@ -85,7 +85,11 @@ def parse_meta_list_result(response: dict[str, Any]) -> list[dict[str, Any]]:
         try:
             # Validate required fields
             model = MetaListFunction.model_validate(entry)
-            normalized.append(model.model_dump())
+            data = model.model_dump()
+            # Propagate top-level source to individual entries if they don't have one (T13.08)
+            if "introspection_source" not in data and payload.get("introspection_source"):
+                data["introspection_source"] = payload["introspection_source"]
+            normalized.append(data)
         except Exception as e:
             logger.warning("Skipping invalid meta.list function entry %s: %s", entry, e)
             continue

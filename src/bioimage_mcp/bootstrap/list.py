@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import subprocess
+from pathlib import Path
 from typing import Any
 
 from bioimage_mcp.bootstrap.env_manager import detect_env_manager
@@ -95,8 +96,29 @@ def list_tools(*, json_output: bool, tool: str | None = None) -> int:
         fingerprint = tools_cache.get_fingerprint(manifest_paths, envs_hash)
         cached_payload = tools_cache.get(fingerprint)
         if cached_payload is not None:
-            filtered = _filter_tools(cached_payload, tool)
-            return _render_list(filtered, json_output)
+            # Check if all required dynamic caches exist
+            missing_dynamic = False
+            for t in cached_payload:
+                if any("dynamic_discovery" in s for s in t.get("introspection_source", [])):
+                    tool_id = t["id"]
+                    dynamic_cache = (
+                        Path.home()
+                        / ".bioimage-mcp"
+                        / "cache"
+                        / "dynamic"
+                        / tool_id
+                        / "introspection_cache.json"
+                    )
+                    if not dynamic_cache.exists():
+                        missing_dynamic = True
+                        break
+
+            if not missing_dynamic:
+                filtered = _filter_tools(cached_payload, tool)
+                return _render_list(filtered, json_output)
+            else:
+                # Invalidate if dynamic cache is missing so we fall through to discovery
+                cached_payload = None
 
     # 3. Cache miss (either envs or tools)
     if installed_envs is None:
