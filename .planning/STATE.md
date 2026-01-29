@@ -63,6 +63,9 @@ Progress: ██████████ 100%
 - Phase 13 added: Dynamic Introspection Cache Reuse (incl. trackpy)
 - Phase 14 added: OME-Zarr Standardization
 
+### Pending Todos
+- [ ] Update bioimage-mcp list table formatting and versioning (tooling)
+
 ### Blockers/Concerns Carried Forward
 - trackpy schema descriptions missing (contract test failure).
 - base.phasorpy schema type mismatch (contract test failure).
