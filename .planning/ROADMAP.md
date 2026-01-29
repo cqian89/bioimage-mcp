@@ -62,12 +62,12 @@ Plans:
 ### Phase 14: OME-Zarr Standardization
 
 **Goal:** Standardize OME-Zarr as the primary interchange format and fix directory-backed artifact materialization.
-**Status:** Planning
+**Status:** In progress
 **Depends on:** Phase 13
-**Plans:** 2 plans
+**Plans:** 1/2 plans complete
 
 Plans:
-- [ ] 14-01-PLAN.md — Standardize on OME-Zarr and Fix Directory Materialization
+- [x] 14-01-PLAN.md — Standardize on OME-Zarr and Fix Directory Materialization
 - [ ] 14-02-PLAN.md — Update tttrlib/Cellpose for OME-Zarr + custom axes
 
 **Details:**

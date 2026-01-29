@@ -9,11 +9,10 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 
 ## Current Position
 
-Phase: 13 of 14 (Dynamic Introspection Cache Reuse)
-**Next Phase:** 14 (OME-Zarr Standardization)
-Plan: 8 of 8 in current phase
-Status: Phase complete (verified)
-Last activity: 2026-01-29 — Completed 13-08-PLAN.md
+Phase: 14 of 14 (OME-Zarr Standardization)
+Plan: 1 of 2 in current phase
+Status: In progress
+Last activity: 2026-01-29 - Completed 14-01-PLAN.md
 
 Progress: ██████████ 100%
 
@@ -57,6 +56,9 @@ Progress: ██████████ 100%
 | 13 | no-lockfile sentinel | Enable cache reuse even when environment indicators are missing. |
 | 13 | Validate dynamic cache presence on CLI cache-hit | Ensures that deleting a per-tool cache file triggers its regeneration even when the higher-level CLI cache is still valid. |
 | 13 | Propagate top-level introspection_source in meta.list | Critical for detecting tools that use dynamic discovery (like trackpy) from the cached function metadata. |
+| 14 | Standardize on OME-Zarr (.ome.zarr) | Default interchange format for all cross-env handoffs. |
+| 14 | Enable import_directory in core | Support materializing directory-backed artifacts (OME-Zarr). |
+| 14 | Relax metadata schema constraints | Support multi-character axis names (e.g. 'bins') and >5D datasets. |
 
 ### Roadmap Evolution
 - Phase 12 added: Core Engine + AST-First
@@ -74,8 +76,8 @@ Progress: ██████████ 100%
 - Existing failures in bootstrap/test_install.py need investigation.
 
 ### Session Continuity
-Last session: 2026-01-29T11:25:00Z
-Stopped at: Completed 13-08-PLAN.md
+Last session: 2026-01-29T12:44:03Z
+Stopped at: Completed 14-01-PLAN.md
 Resume file: None
 
 ## Next Steps
