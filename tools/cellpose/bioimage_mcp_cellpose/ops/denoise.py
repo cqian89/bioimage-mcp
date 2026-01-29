@@ -87,10 +87,10 @@ def run_denoise(
     )
 
     # Output path
-    denoised_path = work_dir / "denoised.ome.tiff"
+    denoised_path = work_dir / "denoised.ome.zarr"
 
-    # Write OME-TIFF
-    from bioio.writers import OmeTiffWriter
+    # Write OME-Zarr
+    from bioio_ome_zarr.writers import OMEZarrWriter
 
     # Squeeze singleton trailing dimensions
     # Cellpose DenoiseModel.eval() returns [H, W, C] format with C=1 for grayscale inputs,
@@ -98,23 +98,42 @@ def run_denoise(
     while denoised.ndim > 2 and denoised.shape[-1] == 1:
         denoised = denoised[..., 0]
 
-    # Determine dim order based on squeezed array shape
+    # Determine axes names/types based on squeezed array shape
     if denoised.ndim == 2:
-        dim_order = "YX"
+        axes_names = ["y", "x"]
+        axes_types = ["space", "space"]
     elif denoised.ndim == 3:
-        dim_order = "ZYX"
+        axes_names = ["z", "y", "x"]
+        axes_types = ["space", "space", "space"]
     elif denoised.ndim == 4:
-        dim_order = "CZYX"
+        axes_names = ["c", "z", "y", "x"]
+        axes_types = ["channel", "space", "space", "space"]
     else:
-        # Fallback to standard 5D
-        dim_order = "TCZYX"[-denoised.ndim :]
+        # Fallback to standard OME names
+        axes_names = [d.lower() for d in "TCZYX"[-denoised.ndim :]]
+        type_map = {"t": "time", "c": "channel", "z": "space", "y": "space", "x": "space"}
+        axes_types = [type_map.get(d, "space") for d in axes_names]
 
-    OmeTiffWriter.save(denoised, str(denoised_path), dim_order=dim_order)
+    writer = OMEZarrWriter(
+        store=str(denoised_path),
+        level_shapes=[denoised.shape],
+        dtype=denoised.dtype,
+        axes_names=axes_names,
+        axes_types=axes_types,
+        zarr_format=2,
+    )
+    writer.write_full_volume(denoised)
 
     return {
         "denoised": {
             "type": "BioImageRef",
-            "format": "OME-TIFF",
+            "format": "OME-Zarr",
             "path": str(denoised_path),
+            "storage_type": "zarr-temp",
+            "metadata": {
+                "dims": [d.upper() for d in axes_names],
+                "shape": list(denoised.shape),
+                "dtype": str(denoised.dtype),
+            },
         }
     }

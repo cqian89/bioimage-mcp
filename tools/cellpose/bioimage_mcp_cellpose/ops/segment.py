@@ -102,29 +102,43 @@ def run_segment(
         masks, flows, styles, diams = result
 
     # Output paths
-    labels_path = work_dir / "labels.ome.tiff"
+    labels_path = work_dir / "labels.ome.zarr"
     bundle_path = work_dir / "cellpose_seg.npy"
 
-    # Write OME-TIFF label image (T019)
+    # Write OME-Zarr label image
     # Convert to uint16/uint32 for label images
     if masks.max() < 65536:
         masks_out = masks.astype(np.uint16)
     else:
         masks_out = masks.astype(np.uint32)
 
-    from bioio.writers import OmeTiffWriter
+    from bioio_ome_zarr.writers import OMEZarrWriter
 
-    # Determine dim order based on array shape
+    # Determine axes names/types based on array shape (T026)
     if masks_out.ndim == 2:
-        dim_order = "YX"
+        axes_names = ["y", "x"]
+        axes_types = ["space", "space"]
     elif masks_out.ndim == 3:
-        dim_order = "ZYX"
+        axes_names = ["z", "y", "x"]
+        axes_types = ["space", "space", "space"]
     elif masks_out.ndim == 4:
-        dim_order = "CZYX"
+        axes_names = ["c", "z", "y", "x"]
+        axes_types = ["channel", "space", "space", "space"]
     else:
-        dim_order = "TCZYX"[-masks_out.ndim :]
+        # Fallback to standard OME names
+        axes_names = [d.lower() for d in "TCZYX"[-masks_out.ndim :]]
+        type_map = {"t": "time", "c": "channel", "z": "space", "y": "space", "x": "space"}
+        axes_types = [type_map.get(d, "space") for d in axes_names]
 
-    OmeTiffWriter.save(masks_out, str(labels_path), dim_order=dim_order)
+    writer = OMEZarrWriter(
+        store=str(labels_path),
+        level_shapes=[masks_out.shape],
+        dtype=masks_out.dtype,
+        axes_names=axes_names,
+        axes_types=axes_types,
+        zarr_format=2,
+    )
+    writer.write_full_volume(masks_out)
 
     # Write Cellpose native bundle (T019a)
     # This preserves flows, styles, and other Cellpose-specific data
@@ -145,8 +159,14 @@ def run_segment(
     return {
         "labels": {
             "type": "LabelImageRef",
-            "format": "OME-TIFF",
+            "format": "OME-Zarr",
             "path": str(labels_path),
+            "storage_type": "zarr-temp",
+            "metadata": {
+                "dims": [d.upper() for d in axes_names],
+                "shape": list(masks_out.shape),
+                "dtype": str(masks_out.dtype),
+            },
         },
         "cellpose_bundle": {
             "type": "NativeOutputRef",
