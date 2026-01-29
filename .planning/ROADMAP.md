@@ -77,4 +77,4 @@ Plans:
 
 ---
 
-*Roadmap updated: 2026-01-28*
+*Roadmap updated: 2026-01-29*
