@@ -411,7 +411,6 @@ def handle_compute_ics(
     """Handle tttrlib.CLSMImage.compute_ics - compute Image Correlation Spectroscopy."""
     import numpy as np
     import tttrlib
-    from bioio.writers import OmeTiffWriter
 
     clsm_ref = inputs.get("clsm", {})
     clsm_key = clsm_ref.get("uri") or clsm_ref.get("ref_id") or ""
@@ -444,16 +443,30 @@ def handle_compute_ics(
         ics_data = tttrlib.CLSMImage.compute_ics(**ics_kwargs)
         ics_data = np.asarray(ics_data)
 
-        # Ensure we have at least 2D (YX) for OmeTiffWriter
+        # Ensure we have at least 2D (YX) for OME-Zarr
         if ics_data.ndim < 2:
             ics_data = np.atleast_2d(ics_data)
 
-        out_path = work_dir / f"ics_{uuid.uuid4().hex[:8]}.ome.tif"
-        ndim_map = {2: "YX", 3: "ZYX", 4: "CZYX", 5: "TCZYX"}
-        dim_order = ndim_map.get(
+        out_path = work_dir / f"ics_{uuid.uuid4().hex[:8]}.ome.zarr"
+        from bioio_ome_zarr.writers import OMEZarrWriter
+
+        dims_map = {2: "YX", 3: "ZYX", 4: "CZYX", 5: "TCZYX"}
+        axes = dims_map.get(
             ics_data.ndim, "TCZYX"[-ics_data.ndim :] if ics_data.ndim <= 5 else "TCZYX"
         )
-        OmeTiffWriter.save(ics_data, str(out_path), dim_order=dim_order)
+        axes_names = [d.lower() for d in axes]
+        type_map = {"t": "time", "c": "channel", "z": "space", "y": "space", "x": "space"}
+        axes_types = [type_map.get(d, "space") for d in axes_names]
+
+        writer = OMEZarrWriter(
+            store=str(out_path),
+            level_shapes=[ics_data.shape],
+            dtype=ics_data.dtype,
+            axes_names=axes_names,
+            axes_types=axes_types,
+            zarr_format=2,
+        )
+        writer.write_full_volume(ics_data)
 
         outputs: dict[str, Any] = {
             "ics": {
@@ -461,8 +474,16 @@ def handle_compute_ics(
                 "type": "BioImageRef",
                 "uri": f"file://{out_path.absolute()}",
                 "path": str(out_path.absolute()),
-                "format": "OME-TIFF",
+                "format": "OME-Zarr",
+                "storage_type": "zarr-temp",
                 "created_at": datetime.now(UTC).isoformat(),
+                "metadata": {
+                    "axes": axes,
+                    "dims": list(axes),
+                    "shape": list(ics_data.shape),
+                    "ndim": ics_data.ndim,
+                    "dtype": str(ics_data.dtype),
+                },
             }
         }
 
@@ -502,7 +523,6 @@ def handle_get_intensity(
 ) -> dict[str, Any]:
     """Handle tttrlib.CLSMImage.get_intensity - extract intensity image."""
     import numpy as np
-    from bioio.writers import OmeTiffWriter
 
     clsm_ref = inputs.get("clsm", {})
     clsm_key = clsm_ref.get("uri") or clsm_ref.get("ref_id") or ""
@@ -518,28 +538,55 @@ def handle_get_intensity(
         if stack_frames:
             # Sum across frames to get 2D image
             intensity = intensity.sum(axis=0)
+
+        # tttrlib returns uint64, and sum() might result in uint64.
+        # OME-TIFF supports up to uint32.
+        intensity = intensity.astype(np.uint32)
+
+        # Squeeze leading singletons (e.g. T=1)
+        while intensity.ndim > 2 and intensity.shape[0] == 1:
+            intensity = np.squeeze(intensity, axis=0)
+
+        if intensity.ndim == 2:
             dim_order = "YX"
+            dims = ["Y", "X"]
+        elif intensity.ndim == 3:
+            dim_order = "ZYX"
+            dims = ["Z", "Y", "X"]
         else:
-            dim_order = "ZYX"  # Frames as Z
+            dims = list("TCZYX"[-intensity.ndim :])
+            dim_order = "".join(dims)
 
-        # Ensure YX are at the end for OmeTiffWriter
-        if intensity.ndim == 3 and dim_order == "ZYX":
-            # Already ZYX, which is fine as YX are at the end
-            pass
+        out_path = work_dir / f"intensity_{uuid.uuid4().hex[:8]}.ome.zarr"
+        from bioio_ome_zarr.writers import OMEZarrWriter
 
-        out_path = work_dir / f"intensity_{uuid.uuid4().hex[:8]}.ome.tif"
-        OmeTiffWriter.save(intensity, str(out_path), dim_order=dim_order)
+        axes_names = [d.lower() for d in dim_order]
+        type_map = {"t": "time", "c": "channel", "z": "space", "y": "space", "x": "space"}
+        axes_types = [type_map.get(d, "space") for d in axes_names]
+
+        writer = OMEZarrWriter(
+            store=str(out_path),
+            level_shapes=[intensity.shape],
+            dtype=intensity.dtype,
+            axes_names=axes_names,
+            axes_types=axes_types,
+            zarr_format=2,
+        )
+        writer.write_full_volume(intensity)
 
         output = {
             "ref_id": uuid.uuid4().hex,
             "type": "BioImageRef",
             "uri": f"file://{out_path.absolute()}",
             "path": str(out_path.absolute()),
-            "format": "OME-TIFF",
+            "format": "OME-Zarr",
+            "storage_type": "zarr-temp",
             "created_at": datetime.now(UTC).isoformat(),
             "metadata": {
                 "axes": dim_order,
+                "dims": dims,
                 "shape": list(intensity.shape),
+                "ndim": intensity.ndim,
                 "dtype": str(intensity.dtype),
             },
         }
@@ -555,7 +602,6 @@ def handle_get_phasor(
 ) -> dict[str, Any]:
     """Handle tttrlib.CLSMImage.get_phasor - compute phasor image."""
     import numpy as np
-    from bioio.writers import OmeTiffWriter
 
     clsm_ref = inputs.get("clsm", {})
     clsm_key = clsm_ref.get("uri") or clsm_ref.get("ref_id") or ""
@@ -589,44 +635,63 @@ def handle_get_phasor(
         phasor_data = clsm.get_phasor(**phasor_kwargs)
         phasor_data = np.asarray(phasor_data, dtype=np.float32)
 
-        # Determine dimension order based on shape.
-        # tttrlib returns (frames, lines, pixels, 2) or (lines, pixels, 2) if stacked,
-        # where the last axis contains the phasor coordinates [g, s].
-        # Store g/s as channels to preserve semantics.
-        if phasor_data.ndim == 3:  # (Y, X, 2) - stacked
-            phasor_data = np.moveaxis(phasor_data, -1, 0)  # (C, Y, X)
-            dim_order = "CYX"
-        elif phasor_data.ndim == 4:  # (Z, Y, X, 2)
-            phasor_data = np.moveaxis(phasor_data, -1, 0)  # (C, Z, Y, X)
-            dim_order = "CZYX"
-        else:
-            return {
-                "ok": False,
-                "error": {
-                    "message": (
-                        f"Unexpected phasor ndim={phasor_data.ndim} shape={phasor_data.shape}"
-                    )
-                },
-            }
+        # Move g/s coordinates to front as channels
+        phasor_data = np.moveaxis(phasor_data, -1, 0)
 
-        out_path = work_dir / f"phasor_{uuid.uuid4().hex[:8]}.ome.tif"
-        OmeTiffWriter.save(phasor_data, str(out_path), dim_order=dim_order)
+        # Squeeze leading singletons (e.g. T=1) except C, Y, X
+        while phasor_data.ndim > 3 and phasor_data.shape[1] == 1:
+            phasor_data = np.squeeze(phasor_data, axis=1)
+
+        if phasor_data.ndim == 3:  # (C, Y, X)
+            dim_order = "CYX"
+            dims = ["C", "Y", "X"]
+        elif phasor_data.ndim == 4:  # (C, Z, Y, X)
+            dim_order = "CZYX"
+            dims = ["C", "Z", "Y", "X"]
+        else:
+            dims = list("TCZYX"[-phasor_data.ndim :])
+            dim_order = "".join(dims)
+
+        out_path = work_dir / f"phasor_{uuid.uuid4().hex[:8]}.ome.zarr"
+        from bioio_ome_zarr.writers import OMEZarrWriter
+
+        axes_names = [d.lower() for d in dims]
+        type_map = {"t": "time", "c": "channel", "z": "space", "y": "space", "x": "space"}
+        axes_types = [type_map.get(d, "space") for d in axes_names]
+
+        writer = OMEZarrWriter(
+            store=str(out_path),
+            level_shapes=[phasor_data.shape],
+            dtype=phasor_data.dtype,
+            axes_names=axes_names,
+            axes_types=axes_types,
+            zarr_format=2,
+        )
+        writer.write_full_volume(phasor_data)
 
         output = {
             "ref_id": uuid.uuid4().hex,
             "type": "BioImageRef",
             "uri": f"file://{out_path.absolute()}",
             "path": str(out_path.absolute()),
-            "format": "OME-TIFF",
+            "format": "OME-Zarr",
+            "storage_type": "zarr-temp",
             "created_at": datetime.now(UTC).isoformat(),
             "metadata": {
                 "axes": dim_order,
+                "dims": dims,
                 "shape": list(phasor_data.shape),
+                "ndim": phasor_data.ndim,
                 "dtype": str(phasor_data.dtype),
                 "channel_names": ["g", "s"],
                 "frequency_mhz": params.get("frequency", -1.0),
             },
         }
+
+        sys.stderr.write(
+            f"DEBUG tttrlib: returning output with axes={output['metadata']['axes']}\n"
+        )
+        sys.stderr.flush()
 
         return {"ok": True, "outputs": {"phasor": output}, "log": "Phasor computed"}
 
@@ -726,7 +791,6 @@ def handle_get_mean_lifetime(
 ) -> dict[str, Any]:
     """Handle tttrlib.CLSMImage.get_mean_lifetime - compute lifetime image."""
     import numpy as np
-    from bioio.writers import OmeTiffWriter
 
     clsm_ref = inputs.get("clsm", {})
     clsm_key = clsm_ref.get("uri") or clsm_ref.get("ref_id") or ""
@@ -756,21 +820,50 @@ def handle_get_mean_lifetime(
         lifetime_data = clsm.get_mean_lifetime(**lifetime_kwargs)
         lifetime_data = np.asarray(lifetime_data, dtype=np.float32)
 
-        dim_order = "YX" if lifetime_data.ndim == 2 else "ZYX"
+        # Squeeze leading singletons (e.g. T=1)
+        while lifetime_data.ndim > 2 and lifetime_data.shape[0] == 1:
+            lifetime_data = np.squeeze(lifetime_data, axis=0)
 
-        out_path = work_dir / f"lifetime_{uuid.uuid4().hex[:8]}.ome.tif"
-        OmeTiffWriter.save(lifetime_data, str(out_path), dim_order=dim_order)
+        if lifetime_data.ndim == 2:
+            dim_order = "YX"
+            dims = ["Y", "X"]
+        elif lifetime_data.ndim == 3:
+            dim_order = "ZYX"
+            dims = ["Z", "Y", "X"]
+        else:
+            dims = list("TCZYX"[-lifetime_data.ndim :])
+            dim_order = "".join(dims)
+
+        out_path = work_dir / f"lifetime_{uuid.uuid4().hex[:8]}.ome.zarr"
+        from bioio_ome_zarr.writers import OMEZarrWriter
+
+        axes_names = [d.lower() for d in dims]
+        type_map = {"t": "time", "c": "channel", "z": "space", "y": "space", "x": "space"}
+        axes_types = [type_map.get(d, "space") for d in axes_names]
+
+        writer = OMEZarrWriter(
+            store=str(out_path),
+            level_shapes=[lifetime_data.shape],
+            dtype=lifetime_data.dtype,
+            axes_names=axes_names,
+            axes_types=axes_types,
+            zarr_format=2,
+        )
+        writer.write_full_volume(lifetime_data)
 
         output = {
             "ref_id": uuid.uuid4().hex,
             "type": "BioImageRef",
             "uri": f"file://{out_path.absolute()}",
             "path": str(out_path.absolute()),
-            "format": "OME-TIFF",
+            "format": "OME-Zarr",
+            "storage_type": "zarr-temp",
             "created_at": datetime.now(UTC).isoformat(),
             "metadata": {
                 "axes": dim_order,
+                "dims": dims,
                 "shape": list(lifetime_data.shape),
+                "ndim": lifetime_data.ndim,
                 "dtype": str(lifetime_data.dtype),
                 "unit": "nanoseconds",
             },
