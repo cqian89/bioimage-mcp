@@ -50,9 +50,13 @@ class SkimageAdapter(BaseAdapter):
 
     def __init__(self) -> None:
         self.introspector = Introspector()
+        self._cached_props: list[str] | None = None
 
     def _get_regionprops_properties(self) -> list[str]:
         """Get valid property names via runtime introspection of RegionProperties."""
+        if self._cached_props is not None:
+            return self._cached_props
+
         try:
             import numpy as np
             from skimage.measure import regionprops
@@ -73,7 +77,8 @@ class SkimageAdapter(BaseAdapter):
                             props.append(name)
                     except Exception:
                         pass
-            return sorted(props)
+            self._cached_props = sorted(props)
+            return self._cached_props
         except Exception:
             return []
 
