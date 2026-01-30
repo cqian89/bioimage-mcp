@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 Phase: 14 of 14 (OME-Zarr Standardization)
 Plan: 2 of 2 in current phase
 Status: Phase complete (verified)
-Last activity: 2026-01-30 - Completed quick task 001: Fix introspect schema issues
+Last activity: 2026-01-30 - Completed quick task 002: Migrate run response id to fn_id per spec
 
 Progress: ██████████ 100%
 
@@ -64,6 +64,8 @@ Progress: ██████████ 100%
 | 14 | Verbisity-aware smoke tests | Updated smoke tests to use 'full' verbosity for detailed metadata validation. |
 | quick-001 | Standardize 'axis' as integer | Runtime arrays are numpy ndarrays; string labels not supported in this layer. |
 | quick-001 | Omit regionprops artifact ports | Prevents binding errors for 'label_image' and 'intensity_image'. |
+| quick-002 | Use fn_id in run responses | Distinguish tool ID from execution run ID; aligns with spec 023. |
+| quick-002 | Omit session_id in run responses | Reduces token bloat; session context is maintained by agent. |
 
 ### Roadmap Evolution
 - Phase 12 added: Core Engine + AST-First
@@ -77,7 +79,6 @@ Progress: ██████████ 100%
 
 ### Blockers/Concerns Carried Forward
 - trackpy schema descriptions missing (contract test failure).
-- ~~base.phasorpy schema type mismatch (contract test failure).~~ **Fixed in quick-001**
 - contract tests need to skip non-manifest YAMLs.
 - Existing failures in bootstrap/test_install.py need investigation.
 
@@ -86,10 +87,11 @@ Progress: ██████████ 100%
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 001 | Fix introspect schema issues (axis type, artifact ports) | 2026-01-30 | 1bcc098 | [001-fix-introspect-schema-issues](./quick/001-fix-introspect-schema-issues/) |
+| 002 | Migrate run response id to fn_id per spec | 2026-01-30 | fec100d | [002-migrate-run-response-id-to-fn-id-per-spe](./quick/002-migrate-run-response-id-to-fn-id-per-spe/) |
 
 ### Session Continuity
-Last session: 2026-01-30T10:46:32Z
-Stopped at: Completed quick-001-PLAN.md
+Last session: 2026-01-30T13:45:00Z
+Stopped at: Completed quick-002-PLAN.md
 Resume file: None
 
 ## Next Steps
