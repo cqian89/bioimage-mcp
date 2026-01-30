@@ -184,3 +184,26 @@ def test_skimage_adapter_dimension_hints_for_regionprops():
     hint_gaussian = adapter.generate_dimension_hints("skimage.filters", "gaussian")
     assert hint_gaussian is not None
     assert hint_gaussian.squeeze_singleton is True
+
+
+def test_skimage_adapter_omits_artifact_params_from_regionprops():
+    """regionprops and regionprops_table should omit label_image/intensity_image from parameters."""
+    adapter = SkimageAdapter()
+
+    for name in ["regionprops", "regionprops_table"]:
+        module_config = {
+            "module_name": "skimage.measure",
+            "include": [name],
+        }
+
+        discovered = adapter.discover(module_config)
+        assert len(discovered) == 1
+        fn_meta = discovered[0]
+
+        # Artifact params should be removed
+        assert "label_image" not in fn_meta.parameters
+        assert "intensity_image" not in fn_meta.parameters
+        assert "labels" not in fn_meta.parameters
+
+        # They should also be removed from any higher-level schema representation if present
+        # (DiscoveryEngine handles this, but adapter should too)
