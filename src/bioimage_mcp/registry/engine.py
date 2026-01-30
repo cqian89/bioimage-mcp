@@ -709,7 +709,6 @@ class DiscoveryEngine:
         elif pattern == IOPattern.LABELS_TO_TABLE:
             inputs = [
                 Port(name="label_image", artifact_type="LabelImageRef"),
-                Port(name="labels", artifact_type="LabelImageRef", required=False),
                 Port(name="intensity_image", artifact_type="BioImageRef", required=False),
             ]
             outputs = [Port(name="table", artifact_type="TableRef")]

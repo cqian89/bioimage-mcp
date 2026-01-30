@@ -207,3 +207,53 @@ def test_skimage_adapter_omits_artifact_params_from_regionprops():
 
         # They should also be removed from any higher-level schema representation if present
         # (DiscoveryEngine handles this, but adapter should too)
+
+
+def test_skimage_threshold_local_method_has_enum():
+    """Verify threshold_local method parameter has enum from docstring."""
+    adapter = SkimageAdapter()
+    discovered = adapter.discover(
+        {
+            "modules": ["skimage.filters"],
+            "include": ["threshold_local"],
+        }
+    )
+
+    assert len(discovered) == 1
+    func = discovered[0]
+
+    # Check method parameter has enum
+    assert "method" in func.parameters
+    method_param = func.parameters["method"]
+    assert method_param.enum is not None
+    assert set(method_param.enum) == {"generic", "gaussian", "mean", "median"}
+
+
+def test_regionprops_table_properties_has_items_enum():
+    """Verify regionprops_table properties parameter has items.enum from introspection."""
+    adapter = SkimageAdapter()
+    discovered = adapter.discover(
+        {
+            "modules": ["skimage.measure"],
+            "include": ["regionprops_table"],
+        }
+    )
+
+    assert len(discovered) == 1
+    func = discovered[0]
+
+    # Check properties parameter has items with enum
+    assert "properties" in func.parameters
+    props_param = func.parameters["properties"]
+
+    assert props_param.items is not None
+    assert "enum" in props_param.items
+    enum_values = props_param.items["enum"]
+
+    # Verify expected properties are present
+    assert "area" in enum_values
+    assert "centroid" in enum_values
+    assert "label" in enum_values
+    assert "bbox" in enum_values
+    # Should have many properties (typically 30+)
+    assert len(enum_values) >= 20
