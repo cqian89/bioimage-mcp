@@ -236,6 +236,28 @@ class TestIntrospectPythonApi:
         assert "param" in schema["properties"]
         assert "required" not in schema
 
+    def test_infers_axis_as_integer(self) -> None:
+        """Test that 'axis' parameter is inferred as integer (regression for ndarray)."""
+
+        def func(image: Any) -> None:  # image is artifact, triggers fallback
+            pass
+
+        descriptions = {"axis": "The axis to operate on."}
+        schema = introspect_python_api(func, descriptions)
+
+        assert schema["properties"]["axis"]["type"] == "integer"
+
+    def test_omits_regionprops_artifact_ports(self) -> None:
+        """Test that label_image and intensity_image are omitted (regression for regionprops)."""
+
+        def func(label_image: Any, intensity_image: Any, threshold: float = 0.5) -> None:
+            pass
+
+        schema = introspect_python_api(func, {})
+        assert "label_image" not in schema["properties"]
+        assert "intensity_image" not in schema["properties"]
+        assert "threshold" in schema["properties"]
+
 
 class TestIntrospectArgparse:
     """Tests for introspect_argparse() utility (T000b)."""
