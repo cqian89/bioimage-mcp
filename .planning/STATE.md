@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 Phase: 14 of 14 (OME-Zarr Standardization)
 Plan: 2 of 2 in current phase
 Status: Phase complete (verified)
-Last activity: 2026-01-30 - Completed quick task 003: Fix tool schema validation issues (phasorpy, skimage, export)
+Last activity: 2026-01-30 - Completed quick task 004: Fix describe schema response cleanup (meta, hints, newlines)
 
 Progress: ██████████ 100%
 
@@ -69,6 +69,9 @@ Progress: ██████████ 100%
 | quick-003 | PHASOR_TO_LIFETIMES IOPattern | Distinct pattern for phasor_to_apparent_lifetime with phase_lifetime/modulation_lifetime outputs. |
 | quick-003 | Global artifact param filtering in DiscoveryEngine | Ensures label_image, intensity_image, etc. never appear in params_schema. |
 | quick-003 | Standardize export to dest_path | Consistent parameter naming across base.io.*.export functions. |
+| quick-004 | Omit meta from describe responses | Internal metadata (tool_version, introspection_source) not useful to LLM consumers. |
+| quick-004 | Omit null hints from describe responses | Reduces token bloat; only include hints when meaningful. |
+| quick-004 | Normalize newlines in describe text | Replace \\n with space in summary/description for cleaner output. |
 
 ### Roadmap Evolution
 - Phase 12 added: Core Engine + AST-First
@@ -92,6 +95,7 @@ Progress: ██████████ 100%
 | 001 | Fix introspect schema issues (axis type, artifact ports) | 2026-01-30 | 1bcc098 | [001-fix-introspect-schema-issues](./quick/001-fix-introspect-schema-issues/) |
 | 002 | Migrate run response id to fn_id per spec | 2026-01-30 | fec100d | [002-migrate-run-response-id-to-fn-id-per-spe](./quick/002-migrate-run-response-id-to-fn-id-per-spe/) |
 | 003 | Fix tool schema validation issues (phasorpy outputs, regionprops params, export dest_path) | 2026-01-30 | 98a926b | [003-fix-tool-schema-validation-issues](./quick/003-fix-tool-schema-validation-issues/) |
+| 004 | Fix describe schema response cleanup (meta, hints, newlines) | 2026-01-30 | 9deb2d9 | [004-fix-describe-schema-response-cleanup](./quick/004-fix-describe-schema-response-cleanup/) |
 
 ### Session Continuity
 Last session: 2026-01-30T13:45:00Z
