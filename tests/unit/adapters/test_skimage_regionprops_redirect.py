@@ -173,5 +173,34 @@ def test_regionprops_schema_alignment():
     assert "properties" in rp.parameters
 
 
+def test_regionprops_properties_introspection():
+    """
+    Task 2: Verify that regionprops and regionprops_table have 'properties'
+    parameter populated with dynamic enum values.
+    """
+    adapter = SkimageAdapter()
+    module_config = {
+        "module_name": "skimage.measure",
+        "include": ["regionprops", "regionprops_table"],
+    }
+    discovered = adapter.discover(module_config)
+    assert len(discovered) == 2
+
+    for meta in discovered:
+        assert "properties" in meta.parameters
+        prop_schema = meta.parameters["properties"]
+        assert prop_schema.items is not None
+        assert "enum" in prop_schema.items
+        enum_values = prop_schema.items["enum"]
+        assert len(enum_values) > 10  # Should have many properties
+        assert "area" in enum_values
+        assert "label" in enum_values
+        assert "centroid" in enum_values
+
+        # Verify description update
+        assert "Valid values include:" in prop_schema.description
+        assert f"({len(enum_values)} total)" in prop_schema.description
+
+
 if __name__ == "__main__":
     pytest.main([__file__])

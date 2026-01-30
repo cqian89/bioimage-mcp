@@ -51,6 +51,32 @@ class SkimageAdapter(BaseAdapter):
     def __init__(self) -> None:
         self.introspector = Introspector()
 
+    def _get_regionprops_properties(self) -> list[str]:
+        """Get valid property names via runtime introspection of RegionProperties."""
+        try:
+            import numpy as np
+            from skimage.measure import regionprops
+
+            # Create minimal label image with one region
+            label_img = np.array([[0, 0], [0, 1]], dtype=np.int32)
+            regions = regionprops(label_img)
+            if not regions:
+                return []
+
+            region = regions[0]
+            props = []
+            for name in dir(region):
+                if not name.startswith("_"):
+                    try:
+                        val = getattr(region, name)
+                        if not callable(val):
+                            props.append(name)
+                    except Exception:
+                        pass
+            return sorted(props)
+        except Exception:
+            return []
+
     def discover(self, module_config: dict[str, Any]) -> list[FunctionMetadata]:
         """Discover functions from configured modules."""
         module_name = module_config.get("module_name")
@@ -153,6 +179,19 @@ class SkimageAdapter(BaseAdapter):
                 meta.module = mod_name
                 meta.qualified_name = f"{mod_name}.{name}"
                 meta.fn_id = f"{mod_name}.{name}"
+
+                # Enrich regionprops parameters with valid property names
+                if name in ("regionprops", "regionprops_table"):
+                    if "properties" in meta.parameters:
+                        props = self._get_regionprops_properties()
+                        if props:
+                            meta.parameters["properties"].items = {"type": "string", "enum": props}
+                            # Update description with examples
+                            examples = ", ".join(props[:5])
+                            meta.parameters["properties"].description = (
+                                f"Properties to compute. Valid values include: {examples}, ... "
+                                f"({len(props)} total). Add 'label' to track region identities."
+                            )
 
                 # Add dimension hints (T203)
                 dim_hints = self.generate_dimension_hints(mod_name, name)
