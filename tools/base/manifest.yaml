@@ -245,9 +245,9 @@ functions:
           type: string
           enum: [OME-TIFF, OME-Zarr, PNG, NPY]
           description: Target export format. If omitted, inferred from artifact type.
-        path:
+        dest_path:
           type: string
-          description: Optional output path. If omitted, generated in work_dir.
+          description: Absolute path to the destination (file for OME-TIFF/PNG/NPY; directory for OME-Zarr). If omitted, generated in work_dir.
 
   - id: base.io.table.load
     tool_id: tools.base

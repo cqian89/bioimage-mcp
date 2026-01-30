@@ -262,7 +262,7 @@ def test_export_to_ome_tiff(tmp_path, monkeypatch):
 
     result = export(
         inputs={"artifact": image_ref},
-        params={"path": out_path, "format": "OME-TIFF"},
+        params={"dest_path": out_path, "format": "OME-TIFF"},
         work_dir=tmp_path,
     )
 
@@ -286,7 +286,7 @@ def test_export_to_png(tmp_path, monkeypatch):
 
     export(
         inputs={"artifact": image_ref},
-        params={"path": out_path, "format": "PNG"},
+        params={"dest_path": out_path, "format": "PNG"},
         work_dir=tmp_path,
     )
 
@@ -312,7 +312,7 @@ def test_export_to_ome_zarr(tmp_path, monkeypatch):
 
     export(
         inputs={"artifact": image_ref},
-        params={"path": out_path, "format": "OME-Zarr"},
+        params={"dest_path": out_path, "format": "OME-Zarr"},
         work_dir=tmp_path,
     )
 
@@ -334,7 +334,7 @@ def test_export_infers_format(tmp_path, monkeypatch):
 
     # Export to .png (should infer PNG)
     png_path = str(tmp_path / "auto.png")
-    export(inputs={"artifact": image_ref}, params={"path": png_path}, work_dir=tmp_path)
+    export(inputs={"artifact": image_ref}, params={"dest_path": png_path}, work_dir=tmp_path)
     assert Path(png_path).exists()
 
 
@@ -358,7 +358,7 @@ def test_export_ome_zarr_lazy(tmp_path, monkeypatch):
     start = time.time()
     export(
         inputs={"artifact": image_ref},
-        params={"path": out_path, "format": "OME-Zarr"},
+        params={"dest_path": out_path, "format": "OME-Zarr"},
         work_dir=tmp_path,
     )
     duration = time.time() - start
@@ -376,7 +376,7 @@ def test_export_write_path_validation(tmp_path, monkeypatch):
     with pytest.raises(Exception) as excinfo:
         export(
             inputs={"artifact": image_ref},
-            params={"path": "/forbidden/out.tif"},
+            params={"dest_path": "/forbidden/out.tif"},
             work_dir=tmp_path,
         )
     assert "not allowed" in str(excinfo.value).lower()
@@ -413,7 +413,7 @@ def test_export_accepts_label_image_ref(tmp_path, monkeypatch):
 
     result = export(
         inputs={"image": label_ref},
-        params={"path": out_path, "format": "OME-TIFF"},
+        params={"dest_path": out_path, "format": "OME-TIFF"},
         work_dir=tmp_path,
     )
 

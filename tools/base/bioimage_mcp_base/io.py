@@ -41,13 +41,13 @@ def _extract_image_uri(image_ref: object) -> str | None:
 
 
 def convert_to_ome_zarr(*, inputs: dict, params: dict, work_dir: Path) -> Path:
-    _ = params
     image_ref = inputs.get("image")
     uri = _extract_image_uri(image_ref)
     if not uri:
         raise ValueError("Input 'image' must include uri")
 
     in_path = uri_to_path(str(uri))
+    dest_path = params.get("dest_path") or params.get("path")
 
     # Try to import bioio_ome_zarr writer - if import fails, raise RuntimeError
     try:
@@ -61,7 +61,11 @@ def convert_to_ome_zarr(*, inputs: dict, params: dict, work_dir: Path) -> Path:
     data = data.compute() if hasattr(data, "compute") else data
     axes = img.reader.dims.order
 
-    out_dir = work_dir / "converted.ome.zarr"
+    if dest_path:
+        out_dir = Path(dest_path)
+    else:
+        out_dir = work_dir / "converted.ome.zarr"
+
     if out_dir.exists():
         raise FileExistsError(out_dir)
 
@@ -99,6 +103,7 @@ def export_ome_tiff(*, inputs: dict, params: dict, work_dir: Path) -> dict:
 
     in_path = uri_to_path(str(uri))
     compression = params.get("compression")
+    dest_path = params.get("dest_path") or params.get("path")
 
     warnings: list[dict[str, str]] = []
     oversized_threshold = _get_oversized_input_threshold_bytes()
@@ -150,7 +155,11 @@ def export_ome_tiff(*, inputs: dict, params: dict, work_dir: Path) -> dict:
         physical_pixel_sizes = None
         channel_names = None
 
-    out_path = work_dir / "export.ome.tiff"
+    if dest_path:
+        out_path = Path(dest_path)
+    else:
+        out_path = work_dir / "export.ome.tiff"
+
     if out_path.exists():
         raise FileExistsError(out_path)
 
