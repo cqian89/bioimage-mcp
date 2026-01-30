@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 Phase: 14 of 14 (OME-Zarr Standardization)
 Plan: 2 of 2 in current phase
 Status: Phase complete (verified)
-Last activity: 2026-01-30 - Completed quick task 002: Migrate run response id to fn_id per spec
+Last activity: 2026-01-30 - Completed quick task 003: Fix tool schema validation issues (phasorpy, skimage, export)
 
 Progress: ██████████ 100%
 
