@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 Phase: 14 of 14 (OME-Zarr Standardization)
 Plan: 2 of 2 in current phase
 Status: Phase complete (verified)
-Last activity: 2026-01-29 - Completed 14-02-PLAN.md
+Last activity: 2026-01-30 - Completed quick-001-PLAN.md
 
 Progress: ██████████ 100%
 
@@ -62,6 +62,8 @@ Progress: ██████████ 100%
 | 14 | Standardized bins axis name | Standardized on 'bins' for TTTR decay data to avoid 'T' axis hijacking. |
 | 14 | Default Cellpose to OME-Zarr | Defaulted Cellpose output formats to OME-Zarr to align with project standard. |
 | 14 | Verbisity-aware smoke tests | Updated smoke tests to use 'full' verbosity for detailed metadata validation. |
+| quick-001 | Standardize 'axis' as integer | Runtime arrays are numpy ndarrays; string labels not supported in this layer. |
+| quick-001 | Omit regionprops artifact ports | Prevents binding errors for 'label_image' and 'intensity_image'. |
 
 ### Roadmap Evolution
 - Phase 12 added: Core Engine + AST-First
@@ -80,8 +82,8 @@ Progress: ██████████ 100%
 - Existing failures in bootstrap/test_install.py need investigation.
 
 ### Session Continuity
-Last session: 2026-01-29T15:59:55Z
-Stopped at: Completed 14-02-PLAN.md
+Last session: 2026-01-30T10:46:32Z
+Stopped at: Completed quick-001-PLAN.md
 Resume file: None
 
 ## Next Steps
