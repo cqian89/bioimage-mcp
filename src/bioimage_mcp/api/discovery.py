@@ -572,7 +572,6 @@ class DiscoveryService:
                             "min_ndim",
                             "max_ndim",
                             "squeeze_singleton",
-                            "supported_storage_types",
                             "preprocessing_hint",
                             "dimension_requirements",
                         }

@@ -50,7 +50,6 @@ def test_input_requirement_schema() -> None:
         "description",
         "expected_axes",
         "preprocessing_hint",
-        "supported_storage_types",
         "dimension_requirements",
     ]:
         assert field in props
@@ -79,15 +78,6 @@ def test_input_requirement_schema() -> None:
     )
     assert array_schema is not None
     assert array_schema["items"]["pattern"] == "^[A-Z]$"
-
-    supported_storage_schema = props["supported_storage_types"]
-    any_of = supported_storage_schema.get("anyOf", [])
-    array_schema = next(
-        (item for item in any_of if item.get("type") == "array"),
-        supported_storage_schema if supported_storage_schema.get("type") == "array" else None,
-    )
-    assert array_schema is not None
-    assert set(array_schema["items"].get("enum", [])) == ALLOWED_STORAGE_TYPES
 
 
 def test_output_description_schema() -> None:
