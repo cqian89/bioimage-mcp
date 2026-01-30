@@ -230,6 +230,17 @@ class Introspector:
         if value is None or isinstance(value, (bool, int, float, str)):
             return value
 
+        # Handle type objects (e.g., np.float64 which is a type)
+        if isinstance(value, type):
+            name = getattr(value, "__name__", None)
+            if name:
+                return name
+            return str(value)
+
+        # Handle numpy dtype instances (np.dtype('float64'))
+        if hasattr(value, "name") and hasattr(value, "kind"):  # duck-type numpy.dtype
+            return value.name
+
         # Handle range objects (common in scientific functions)
         if isinstance(value, range):
             return list(value)

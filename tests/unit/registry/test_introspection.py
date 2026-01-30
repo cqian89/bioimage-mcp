@@ -311,3 +311,13 @@ class TestIntrospector:
         assert metadata.parameters["sigma"].type == "array"
         assert metadata.parameters["image"].type == "array"
         assert metadata.parameters["kernel"].type == "array"
+
+    def test_numpy_types_serialize_cleanly(self):
+        """Numpy types should serialize to readable names."""
+        import numpy as np
+
+        from bioimage_mcp.registry.dynamic.introspection import Introspector
+
+        i = Introspector()
+        assert i._make_json_serializable(np.float64) == "float64"
+        assert i._make_json_serializable(np.dtype("float32")) == "float32"
