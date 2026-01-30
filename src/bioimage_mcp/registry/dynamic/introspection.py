@@ -17,6 +17,17 @@ from bioimage_mcp.registry.dynamic.models import (
 from bioimage_mcp.registry.utils import summarize_docstring
 
 
+# Parameter names that must be integer-only (numpy arrays don't support string axes)
+AXIS_PARAM_NAMES = frozenset(
+    {
+        "axis",
+        "channel_axis",
+        "time_axis",
+        "z_axis",
+    }
+)
+
+
 class Introspector:
     """Introspects Python functions to generate metadata."""
 
@@ -193,6 +204,16 @@ class Introspector:
                 default=default_value,
                 required=is_required,
             )
+
+            # Override axis parameters to integer-only (numpy doesn't support string axes)
+            if param_name in AXIS_PARAM_NAMES:
+                parameters[param_name] = ParameterSchema(
+                    name=param_name,
+                    type="integer",  # Force integer type
+                    description=parameters[param_name].description,
+                    default=parameters[param_name].default,
+                    required=parameters[param_name].required,
+                )
 
         return parameters
 

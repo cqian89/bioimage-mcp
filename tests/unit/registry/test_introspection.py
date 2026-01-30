@@ -276,3 +276,20 @@ class TestIntrospector:
 
         assert metadata.description == "Return the input value."
         assert "\n" not in metadata.description
+
+    def test_axis_params_are_integer(self):
+        """Axis parameters should be forced to integer type for numpy compatibility."""
+        from bioimage_mcp.registry.dynamic.introspection import Introspector
+
+        def fn_with_axis(
+            data, axis: int | str | None = None, channel_axis: int = -1, axes: tuple = (0, 1)
+        ):
+            pass
+
+        introspector = Introspector()
+        metadata = introspector.introspect(fn_with_axis, "test")
+
+        assert metadata.parameters["axis"].type == "integer"
+        assert metadata.parameters["channel_axis"].type == "integer"
+        # plural 'axes' should NOT be forced to integer
+        assert metadata.parameters["axes"].type == "array"
