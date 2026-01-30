@@ -76,9 +76,9 @@ class TestRunResponseSerializer:
         # Top-level fields
         assert "run_id" in serialized
         assert "status" in serialized
-        assert "id" in serialized
+        assert "fn_id" in serialized
         assert "outputs" in serialized
-        assert "session_id" in serialized
+        assert "session_id" not in serialized
         assert "warnings" not in serialized  # Empty warnings should be excluded
         assert "log_ref" not in serialized  # Success log_ref should be excluded in minimal
 

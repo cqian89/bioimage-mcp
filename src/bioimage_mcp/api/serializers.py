@@ -28,16 +28,13 @@ class RunResponseSerializer:
             )
             verbosity = "minimal"
 
-        # Top-level fields: run_id, status, id, outputs
+        # Top-level fields: run_id, status, fn_id, outputs
         serialized = {
             "run_id": result["run_id"],
             "status": result["status"],
-            "id": id,
+            "fn_id": id,
             "outputs": {},
         }
-
-        if result.get("session_id"):
-            serialized["session_id"] = result["session_id"]
 
         # Handle outputs - filter workflow_record from outputs in minimal/standard
         outputs = result.get("outputs", {})
