@@ -31,7 +31,7 @@ TYPE_MAP: dict[type, str] = {
 
 # Type inference map for common parameter name patterns
 PARAM_TYPE_PATTERNS = {
-    "axis": "string",  # Can be string name or int index
+    "axis": "integer",  # Runtime arrays are numpy ndarrays (int indices only)
     "harmonic": "integer",
     "radius": "integer",
     "sigma": "number",
@@ -56,6 +56,8 @@ ARTIFACT_PORTS = {
     "input",
     "labels_path",
     "image_path",
+    "label_image",
+    "intensity_image",
 }
 
 
