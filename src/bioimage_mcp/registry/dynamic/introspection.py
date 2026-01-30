@@ -6,6 +6,7 @@ automatically using inspect.signature.
 """
 
 import inspect
+import re
 from collections.abc import Callable
 from typing import Any
 
@@ -146,6 +147,31 @@ class Introspector:
             # Any parsing error - graceful degradation
             return {}
 
+    def _extract_enum_from_docstring_type(self, doc_type: str) -> list[str] | None:
+        """Extract enum values from docstring type annotation like {'a', 'b', 'c'}.
+
+        Args:
+            doc_type: Type string from docstring
+
+        Returns:
+            List of enum values or None if not an enum
+        """
+        if not doc_type:
+            return None
+
+        match = re.search(r"\{([^}]+)\}", doc_type)
+        if not match:
+            return None
+
+        inner = match.group(1)
+        values = [v.strip().strip("'\"") for v in inner.split(",") if v.strip()]
+
+        # Validate: must have 2+ values and not look like a dict
+        if len(values) < 2 or any(":" in v for v in values):
+            return None
+
+        return values
+
     def _extract_parameters(self, func: Callable) -> dict[str, ParameterSchema]:
         """Extract parameter schemas from function signature."""
         sig = inspect.signature(func)
@@ -193,9 +219,13 @@ class Introspector:
             # Parameter is required if it has no default
             is_required = not has_default
 
-            # Get description from docstring if available
+            # Get description and type from docstring if available
             info = param_info.get(param_name, {})
             description = info.get("description", "")
+            doc_type = info.get("type", "")
+
+            # Extract enum values from docstring type annotation
+            enum_values = self._extract_enum_from_docstring_type(doc_type)
 
             parameters[param_name] = ParameterSchema(
                 name=param_name,
@@ -203,17 +233,12 @@ class Introspector:
                 description=description,
                 default=default_value,
                 required=is_required,
+                enum=enum_values,
             )
 
             # Override axis parameters to integer-only (numpy doesn't support string axes)
             if param_name in AXIS_PARAM_NAMES:
-                parameters[param_name] = ParameterSchema(
-                    name=param_name,
-                    type="integer",  # Force integer type
-                    description=parameters[param_name].description,
-                    default=parameters[param_name].default,
-                    required=parameters[param_name].required,
-                )
+                parameters[param_name].type = "integer"
 
         return parameters
 
