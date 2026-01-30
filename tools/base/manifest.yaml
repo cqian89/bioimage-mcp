@@ -86,7 +86,7 @@ dynamic_sources:
 
 functions:
   # xarray-based tools (Wrapper Consolidation)
-  - fn_id: base.io.bioimage.load
+  - id: base.io.bioimage.load
     tool_id: tools.base
     name: Load bioimage
     description: |
@@ -110,7 +110,7 @@ functions:
           type: string
           description: Optional format hint (e.g., "CZI", "LIF", "OME-TIFF")
 
-  - fn_id: base.io.bioimage.inspect
+  - id: base.io.bioimage.inspect
     tool_id: tools.base
     name: Inspect bioimage metadata
     description: |
@@ -128,7 +128,7 @@ functions:
           type: string
           description: Absolute path to the image file
 
-  - fn_id: base.io.bioimage.slice
+  - id: base.io.bioimage.slice
     tool_id: tools.base
     name: Slice multi-dimensional image
     description: |
@@ -177,7 +177,7 @@ functions:
         - {"T": {"start": 0, "stop": 5}}
         - {"Z": 25, "C": 0}
 
-  - fn_id: base.io.bioimage.validate
+  - id: base.io.bioimage.validate
     tool_id: tools.base
     name: Validate bioimage file
     description: |
@@ -199,7 +199,7 @@ functions:
           description: Perform deep validation (load pixels to check for corruption)
           default: false
 
-  - fn_id: base.io.bioimage.get_supported_formats
+  - id: base.io.bioimage.get_supported_formats
     tool_id: tools.base
     name: List supported image formats
     description: |
@@ -213,7 +213,7 @@ functions:
       type: object
       properties: {}
 
-  - fn_id: base.io.bioimage.export
+  - id: base.io.bioimage.export
     tool_id: tools.base
     name: Export artifact to file
     description: |
@@ -249,7 +249,7 @@ functions:
           type: string
           description: Optional output path. If omitted, generated in work_dir.
 
-  - fn_id: base.io.table.load
+  - id: base.io.table.load
     tool_id: tools.base
     name: Load tabular file
     description: |
@@ -286,7 +286,7 @@ functions:
             type: string
           description: Additional values to treat as NA
 
-  - fn_id: base.io.table.export
+  - id: base.io.table.export
     tool_id: tools.base
     name: Export table to file
     description: |
@@ -317,7 +317,7 @@ functions:
           default: ","
 
   # Required for on-demand schema enrichment
-  - fn_id: meta.describe
+  - id: meta.describe
     tool_id: tools.base
     name: Describe function
     description: Return a complete parameter schema for a target function.
@@ -329,7 +329,7 @@ functions:
       properties:
         target_fn:
           type: string
-          description: The fn_id to describe.
+          description: The function id to describe.
       required: [target_fn]
 
 function_overlays:
@@ -349,7 +349,7 @@ function_overlays:
             squeeze_singleton: true
       success_hints:
         next_steps:
-          - fn_id: "base.skimage.morphology.remove_small_objects"
+          - id: "base.skimage.morphology.remove_small_objects"
             reason: "Denoising often precedes object detection or filtering."
 
   base.skimage.morphology.remove_small_objects:

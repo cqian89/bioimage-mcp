@@ -26,7 +26,7 @@ def _load_manifest_raw() -> dict:
 
 
 def _get_manifest_fn(manifest_raw: dict, fn_id: str) -> dict:
-    return next(fn for fn in manifest_raw.get("functions", []) if fn.get("fn_id") == fn_id)
+    return next(fn for fn in manifest_raw.get("functions", []) if fn.get("id") == fn_id)
 
 
 def _load_schema_raw() -> dict:

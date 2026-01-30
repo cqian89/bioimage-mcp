@@ -33,7 +33,7 @@ def test_worker_kills_process_on_read_error():
 
             # Execute should catch error, kill process, and re-raise
             with pytest.raises(RuntimeError, match="Connection lost"):
-                worker.execute({"fn_id": "test", "inputs": {}})
+                worker.execute({"id": "test", "inputs": {}})
 
             # Assert kill was called
             mock_proc.kill.assert_called()

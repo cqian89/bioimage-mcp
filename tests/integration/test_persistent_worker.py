@@ -86,7 +86,7 @@ class TestPersistentWorkerLifecycle:
 
         # Prepare a simple execute request (meta.describe doesn't need file I/O)
         request = {
-            "fn_id": "meta.describe",
+            "id": "meta.describe",
             "params": {"target_fn": "base.io.bioimage.export"},
             "inputs": {},
             "work_dir": str(tmp_path),
@@ -166,14 +166,14 @@ class TestPersistentWorkerLifecycle:
 
         # Prepare two requests
         request1 = {
-            "fn_id": "meta.describe",
+            "id": "meta.describe",
             "inputs": {},
             "params": {"target_fn": "base.io.bioimage.export"},
             "work_dir": str(tmp_path),
         }
 
         request2 = {
-            "fn_id": "meta.describe",
+            "id": "meta.describe",
             "inputs": {},
             "params": {"target_fn": "base.io.bioimage.export"},
             "work_dir": str(tmp_path),
@@ -257,7 +257,7 @@ class TestPersistentWorkerLifecycle:
                     spawned_workers.append((session_id, spawn_time - start_time))
 
                 request = {
-                    "fn_id": "meta.describe",
+                    "id": "meta.describe",
                     "inputs": {},
                     "params": {"target_fn": "base.io.bioimage.export"},
                     "work_dir": str(tmp_path),
@@ -361,7 +361,7 @@ class TestPersistentWorkerLifecycle:
         # Create a request that will timeout
         # We'll use a simple request with a short timeout
         request = {
-            "fn_id": "meta.describe",
+            "id": "meta.describe",
             "inputs": {},
             "params": {"target_fn": "base.io.bioimage.export"},
             "work_dir": str(tmp_path),
@@ -404,7 +404,7 @@ class TestPersistentWorkerLifecycle:
 
         # Execute a normal request
         request2 = {
-            "fn_id": "meta.describe",
+            "id": "meta.describe",
             "inputs": {},
             "params": {"target_fn": "base.io.bioimage.export"},
             "work_dir": str(tmp_path),
@@ -454,7 +454,7 @@ class TestPersistentWorkerLifecycle:
             # Test 1: Send ExecuteRequest for meta.describe (simple test without file I/O)
             execute_req = {
                 "command": "execute",
-                "fn_id": "meta.describe",
+                "id": "meta.describe",
                 "inputs": {},
                 "params": {"target_fn": "base.io.bioimage.export"},
                 "work_dir": str(tmp_path),
@@ -546,7 +546,7 @@ class TestMemoryArtifacts:
         # Execute a tool that should create a memory artifact
         # We'll use a transform operation with output_mode='memory' in params
         request = {
-            "fn_id": "base.io.bioimage.export",
+            "id": "base.io.bioimage.export",
             "inputs": {"image": {"uri": f"file://{test_image}"}},  # Export expects 'image' input
             "params": {
                 "format": "OME-TIFF",
@@ -637,7 +637,7 @@ class TestMemoryArtifacts:
 
         # Step 1: Execute tool A with output_mode='memory'
         request_a = {
-            "fn_id": "base.io.bioimage.export",
+            "id": "base.io.bioimage.export",
             "inputs": {"image": {"uri": f"file://{test_image}"}},  # Export expects 'image' input
             "params": {
                 "format": "OME-TIFF",
@@ -663,7 +663,7 @@ class TestMemoryArtifacts:
         # Step 2: Execute tool B using mem:// artifact as input (same worker)
         # Use the same export function to verify memory-to-memory transfer
         request_b = {
-            "fn_id": "base.io.bioimage.export",
+            "id": "base.io.bioimage.export",
             "inputs": {"image": {"uri": mem_artifact_uri}},  # Pass mem:// URI directly
             "params": {
                 "format": "OME-TIFF",
@@ -722,7 +722,7 @@ class TestMemoryArtifacts:
 
         # Step 1: Create a mem:// artifact in worker
         request = {
-            "fn_id": "base.io.bioimage.export",
+            "id": "base.io.bioimage.export",
             "inputs": {"image": {"uri": f"file://{test_image}"}},
             "params": {
                 "format": "OME-TIFF",
@@ -741,7 +741,7 @@ class TestMemoryArtifacts:
 
         # Step 2: Verify artifact is accessible (use it in another operation)
         request2 = {
-            "fn_id": "base.io.bioimage.export",
+            "id": "base.io.bioimage.export",
             "inputs": {"image": {"uri": mem_artifact_uri}},
             "params": {
                 "format": "OME-TIFF",
@@ -763,7 +763,7 @@ class TestMemoryArtifacts:
 
         # Step 5: Verify subsequent access to ref_id fails with clear error
         request3 = {
-            "fn_id": "base.io.bioimage.export",
+            "id": "base.io.bioimage.export",
             "inputs": {"image": {"uri": mem_artifact_uri}},
             "params": {
                 "format": "OME-TIFF",
@@ -838,7 +838,7 @@ class TestCrossEnvironmentHandoff:
         workflow1 = {
             "steps": [
                 {
-                    "fn_id": "base.io.bioimage.export",
+                    "id": "base.io.bioimage.export",
                     "inputs": {"image": {"ref_id": test_artifact.ref_id}},
                     "params": {"format": "OME-TIFF"},
                 }
@@ -866,7 +866,7 @@ class TestCrossEnvironmentHandoff:
         workflow2 = {
             "steps": [
                 {
-                    "fn_id": "base.io.bioimage.export",  # Same env, should NOT materialize
+                    "id": "base.io.bioimage.export",  # Same env, should NOT materialize
                     "inputs": {"image": {"ref_id": mem_artifact_ref_id}},
                     "params": {"format": "OME-TIFF"},
                 }
@@ -883,7 +883,7 @@ class TestCrossEnvironmentHandoff:
         workflow2 = {
             "steps": [
                 {
-                    "fn_id": "base.io.bioimage.export",  # Same env, should NOT materialize
+                    "id": "base.io.bioimage.export",  # Same env, should NOT materialize
                     "inputs": {"image": {"ref_id": mem_artifact_ref_id}},
                     "params": {"format": "OME-TIFF"},
                 }
@@ -895,7 +895,7 @@ class TestCrossEnvironmentHandoff:
         assert result2.get("status") == "success", f"Workflow 2 (same-env) failed: {result2}"
 
         # For a real cross-env test, we would need:
-        # workflow3 with fn_id pointing to cellpose environment
+        # workflow3 with id pointing to cellpose environment
         # That would trigger the cross-env detection and materialization
         # Since cellpose may not be available, we verify the logic exists
 
@@ -936,7 +936,7 @@ class TestCrossEnvironmentHandoff:
         worker = manager.get_worker(session_id=session_id, env_id=env_id)
 
         request = {
-            "fn_id": "base.io.bioimage.export",
+            "id": "base.io.bioimage.export",
             "inputs": {"image": {"uri": f"file://{test_image}"}},
             "params": {
                 "format": "OME-TIFF",
@@ -1026,7 +1026,7 @@ class TestCrossEnvironmentHandoff:
         worker = manager.get_worker(session_id=session_id, env_id=env_id)
 
         request = {
-            "fn_id": "base.io.bioimage.export",
+            "id": "base.io.bioimage.export",
             "inputs": {"image": {"uri": f"file://{test_image}"}},
             "params": {
                 "format": "OME-TIFF",
@@ -1078,7 +1078,7 @@ class TestNDJSONProtocol:
 
         Expected behavior:
         1. Spawn worker subprocess
-        2. Send ExecuteRequest with fn_id, inputs, params
+        2. Send ExecuteRequest with id, inputs, params
         3. Receive ExecuteResponse with outputs or error
         4. Verify response format matches IPC schema
         """

@@ -212,7 +212,7 @@ def test_workflow_from_yaml(mcp_test_client, case: WorkflowTestCase | None) -> N
         inputs = _resolve_inputs(step.inputs, refs)
         params = step.params
         result = mcp_test_client.call_tool(
-            fn_id=step.fn_id,
+            fn_id=step.id,
             inputs=inputs,
             params=params,
         )

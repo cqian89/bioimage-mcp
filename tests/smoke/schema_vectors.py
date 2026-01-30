@@ -8,7 +8,7 @@ from typing import Any
 SCHEMA_VECTORS: dict[str, dict[str, Any]] = {
     "base.io.bioimage.load": {
         "inputs": {},
-        "outputs": {"image": {"type": "BioImageRef"}},
+        "outputs": {"image": {"type": ["BioImageRef", "LabelImageRef", "ObjectRef"]}},
         "params_schema": {
             "type": "object",
             "properties": {"path": {"type": "string"}, "format": {"type": "string"}},

@@ -75,7 +75,7 @@ class TestCellposeManifestContract:
             raw = yaml.safe_load(f)
 
         functions = raw.get("functions", [])
-        fn_ids = [f.get("fn_id") for f in functions]
+        fn_ids = [f.get("id") for f in functions]
 
         assert "cellpose.models.CellposeModel.eval" in fn_ids, (
             "Manifest must define cellpose.models.CellposeModel.eval function"
@@ -90,7 +90,7 @@ class TestCellposeManifestContract:
             raw = yaml.safe_load(f)
 
         functions = raw.get("functions", [])
-        fn_ids = [f.get("fn_id") for f in functions]
+        fn_ids = [f.get("id") for f in functions]
 
         assert "meta.describe" in fn_ids, (
             "Manifest must define meta.describe function for dynamic schema"
@@ -106,7 +106,7 @@ class TestCellposeManifestContract:
 
         functions = raw.get("functions", [])
         eval_fn = next(
-            (f for f in functions if f.get("fn_id") == "cellpose.models.CellposeModel.eval"),
+            (f for f in functions if f.get("id") == "cellpose.models.CellposeModel.eval"),
             None,
         )
 

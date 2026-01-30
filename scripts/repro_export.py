@@ -20,7 +20,7 @@ async def run_requested_check():
 
         # EXACTLY as requested by user
         arguments = {
-            "fn_id": fn_id,
+            "id": fn_id,
             "inputs": {"image": "d53d0c66aa074c9787580acba3609f74"},
             "params": {
                 "dest_path": "datasets/FLUTE_FLIM_data_tif/outputs/hMSC_control_loaded.ome.tif"

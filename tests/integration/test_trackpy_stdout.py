@@ -34,7 +34,7 @@ def test_stdout_purity_and_capture(fn_id):
 
     request = {
         "command": "execute",
-        "fn_id": fn_id,
+        "id": fn_id,
         "params": {"diameter": 3},
         "inputs": {"image": {"type": "BioImageRef", "uri": f"file://{img_path}"}},
         "work_dir": str(test_dir),

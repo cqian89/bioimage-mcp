@@ -83,18 +83,18 @@ def test_handle_meta_list_shape(mock_meta_context):
     assert len(functions) > 0
 
     # Check a constructor entry
-    model_init = next(f for f in functions if f["fn_id"] == "cellpose.models.CellposeModel")
+    model_init = next(f for f in functions if f["id"] == "cellpose.models.CellposeModel")
     assert model_init["module"] == "cellpose.models"
     assert model_init["io_pattern"] == "pure_constructor"
     assert "name" in model_init
     assert "summary" in model_init
 
     # Check a generic entry
-    model_eval = next(f for f in functions if f["fn_id"] == "cellpose.models.CellposeModel.eval")
+    model_eval = next(f for f in functions if f["id"] == "cellpose.models.CellposeModel.eval")
     assert model_eval["module"] == "cellpose.models"
     assert model_eval["io_pattern"] == "generic"
 
     # Check a training entry
-    train_seg = next(f for f in functions if f["fn_id"] == "cellpose.train.train_seg")
+    train_seg = next(f for f in functions if f["id"] == "cellpose.train.train_seg")
     assert train_seg["module"] == "cellpose.train"
     assert train_seg["io_pattern"] == "training"

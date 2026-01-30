@@ -20,15 +20,15 @@ $defs:
 
   WorkflowStep:
     type: object
-    required: [step_id, fn_id]
+    required: [step_id, id]
     properties:
       step_id:
         type: string
         pattern: "^[a-z_][a-z0-9_]*$"
         description: "Unique step identifier (lowercase with underscores)"
-      fn_id:
+      id:
         type: string
-        pattern: "^[a-z_]+\\.[a-z_]+$"
+        pattern: "^[a-z_]+(\\.[a-z0-9_]+)+$"
         description: "Tool function ID (e.g., 'base.relabel_axes')"
       inputs:
         type: object
@@ -91,7 +91,7 @@ examples:
     description: "End-to-end FLIM phasor workflow with axis relabeling"
     steps:
       - step_id: "fix_axes"
-        fn_id: "base.relabel_axes"
+        id: "base.relabel_axes"
         inputs:
           image: "datasets/FLUTE_FLIM_data_tif/Embryo.tif"
         params:
@@ -106,7 +106,7 @@ examples:
             value: "TCZYX"
       
       - step_id: "compute_phasor"
-        fn_id: "base.phasor_from_flim"
+        id: "base.phasor_from_flim"
         inputs:
           dataset: "{fix_axes.output}"
         params:
@@ -120,7 +120,7 @@ examples:
     description: "Verify squeeze followed by expand_dims is reversible"
     steps:
       - step_id: "add_dim"
-        fn_id: "base.expand_dims"
+        id: "base.expand_dims"
         inputs:
           image: "datasets/synthetic/test.tif"
         params:
@@ -132,7 +132,7 @@ examples:
             value: "ZYX"
       
       - step_id: "remove_dim"
-        fn_id: "base.squeeze"
+        id: "base.squeeze"
         inputs:
           image: "{add_dim.output}"
         params:
@@ -147,7 +147,7 @@ examples:
     mock_mode: true
     steps:
       - step_id: "swap"
-        fn_id: "base.swap_axes"
+        id: "base.swap_axes"
         inputs:
           image: "datasets/sample.tif"
         params:

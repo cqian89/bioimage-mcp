@@ -33,7 +33,7 @@ def test_list_returns_deterministic_order_with_pagination():
             installed=True,
         )
         service.upsert_function(
-            fn_id=f"pack_{i}.fn",
+            id=f"pack_{i}.fn",
             tool_id=f"tools.pack_{i}",
             name=f"Fn {i}",
             description=f"Fn {i} desc",
@@ -82,7 +82,7 @@ def test_list_includes_child_counts_for_non_leaf_nodes():
         installed=True,
     )
     service.upsert_function(
-        fn_id="base.ops.fn1",
+        id="base.ops.fn1",
         tool_id="tools.base",
         name="Fn1",
         description="Fn1",
@@ -92,7 +92,7 @@ def test_list_includes_child_counts_for_non_leaf_nodes():
         params_schema={},
     )
     service.upsert_function(
-        fn_id="base.utils.fn2",
+        id="base.utils.fn2",
         tool_id="tools.base",
         name="Fn2",
         description="Fn2",
@@ -132,7 +132,7 @@ def test_list_includes_io_summaries_for_function_nodes():
         installed=True,
     )
     service.upsert_function(
-        fn_id="base.ops.gaussian",
+        id="base.ops.gaussian",
         tool_id="tools.base",
         name="Gaussian",
         description="Gaussian",

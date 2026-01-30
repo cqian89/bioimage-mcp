@@ -75,7 +75,7 @@ def introspect_module(module_name: str) -> list[dict]:
 
         functions.append(
             {
-                "fn_id": fn_id,
+                "id": fn_id,
                 "name": name,
                 "summary": summary,
                 "module": module_name,
@@ -158,7 +158,7 @@ def introspect_function(fn_id: str) -> dict:
         properties[param_name] = prop
 
     return {
-        "fn_id": fn_id,
+        "id": fn_id,
         "params_schema": {
             "type": "object",
             "properties": properties,

@@ -47,7 +47,7 @@ class TestTTTRLibManifestContract:
             raw = yaml.safe_load(f)
 
         functions = raw.get("functions", [])
-        fn_ids = [f.get("fn_id") for f in functions]
+        fn_ids = [f.get("id") for f in functions]
 
         expected_functions = [
             "tttrlib.TTTR",
@@ -74,7 +74,7 @@ class TestTTTRLibManifestContract:
         with open(TTTRLIB_MANIFEST_PATH) as f:
             raw = yaml.safe_load(f)
 
-        tttr_fn = next(f for f in raw["functions"] if f["fn_id"] == "tttrlib.TTTR")
+        tttr_fn = next(f for f in raw["functions"] if f["id"] == "tttrlib.TTTR")
 
         # Inputs: filename (str or path) -> we'll use a string for the URI
         # Output: TTTRRef (tttrlib.TTTR)
@@ -88,7 +88,7 @@ class TestTTTRLibManifestContract:
         with open(TTTRLIB_MANIFEST_PATH) as f:
             raw = yaml.safe_load(f)
 
-        clsm_fn = next(f for f in raw["functions"] if f["fn_id"] == "tttrlib.CLSMImage")
+        clsm_fn = next(f for f in raw["functions"] if f["id"] == "tttrlib.CLSMImage")
 
         # Inputs: tttr (TTTRRef)
         # Outputs: ObjectRef (tttrlib.CLSMImage)
@@ -107,7 +107,7 @@ class TestTTTRLibManifestContract:
             raw = yaml.safe_load(f)
 
         decay_fn = next(
-            f for f in raw["functions"] if f["fn_id"] == "tttrlib.CLSMImage.get_fluorescence_decay"
+            f for f in raw["functions"] if f["id"] == "tttrlib.CLSMImage.get_fluorescence_decay"
         )
 
         # Find the decay output

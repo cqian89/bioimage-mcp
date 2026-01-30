@@ -37,7 +37,7 @@ def test_loader_runtime_fallback_rich_metadata(mock_manifest):
     # Mock DiscoveryEngine._runtime_list to return rich metadata
     mock_runtime_functions = [
         {
-            "fn_id": "test.tool.scipy.gaussian_filter",
+            "id": "test.tool.scipy.gaussian_filter",
             "name": "gaussian_filter",
             "module": "scipy.ndimage",
             "params_schema": {

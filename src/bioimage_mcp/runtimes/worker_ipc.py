@@ -21,7 +21,7 @@ import json
 from enum import Enum
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import AliasChoices, BaseModel, Field, field_validator
 
 # ============================================================================
 # WorkerState Enum (T013)
@@ -80,7 +80,12 @@ class ExecuteRequest(BaseModel):
     """
 
     command: Literal["execute"] = Field(..., description="Message type discriminator")
-    fn_id: str = Field(..., description="Function identifier (e.g., 'base.skimage.gaussian')")
+    id: str = Field(
+        ...,
+        validation_alias=AliasChoices("id", "fn_id"),
+        serialization_alias="id",
+        description="Function identifier (e.g., 'base.skimage.gaussian')",
+    )
     inputs: dict[str, Any] = Field(
         ..., description="Input artifact references keyed by port name (URI strings)"
     )
@@ -108,6 +113,11 @@ class ExecuteRequest(BaseModel):
             raise ValueError(f"ExecuteRequest command must be 'execute', got '{v}'")
         return v
 
+    @property
+    def fn_id(self) -> str:
+        """Backward-compatible accessor for legacy 'fn_id' naming."""
+        return self.id
+
 
 class ExecuteResponse(BaseModel):
     """Result of a function execution.
@@ -118,6 +128,12 @@ class ExecuteResponse(BaseModel):
     command: Literal["execute_result"] = Field(..., description="Message type discriminator")
     ok: bool = Field(..., description="True if execution succeeded")
     ordinal: int | None = Field(None, description="Corresponds to the ordinal in the request")
+    id: str | None = Field(
+        None,
+        validation_alias=AliasChoices("id", "fn_id"),
+        serialization_alias="id",
+        description="Function identifier for this execution",
+    )
     outputs: dict[str, Any] | None = Field(
         None, description="Output artifact references (when ok=true)"
     )
@@ -290,7 +306,7 @@ def encode_message(msg: BaseModel) -> str:
         JSON string with trailing newline (NDJSON format)
 
     Example:
-        >>> req = ExecuteRequest(command="execute", fn_id="base.sum", ...)
+        >>> req = ExecuteRequest(command="execute", id="base.sum", ...)
         >>> line = encode_message(req)
         >>> assert line.endswith("\\n")
     """

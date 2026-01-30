@@ -19,11 +19,16 @@ class SchemaCache:
         *,
         tool_id: str,
         tool_version: str,
-        fn_id: str,
+        id: str | None = None,
+        fn_id: str | None = None,
     ) -> dict[str, Any] | None:
+        actual_id = id or fn_id
+        if not actual_id:
+            raise ValueError("id or fn_id is required")
+
         data = self._load()
         tool_key = f"{tool_id}@{tool_version}"
-        entry = data.get("tools", {}).get(tool_key, {}).get("functions", {}).get(fn_id)
+        entry = data.get("tools", {}).get(tool_key, {}).get("functions", {}).get(actual_id)
         if not isinstance(entry, dict):
             return None
         if "params_schema" not in entry:
@@ -35,16 +40,21 @@ class SchemaCache:
         *,
         tool_id: str,
         tool_version: str,
-        fn_id: str,
+        id: str | None = None,
+        fn_id: str | None = None,
         params_schema: dict[str, Any],
         introspection_source: str,
     ) -> None:
+        actual_id = id or fn_id
+        if not actual_id:
+            raise ValueError("id or fn_id is required")
+
         data = self._load()
         tools = data.setdefault("tools", {})
         tool_key = f"{tool_id}@{tool_version}"
         tool_entry = tools.setdefault(tool_key, {})
         functions = tool_entry.setdefault("functions", {})
-        functions[fn_id] = {
+        functions[actual_id] = {
             "params_schema": params_schema,
             "introspection_source": introspection_source,
             "introspected_at": datetime.now(UTC).isoformat(),

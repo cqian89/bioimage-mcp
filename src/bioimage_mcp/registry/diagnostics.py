@@ -24,7 +24,7 @@ class EngineEvent:
     def to_dict(self) -> dict[str, Any]:
         return {
             "type": self.type.value,
-            "fn_id": self.fn_id,
+            "id": self.fn_id,
             "message": self.message,
             "details": self.details,
         }

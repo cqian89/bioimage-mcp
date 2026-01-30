@@ -34,7 +34,7 @@ def discovery_service():
         available=True,
     )
     service.upsert_function(
-        fn_id="sample.function",
+        id="sample.function",
         tool_id="tools.sample",
         name="Sample Function",
         description="A sample function",

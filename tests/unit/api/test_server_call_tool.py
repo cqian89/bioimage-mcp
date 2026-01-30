@@ -52,7 +52,7 @@ class _CapturingInteractive:
         self.calls.append(
             {
                 "session_id": session_id,
-                "fn_id": fn_id,
+                "id": fn_id,
                 "inputs": inputs,
                 "params": params,
                 "ordinal": ordinal,

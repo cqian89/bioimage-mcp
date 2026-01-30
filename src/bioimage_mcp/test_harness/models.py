@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field
 
 
 class StepAssertion(BaseModel):
@@ -17,7 +17,11 @@ class WorkflowStep(BaseModel):
     """Single step in a workflow test case."""
 
     step_id: str = Field(..., pattern=r"^[a-z_][a-z0-9_]*$")
-    fn_id: str = Field(..., pattern=r"^[a-z_]+(\.[a-z0-9_]+)+$")
+    id: str = Field(
+        validation_alias=AliasChoices("id", "fn_id"),
+        serialization_alias="id",
+        pattern=r"^[a-z_]+(\.[a-z0-9_]+)+$",
+    )
     inputs: dict[str, str | dict] = Field(default_factory=dict)
     params: dict[str, Any] = Field(default_factory=dict)
     assertions: list[StepAssertion] = Field(default_factory=list)

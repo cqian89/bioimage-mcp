@@ -893,7 +893,7 @@ FUNCTION_HANDLERS = {
 
 def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
     """Process an execute request."""
-    fn_id = request.get("fn_id", "")
+    fn_id = request.get("id") or request.get("fn_id", "")
     params = request.get("params") or {}
     inputs = request.get("inputs") or {}
     work_dir = Path(request.get("work_dir") or ".").absolute()
@@ -906,7 +906,7 @@ def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
             result = handler(inputs, params, work_dir)
 
             if result.get("ok"):
-                return {
+                response = {
                     "command": "execute_result",
                     "ok": True,
                     "ordinal": ordinal,
@@ -914,27 +914,29 @@ def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
                     "log": result.get("log", "ok"),
                 }
             else:
-                return {
+                response = {
                     "command": "execute_result",
                     "ok": False,
                     "ordinal": ordinal,
                     "error": result.get("error", {"message": "Unknown error"}),
                 }
         else:
-            return {
+            response = {
                 "command": "execute_result",
                 "ok": False,
                 "ordinal": ordinal,
-                "error": {"message": f"Unknown fn_id: {fn_id}"},
+                "error": {"message": f"Unknown function: {fn_id}"},
             }
     except Exception as e:
-        return {
+        response = {
             "command": "execute_result",
             "ok": False,
             "ordinal": ordinal,
             "error": {"message": str(e)},
             "log": traceback.format_exc(),
         }
+    response["id"] = fn_id
+    return response
 
 
 def main() -> int:
@@ -1013,7 +1015,7 @@ def main() -> int:
             # Legacy format
             response = process_execute_request(
                 {
-                    "fn_id": request.get("fn_id"),
+                    "id": request.get("id") or request.get("fn_id"),
                     "params": request.get("params"),
                     "inputs": request.get("inputs"),
                     "work_dir": request.get("work_dir"),

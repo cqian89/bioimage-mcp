@@ -331,7 +331,7 @@ class DiscoveryEngine:
             # We use meta.list command (legacy format usually handles it)
             request = {
                 "command": "execute",
-                "fn_id": "meta.list",
+                "id": "meta.list",
                 "params": {},
             }
             # execute_tool handles spawning the worker
@@ -546,7 +546,7 @@ class DiscoveryEngine:
 
     def _runtime_describe(self, manifest: ToolManifest, fn_id: str) -> dict[str, Any] | None:
         request = {
-            "fn_id": "meta.describe",
+            "id": "meta.describe",
             "command": "execute",
             "params": {"target_fn": fn_id},
             "inputs": {},

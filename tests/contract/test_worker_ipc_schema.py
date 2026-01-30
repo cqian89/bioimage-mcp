@@ -22,7 +22,7 @@ class TestExecuteMessages:
 
         Required per worker-ipc.yaml:
         - command: "execute"
-        - fn_id: str
+        - id: str
         - inputs: object
         - params: object
         - work_dir: str
@@ -31,14 +31,14 @@ class TestExecuteMessages:
 
         msg = ExecuteRequest(
             command="execute",
-            fn_id="base.skimage.gaussian",
+            id="base.skimage.gaussian",
             inputs={"image": "file:///tmp/input.ome.tif"},
             params={"sigma": 1.5},
             work_dir="/tmp/run_123",
         )
 
         assert msg.command == "execute"
-        assert msg.fn_id == "base.skimage.gaussian"
+        assert msg.id == "base.skimage.gaussian"
         assert msg.inputs == {"image": "file:///tmp/input.ome.tif"}
         assert msg.params == {"sigma": 1.5}
         assert msg.work_dir == "/tmp/run_123"
@@ -49,7 +49,7 @@ class TestExecuteMessages:
 
         msg = ExecuteRequest(
             command="execute",
-            fn_id="base.test",
+            id="base.test",
             inputs={},
             params={},
             work_dir="/tmp",
@@ -65,7 +65,7 @@ class TestExecuteMessages:
         with pytest.raises(ValidationError):
             ExecuteRequest(
                 command="invalid",  # Must be "execute"
-                fn_id="base.test",
+                id="base.test",
                 inputs={},
                 params={},
                 work_dir="/tmp",

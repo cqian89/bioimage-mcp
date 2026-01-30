@@ -6,10 +6,15 @@ from typing import Any
 
 @dataclass(frozen=True)
 class ProtocolRequest:
-    fn_id: str
+    id: str
     params: dict
     inputs: dict
     work_dir: str
+
+    @property
+    def fn_id(self) -> str:
+        """Backward-compatible accessor for legacy 'fn_id' naming."""
+        return self.id
 
 
 @dataclass(frozen=True)
@@ -65,6 +70,16 @@ def _is_type_compatible(actual: str, expected: str) -> bool:
     return expected in _TYPE_COMPATIBILITY.get(actual, [])
 
 
+def _normalize_types(raw_type: str | list[str] | None) -> list[str]:
+    if raw_type is None:
+        return []
+    if isinstance(raw_type, list):
+        return [str(t) for t in raw_type if t]
+    if raw_type:
+        return [str(raw_type)]
+    return []
+
+
 def validate_workflow_compatibility(
     workflow_spec: dict[str, Any],
     function_ports: dict[str, dict[str, list[dict[str, Any]]]],
@@ -87,10 +102,13 @@ def validate_workflow_compatibility(
     steps = workflow_spec.get("steps", [])
 
     # Track available outputs from previous steps
-    available_outputs: dict[str, str | list[str]] = {}  # output_ref -> artifact_type
+    available_outputs: dict[str, list[str]] = {}  # output_ref -> artifact_type(s)
 
     for step_idx, step in enumerate(steps):
-        fn_id = step.get("fn_id", "")
+        fn_id = step.get("id") or step.get("fn_id", "")
+        if "fn_id" in step and "id" not in step:
+            step["id"] = fn_id
+        step.pop("fn_id", None)
         step_inputs = step.get("inputs", {})
 
         # Get function port definitions
@@ -106,10 +124,7 @@ def validate_workflow_compatibility(
                 msg = f"Step {step_idx} missing required input '{input_name}'"
 
                 raw_type = input_def.get("artifact_type", "")
-                if isinstance(raw_type, list):
-                    expected_type_str = " | ".join(str(t) for t in raw_type)
-                else:
-                    expected_type_str = str(raw_type or "")
+                expected_type_str = " | ".join(_normalize_types(raw_type))
 
                 errors.append(
                     WorkflowCompatibilityError(
@@ -127,12 +142,8 @@ def validate_workflow_compatibility(
                 continue  # Unknown input - might be optional
 
             raw_expected_type = input_defs[input_name].get("artifact_type", "")
-            if isinstance(raw_expected_type, list):
-                expected_types = [str(t) for t in raw_expected_type]
-                expected_type_str = " | ".join(expected_types)
-            else:
-                expected_types = [str(raw_expected_type)] if raw_expected_type else []
-                expected_type_str = str(raw_expected_type or "")
+            expected_types = _normalize_types(raw_expected_type)
+            expected_type_str = " | ".join(expected_types)
 
             actual_types = []
 
@@ -146,24 +157,21 @@ def validate_workflow_compatibility(
                     return res
                 if isinstance(val, dict):
                     t = val.get("type", "")
-                    return [str(t)] if t else []
+                    return _normalize_types(t)
                 if isinstance(val, str) and val in available_outputs:
-                    raw_avail = available_outputs[val]
-                    if isinstance(raw_avail, list):
-                        return [str(t) for t in raw_avail]
-                    return [str(raw_avail)] if raw_avail else []
+                    return available_outputs[val]
                 return []
 
             actual_types = _extract_types(input_value)
 
             # Check type compatibility
             if expected_types and actual_types:
-                # Check if all possible actual types are covered by expected types (T018: handle inheritance)
-                is_compatible = True
-                for act_t in actual_types:
-                    if not any(_is_type_compatible(act_t, exp_t) for exp_t in expected_types):
-                        is_compatible = False
-                        break
+                # Check if any actual type is compatible with any expected type (T018: handle inheritance)
+                is_compatible = any(
+                    _is_type_compatible(act_t, exp_t)
+                    for act_t in actual_types
+                    for exp_t in expected_types
+                )
 
                 if not is_compatible:
                     actual_type_str = " | ".join(sorted(set(actual_types)))
@@ -184,6 +192,6 @@ def validate_workflow_compatibility(
         # Register this step's outputs as available
         for output_name, output_def in output_defs.items():
             output_ref = f"step{step_idx}.{output_name}"
-            available_outputs[output_ref] = output_def.get("artifact_type", "") or ""
+            available_outputs[output_ref] = _normalize_types(output_def.get("artifact_type", ""))
 
     return errors

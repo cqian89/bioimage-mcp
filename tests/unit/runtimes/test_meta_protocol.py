@@ -31,7 +31,7 @@ def test_parse_meta_list_result_valid():
         "result": {
             "functions": [
                 {
-                    "fn_id": "test.fn",
+                    "id": "test.fn",
                     "name": "Test Function",
                     "summary": "A test function",
                     "module": "test_module",
@@ -42,11 +42,11 @@ def test_parse_meta_list_result_valid():
     }
     result = parse_meta_list_result(response)
     assert len(result) == 1
-    assert result[0]["fn_id"] == "test.fn"
+    assert result[0]["id"] == "test.fn"
     assert result[0]["io_pattern"] == "image_to_image"
 
 
-def test_parse_meta_list_result_missing_optional():
+def test_parse_meta_list_result_accepts_fn_id_alias():
     response = {
         "ok": True,
         "result": {
@@ -61,7 +61,26 @@ def test_parse_meta_list_result_missing_optional():
     }
     result = parse_meta_list_result(response)
     assert len(result) == 1
-    assert result[0]["fn_id"] == "test.fn"
+    assert result[0]["id"] == "test.fn"
+    assert "fn_id" not in result[0]
+
+
+def test_parse_meta_list_result_missing_optional():
+    response = {
+        "ok": True,
+        "result": {
+            "functions": [
+                {
+                    "id": "test.fn",
+                    "name": "Test Function",
+                    "summary": "A test function",
+                }
+            ]
+        },
+    }
+    result = parse_meta_list_result(response)
+    assert len(result) == 1
+    assert result[0]["id"] == "test.fn"
     assert result[0]["module"] is None
     assert result[0]["io_pattern"] == "generic"
 
@@ -72,12 +91,12 @@ def test_parse_meta_list_result_skips_invalid():
         "result": {
             "functions": [
                 {
-                    "fn_id": "test.valid",
+                    "id": "test.valid",
                     "name": "Valid",
                     "summary": "Summary",
                 },
                 {
-                    "fn_id": "test.invalid",
+                    "id": "test.invalid",
                     # missing name and summary
                 },
             ]
@@ -85,7 +104,7 @@ def test_parse_meta_list_result_skips_invalid():
     }
     result = parse_meta_list_result(response)
     assert len(result) == 1
-    assert result[0]["fn_id"] == "test.valid"
+    assert result[0]["id"] == "test.valid"
 
 
 def test_parse_meta_describe_result_valid():

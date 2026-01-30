@@ -95,13 +95,13 @@ def test_dynamic_dispatch_unknown():
     }
     response = entrypoint.process_execute_request(request)
     assert response["ok"] is False
-    assert "Unknown fn_id" in response["error"]["message"]
+    assert "Unknown function" in response["error"]["message"]
 
 
 def test_meta_describe_eval():
     request = {
         "command": "execute",
-        "fn_id": "meta.describe",
+        "id": "meta.describe",
         "params": {"target_fn": "cellpose.models.CellposeModel.eval"},
         "work_dir": "/tmp/work_meta",
         "ordinal": 1,

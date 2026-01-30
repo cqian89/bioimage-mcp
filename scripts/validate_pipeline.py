@@ -108,7 +108,7 @@ def validate_image(svc: ExecutionService, image_path: Path, dry_run: bool = Fals
             {
                 "steps": [
                     {
-                        "fn_id": "cellpose.segment",
+                        "id": "cellpose.segment",
                         "inputs": {
                             "image": {
                                 "type": "BioImageRef",

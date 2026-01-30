@@ -49,10 +49,15 @@ def test_expand_to_5d_logic():
 
 
 def test_convert_memory_inputs_to_files_with_2d(tmp_path):
+    mock_writer_cls = MagicMock()
+    mock_writer_module = MagicMock()
+    mock_writer_module.OMEZarrWriter = mock_writer_cls
     with (
         patch("bioimage_mcp_base.entrypoint._load_from_memory") as mock_load,
-        patch("bioio.writers.OmeTiffWriter.save") as mock_save,
+        patch.dict(sys.modules, {"bioio_ome_zarr.writers": mock_writer_module}),
     ):
+        mock_writer = MagicMock()
+        mock_writer_cls.return_value = mock_writer
         data_2d = np.zeros((100, 100))
         mock_load.return_value = data_2d
 
@@ -60,9 +65,9 @@ def test_convert_memory_inputs_to_files_with_2d(tmp_path):
 
         entrypoint._convert_memory_inputs_to_files(inputs, tmp_path)
 
-        # Verify OmeTiffWriter.save was called with 2D data
-        assert mock_save.called
-        args, _ = mock_save.call_args
+        # Verify OMEZarrWriter.write_full_volume was called with 2D data
+        assert mock_writer.write_full_volume.called
+        args, _ = mock_writer.write_full_volume.call_args
         saved_data = args[0]
         assert saved_data.ndim == 2
         assert saved_data.shape == (100, 100)

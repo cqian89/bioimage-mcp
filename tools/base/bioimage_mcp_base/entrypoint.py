@@ -69,6 +69,13 @@ def get_fn_map() -> dict[str, tuple]:
     return _FN_MAP
 
 
+def __getattr__(name: str) -> Any:
+    """Lazy module attributes for backward compatibility (T130)."""
+    if name == "FN_MAP":
+        return get_fn_map()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
 LEGACY_REDIRECTS = {}
 
 
@@ -352,7 +359,7 @@ def handle_meta_list(params: dict[str, Any]) -> dict[str, Any]:
             summary = meta.description.split("\n")[0] if meta.description else ""
 
             fn_dict = {
-                "fn_id": meta.fn_id,
+                "id": meta.fn_id,
                 "name": meta.name,
                 "module": meta.module,
                 "summary": summary,
@@ -738,7 +745,7 @@ def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
     Returns:
         ExecuteResponse format dict with command="execute_result"
     """
-    fn_id = request.get("fn_id")
+    fn_id = request.get("id") or request.get("fn_id")
     params = request.get("params") or {}
     inputs = request.get("inputs") or {}
     hints = request.get("hints") or {}
@@ -798,6 +805,7 @@ def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
                     "error": {"message": result_response.get("error", "Unknown error")},
                     "log": f"meta.list failed: {result_response.get('error', 'Unknown error')}",
                 }
+            response["id"] = fn_id
             return response
         if fn_id == "meta.describe":
             result_response = handle_meta_describe(params)
@@ -819,6 +827,7 @@ def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
                     "error": {"message": result_response.get("error", "Unknown error")},
                     "log": f"meta.describe failed: {result_response.get('error', 'Unknown error')}",
                 }
+            response["id"] = fn_id
             return response
 
         fn_map = get_fn_map()
@@ -845,6 +854,7 @@ def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
                 response["warnings"] = warnings + result.get("warnings", [])
                 if "provenance" in result:
                     response["provenance"] = result["provenance"]
+                response["id"] = fn_id
             else:
                 out_path = result
 
@@ -903,6 +913,7 @@ def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
                         "log": "ok",
                         "warnings": warnings,
                     }
+                response["id"] = fn_id
         else:
             # Dynamic dispatch for functions not in FN_MAP
             from bioimage_mcp_base.dynamic_dispatch import dispatch_dynamic
@@ -934,6 +945,7 @@ def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
                 "outputs": outputs,
                 "log": "ok (dynamic dispatch)",
             }
+            response["id"] = fn_id
     except Exception as exc:  # noqa: BLE001
         error = {"message": str(exc)}
         error_code = getattr(exc, "code", None)
@@ -947,6 +959,7 @@ def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
             "outputs": {},
             "log": traceback.format_exc(),
         }
+        response["id"] = fn_id
 
     return response
 

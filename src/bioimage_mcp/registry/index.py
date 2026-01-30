@@ -70,7 +70,8 @@ class RegistryIndex:
     def upsert_function(
         self,
         *,
-        fn_id: str,
+        id: str | None = None,
+        fn_id: str | None = None,
         tool_id: str,
         name: str,
         description: str,
@@ -82,6 +83,10 @@ class RegistryIndex:
         module: str | None = None,
         io_pattern: str | None = None,
     ) -> None:
+        actual_id = id or fn_id
+        if not actual_id:
+            raise ValueError("id or fn_id is required")
+
         self._conn.execute(
             """
             INSERT INTO functions(
@@ -111,7 +116,7 @@ class RegistryIndex:
               io_pattern=excluded.io_pattern
             """,
             (
-                fn_id,
+                actual_id,
                 tool_id,
                 name,
                 description,
@@ -171,7 +176,7 @@ class RegistryIndex:
         ).fetchall()
         return [
             {
-                "fn_id": row["fn_id"],
+                "id": row["fn_id"],
                 "tool_id": row["tool_id"],
                 "name": row["name"],
                 "description": row["description"],
@@ -206,7 +211,7 @@ class RegistryIndex:
         ).fetchall()
         return [
             {
-                "fn_id": r["fn_id"],
+                "id": r["fn_id"],
                 "tool_id": r["tool_id"],
                 "name": r["name"],
                 "description": r["description"],
@@ -215,15 +220,19 @@ class RegistryIndex:
             for r in rows
         ]
 
-    def get_function(self, fn_id: str) -> dict | None:
+    def get_function(self, id: str | None = None, fn_id: str | None = None) -> dict | None:
+        actual_id = id or fn_id
+        if not actual_id:
+            raise ValueError("id or fn_id is required")
+
         row = self._conn.execute(
             "SELECT fn_id, tool_id, module, params_schema_json, introspection_source FROM functions WHERE fn_id = ?",
-            (fn_id,),
+            (actual_id,),
         ).fetchone()
         if row is None:
             return None
         result = {
-            "fn_id": row["fn_id"],
+            "id": row["fn_id"],
             "tool_id": row["tool_id"],
             "module": row["module"],
             "schema": json.loads(row["params_schema_json"]),
@@ -263,7 +272,7 @@ class RegistryIndex:
         for r in rows:
             results.append(
                 {
-                    "fn_id": r["fn_id"],
+                    "id": r["fn_id"],
                     "tool_id": r["tool_id"],
                     "name": r["name"],
                     "description": r["description"],
@@ -281,7 +290,8 @@ class RegistryIndex:
         *,
         tool_id: str,
         tool_version: str,
-        fn_id: str,
+        id: str | None = None,
+        fn_id: str | None = None,
         env_lock_hash: str | None = None,
         source_hash: str | None = None,
     ) -> dict | None:
@@ -291,6 +301,10 @@ class RegistryIndex:
         (indicating cache invalidation is needed). If env_lock_hash or source_hash
         are provided, they must also match.
         """
+        actual_id = id or fn_id
+        if not actual_id:
+            raise ValueError("id or fn_id is required")
+
         row = self._conn.execute(
             """
             SELECT params_schema_json, introspection_source, tool_version,
@@ -298,7 +312,7 @@ class RegistryIndex:
             FROM schema_cache
             WHERE tool_id = ? AND fn_id = ?
             """,
-            (tool_id, fn_id),
+            (tool_id, actual_id),
         ).fetchone()
 
         if row is None:
@@ -331,7 +345,8 @@ class RegistryIndex:
         *,
         tool_id: str,
         tool_version: str,
-        fn_id: str,
+        id: str | None = None,
+        fn_id: str | None = None,
         params_schema: dict,
         introspection_source: str,
         env_lock_hash: str | None = None,
@@ -339,6 +354,10 @@ class RegistryIndex:
         source_hash: str | None = None,
     ) -> None:
         """Cache a params_schema obtained via meta.describe."""
+        actual_id = id or fn_id
+        if not actual_id:
+            raise ValueError("id or fn_id is required")
+
         now = datetime.now(UTC).isoformat()
         self._conn.execute(
             """
@@ -360,7 +379,7 @@ class RegistryIndex:
             (
                 tool_id,
                 tool_version,
-                fn_id,
+                actual_id,
                 json.dumps(params_schema),
                 introspection_source,
                 now,
@@ -462,7 +481,10 @@ class ToolIndex:
 
     def build_hierarchy(self) -> None:
         for fn in self._functions:
-            fn_id = str(fn["fn_id"])
+            raw_id = fn.get("id") or fn.get("fn_id")
+            if not raw_id:
+                continue
+            fn_id = str(raw_id)
             tool_id = fn.get("tool_id")
             env_name = self._env_name(fn_id, tool_id)
             segments = fn_id.split(".") if fn_id else []

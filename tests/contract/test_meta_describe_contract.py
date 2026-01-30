@@ -9,19 +9,23 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-from pydantic import BaseModel, Field, model_validator
+from pydantic import AliasChoices, BaseModel, Field, model_validator
 
 
 class MetaDescribeRequest(BaseModel):
     """Expected schema for meta.describe request."""
 
-    fn_id: str = Field(default="meta.describe")
+    id: str = Field(
+        default="meta.describe",
+        validation_alias=AliasChoices("id", "fn_id"),
+        serialization_alias="id",
+    )
     params: dict[str, Any] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def _validate_request(self) -> MetaDescribeRequest:
-        if self.fn_id != "meta.describe":
-            raise ValueError("fn_id must be 'meta.describe'")
+        if self.id != "meta.describe":
+            raise ValueError("id must be 'meta.describe'")
         if "target_fn" not in self.params:
             raise ValueError("params.target_fn is required")
         return self
@@ -66,21 +70,21 @@ class TestMetaDescribeRequestContract:
     def test_valid_request_accepted(self) -> None:
         """Test that a valid request passes validation."""
         request = {
-            "fn_id": "meta.describe",
+            "id": "meta.describe",
             "params": {"target_fn": "cellpose.models.CellposeModel.eval"},
         }
         validated = MetaDescribeRequest(**request)
-        assert validated.fn_id == "meta.describe"
+        assert validated.id == "meta.describe"
         assert validated.params["target_fn"] == "cellpose.models.CellposeModel.eval"
 
-    def test_request_requires_fn_id_meta_describe(self) -> None:
-        """Test that fn_id must be 'meta.describe'."""
-        with pytest.raises(ValueError, match="fn_id must be 'meta.describe'"):
-            # This is tricky because the model_validator checks fn_id == "meta.describe"
+    def test_request_requires_id_meta_describe(self) -> None:
+        """Test that id must be 'meta.describe'."""
+        with pytest.raises(ValueError, match="id must be 'meta.describe'"):
+            # This is tricky because the model_validator checks id == "meta.describe"
             # but we want to test what happens if it's NOT that.
             # The original test passed "other.function" which is correct for testing failure.
             request_fail = {
-                "fn_id": "other.function",
+                "id": "other.function",
                 "params": {"target_fn": "cellpose.models.CellposeModel.eval"},
             }
             MetaDescribeRequest(**request_fail)
@@ -88,7 +92,7 @@ class TestMetaDescribeRequestContract:
     def test_request_requires_target_fn_param(self) -> None:
         """Test that params.target_fn is required."""
         request = {
-            "fn_id": "meta.describe",
+            "id": "meta.describe",
             "params": {},
         }
         with pytest.raises(ValueError, match="params.target_fn is required"):

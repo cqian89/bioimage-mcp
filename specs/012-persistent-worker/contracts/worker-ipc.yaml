@@ -27,12 +27,12 @@ messages:
   ExecuteRequest:
     type: object
     description: Request to execute a tool function within the worker environment.
-    required: [command, fn_id, inputs, params, work_dir]
+    required: [command, id, inputs, params, work_dir]
     properties:
       command:
         type: string
         const: execute
-      fn_id:
+      id:
         type: string
         description: Function identifier (e.g., "base.bioio.export")
       inputs:
@@ -184,7 +184,7 @@ examples:
     sequence:
       - core_request:
           command: "execute"
-          fn_id: "base.skimage.gaussian"
+          id: "base.skimage.gaussian"
           inputs: { "image": "file:///tmp/input.ome.tif" }
           params: { "sigma": 1.5 }
           work_dir: "/tmp/run_123"

@@ -53,11 +53,11 @@ def generate_coverage_report() -> CoverageReport:
     exposed = []
     excluded = []
 
-    fn_ids = {f["fn_id"] for f in all_functions}
+    fn_ids = {f["id"] for f in all_functions}
 
     for fn_id in sorted(list(fn_ids)):
         if fn_id in EXCLUSIONS:
-            excluded.append({"fn_id": fn_id, "reason": EXCLUSIONS[fn_id]})
+            excluded.append({"id": fn_id, "reason": EXCLUSIONS[fn_id]})
         else:
             exposed.append(fn_id)
 
@@ -127,7 +127,7 @@ def format_report_markdown(report: CoverageReport) -> str:
         ]
     )
     for item in report.excluded_functions:
-        lines.append(f"| `{item['fn_id']}` | {item['reason']} |")
+        lines.append(f"| `{item['id']}` | {item['reason']} |")
     lines.append("")
 
     lines.extend(

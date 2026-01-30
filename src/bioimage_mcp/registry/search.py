@@ -77,9 +77,16 @@ class SearchIndex:
 
         prepared: list[dict] = []
         for candidate in candidates:
-            name_text = f"{candidate.get('name', '')} {candidate.get('fn_id', '')}".strip()
-            description_text = str(candidate.get("description") or "")
-            tags_text = " ".join(candidate.get("tags") or [])
+            candidate_id = candidate.get("id") or candidate.get("fn_id")
+            if not candidate_id:
+                continue
+            normalized_candidate = dict(candidate)
+            normalized_candidate["id"] = candidate_id
+            normalized_candidate.pop("fn_id", None)
+
+            name_text = f"{normalized_candidate.get('name', '')} {normalized_candidate.get('id', '')}".strip()
+            description_text = str(normalized_candidate.get("description") or "")
+            tags_text = " ".join(normalized_candidate.get("tags") or [])
 
             name_tokens = self.tokenize(name_text)
             description_tokens = self.tokenize(description_text)
@@ -87,7 +94,7 @@ class SearchIndex:
 
             prepared.append(
                 {
-                    **candidate,
+                    **normalized_candidate,
                     "_counts": {
                         "name": Counter(name_tokens),
                         "description": Counter(description_tokens),
@@ -152,5 +159,5 @@ class SearchIndex:
                 }
             )
 
-        ranked.sort(key=lambda item: (-item["match_count"], -item["score"], item["fn_id"]))
+        ranked.sort(key=lambda item: (-item["match_count"], -item["score"], item["id"]))
         return ranked

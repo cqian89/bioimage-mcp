@@ -238,5 +238,5 @@ def dispatch_dynamic(
 
     # Convert outputs from artifacts to dict refs
     result = _convert_outputs_to_refs(output_artifacts)
-
+    result["id"] = fn_id
     return result

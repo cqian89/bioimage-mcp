@@ -49,7 +49,7 @@ def serve(*, stdio: bool) -> int:
         for fn in manifest.functions:
             valid_fn_ids.add(fn.fn_id)
             service.upsert_function(
-                fn_id=fn.fn_id,
+                id=fn.fn_id,
                 tool_id=fn.tool_id,
                 name=fn.name,
                 description=fn.description,

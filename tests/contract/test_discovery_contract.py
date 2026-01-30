@@ -23,7 +23,7 @@ def test_discovery_list_tools_contract_shape() -> None:
     )
 
     service.upsert_function(
-        fn_id="base.skimage.filters.gaussian",
+        id="base.skimage.filters.gaussian",
         tool_id="tools.base",
         name="Gaussian blur",
         description="Blur an image",
@@ -59,7 +59,7 @@ def test_discovery_search_functions_contract_shape() -> None:
         installed=True,
     )
     service.upsert_function(
-        fn_id="base.bioimage_mcp_base.preprocess.gaussian",
+        id="base.bioimage_mcp_base.preprocess.gaussian",
         tool_id="tools.base",
         name="Gaussian blur",
         description="Blur an image",
@@ -96,7 +96,7 @@ def test_discovery_describe_function_returns_schema() -> None:
         installed=True,
     )
     service.upsert_function(
-        fn_id="base.bioimage_mcp_base.preprocess.gaussian",
+        id="base.bioimage_mcp_base.preprocess.gaussian",
         tool_id="tools.base",
         name="Gaussian blur",
         description="Blur an image",
@@ -151,7 +151,7 @@ def test_list_tools_returns_without_session_error() -> None:
     )
 
     service.upsert_function(
-        fn_id="base.skimage.filters.gaussian",
+        id="base.skimage.filters.gaussian",
         tool_id="tools.base",
         name="Gaussian Blur",
         description="Apply Gaussian blur filter",
@@ -178,7 +178,7 @@ def test_search_functions_returns_matching_results() -> None:
     Contract: specs/006-phasor-usability-fixes/contracts/api.yaml
     Given: Base toolkit loaded with phasor functions
     When: Call search_functions(query="phasor")
-    Then: Returns functions containing "phasor" in fn_id or description
+    Then: Returns functions containing "phasor" in id or description
     """
     conn = sqlite3.connect(":memory:")
     init_schema(conn)
@@ -197,7 +197,7 @@ def test_search_functions_returns_matching_results() -> None:
 
     # Add phasor-related function
     service.upsert_function(
-        fn_id="base.phasorpy.phasor.phasor_from_signal",
+        id="base.phasorpy.phasor.phasor_from_signal",
         tool_id="tools.base",
         name="Phasor from FLIM",
         description="Calculate phasor coordinates from FLIM data",
@@ -209,7 +209,7 @@ def test_search_functions_returns_matching_results() -> None:
 
     # Add non-matching function
     service.upsert_function(
-        fn_id="base.bioimage_mcp_base.preprocess.gaussian",
+        id="base.bioimage_mcp_base.preprocess.gaussian",
         tool_id="tools.base",
         name="Gaussian Blur",
         description="Apply Gaussian blur filter",
@@ -262,7 +262,7 @@ def test_list_tools_returns_paginated_response() -> None:
             installed=True,
         )
         service.upsert_function(
-            fn_id=f"{env_name}.pkg.module.fn{i}",
+            id=f"{env_name}.pkg.module.fn{i}",
             tool_id=tool_id,
             name=f"Function {i}",
             description=f"Function {i}",

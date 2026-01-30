@@ -29,7 +29,7 @@ dynamic_sources:
 
 functions:
   # Training function (dynamically discovered)
-  - fn_id: cellpose.train.train_seg
+  - id: cellpose.train.train_seg
     tool_id: tools.cellpose
     name: Cellpose Training
     description: Train or fine-tune Cellpose models.
@@ -90,7 +90,7 @@ functions:
           default: true
           description: "Normalize image intensities"
 
-  - fn_id: cellpose.models.CellposeModel
+  - id: cellpose.models.CellposeModel
     tool_id: tools.cellpose
     name: Initialize Cellpose Model
     description: Instantiate a CellposeModel and return an ObjectRef for reuse.
@@ -110,7 +110,7 @@ functions:
           type: boolean
           default: false
 
-  - fn_id: cellpose.models.CellposeModel.eval
+  - id: cellpose.models.CellposeModel.eval
     tool_id: tools.cellpose
     name: Evaluate Cellpose Model
     description: Run evaluation on a pre-initialized CellposeModel.
@@ -174,7 +174,7 @@ functions:
           default: false
           description: "Use test-time augmentation. May improve results at 4x processing time cost."
 
-  - fn_id: cellpose.denoise.DenoiseModel
+  - id: cellpose.denoise.DenoiseModel
     tool_id: tools.cellpose
     name: Initialize Denoise Model
     description: Instantiate a DenoiseModel and return an ObjectRef for reuse.
@@ -194,7 +194,7 @@ functions:
           type: boolean
           default: false
 
-  - fn_id: cellpose.denoise.DenoiseModel.eval
+  - id: cellpose.denoise.DenoiseModel.eval
     tool_id: tools.cellpose
     name: Denoise Image
     description: Run denoising on an image using a pre-initialized DenoiseModel.
@@ -234,7 +234,7 @@ functions:
           default: false
           description: "Tile large images for processing."
 
-  - fn_id: cellpose.metrics.average_precision
+  - id: cellpose.metrics.average_precision
     tool_id: tools.cellpose
     name: Average Precision
     description: Compute average precision between predicted and ground truth masks at multiple IoU thresholds.
@@ -263,7 +263,7 @@ functions:
           default: [0.5, 0.75, 0.9]
           description: IoU thresholds for computing AP
 
-  - fn_id: cellpose.cache.clear
+  - id: cellpose.cache.clear
     tool_id: tools.cellpose
     name: Clear Model Cache
     description: Clear all cached ObjectRefs from memory
@@ -274,7 +274,7 @@ functions:
       type: object
       properties: {}
 
-  - fn_id: meta.describe
+  - id: meta.describe
     tool_id: tools.cellpose
     name: Describe Function
     description: Return parameter schema for a function.
@@ -286,6 +286,6 @@ functions:
       properties:
         target_fn:
           type: string
-          description: "The fn_id to describe"
+          description: "The function id to describe"
       required:
         - target_fn

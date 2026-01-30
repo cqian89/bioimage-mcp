@@ -92,7 +92,7 @@ for line in sys.stdin:
     worker = WorkerProcess(session_id="test_stderr_exec", env_id="", entrypoint=str(script))
 
     try:
-        response = worker.execute({"fn_id": "test_fn", "inputs": {}})
+        response = worker.execute({"id": "test_fn", "inputs": {}})
 
         assert response["ok"] is False
         assert "Captured stderr message during execution" in response.get("log", "")
@@ -116,7 +116,7 @@ for line in sys.stdin:
     try:
         req = json.loads(line)
         if req.get("command") == "execute":
-            fn_id = req.get("fn_id")
+            fn_id = req.get("id") or req.get("fn_id")
             if fn_id == "success_with_warning":
                 print("Warning from successful call", file=sys.stderr)
                 sys.stderr.flush()
@@ -151,12 +151,12 @@ for line in sys.stdin:
 
     try:
         # 1. Call that succeeds but emits warning
-        res1 = worker.execute({"fn_id": "success_with_warning"})
+        res1 = worker.execute({"id": "success_with_warning"})
         assert res1["ok"] is True
         # Stderr should NOT have been drained
 
         # 2. Call that fails
-        res2 = worker.execute({"fn_id": "fail"})
+        res2 = worker.execute({"id": "fail"})
         assert res2["ok"] is False
 
         # Log should contain BOTH the earlier warning and the current error message

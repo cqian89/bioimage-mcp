@@ -260,3 +260,50 @@ class TestReplayWorkflow:
             assert "schema_version" in record_data
             assert "workflow_spec" in record_data
             assert record_data["run_id"] == result["run_id"]
+
+    def test_replay_accepts_legacy_fn_id_in_workflow_spec(
+        self, tmp_path: Path, monkeypatch
+    ) -> None:
+        """Test that replay_workflow accepts legacy fn_id in workflow specs."""
+        config = Config(
+            artifact_store_root=tmp_path / "artifacts",
+            tool_manifest_roots=[tmp_path / "tools"],
+            fs_allowlist_read=[tmp_path],
+            fs_allowlist_write=[tmp_path],
+            fs_denylist=[],
+        )
+        (tmp_path / "tools").mkdir()
+
+        monkeypatch.setattr(
+            "bioimage_mcp.api.execution.execute_step",
+            _mock_execute_step_success,
+        )
+
+        store = ArtifactStore(config)
+        workflow_record = {
+            "schema_version": "0.1",
+            "run_id": "original-run-legacy-001",
+            "created_at": "2024-01-01T00:00:00Z",
+            "workflow_spec": {
+                "steps": [
+                    {
+                        "fn_id": "cellpose.models.CellposeModel.eval",
+                        "inputs": {},
+                        "params": {"diameter": 30.0},
+                    }
+                ]
+            },
+            "inputs": {},
+            "params": {"diameter": 30.0},
+            "outputs": {},
+        }
+
+        record_ref = store.write_native_output(
+            workflow_record,
+            format="workflow-record-json",
+        )
+
+        with ExecutionService(config, artifact_store=store) as svc:
+            replay_result = svc.replay_workflow(record_ref.ref_id)
+
+        assert replay_result["status"] in {"success", "running", "queued"}

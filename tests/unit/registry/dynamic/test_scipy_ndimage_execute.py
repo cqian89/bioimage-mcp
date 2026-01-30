@@ -136,7 +136,7 @@ def test_execute_named_inputs_and_metadata(adapter, mock_module, tmp_path):
     assert len(results) == 1
     out = results[0]
     assert out["type"] == "BioImageRef"
-    assert out["format"] == "OME-TIFF"
+    assert out["format"] == "OME-Zarr"
     assert "metadata" in out
     meta = out["metadata"]
     assert meta["axes"] == "YX"
@@ -288,7 +288,7 @@ def test_execute_callable_error(adapter, mock_module, tmp_path):
 
 def test_execute_metadata_file_persistence(adapter, mock_module, tmp_path):
     # Setup input data in OBJECT_CACHE
-    data = np.random.rand(10, 10).astype(np.float32)
+    data = np.random.rand(1, 10, 10).astype(np.float32)
     uri = "obj://test_meta_persist"
     OBJECT_CACHE[uri] = data
 
@@ -298,7 +298,7 @@ def test_execute_metadata_file_persistence(adapter, mock_module, tmp_path):
             {
                 "uri": uri,
                 "metadata": {
-                    "axes": "YX",
+                    "axes": "CYX",
                     "physical_pixel_sizes": {"Y": 1.0, "X": 2.0},
                     "channel_names": ["Ch1"],
                 },
@@ -476,7 +476,7 @@ def test_execute_label_returns_labels_and_counts_json(adapter, mock_module, tmp_
     labels_ref = next(r for r in results if r.get("type") == "LabelImageRef")
     counts_ref = next(r for r in results if r.get("format") == "json")
 
-    assert labels_ref["path"].endswith("labels.ome.tiff")
+    assert labels_ref["path"].endswith("labels.ome.zarr")
     assert counts_ref["path"].endswith("counts.json")
 
     assert Path(labels_ref["path"]).exists()

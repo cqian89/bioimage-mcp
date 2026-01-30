@@ -40,7 +40,7 @@ def discovery_service_with_data():
         # Add functions to each tool
         for j in range(1, 4):  # 3 functions per tool
             service.upsert_function(
-                fn_id=f"{env_name}.pkg.module.func{j}",
+                id=f"{env_name}.pkg.module.func{j}",
                 tool_id=tool_id,
                 name=f"Function {j} of Tool {i}",
                 description=f"Function {j}",

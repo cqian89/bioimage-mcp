@@ -366,7 +366,7 @@ class ScipySpatialAdapter(ScipyStatsAdapter):
             work_dir=work_dir,
             filename="kdtree_query.json",
             metadata_override={
-                "fn_id": "scipy.spatial.cKDTree.query",
+                "id": "scipy.spatial.cKDTree.query",
                 "k": k,
                 "n_queries": len(query_points),
             },
@@ -537,7 +537,7 @@ class ScipySpatialAdapter(ScipyStatsAdapter):
             payload,
             work_dir=work_dir,
             filename=filename,
-            metadata_override={"fn_id": fn_id, "selected_columns": selected_cols},
+            metadata_override={"id": fn_id, "selected_columns": selected_cols},
         )
         return [ref]
 

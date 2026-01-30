@@ -30,7 +30,7 @@ def test_describe_function_separates_inputs_outputs_params():
         installed=True,
     )
     service.upsert_function(
-        fn_id="base.ops.gaussian",
+        id="base.ops.gaussian",
         tool_id="tools.base",
         name="Gaussian",
         description="Gaussian",
@@ -81,7 +81,7 @@ def test_describe_non_function_node_returns_catalog_node():
         installed=True,
     )
     service.upsert_function(
-        fn_id="base.ops.fn1",
+        id="base.ops.fn1",
         tool_id="tools.base",
         name="Fn1",
         description="Fn1",

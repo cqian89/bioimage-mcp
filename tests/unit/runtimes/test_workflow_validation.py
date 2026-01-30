@@ -99,7 +99,7 @@ class TestWorkflowValidation:
             "Error should reference the missing 'x' input"
         )
 
-    @pytest.mark.xfail(reason="Unknown fn_id validation not yet implemented in v0.1")
+    @pytest.mark.xfail(reason="Unknown id validation not yet implemented in v0.1")
     def test_unknown_fn_id_fails(self) -> None:
         """Test that unknown function IDs are caught."""
         workflow_spec = {
@@ -178,3 +178,74 @@ class TestWorkflowValidation:
         assert hasattr(error, "step_index"), "Error should have step_index"
         assert hasattr(error, "port_name"), "Error should have port_name"
         assert hasattr(error, "message"), "Error should have message"
+
+    def test_list_typed_io_is_compatible(self) -> None:
+        """Test that list-typed I/O is normalized and compatible."""
+        workflow_spec = {
+            "steps": [
+                {
+                    "id": "step.one",
+                    "inputs": {"x": {"type": ["BioImageRef", "ObjectRef"]}},
+                    "params": {},
+                },
+                {
+                    "id": "step.two",
+                    "inputs": {"image": "step0.output"},
+                    "params": {},
+                },
+            ]
+        }
+
+        function_ports = {
+            "step.one": {
+                "inputs": [
+                    {"name": "x", "artifact_type": ["BioImageRef", "ObjectRef"], "required": True}
+                ],
+                "outputs": [{"name": "output", "artifact_type": ["BioImageRef", "ObjectRef"]}],
+            },
+            "step.two": {
+                "inputs": [{"name": "image", "artifact_type": "BioImageRef", "required": True}],
+                "outputs": [],
+            },
+        }
+
+        errors = validate_workflow_compatibility(workflow_spec, function_ports)
+        assert len(errors) == 0, f"Expected no errors, got: {errors}"
+
+    def test_list_typed_io_mismatch_errors(self) -> None:
+        """Test that incompatible list-typed I/O produces validation errors."""
+        workflow_spec = {
+            "steps": [
+                {
+                    "id": "step.one",
+                    "inputs": {"x": {"type": "ObjectRef"}},
+                    "params": {},
+                },
+                {
+                    "id": "step.two",
+                    "inputs": {"image": "step0.output"},
+                    "params": {},
+                },
+            ]
+        }
+
+        function_ports = {
+            "step.one": {
+                "inputs": [{"name": "x", "artifact_type": "ObjectRef", "required": True}],
+                "outputs": [{"name": "output", "artifact_type": ["ObjectRef"]}],
+            },
+            "step.two": {
+                "inputs": [
+                    {
+                        "name": "image",
+                        "artifact_type": ["BioImageRef", "LabelImageRef"],
+                        "required": True,
+                    }
+                ],
+                "outputs": [],
+            },
+        }
+
+        errors = validate_workflow_compatibility(workflow_spec, function_ports)
+        assert len(errors) == 1
+        assert errors[0].port_name == "image"

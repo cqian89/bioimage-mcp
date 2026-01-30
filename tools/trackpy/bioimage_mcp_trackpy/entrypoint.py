@@ -113,7 +113,7 @@ def handle_meta_list(params: dict) -> dict:
 
             functions.append(
                 {
-                    "fn_id": meta.fn_id,
+                    "id": meta.fn_id,
                     "name": meta.name,
                     "module": meta.module,
                     "summary": summary,
@@ -288,7 +288,6 @@ def _load_input_artifact(artifact_ref: dict) -> Any:
 def _save_table_artifact(df: pd.DataFrame, name_hint: str) -> dict:
     import uuid
 
-
     ref_id = str(uuid.uuid4())
     filename = f"{name_hint}_{ref_id[:8]}.csv"
     path = _WORK_DIR / filename
@@ -347,7 +346,7 @@ def _handle_request(request: dict) -> dict:
     command = request.get("command")
     params = request.get("params", {})
     inputs = request.get("inputs", {})
-    fn_id = request.get("fn_id")
+    fn_id = request.get("id") or request.get("fn_id")
     ordinal = request.get("ordinal")
     work_dir = request.get("work_dir")
 
@@ -373,36 +372,43 @@ def _handle_request(request: dict) -> dict:
                 }
                 if "_meta" in res:
                     response["_meta"] = res["_meta"]
+                response["id"] = fn_id
                 return response
             else:
-                return {
+                response = {
                     "command": "execute_result",
                     "ok": False,
                     "ordinal": ordinal,
                     "error": res.get("error", {"message": "Unknown error"}),
                     "log": res.get("log"),
                 }
+                response["id"] = fn_id
+                return response
 
         elif command == "shutdown":
             _MEMORY_ARTIFACTS.clear()
             return {"command": "shutdown_ack", "ok": True, "ordinal": ordinal}
 
         else:
-            return {
+            response = {
                 "command": "error",
                 "ok": False,
                 "ordinal": ordinal,
                 "error": {"message": f"Unknown command: {command}"},
             }
+            response["id"] = fn_id
+            return response
 
     except Exception as exc:
-        return {
+        response = {
             "command": "execute_result",
             "ok": False,
             "ordinal": ordinal,
             "error": {"message": str(exc)},
             "log": traceback.format_exc(),
         }
+        response["id"] = fn_id
+        return response
 
 
 def _run_ndjson_loop():

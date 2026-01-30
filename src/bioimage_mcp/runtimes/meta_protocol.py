@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 logger = logging.getLogger(__name__)
 
@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 class MetaListFunction(BaseModel):
     model_config = ConfigDict(extra="allow")
 
-    id: str
+    id: str = Field(validation_alias=AliasChoices("id", "fn_id"))
     name: str
     summary: str
     module: str | None = None
@@ -86,6 +86,7 @@ def parse_meta_list_result(response: dict[str, Any]) -> list[dict[str, Any]]:
             # Validate required fields
             model = MetaListFunction.model_validate(entry)
             data = model.model_dump()
+            data.pop("fn_id", None)
             # Propagate top-level source to individual entries if they don't have one (T13.08)
             if "introspection_source" not in data and payload.get("introspection_source"):
                 data["introspection_source"] = payload["introspection_source"]

@@ -72,21 +72,20 @@ def test_process_execute_request_legacy_memory_dims():
     with (
         patch("bioimage_mcp_base.entrypoint._SESSION_ID", "test-session"),
         patch("bioimage_mcp_base.entrypoint._ENV_ID", "test-env"),
-        patch("bioimage_mcp_base.entrypoint.FN_MAP") as mock_fn_map,
+        patch.dict(entrypoint.FN_MAP, {}, clear=False) as mock_fn_map,
         patch("bioimage_mcp_base.entrypoint._load_input_data") as mock_load,
     ):
         # Mock a function that returns a path (legacy behavior)
         mock_path = MagicMock(spec=Path)
         mock_path.unlink = MagicMock()
-        mock_fn_map.__contains__.return_value = True
-        mock_fn_map.__getitem__.return_value = (lambda **kwargs: mock_path, {})
+        mock_fn_map["base.some_fn"] = (lambda **kwargs: mock_path, {})
 
         # Mock loaded data to be 2D
         data_2d = np.zeros((100, 100))
         mock_load.return_value = data_2d
 
         request = {
-            "fn_id": "base.some_fn",
+            "id": "base.some_fn",
             "params": {"output_mode": "memory"},
             "inputs": {},
             "work_dir": "/tmp",

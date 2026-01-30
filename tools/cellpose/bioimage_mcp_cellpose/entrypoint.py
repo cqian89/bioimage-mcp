@@ -688,49 +688,49 @@ def handle_meta_list(
     """Return list of functions supported by Cellpose tool pack."""
     functions = [
         {
-            "fn_id": "cellpose.models.CellposeModel",
+            "id": "cellpose.models.CellposeModel",
             "name": "CellposeModel",
             "summary": "Initialize Cellpose model",
             "module": "cellpose.models",
             "io_pattern": "pure_constructor",
         },
         {
-            "fn_id": "cellpose.models.CellposeModel.eval",
+            "id": "cellpose.models.CellposeModel.eval",
             "name": "CellposeModel.eval",
             "summary": "Run segmentation with model",
             "module": "cellpose.models",
             "io_pattern": "generic",
         },
         {
-            "fn_id": "cellpose.denoise.DenoiseModel",
+            "id": "cellpose.denoise.DenoiseModel",
             "name": "DenoiseModel",
             "summary": "Initialize Denoise model",
             "module": "cellpose.denoise",
             "io_pattern": "pure_constructor",
         },
         {
-            "fn_id": "cellpose.denoise.DenoiseModel.eval",
+            "id": "cellpose.denoise.DenoiseModel.eval",
             "name": "DenoiseModel.eval",
             "summary": "Run denoising with model",
             "module": "cellpose.denoise",
             "io_pattern": "generic",
         },
         {
-            "fn_id": "cellpose.train.train_seg",
+            "id": "cellpose.train.train_seg",
             "name": "train_seg",
             "summary": "Train a new model",
             "module": "cellpose.train",
             "io_pattern": "training",
         },
         {
-            "fn_id": "cellpose.metrics.average_precision",
+            "id": "cellpose.metrics.average_precision",
             "name": "average_precision",
             "summary": "Compute segmentation metrics",
             "module": "cellpose.metrics",
             "io_pattern": "generic",
         },
         {
-            "fn_id": "cellpose.cache.clear",
+            "id": "cellpose.cache.clear",
             "name": "cache.clear",
             "summary": "Clear cached models from memory",
             "module": "cellpose.cache",
@@ -852,7 +852,7 @@ def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
 
 
 def _process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
-    fn_id = request.get("fn_id", "")
+    fn_id = request.get("id") or request.get("fn_id", "")
     params = request.get("params") or {}
     inputs = request.get("inputs") or {}
     work_dir = Path(request.get("work_dir") or ".").absolute()
@@ -922,7 +922,7 @@ def _process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
                 "command": "execute_result",
                 "ok": False,
                 "ordinal": ordinal,
-                "error": {"message": f"Unknown fn_id: {fn_id}"},
+                "error": {"message": f"Unknown function: {fn_id}"},
                 "log": "failed",
             }
     except Exception as exc:  # noqa: BLE001
@@ -935,6 +935,7 @@ def _process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
             "outputs": {},
             "log": tb_str,
         }
+    response["id"] = fn_id
     return response
 
 
@@ -1258,7 +1259,7 @@ def main() -> int:
                 # Pure legacy format
                 work_dir = Path(request.get("work_dir", ".")).absolute()
                 work_dir.mkdir(parents=True, exist_ok=True)
-                fn_id = request.get("fn_id", "")
+                fn_id = request.get("id") or request.get("fn_id", "")
                 params = request.get("params", {})
                 inputs = request.get("inputs", {})
 
@@ -1267,7 +1268,7 @@ def main() -> int:
                 elif fn_id in FUNCTION_HANDLERS:
                     response = FUNCTION_HANDLERS[fn_id](inputs, params, work_dir)
                 else:
-                    response = {"ok": False, "error": f"Unknown fn_id: {fn_id}"}
+                    response = {"ok": False, "error": f"Unknown function: {fn_id}"}
                 print(json.dumps(response))
                 return 0 if response.get("ok") else 1
         except json.JSONDecodeError:

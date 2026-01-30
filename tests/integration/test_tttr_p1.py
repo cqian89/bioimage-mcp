@@ -165,7 +165,7 @@ def _mock_execute_step_p1(
         )
 
     return (
-        {"ok": False, "error": {"message": f"Unknown fn_id: {fn_id}"}},
+        {"ok": False, "error": {"message": f"Unknown function: {fn_id}"}},
         "",
         1,
     )

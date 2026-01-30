@@ -34,7 +34,7 @@ class TrackpyAdapter:
             discovered = introspect_module(module_name)
             for item in discovered:
                 # Convert dict to FunctionMetadata
-                # item shape: {"fn_id": ..., "name": ..., "summary": ..., "module": ...,
+                # item shape: {"id": ..., "name": ..., "summary": ..., "module": ...,
                 #              "io_pattern": ...}
 
                 # Map io_pattern string to IOPattern enum
@@ -46,10 +46,10 @@ class TrackpyAdapter:
                     io_pattern = IOPattern.GENERIC
 
                 meta = FunctionMetadata(
-                    fn_id=item["fn_id"],
+                    fn_id=item["id"],
                     name=item["name"],
                     module=item["module"],
-                    qualified_name=item["fn_id"],
+                    qualified_name=item["id"],
                     source_adapter="trackpy",
                     description=item.get("summary", ""),  # Use summary as initial description
                     io_pattern=io_pattern,

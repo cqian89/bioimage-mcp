@@ -330,12 +330,16 @@ class SkimageAdapter(BaseAdapter):
         array: np.ndarray,
         work_dir: Path | None = None,
         axes: str | None = None,
+        metadata_override: dict[str, Any] | None = None,
     ) -> dict:
         """Save image array to file and return artifact reference dict.
         Defaults to OME-Zarr for standard interchange. (T049)
         """
-        if array.dtype == np.int64 or array.dtype == np.uint64:
-            array = array.astype(np.float32)
+        # Dtype safety: If the output dtype is int64, cast to int32 (for labels/indices)
+        if array.dtype == np.int64:
+            array = array.astype(np.int32)
+        elif array.dtype == np.uint64:
+            array = array.astype(np.uint32)
 
         if work_dir is None:
             work_dir = Path(tempfile.gettempdir())
@@ -366,12 +370,36 @@ class SkimageAdapter(BaseAdapter):
             type_map = {"t": "time", "c": "channel", "z": "space", "y": "space", "x": "space"}
             axes_types = [type_map.get(d, "other") for d in axes_names]
 
+            pps_list = None
+            channels = None
+            if metadata_override:
+                raw_pps = metadata_override.get("physical_pixel_sizes")
+                if raw_pps:
+                    pps_dict = {}
+                    if isinstance(raw_pps, dict):
+                        pps_dict = {k.upper(): v for k, v in raw_pps.items()}
+                    elif isinstance(raw_pps, (list, tuple)):
+                        if len(raw_pps) == 2:
+                            pps_dict = {"Y": raw_pps[0], "X": raw_pps[1]}
+                        elif len(raw_pps) == 3:
+                            pps_dict = {"Z": raw_pps[0], "Y": raw_pps[1], "X": raw_pps[2]}
+                    if pps_dict:
+                        pps_list = [float(pps_dict.get(ax.upper(), 1.0)) for ax in inferred_axes]
+
+                channel_names = metadata_override.get("channel_names")
+                if channel_names:
+                    from bioio_ome_zarr.writers import Channel
+
+                    channels = [Channel(label=name, color="ffffff") for name in channel_names]
+
             writer = OMEZarrWriter(
                 store=str(out_path),
                 level_shapes=[array.shape],
                 dtype=array.dtype,
                 axes_names=axes_names,
                 axes_types=axes_types,
+                physical_pixel_size=pps_list,
+                channels=channels,
                 zarr_format=2,
             )
             writer.write_full_volume(array)
@@ -392,21 +420,54 @@ class SkimageAdapter(BaseAdapter):
             save_dim_order = (
                 "".join([d[0].upper() for d in inferred_axes]) if inferred_axes else None
             )
-            OmeTiffWriter.save(array, str(out_path), dim_order=save_dim_order)
+
+            save_kwargs: dict[str, Any] = {"dim_order": save_dim_order}
+            if metadata_override:
+                raw_pps = metadata_override.get("physical_pixel_sizes")
+                if raw_pps:
+                    from bioio_base.types import PhysicalPixelSizes
+
+                    if isinstance(raw_pps, dict):
+                        save_kwargs["physical_pixel_sizes"] = PhysicalPixelSizes(
+                            X=raw_pps.get("X"),
+                            Y=raw_pps.get("Y"),
+                            Z=raw_pps.get("Z"),
+                        )
+                    elif isinstance(raw_pps, (list, tuple)):
+                        if len(raw_pps) == 2:
+                            save_kwargs["physical_pixel_sizes"] = PhysicalPixelSizes(
+                                Y=raw_pps[0], X=raw_pps[1]
+                            )
+                        elif len(raw_pps) == 3:
+                            save_kwargs["physical_pixel_sizes"] = PhysicalPixelSizes(
+                                Z=raw_pps[0], Y=raw_pps[1], X=raw_pps[2]
+                            )
+
+                if "channel_names" in metadata_override:
+                    save_kwargs["channel_names"] = metadata_override["channel_names"]
+
+            OmeTiffWriter.save(array, str(out_path), **save_kwargs)
 
         # Return artifact reference as dict (compatible with entrypoint protocol)
+        meta = {
+            "axes": inferred_axes,
+            "dims": list(inferred_axes) if inferred_axes else [],
+            "ndim": array.ndim,
+            "shape": list(array.shape),
+            "dtype": str(array.dtype),
+        }
+        if metadata_override:
+            if "physical_pixel_sizes" in metadata_override:
+                meta["physical_pixel_sizes"] = metadata_override["physical_pixel_sizes"]
+            if "channel_names" in metadata_override:
+                meta["channel_names"] = metadata_override["channel_names"]
+
         ref = {
             "type": "BioImageRef",
             "format": fmt,
             "uri": out_path.absolute().as_uri(),
             "path": str(out_path.absolute()),
-            "metadata": {
-                "axes": inferred_axes,
-                "dims": list(inferred_axes) if inferred_axes else [],
-                "ndim": array.ndim,
-                "shape": list(array.shape),
-                "dtype": str(array.dtype),
-            },
+            "metadata": meta,
         }
         return ref
 
@@ -552,6 +613,23 @@ class SkimageAdapter(BaseAdapter):
         # Execute function
         result = func(*args, **kwargs, **params)
 
+        # Capture metadata for preservation
+        metadata_override = {}
+        for _, artifact in self._normalize_inputs(inputs):
+            # Skip metadata strings
+            if isinstance(artifact, str) and (" " in artifact or len(artifact) > 64):
+                continue
+            if isinstance(artifact, dict):
+                meta = artifact.get("metadata", {})
+            else:
+                meta = getattr(artifact, "metadata", {}) or {}
+            if meta:
+                if "physical_pixel_sizes" in meta:
+                    metadata_override["physical_pixel_sizes"] = meta["physical_pixel_sizes"]
+                if "channel_names" in meta:
+                    metadata_override["channel_names"] = meta["channel_names"]
+                break
+
         # Restore channel-first order for OME-TIFF canonical output (T050)
         if (
             channel_was_transposed
@@ -587,6 +665,11 @@ class SkimageAdapter(BaseAdapter):
                     output_ref["metadata"] = {}
                 output_ref["metadata"]["notice"] = notice
         else:
+            if io_pattern == IOPattern.IMAGE_TO_LABELS and isinstance(result, np.ndarray):
+                if not np.issubdtype(result.dtype, np.integer):
+                    result = result.astype(np.int32)
+                elif result.dtype in {np.int64, np.uint64}:
+                    result = result.astype(np.int32)
             # Use processed axes from inputs if available, otherwise find first
             axes = output_axes
             if not axes:
@@ -603,7 +686,9 @@ class SkimageAdapter(BaseAdapter):
             # provided but OmeTiffWriter will expand anyway.
             # Here we just pass the result as is, _save_image handles expansion
             # to TCZYX if using OmeTiffWriter.
-            output_ref = self._save_image(result, work_dir=work_dir, axes=axes)
+            output_ref = self._save_image(
+                result, work_dir=work_dir, axes=axes, metadata_override=metadata_override
+            )
 
         return [output_ref]
 

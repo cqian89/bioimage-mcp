@@ -72,7 +72,7 @@ class TestNDJSONFraming:
 
         msg = ExecuteRequest(
             command="execute",
-            fn_id="base.xarray.sum",
+            id="base.xarray.sum",
             inputs={},
             params={},
             work_dir="/tmp",
@@ -86,7 +86,7 @@ class TestNDJSONFraming:
         # Must be valid JSON
         decoded = json.loads(encoded.strip())
         assert decoded["command"] == "execute"
-        assert decoded["fn_id"] == "base.xarray.sum"
+        assert decoded["id"] == "base.xarray.sum"
 
     def test_decode_message_from_ndjson(self):
         """Verify that decode_message parses NDJSON into Python dict.
@@ -162,7 +162,7 @@ class TestIPCMessageModels:
 
         msg = ExecuteRequest(
             command="execute",
-            fn_id="base.xarray.sum",
+            id="base.xarray.sum",
             inputs={"image": "file:///tmp/test.tif"},
             params={"dim": "T"},
             work_dir="/tmp/run_123",
@@ -170,7 +170,7 @@ class TestIPCMessageModels:
         )
 
         assert msg.command == "execute"
-        assert msg.fn_id == "base.xarray.sum"
+        assert msg.id == "base.xarray.sum"
         assert msg.params["dim"] == "T"
         assert msg.work_dir == "/tmp/run_123"
         assert msg.class_context.python_class == "MyClass"

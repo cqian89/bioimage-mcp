@@ -27,7 +27,7 @@ def test_batch_describe_returns_schemas_and_errors() -> None:
     missing_id = "base.missing.function"
 
     service.upsert_function(
-        fn_id=fn_id_a,
+        id=fn_id_a,
         tool_id="tools.base",
         name="Gaussian blur",
         description="Blur an image",
@@ -37,7 +37,7 @@ def test_batch_describe_returns_schemas_and_errors() -> None:
         params_schema={"type": "object", "properties": {"sigma": {"type": "number"}}},
     )
     service.upsert_function(
-        fn_id=fn_id_b,
+        id=fn_id_b,
         tool_id="tools.base",
         name="Median filter",
         description="Median filter",

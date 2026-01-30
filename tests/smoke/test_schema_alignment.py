@@ -189,7 +189,7 @@ def _get_runtime_schema_direct(fn_id: str) -> dict[str, Any] | None:
             entrypoint = str(candidate)
 
     request = {
-        "fn_id": "meta.describe",
+        "id": "meta.describe",
         "params": {"target_fn": fn_id},
         "inputs": {},
     }

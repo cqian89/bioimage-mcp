@@ -103,9 +103,9 @@ def test_skimage_adapter_execute_calls_gaussian(mock_gaussian, mock_imread):
     assert outputs[0]["type"] == "BioImageRef"
 
 
-@patch("bioio.writers.OmeTiffWriter.save")
-def test_skimage_adapter_save_image_writes_axes_metadata(mock_save, tmp_path):
-    """_save_image() should include axes metadata for OME-TIFF output."""
+@patch("bioio_ome_zarr.writers.OMEZarrWriter")
+def test_skimage_adapter_save_image_writes_axes_metadata(mock_writer_cls, tmp_path):
+    """_save_image() should include axes metadata for OME-Zarr output."""
     import numpy as np
 
     adapter = SkimageAdapter()
@@ -113,10 +113,10 @@ def test_skimage_adapter_save_image_writes_axes_metadata(mock_save, tmp_path):
     array = np.zeros((8, 6), dtype=np.uint8)
     adapter._save_image(array, work_dir=tmp_path)
 
-    assert mock_save.call_count == 1
-    _, kwargs = mock_save.call_args
-    # OmeTiffWriter uses dim_order parameter
-    assert kwargs["dim_order"] == "YX"
+    assert mock_writer_cls.call_count == 1
+    _, kwargs = mock_writer_cls.call_args
+    # OMEZarrWriter uses axes_names parameter
+    assert kwargs["axes_names"] == ["y", "x"]
 
 
 @patch("tifffile.imread")

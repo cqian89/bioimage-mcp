@@ -12,7 +12,7 @@ platforms_supported:
   - osx-arm64
 
 functions:
-  - fn_id: tttrlib.TTTR
+  - id: tttrlib.TTTR
     tool_id: tools.tttrlib
     name: Open TTTR File
     description: Opens a Time-Tagged Time-Resolved (TTTR) file and returns a TTTRRef.
@@ -35,7 +35,7 @@ functions:
       required:
         - filename
 
-  - fn_id: tttrlib.TTTR.header
+  - id: tttrlib.TTTR.header
     tool_id: tools.tttrlib
     name: Get TTTR Header
     description: Extracts metadata header from a TTTR file as JSON.
@@ -53,7 +53,7 @@ functions:
       type: object
       properties: {}
 
-  - fn_id: tttrlib.TTTR.get_time_window_ranges
+  - id: tttrlib.TTTR.get_time_window_ranges
     tool_id: tools.tttrlib
     name: Get Time Window Ranges
     description: Burst selection based on count rate.
@@ -90,7 +90,7 @@ functions:
         - minimum_window_length
         - minimum_number_of_photons_in_time_window
 
-  - fn_id: tttrlib.Correlator
+  - id: tttrlib.Correlator
     tool_id: tools.tttrlib
     name: Multi-tau Correlation
     description: Compute multi-tau correlation curve.
@@ -136,7 +136,7 @@ functions:
       required:
         - channels
 
-  - fn_id: tttrlib.CLSMImage
+  - id: tttrlib.CLSMImage
     tool_id: tools.tttrlib
     name: Construct CLSM Image
     description: Constructs a scanning image (CLSM) from TTTR data.
@@ -191,7 +191,7 @@ functions:
           default: true
           description: "Skip events before first frame marker"
 
-  - fn_id: tttrlib.CLSMImage.compute_ics
+  - id: tttrlib.CLSMImage.compute_ics
     tool_id: tools.tttrlib
     name: Compute ICS
     description: Image Correlation Spectroscopy on a CLSM image.
@@ -243,7 +243,7 @@ functions:
             maxItems: 2
           description: "List of frame index pairs for cross-correlation (e.g., [[0,0], [1,1]])"
 
-  - fn_id: tttrlib.CLSMImage.get_intensity
+  - id: tttrlib.CLSMImage.get_intensity
     tool_id: tools.tttrlib
     name: Get Intensity Image
     description: Extract intensity image (photon counts per pixel) from CLSM data
@@ -265,7 +265,7 @@ functions:
           default: false
           description: "Sum across all frames into single 2D image"
 
-  - fn_id: tttrlib.CLSMImage.get_phasor
+  - id: tttrlib.CLSMImage.get_phasor
     tool_id: tools.tttrlib
     name: Get Phasor Image
     description: Compute phasor coordinates (g, s) per pixel from FLIM data
@@ -301,7 +301,7 @@ functions:
           default: false
           description: "Combine frames before phasor calculation"
 
-  - fn_id: tttrlib.CLSMImage.get_fluorescence_decay
+  - id: tttrlib.CLSMImage.get_fluorescence_decay
     tool_id: tools.tttrlib
     name: Get Fluorescence Decay
     description: Extract fluorescence decay histogram per pixel from FLIM data
@@ -330,7 +330,7 @@ functions:
           default: false
           description: "Combine frames before extraction"
 
-  - fn_id: tttrlib.CLSMImage.get_mean_lifetime
+  - id: tttrlib.CLSMImage.get_mean_lifetime
     tool_id: tools.tttrlib
     name: Get Mean Lifetime
     description: Compute mean fluorescence lifetime per pixel from FLIM data
@@ -362,7 +362,7 @@ functions:
           default: false
           description: "Combine frames before calculation"
 
-  - fn_id: tttrlib.TTTR.write
+  - id: tttrlib.TTTR.write
     tool_id: tools.tttrlib
     name: Write TTTR File
     description: Export TTTR data to a file.

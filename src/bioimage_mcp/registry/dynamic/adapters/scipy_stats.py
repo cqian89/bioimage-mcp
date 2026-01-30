@@ -293,7 +293,7 @@ class ScipyStatsAdapter(ScipyNdimageAdapter):
 
         # Prepare payload
         payload = {
-            "fn_id": fn_id,
+            "id": fn_id,
             "selected_columns": selected_columns,
             "column": column,
             "nan_policy": nan_policy,

@@ -30,19 +30,25 @@ CORE_LEGACY_REDIRECTS = {}
 
 
 def _apply_legacy_redirects(spec: dict) -> tuple[dict, list[str]]:
-    """Rewrite legacy fn_ids in workflow spec and collect warnings."""
+    """Normalize legacy fn_id keys to id and collect warnings."""
     new_spec = copy.deepcopy(spec)
     warnings = []
     steps = new_spec.get("steps") or []
     for step in steps:
-        fn_id = step.get("fn_id")
+        if "id" not in step and "fn_id" in step:
+            step["id"] = step.get("fn_id")
+
+        fn_id = step.get("id")
         if fn_id in CORE_LEGACY_REDIRECTS:
             new_fn_id = CORE_LEGACY_REDIRECTS[fn_id]
             warnings.append(
                 f"DEPRECATED: {fn_id} is deprecated and will be removed in v1.0.0. "
                 f"Use {new_fn_id} instead."
             )
-            step["fn_id"] = new_fn_id
+            step["id"] = new_fn_id
+
+        step.pop("fn_id", None)
+
     return new_spec, warnings
 
 
@@ -216,7 +222,7 @@ def execute_step(
         hints = fn_def.hints.model_dump(mode="json")
 
     request = {
-        "fn_id": fn_id,
+        "id": fn_id,
         "params": params,
         "inputs": inputs,
         "work_dir": str(work_dir),
@@ -440,8 +446,8 @@ class ExecutionService:
         if not steps:
             return []
 
-        # Collect all fn_ids from steps
-        fn_ids = [step.get("fn_id", "") for step in steps]
+        # Collect all ids from steps
+        fn_ids = [step.get("id") or step.get("fn_id", "") for step in steps]
 
         # Get function port definitions
         function_ports = _get_function_ports(self._config, fn_ids)
@@ -513,7 +519,7 @@ class ExecutionService:
         )
         work_dir.mkdir(parents=True, exist_ok=True)
 
-        # We use a special internal fn_id 'core.reconstruct'
+        # We use a special internal id 'core.reconstruct'
         response, _log, _exit_code = execute_step(
             config=self._config,
             fn_id="core.reconstruct",
@@ -605,9 +611,20 @@ class ExecutionService:
             }
 
         step = steps[0]
-        if "id" in step and "fn_id" not in step:
-            step = {**step, "fn_id": step["id"]}
-        fn_id = step["fn_id"]
+        fn_id = step.get("id") or step.get("fn_id")
+        if not fn_id:
+            return {
+                "session_id": session_id,
+                "run_id": "none",
+                "status": "validation_failed",
+                "id": "none",
+                "outputs": {},
+                "error": validation_error(
+                    message="Workflow step is missing required id",
+                    path="/steps/0/id",
+                    expected="function id",
+                ).model_dump(),
+            }
         params = step.get("params") or {}
         inputs = step.get("inputs") or {}
 
@@ -664,7 +681,7 @@ class ExecutionService:
             workflow_spec=spec,
             inputs=inputs,
             params=params,
-            provenance={"fn_id": fn_id},
+            provenance={"id": fn_id},
             log_ref_id=log_ref.ref_id,
         )
 
@@ -1004,8 +1021,10 @@ class ExecutionService:
             if error_hints or input_metadata:
                 selected_hints = error_hints.get(error_code) or error_hints.get("GENERAL", {})
                 suggested_fix = selected_hints.get("suggested_fix")
-                if isinstance(suggested_fix, dict) and suggested_fix.get("fn_id"):
-                    suggested_fix = {**suggested_fix, "id": suggested_fix["fn_id"]}
+                if isinstance(suggested_fix, dict):
+                    suggested_fix = dict(suggested_fix)
+                    if suggested_fix.get("fn_id"):
+                        suggested_fix["id"] = suggested_fix["fn_id"]
                     suggested_fix.pop("fn_id", None)
                 error_response_hints = {
                     "diagnosis": selected_hints.get("diagnosis"),
@@ -1242,6 +1261,10 @@ class ExecutionService:
                     normalized = {**step, "id": step["fn_id"]}
                     normalized.pop("fn_id", None)
                     normalized_next_steps.append(normalized)
+                elif isinstance(step, dict) and step.get("id"):
+                    normalized = dict(step)
+                    normalized.pop("fn_id", None)
+                    normalized_next_steps.append(normalized)
                 else:
                     normalized_next_steps.append(step)
             success_hints = {**success_hints, "next_steps": normalized_next_steps}
@@ -1331,6 +1354,7 @@ class ExecutionService:
         else:
             # Fallback for new WorkflowRecord schema where steps are at top level
             workflow_spec = {"steps": record_data.get("steps", [])}
+        workflow_spec, _ = _apply_legacy_redirects(workflow_spec)
 
         _original_inputs = record_data.get("inputs", {})  # Keep for future input override
         original_params = record_data.get("params", {})

@@ -83,7 +83,7 @@ class InteractiveExecutionService:
         spec = {
             "steps": [
                 {
-                    "fn_id": fn_id,
+                    "id": fn_id,
                     "inputs": inputs,
                     "params": params,
                 }
@@ -124,15 +124,19 @@ class InteractiveExecutionService:
 
         hints = result.get("hints")
         if hints:
-            if isinstance(hints.get("suggested_fix"), dict) and hints["suggested_fix"].get("fn_id"):
-                suggested_fix = {**hints["suggested_fix"], "id": hints["suggested_fix"]["fn_id"]}
+            if isinstance(hints.get("suggested_fix"), dict):
+                suggested_fix = dict(hints["suggested_fix"])
+                if suggested_fix.get("fn_id"):
+                    suggested_fix["id"] = suggested_fix["fn_id"]
                 suggested_fix.pop("fn_id", None)
                 hints = {**hints, "suggested_fix": suggested_fix}
             if isinstance(hints.get("next_steps"), list):
                 normalized_next_steps = []
                 for step in hints["next_steps"]:
-                    if isinstance(step, dict) and step.get("fn_id"):
-                        normalized = {**step, "id": step["fn_id"]}
+                    if isinstance(step, dict):
+                        normalized = dict(step)
+                        if normalized.get("fn_id"):
+                            normalized["id"] = normalized["fn_id"]
                         normalized.pop("fn_id", None)
                         normalized_next_steps.append(normalized)
                     else:

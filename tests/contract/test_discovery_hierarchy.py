@@ -27,7 +27,7 @@ def _seed_hierarchy(service: DiscoveryService) -> None:
     )
 
     service.upsert_function(
-        fn_id="base.skimage.filters.gaussian",
+        id="base.skimage.filters.gaussian",
         tool_id="tools.base",
         name="Gaussian",
         description="Gaussian blur",
@@ -37,7 +37,7 @@ def _seed_hierarchy(service: DiscoveryService) -> None:
         params_schema={},
     )
     service.upsert_function(
-        fn_id="base.skimage.filters.sobel",
+        id="base.skimage.filters.sobel",
         tool_id="tools.base",
         name="Sobel",
         description="Sobel filter",
@@ -47,7 +47,7 @@ def _seed_hierarchy(service: DiscoveryService) -> None:
         params_schema={},
     )
     service.upsert_function(
-        fn_id="base.phasorpy.phasor.phasor_calibrate",
+        id="base.phasorpy.phasor.phasor_calibrate",
         tool_id="tools.base",
         name="Phasor Calibrate",
         description="Calibrate phasors",
@@ -57,7 +57,7 @@ def _seed_hierarchy(service: DiscoveryService) -> None:
         params_schema={},
     )
     service.upsert_function(
-        fn_id="cellpose.core.segment",
+        id="cellpose.core.segment",
         tool_id="tools.cellpose",
         name="Segment",
         description="Cell segmentation",

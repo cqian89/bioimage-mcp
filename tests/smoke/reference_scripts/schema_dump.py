@@ -57,7 +57,7 @@ def dump_runtime_schema(fn_id: str) -> dict[str, Any] | None:
                     entrypoint = str(candidate)
 
             request = {
-                "fn_id": "meta.describe",
+                "id": "meta.describe",
                 "params": {"target_fn": fn_id},
                 "inputs": {},
             }

@@ -196,7 +196,7 @@ class TestWorkflowRecordContract:
         assert "labels" in validated.outputs
         assert validated.outputs["labels"]["type"] == "LabelImageRef"
 
-    def test_provenance_has_fn_id(self) -> None:
+    def test_provenance_has_id(self) -> None:
         """Test that provenance tracks function used."""
         record = {
             "schema_version": "0.1",

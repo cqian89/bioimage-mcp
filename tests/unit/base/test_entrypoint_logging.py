@@ -12,7 +12,7 @@ def test_execute_request_traceback_on_error():
     # FN_MAP is a dict mapping fn_id to (func, descriptions)
     with patch.dict(entrypoint.FN_MAP, {"test.fail": (mock_func, {})}, clear=False):
         request = {
-            "fn_id": "test.fail",
+            "id": "test.fail",
             "params": {},
             "ordinal": 1,
         }
@@ -31,7 +31,7 @@ def test_execute_request_traceback_on_error():
 
 def test_meta_describe_unknown_function_log():
     """Test log content for meta.describe with unknown function."""
-    request = {"fn_id": "meta.describe", "params": {"target_fn": "unknown.fn"}, "ordinal": 2}
+    request = {"id": "meta.describe", "params": {"target_fn": "unknown.fn"}, "ordinal": 2}
     response = entrypoint.process_execute_request(request)
 
     assert response["ok"] is False

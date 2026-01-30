@@ -51,10 +51,25 @@ def test_input_requirement_schema() -> None:
         "expected_axes",
         "preprocessing_hint",
         "supported_storage_types",
+        "dimension_requirements",
     ]:
         assert field in props
 
-    assert set(props["type"].get("enum", [])) == ALLOWED_ARTIFACT_TYPES
+    type_schema = props["type"]
+    any_of = type_schema.get("anyOf", [])
+    string_schema = next(
+        (item for item in any_of if item.get("type") == "string"),
+        type_schema if type_schema.get("type") == "string" else None,
+    )
+    array_schema = next(
+        (item for item in any_of if item.get("type") == "array"),
+        type_schema if type_schema.get("type") == "array" else None,
+    )
+
+    if string_schema is not None:
+        assert set(string_schema.get("enum", [])) == ALLOWED_ARTIFACT_TYPES
+    if array_schema is not None:
+        assert set(array_schema.get("items", {}).get("enum", [])) == ALLOWED_ARTIFACT_TYPES
 
     expected_axes_schema = props["expected_axes"]
     any_of = expected_axes_schema.get("anyOf", [])
@@ -90,7 +105,7 @@ def test_output_description_schema() -> None:
 def test_next_step_hint_schema() -> None:
     schema = NextStepHint.model_json_schema()
 
-    assert set(schema.get("required", [])) == {"reason"}
+    assert set(schema.get("required", [])) == {"id", "reason"}
 
     props = schema.get("properties", {})
     for field in ["id", "reason", "required_inputs"]:
@@ -109,7 +124,7 @@ def test_next_step_hint_schema() -> None:
 def test_suggested_fix_schema() -> None:
     schema = SuggestedFix.model_json_schema()
 
-    assert set(schema.get("required", [])) == {"params", "explanation"}
+    assert set(schema.get("required", [])) == {"id", "params", "explanation"}
 
     props = schema.get("properties", {})
     for field in ["id", "params", "explanation"]:
@@ -358,7 +373,7 @@ def test_describe_function_includes_manifest_hints_inputs_outputs(
     cache.set(
         tool_id="tools.sample",
         tool_version="0.1.0",
-        fn_id="sample.function",
+        id="sample.function",
         params_schema={"type": "object", "properties": {}},
         introspection_source="manual",
     )
@@ -390,7 +405,7 @@ def test_describe_function_includes_manifest_hints_inputs_outputs(
         installed=True,
     )
     service.upsert_function(
-        fn_id="sample.function",
+        id="sample.function",
         tool_id="tools.sample",
         name="Sample Function",
         description="Sample function",

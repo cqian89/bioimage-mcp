@@ -26,7 +26,7 @@ name: Base Toolkit
 env_id: bioimage-mcp-base
 entrypoint: entry.py
 functions:
-  - fn_id: base.skimage.filters.gaussian
+  - id: base.skimage.filters.gaussian
     tool_id: tools.base
     name: gaussian
     description: gaussian filter
@@ -126,7 +126,7 @@ def test_describe_function_uses_db_cache(tmp_path: Path, monkeypatch) -> None:
     assert first["params_schema"]["properties"]["sigma"]["type"] == "number"
     assert len(calls) == 1
     assert calls[0]["command"] == "execute"
-    assert calls[0]["fn_id"] == "meta.describe"
+    assert calls[0]["id"] == "meta.describe"
 
     # Verify cache hit
     second = service.describe_function(id=fn_id)

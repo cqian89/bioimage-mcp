@@ -26,7 +26,7 @@ def all_functions() -> list[dict]:
         for fn in manifest.functions:
             functions.append(
                 {
-                    "fn_id": fn.fn_id,
+                    "id": fn.fn_id,
                     "name": fn.name,
                     "description": fn.description,
                     "inputs": fn.inputs,
@@ -42,7 +42,7 @@ def test_all_functions_have_required_fields(all_functions: list[dict]) -> None:
     missing_fields = []
 
     for fn in all_functions:
-        fn_id = fn["fn_id"]
+        fn_id = fn["id"]
 
         # Check required fields
         if not fn.get("name"):
@@ -61,7 +61,7 @@ def test_all_params_schemas_are_valid_json_schema(all_functions: list[dict]) -> 
     invalid_schemas = []
 
     for fn in all_functions:
-        fn_id = fn["fn_id"]
+        fn_id = fn["id"]
         schema = fn.get("params_schema")
 
         if schema is None:
@@ -83,7 +83,7 @@ def test_all_json_schema_types_are_correct(all_functions: list[dict]) -> None:
     invalid_types = []
 
     for fn in all_functions:
-        fn_id = fn["fn_id"]
+        fn_id = fn["id"]
         schema = fn.get("params_schema", {})
         properties = schema.get("properties", {})
 
@@ -124,7 +124,7 @@ def test_artifact_ports_not_in_params_schema(all_functions: list[dict]) -> None:
     violations = []
 
     for fn in all_functions:
-        fn_id = fn["fn_id"]
+        fn_id = fn["id"]
         schema = fn.get("params_schema", {})
         properties = schema.get("properties", {})
 

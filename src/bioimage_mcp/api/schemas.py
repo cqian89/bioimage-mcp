@@ -62,7 +62,7 @@ class OutputDescription(BaseModel):
 class NextStepHint(BaseModel):
     """Suggested next step in workflow."""
 
-    id: str = Field(validation_alias=AliasChoices("id", "fn_id"))
+    id: str = Field(validation_alias=AliasChoices("id", "fn_id"), serialization_alias="id")
     reason: str
     required_inputs: list[str] | None = None
 
@@ -70,7 +70,7 @@ class NextStepHint(BaseModel):
 class SuggestedFix(BaseModel):
     """Suggested fix for an error."""
 
-    id: str = Field(validation_alias=AliasChoices("id", "fn_id"))
+    id: str = Field(validation_alias=AliasChoices("id", "fn_id"), serialization_alias="id")
     params: dict
     explanation: str
 
@@ -87,7 +87,7 @@ class StepProgress(BaseModel):
     """Progress report for a single replay step."""
 
     step_index: int
-    id: str = Field(validation_alias=AliasChoices("id", "fn_id"))
+    id: str = Field(validation_alias=AliasChoices("id", "fn_id"), serialization_alias="id")
     status: Literal["pending", "running", "success", "failed", "skipped"]
     started_at: str | None = None
     ended_at: str | None = None
@@ -100,7 +100,9 @@ class ReplayWarning(BaseModel):
     level: Literal["info", "warning"]
     source: str  # "version_check", "tool", "system"
     step_index: int | None = None  # None for global warnings
-    id: str | None = Field(default=None, validation_alias=AliasChoices("id", "fn_id"))
+    id: str | None = Field(
+        default=None, validation_alias=AliasChoices("id", "fn_id"), serialization_alias="id"
+    )
     message: str
 
 
@@ -164,7 +166,9 @@ class ToolHierarchyNode(BaseModel):
 
     name: str
     type: Literal["environment", "package", "module", "function"]
-    id: str | None = Field(default=None, validation_alias=AliasChoices("id", "fn_id"))
+    id: str | None = Field(
+        default=None, validation_alias=AliasChoices("id", "fn_id"), serialization_alias="id"
+    )
     summary: str | None = None
 
 
@@ -179,7 +183,7 @@ class ListToolsResponse(BaseModel):
 class ScoredFunction(BaseModel):
     """Search result entry with ranking score."""
 
-    id: str = Field(validation_alias=AliasChoices("id", "fn_id"))
+    id: str = Field(validation_alias=AliasChoices("id", "fn_id"), serialization_alias="id")
     name: str
     description: str
     score: float
@@ -363,8 +367,12 @@ class ListResponse(BaseModel):
 
 # Describe (use Union return type in handler)
 class DescribeRequest(BaseModel):
-    id: str | None = Field(default=None, validation_alias=AliasChoices("id", "fn_id"))
-    ids: list[str] | None = Field(default=None, validation_alias=AliasChoices("ids", "fn_ids"))
+    id: str | None = Field(
+        default=None, validation_alias=AliasChoices("id", "fn_id"), serialization_alias="id"
+    )
+    ids: list[str] | None = Field(
+        default=None, validation_alias=AliasChoices("ids", "fn_ids"), serialization_alias="ids"
+    )
 
 
 # Search
@@ -396,7 +404,7 @@ class SearchResponse(BaseModel):
 
 # Run
 class RunRequest(BaseModel):
-    id: str
+    id: str = Field(validation_alias=AliasChoices("id", "fn_id"), serialization_alias="id")
     inputs: dict[str, str]
     params: dict[str, Any] = Field(default_factory=dict)
     session_id: str | None = None
@@ -520,7 +528,7 @@ class WorkflowStep(BaseModel):
     """Single step in a workflow record."""
 
     index: int
-    id: str
+    id: str = Field(validation_alias=AliasChoices("id", "fn_id"), serialization_alias="id")
     inputs: dict[str, InputSource]
     params: dict[str, Any]
     outputs: dict[str, ArtifactRef]

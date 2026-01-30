@@ -143,7 +143,7 @@ class DiscoveryService:
         functions = self._index.list_functions()
         if active_fn_ids:
             active_set = set(active_fn_ids)
-            functions = [fn for fn in functions if fn.get("fn_id") in active_set]
+            functions = [fn for fn in functions if fn.get("id") in active_set]
         tool_index = ToolIndex(functions)
         tool_index.build_hierarchy()
 
@@ -340,7 +340,10 @@ class DiscoveryService:
                 break
 
             for row in batch:
-                if active_set and row["fn_id"] not in active_set:
+                row_id = row.get("id") or row.get("fn_id")
+                if not row_id:
+                    continue
+                if active_set and row_id not in active_set:
                     continue
                 # T063: Add tags filtering
                 if not any_tag_matches(row["tags"], tags):
@@ -352,7 +355,7 @@ class DiscoveryService:
                     continue
                 collected.append(
                     {
-                        "fn_id": row["fn_id"],
+                        "id": row_id,
                         "name": row["name"],
                         "description": row["description"],
                         "tags": row["tags"],
@@ -361,7 +364,7 @@ class DiscoveryService:
                     }
                 )
 
-            scan_after = batch[-1]["fn_id"]
+            scan_after = row_id
 
         # T065: Add scoring and ranking
         ranked: list[dict]
@@ -370,7 +373,7 @@ class DiscoveryService:
             matched = [
                 candidate
                 for candidate in collected
-                if normalized_query and normalized_query in candidate["fn_id"].lower()
+                if normalized_query and normalized_query in candidate["id"].lower()
             ]
             if matched:
                 ranked = [
@@ -381,7 +384,7 @@ class DiscoveryService:
                     }
                     for candidate in matched
                 ]
-                ranked.sort(key=lambda item: item["fn_id"])
+                ranked.sort(key=lambda item: item["id"])
             elif normalized_keywords:
                 index = SearchIndex()
                 ranked = index.rank(keywords=normalized_keywords, candidates=collected)
@@ -394,7 +397,7 @@ class DiscoveryService:
                     }
                     for candidate in collected
                 ]
-                ranked.sort(key=lambda item: item["fn_id"])
+                ranked.sort(key=lambda item: item["id"])
         elif normalized_keywords:
             index = SearchIndex()
             ranked = index.rank(keywords=normalized_keywords, candidates=collected)
@@ -409,7 +412,7 @@ class DiscoveryService:
                 for candidate in collected
             ]
             # Maintain deterministic ordering for filter-only results
-            ranked.sort(key=lambda item: item["fn_id"])
+            ranked.sort(key=lambda item: item["id"])
 
         page = ranked[offset : offset + resolved_limit]
         next_cursor = None
@@ -426,7 +429,7 @@ class DiscoveryService:
 
         results = [
             {
-                "id": entry["fn_id"],
+                "id": entry["id"],
                 "type": "function",
                 "name": entry.get("name", ""),
                 "summary": entry.get("description", ""),
@@ -503,7 +506,7 @@ class DiscoveryService:
             return tool_index._to_payload(node)
 
         # For function nodes
-        payload = self._index.get_function(id)
+        payload = self._index.get_function(id=id)
         if payload is None:
             # Should not happen if node was found, but for safety:
             return {
@@ -626,7 +629,20 @@ class DiscoveryService:
             if success_hints or error_hints:
                 hints_payload: dict[str, Any] = {}
                 if success_hints:
-                    hints_payload["success_hints"] = success_hints.model_dump(exclude_none=True)
+                    payload = success_hints.model_dump(exclude_none=True)
+                    if isinstance(payload.get("next_steps"), list):
+                        normalized_steps = []
+                        for step in payload["next_steps"]:
+                            if isinstance(step, dict):
+                                normalized = dict(step)
+                                if normalized.get("fn_id"):
+                                    normalized["id"] = normalized["fn_id"]
+                                normalized.pop("fn_id", None)
+                                normalized_steps.append(normalized)
+                            else:
+                                normalized_steps.append(step)
+                        payload["next_steps"] = normalized_steps
+                    hints_payload["success_hints"] = payload
                 if error_hints:
                     hints_payload["error_hints"] = {
                         key: value.model_dump(exclude_none=True)
@@ -733,7 +749,7 @@ class DiscoveryService:
                 cached = self._index.get_cached_schema(
                     tool_id=manifest.tool_id,
                     tool_version=manifest.tool_version,
-                    fn_id=id,
+                    id=id,
                     env_lock_hash=env_lock_hash,
                     source_hash=source_hash,
                 )
@@ -755,7 +771,7 @@ class DiscoveryService:
                     request = {
                         "command": "execute",
                         "ordinal": 0,
-                        "fn_id": "meta.describe",
+                        "id": "meta.describe",
                         "params": {"target_fn": id},
                         "inputs": {},
                         "work_dir": str(config.artifact_store_root / "work" / "describe"),
@@ -779,7 +795,7 @@ class DiscoveryService:
                             self._index.upsert_schema_cache(
                                 tool_id=manifest.tool_id,
                                 tool_version=manifest.tool_version,
-                                fn_id=id,
+                                id=id,
                                 params_schema=params_schema,
                                 introspection_source=introspection_source,
                                 env_lock_hash=env_lock_hash,
@@ -806,7 +822,7 @@ class DiscoveryService:
                     ).fetchone()
                 if row:
                     self._index.upsert_function(
-                        fn_id=id,
+                        id=id,
                         tool_id=manifest.tool_id,
                         name=row["name"],
                         description=row["description"],

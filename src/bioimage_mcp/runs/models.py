@@ -47,7 +47,7 @@ class WorkflowRecord(BaseModel):
         inputs: Input artifact references used in original run
         params: Parameters passed to the workflow
         outputs: Output artifact references produced by the run
-        provenance: Execution provenance metadata (fn_id, tool versions, etc.)
+        provenance: Execution provenance metadata (id, tool versions, etc.)
         tool_manifests: Optional list of tool manifest snapshots for version locking
         env_fingerprint: Optional environment fingerprint for reproducibility
         replayed_from_run_id: If this is a replay, the original run_id

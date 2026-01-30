@@ -31,7 +31,7 @@ def mock_registry(tmp_path, monkeypatch):
         "description": "A test tool",
         "functions": [
             {
-                "fn_id": "test.func",
+                "id": "test.func",
                 "tool_id": "test-tool",
                 "name": "Test Func",
                 "description": "Test description",

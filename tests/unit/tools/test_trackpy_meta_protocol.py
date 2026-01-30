@@ -2,15 +2,29 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
+from bioimage_mcp.registry.dynamic.models import FunctionMetadata, IOPattern
 from bioimage_mcp_trackpy.entrypoint import handle_meta_describe, handle_meta_list
 
 
 def test_handle_meta_list_shape():
     """Verify meta.list returns the canonical result shape."""
-    mock_functions = [{"fn_id": "test.fn", "name": "fn", "summary": "sum"}]
+    mock_functions = [
+        FunctionMetadata(
+            name="fn",
+            module="trackpy",
+            qualified_name="trackpy.fn",
+            fn_id="trackpy.fn",
+            source_adapter="trackpy",
+            description="sum",
+            io_pattern=IOPattern.GENERIC,
+        )
+    ]
 
     with (
-        patch("bioimage_mcp_trackpy.entrypoint.introspect_module", return_value=mock_functions),
+        patch(
+            "bioimage_mcp_trackpy.dynamic_discovery.TrackpyAdapter.discover",
+            return_value=mock_functions,
+        ),
         patch("bioimage_mcp_trackpy.entrypoint.get_trackpy_version", return_value="1.2.3"),
     ):
         res = handle_meta_list({})

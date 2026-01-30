@@ -393,7 +393,7 @@ class SessionService:
                     level="warning",
                     source="version_check",
                     step_index=mismatch["step_index"],
-                    id=mismatch["fn_id"],
+                    id=mismatch["id"],
                     message=(
                         f"Tool version changed: recorded lock_hash={mismatch['recorded'][:8]}..., "
                         f"current={mismatch['current'][:8]}..."
@@ -661,7 +661,7 @@ class SessionService:
                 if "params" in overrides:
                     params.update(overrides["params"])
 
-            step_spec = {"steps": [{"fn_id": step.id, "inputs": inputs, "params": params}]}
+            step_spec = {"steps": [{"id": step.id, "inputs": inputs, "params": params}]}
 
             # 3. Update progress (T04-03-02)
             started_at = datetime.now(UTC).isoformat()

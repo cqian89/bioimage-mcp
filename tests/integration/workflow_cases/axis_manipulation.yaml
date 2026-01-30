@@ -2,7 +2,7 @@
   description: "End-to-end FLIM phasor workflow with axis swapping"
   steps:
     - step_id: "fix_axes"
-      fn_id: "base.xarray.transpose"
+      id: "base.xarray.transpose"
       inputs:
         image: "datasets/FLUTE_FLIM_data_tif/Embryo.tif"
       params:
@@ -11,7 +11,7 @@
         - type: "output_type"
           value: "BioImageRef"
     - step_id: "compute_phasor"
-      fn_id: "base.phasorpy.phasor.phasor_from_signal"
+      id: "base.phasorpy.phasor.phasor_from_signal"
       inputs:
         signal: "{fix_axes.output}"
       params:
@@ -25,7 +25,7 @@
   description: "Verify expand_dims then squeeze restores axes"
   steps:
     - step_id: "add_dim"
-      fn_id: "base.xarray.expand_dims"
+      id: "base.xarray.expand_dims"
       inputs:
         image: "datasets/synthetic/test.tif"
       params:
@@ -36,7 +36,7 @@
           key: "axes"
           value: "ZYX"
     - step_id: "remove_dim"
-      fn_id: "base.xarray.squeeze"
+      id: "base.xarray.squeeze"
       inputs:
         image: "{add_dim.output}"
       params:
@@ -50,7 +50,7 @@
   description: "Verify transpose exchanges Z and Y axes"
   steps:
     - step_id: "swap_axes"
-      fn_id: "base.xarray.transpose"
+      id: "base.xarray.transpose"
       inputs:
         image: "datasets/synthetic/test.tif"
       params:

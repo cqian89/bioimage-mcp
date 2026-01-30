@@ -9,21 +9,24 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-from pydantic import BaseModel, Field, model_validator
+from pydantic import AliasChoices, BaseModel, Field, model_validator
 
 
 class ToolProtocolRequest(BaseModel):
     """Expected schema for tool protocol request per contracts/openapi.yaml."""
 
-    fn_id: str
+    id: str = Field(
+        validation_alias=AliasChoices("id", "fn_id"),
+        serialization_alias="id",
+    )
     params: dict[str, Any] = Field(default_factory=dict)
     inputs: dict[str, Any] = Field(default_factory=dict)
     work_dir: str
 
     @model_validator(mode="after")
     def _validate_request(self) -> ToolProtocolRequest:
-        if not self.fn_id:
-            raise ValueError("fn_id is required")
+        if not self.id:
+            raise ValueError("id is required")
         if not self.work_dir:
             raise ValueError("work_dir is required")
         return self
@@ -67,30 +70,30 @@ class TestToolProtocolRequestContract:
     def test_valid_request_accepted(self) -> None:
         """Test that a valid request passes validation."""
         request = {
-            "fn_id": "cellpose.models.CellposeModel.eval",
+            "id": "cellpose.models.CellposeModel.eval",
             "params": {"model_type": "cyto3", "diameter": 30.0},
             "inputs": {"x": {"ref_id": "abc123", "uri": "file:///path/to/image.tiff"}},
             "work_dir": "/tmp/work",
         }
         validated = ToolProtocolRequest(**request)
-        assert validated.fn_id == "cellpose.models.CellposeModel.eval"
+        assert validated.id == "cellpose.models.CellposeModel.eval"
         assert validated.params["model_type"] == "cyto3"
 
-    def test_request_requires_fn_id(self) -> None:
-        """Test that fn_id is required."""
+    def test_request_requires_id(self) -> None:
+        """Test that id is required."""
         request = {
-            "fn_id": "",
+            "id": "",
             "params": {},
             "inputs": {},
             "work_dir": "/tmp/work",
         }
-        with pytest.raises(ValueError, match="fn_id is required"):
+        with pytest.raises(ValueError, match="id is required"):
             ToolProtocolRequest(**request)
 
     def test_request_requires_work_dir(self) -> None:
         """Test that work_dir is required."""
         request = {
-            "fn_id": "cellpose.models.CellposeModel.eval",
+            "id": "cellpose.models.CellposeModel.eval",
             "params": {},
             "inputs": {},
             "work_dir": "",
@@ -101,7 +104,7 @@ class TestToolProtocolRequestContract:
     def test_request_with_artifact_ref_input(self) -> None:
         """Test request with a full artifact reference as input."""
         request = {
-            "fn_id": "cellpose.models.CellposeModel.eval",
+            "id": "cellpose.models.CellposeModel.eval",
             "params": {"diameter": 30.0},
             "inputs": {
                 "x": {

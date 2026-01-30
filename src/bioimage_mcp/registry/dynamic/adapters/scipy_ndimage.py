@@ -225,9 +225,11 @@ class ScipyNdimageAdapter(BaseAdapter):
             elif not axes:
                 axes = "YX"
 
-        # Dtype safety: If the output dtype is int64, cast to float32
-        if array.dtype == np.int64 or array.dtype == np.uint64:
-            array = array.astype(np.float32)
+        # Dtype safety: If the output dtype is int64, cast to int32 (for labels/indices)
+        if array.dtype == np.int64:
+            array = array.astype(np.int32)
+        elif array.dtype == np.uint64:
+            array = array.astype(np.uint32)
 
         if work_dir is None:
             # Use system temp directory
@@ -263,12 +265,36 @@ class ScipyNdimageAdapter(BaseAdapter):
             type_map = {"t": "time", "c": "channel", "z": "space", "y": "space", "x": "space"}
             axes_types = [type_map.get(d, "other") for d in axes_names]
 
+            pps_list = None
+            channels = None
+            if metadata_override:
+                raw_pps = metadata_override.get("physical_pixel_sizes")
+                if raw_pps:
+                    pps_dict = {}
+                    if isinstance(raw_pps, dict):
+                        pps_dict = {k.upper(): v for k, v in raw_pps.items()}
+                    elif isinstance(raw_pps, (list, tuple)):
+                        if len(raw_pps) == 2:
+                            pps_dict = {"Y": raw_pps[0], "X": raw_pps[1]}
+                        elif len(raw_pps) == 3:
+                            pps_dict = {"Z": raw_pps[0], "Y": raw_pps[1], "X": raw_pps[2]}
+                    if pps_dict:
+                        pps_list = [float(pps_dict.get(ax.upper(), 1.0)) for ax in inferred_axes]
+
+                channel_names = metadata_override.get("channel_names")
+                if channel_names:
+                    from bioio_ome_zarr.writers import Channel
+
+                    channels = [Channel(label=name, color="ffffff") for name in channel_names]
+
             writer = OMEZarrWriter(
                 store=str(path),
                 level_shapes=[array.shape],
                 dtype=array.dtype,
                 axes_names=axes_names,
                 axes_types=axes_types,
+                physical_pixel_size=pps_list,
+                channels=channels,
                 zarr_format=2,
             )
             writer.write_full_volume(array)
@@ -605,7 +631,7 @@ class ScipyNdimageAdapter(BaseAdapter):
                 work_dir=work_dir,
                 axes=axes,
                 metadata_override=labels_meta,
-                filename="labels.ome.tiff",
+                filename="labels.ome.zarr",
             )
             labels_ref["type"] = "LabelImageRef"
 

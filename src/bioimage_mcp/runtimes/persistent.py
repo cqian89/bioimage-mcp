@@ -311,7 +311,7 @@ class WorkerProcess:
             ordinal = self._get_next_ordinal()
             exec_req = ExecuteRequest(
                 command="execute",
-                fn_id=request.get("fn_id", ""),
+                id=request.get("id") or request.get("fn_id", ""),
                 inputs=request.get("inputs", {}),
                 params=request.get("params", {}),
                 work_dir=request.get("work_dir", "."),
@@ -334,11 +334,11 @@ class WorkerProcess:
                 self._process.stdin.flush()
 
                 logger.debug(
-                    "Sent execute request: session=%s env=%s ordinal=%s fn_id=%s",
+                    "Sent execute request: session=%s env=%s ordinal=%s id=%s",
                     self.session_id,
                     self.env_id,
                     ordinal,
-                    exec_req.fn_id,
+                    exec_req.id,
                 )
 
                 # Read response (with optional timeout)

@@ -115,7 +115,7 @@ class TestCellposeDescribeObjectRef:
         outputs = [{"name": "labels", "artifact_type": "LabelImageRef"}]
 
         service.upsert_function(
-            fn_id="cellpose.models.CellposeModel.eval",
+            id="cellpose.models.CellposeModel.eval",
             tool_id="tools.cellpose",
             name="Evaluate Cellpose Model",
             description="Run evaluation on a pre-initialized CellposeModel.",

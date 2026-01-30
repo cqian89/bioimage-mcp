@@ -129,7 +129,7 @@ class TestBackgroundMonitor:
 
         # Execute a simple request to establish activity
         request = {
-            "fn_id": "meta.describe",
+            "id": "meta.describe",
             "inputs": {},
             "params": {"target_fn": "base.io.bioimage.export"},
             "work_dir": str(tmp_path),

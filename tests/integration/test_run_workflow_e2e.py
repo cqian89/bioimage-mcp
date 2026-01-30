@@ -65,7 +65,7 @@ env_id: bioimage-mcp-base
 entrypoint: {entrypoint}
 platforms_supported: [linux-64]
 functions:
-  - fn_id: fn.test
+  - id: fn.test
     tool_id: tools.test
     name: Test
     description: Test
