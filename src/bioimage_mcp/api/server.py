@@ -198,7 +198,6 @@ def create_server(
         # Build base result dict (includes all data from interactive service)
         base_result = {
             "run_id": result.get("run_id", "none"),
-            "session_id": result.get("session_id"),
             "status": result.get("status"),
             "outputs": result.get("outputs", {}),
             "warnings": result.get("warnings", []),
