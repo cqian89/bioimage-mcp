@@ -56,7 +56,6 @@ def _env_available(env_name: str) -> bool:
 
 
 @pytest.mark.integration
-@pytest.mark.xfail(reason="entrypoint.py does not yet support dynamic dispatch")
 def test_flim_calibration_workflow(tmp_path: Path) -> None:
     """Test FLIM calibration workflow using reference and sample datasets.
 

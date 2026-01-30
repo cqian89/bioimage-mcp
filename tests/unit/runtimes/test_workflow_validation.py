@@ -73,7 +73,6 @@ class TestWorkflowValidation:
         assert len(errors) > 0, "Should have validation errors"
         assert any(err.port_name == "x" for err in errors), "Error should reference the 'x' port"
 
-    @pytest.mark.xfail(reason="Required input validation not yet implemented in v0.1")
     def test_missing_required_input_fails(self) -> None:
         """Test that missing required inputs are caught."""
         workflow_spec = {
