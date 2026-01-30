@@ -39,3 +39,24 @@ def test_meta_describe_unknown_function_log():
 
     # After the fix, this should be a descriptive message, not a misleading traceback
     assert response["log"] == "meta.describe failed: Unknown function: unknown.fn"
+
+
+def test_handle_meta_describe_discovery_failure_logging(caplog):
+    """Test that dynamic discovery failure in handle_meta_describe is logged at WARNING level."""
+    import logging
+
+    # Simpler approach: make manifest reading fail, which triggers the exception block
+    with patch("pathlib.Path.read_bytes", side_effect=RuntimeError("Mocked file read failure")):
+        with caplog.at_level(logging.WARNING):
+            params = {"target_fn": "base.io.bioimage.load"}
+            response = entrypoint.handle_meta_describe(params)
+
+            # It should still succeed by falling back
+            assert response["ok"] is True
+            assert response["result"]["introspection_source"] == "python_api"
+
+            # Verify the warning was logged
+            assert (
+                "Dynamic discovery for base.io.bioimage.load failed: Mocked file read failure"
+                in caplog.text
+            )

@@ -5,11 +5,15 @@ from __future__ import annotations
 
 import importlib
 import json
+import logging
 import sys
 import traceback
 import uuid
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
+
 
 BASE_DIR = Path(__file__).resolve().parent
 TOOLS_ROOT = BASE_DIR.parent
@@ -441,9 +445,9 @@ def handle_meta_describe(params: dict[str, Any]) -> dict[str, Any]:
                     "introspection_source": "dynamic_discovery",
                 },
             }
-    except Exception:
+    except Exception as exc:
         # Fall back to python_api introspection below.
-        pass
+        logger.warning("Dynamic discovery for %s failed: %s", target_fn, exc)
 
     func = None
     descriptions = {}
