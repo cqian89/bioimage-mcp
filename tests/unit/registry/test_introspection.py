@@ -321,3 +321,56 @@ class TestIntrospector:
         i = Introspector()
         assert i._make_json_serializable(np.float64) == "float64"
         assert i._make_json_serializable(np.dtype("float32")) == "float32"
+
+
+class TestExtractEnumFromDocstring:
+    """Tests for docstring enum extraction."""
+
+    def test_extract_simple_string_enum(self):
+        """Extract enum from {'a', 'b', 'c'} pattern."""
+        introspector = Introspector()
+        result = introspector._extract_enum_from_docstring_type("{'a', 'b', 'c'}")
+        assert result == ["a", "b", "c"]
+
+    def test_extract_enum_with_optional_suffix(self):
+        """Extract enum from {'a', 'b'}, optional pattern."""
+        introspector = Introspector()
+        result = introspector._extract_enum_from_docstring_type("{'a', 'b'}, optional")
+        assert result == ["a", "b"]
+
+    def test_extract_enum_double_quotes(self):
+        """Extract enum with double quotes."""
+        introspector = Introspector()
+        result = introspector._extract_enum_from_docstring_type('{"reflect", "constant"}')
+        assert result == ["reflect", "constant"]
+
+    def test_extract_numeric_enum(self):
+        """Extract enum from {1, 2, 3} pattern."""
+        introspector = Introspector()
+        result = introspector._extract_enum_from_docstring_type("{1, 2, 3}")
+        assert result == ["1", "2", "3"]
+
+    def test_no_enum_for_plain_type(self):
+        """Return None for plain types like 'int' or 'str'."""
+        introspector = Introspector()
+        assert introspector._extract_enum_from_docstring_type("int") is None
+        assert introspector._extract_enum_from_docstring_type("str or None") is None
+        assert introspector._extract_enum_from_docstring_type("ndarray") is None
+
+    def test_no_enum_for_dict_pattern(self):
+        """Return None for dict-like patterns with colons."""
+        introspector = Introspector()
+        assert introspector._extract_enum_from_docstring_type("{key: value}") is None
+        assert introspector._extract_enum_from_docstring_type("{'a': 1, 'b': 2}") is None
+
+    def test_no_enum_for_single_value(self):
+        """Return None if only one value in braces."""
+        introspector = Introspector()
+        result = introspector._extract_enum_from_docstring_type("{'only_one'}")
+        assert result is None
+
+    def test_empty_or_none_input(self):
+        """Return None for empty string or None input."""
+        introspector = Introspector()
+        assert introspector._extract_enum_from_docstring_type("") is None
+        assert introspector._extract_enum_from_docstring_type(None) is None
