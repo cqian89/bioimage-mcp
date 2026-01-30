@@ -51,9 +51,6 @@ def test_describe_function_separates_inputs_outputs_params():
     assert "inputs" in described
     assert "outputs" in described
     assert "params_schema" in described
-    assert "meta" in described
-    assert described["meta"]["tool_version"] == "0.1.0"
-    assert "introspection_source" in described["meta"]
     assert "image" in described["inputs"]
     assert "output" in described["outputs"]
     assert "sigma" in described["params_schema"]["properties"]
@@ -95,6 +92,66 @@ def test_describe_non_function_node_returns_catalog_node():
     assert described["id"] == "base.ops"
     assert described["type"] == "package"
     assert "children" in described
+
+    conn.close()
+
+
+def test_describe_function_sanitizes_text_and_hints():
+    """Verify newline normalization and null hint omission."""
+    conn = sqlite3.connect(":memory:")
+    init_schema(conn)
+    service = DiscoveryService(conn)
+
+    service.upsert_tool(
+        tool_id="tools.test",
+        name="Test",
+        description="Test\nPack",
+        tool_version="0.1.0",
+        env_id="env_test",
+        manifest_path="/abs/test.yaml",
+        available=True,
+        installed=True,
+    )
+    service.upsert_function(
+        id="test.op",
+        tool_id="tools.test",
+        name="Op",
+        description="Multi-line\nSummary",
+        tags=[],
+        inputs=[
+            {
+                "name": "image",
+                "artifact_type": "BioImageRef",
+                "required": True,
+                "description": "Input\nImage",
+            }
+        ],
+        outputs=[
+            {
+                "name": "output",
+                "artifact_type": "BioImageRef",
+                "description": "Output\nImage",
+            }
+        ],
+        params_schema={
+            "type": "object",
+            "properties": {
+                "sigma": {"type": "number", "description": "Smoothing\nSigma"},
+            },
+        },
+    )
+
+    described = service.describe_function(id="test.op")
+
+    # 1. Newline normalization
+    assert described["summary"] == "Multi-line Summary"
+    assert described["inputs"]["image"]["description"] == "Input Image"
+    assert described["outputs"]["output"]["description"] == "Output Image"
+    assert described["params_schema"]["properties"]["sigma"]["description"] == "Smoothing Sigma"
+
+    # 2. Null hints omission
+    assert "hints" not in described
+    assert "hints" not in described["inputs"]["image"]
 
     conn.close()
 

@@ -69,6 +69,23 @@ def _compute_source_hash(
     return None
 
 
+def _normalize_text(text: str | None) -> str | None:
+    if text is None:
+        return None
+    return " ".join(text.splitlines())
+
+
+def _sanitize_schema_descriptions(schema: Any) -> None:
+    if isinstance(schema, dict):
+        if "description" in schema and isinstance(schema["description"], str):
+            schema["description"] = _normalize_text(schema["description"])
+        for value in schema.values():
+            _sanitize_schema_descriptions(value)
+    elif isinstance(schema, list):
+        for item in schema:
+            _sanitize_schema_descriptions(item)
+
+
 class DiscoveryService:
     def __init__(self, conn: sqlite3.Connection, *, owns_conn: bool = False):
         self._conn = conn
@@ -714,11 +731,6 @@ class DiscoveryService:
         introspection_source = payload.get("introspection_source", "manual")
         callable_fingerprint = None
 
-        # Get tool version for metadata block
-        tool_id = payload.get("tool_id")
-        tool = self._index.get_tool(tool_id)
-        tool_version = tool["tool_version"] if tool else "unknown"
-
         # Try to get enriched schema from DB cache or via meta.describe.
         # Only do this when the tool's recorded manifest_path exists on disk.
         if manifest:
@@ -867,18 +879,35 @@ class DiscoveryService:
                     )
                 ]
 
-        return {
+        # Quick-004: Sanitize describe() response for LLM consumption
+        summary = _normalize_text(node.summary or "")
+
+        processed_inputs = {}
+        for port_name, port_info in inputs.items():
+            info = dict(port_info)
+            info["description"] = _normalize_text(info.get("description", ""))
+            if info.get("hints") is None:
+                info.pop("hints", None)
+            processed_inputs[port_name] = info
+
+        processed_outputs = {}
+        for port_name, port_info in outputs.items():
+            info = dict(port_info)
+            info["description"] = _normalize_text(info.get("description", ""))
+            processed_outputs[port_name] = info
+
+        if params_schema:
+            _sanitize_schema_descriptions(params_schema)
+
+        res = {
             "id": id,
             "type": "function",
-            "summary": node.summary or "",
-            "inputs": inputs,
-            "outputs": outputs,
+            "summary": summary,
+            "inputs": processed_inputs,
+            "outputs": processed_outputs,
             "params_schema": params_schema,
-            "meta": {
-                "tool_version": tool_version,
-                "introspection_source": introspection_source,
-                "callable_fingerprint": callable_fingerprint,
-                "module": node.module,
-            },
-            "hints": hints,
         }
+        if hints is not None:
+            res["hints"] = hints
+
+        return res

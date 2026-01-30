@@ -160,7 +160,9 @@ functions:
 
     # 5. Call describe_function (triggers enrichment)
     desc = service.describe_function(id=fn_id)
-    assert desc["meta"]["introspection_source"] == "python_api"
+    # Quick-004: meta field is now omitted from describe responses
+    assert "meta" not in desc
+    assert "params_schema" in desc  # Verify describe completed successfully
 
     # 6. Verify list still excludes module/io_pattern after enrichment
     res2 = service.list_tools(path=fn_id)

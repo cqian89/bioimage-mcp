@@ -115,7 +115,6 @@ def test_discovery_describe_function_returns_schema() -> None:
         "inputs",
         "outputs",
         "hints",
-        "meta",
     }
     assert {"id", "params_schema"}.issubset(described.keys())
     assert set(described.keys()).issubset(allowed_keys)
