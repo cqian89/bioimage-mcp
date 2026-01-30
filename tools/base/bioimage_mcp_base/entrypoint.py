@@ -350,6 +350,8 @@ def handle_meta_list(params: dict[str, Any]) -> dict[str, Any]:
         cache_dir = Path.home() / ".bioimage-mcp" / "cache" / "dynamic" / manifest.tool_id
         cache = IntrospectionCache(cache_dir)
 
+        from bioimage_mcp.registry.engine import DiscoveryEngine
+
         discovered = discover_functions(
             manifest, ADAPTER_REGISTRY, cache=cache, project_root=project_root
         )
@@ -366,6 +368,7 @@ def handle_meta_list(params: dict[str, Any]) -> dict[str, Any]:
                 "io_pattern": meta.io_pattern.value,
                 "description": meta.description,
                 "parameters": {k: v.model_dump() for k, v in meta.parameters.items()},
+                "params_schema": DiscoveryEngine.parameters_to_json_schema(meta.parameters),
                 "returns": meta.returns,
                 "source_adapter": meta.source_adapter,
             }
@@ -387,6 +390,60 @@ def handle_meta_describe(params: dict[str, Any]) -> dict[str, Any]:
     target_fn = params.get("target_fn", "")
     if not target_fn:
         return {"ok": False, "error": "Missing target_fn"}
+
+    # Prefer dynamic discovery metadata when available.
+    # This provides richer parameter schemas than generic python_api introspection,
+    # including enums extracted from docstrings and adapter-specific enrichments
+    # like skimage.measure.regionprops(_table) property lists.
+    try:
+        import hashlib
+
+        import yaml
+
+        from bioimage_mcp.registry.dynamic.adapters import ADAPTER_REGISTRY
+        from bioimage_mcp.registry.dynamic.cache import IntrospectionCache
+        from bioimage_mcp.registry.dynamic.discovery import discover_functions
+        from bioimage_mcp.registry.engine import DiscoveryEngine
+        from bioimage_mcp.registry.manifest_schema import ToolManifest
+
+        manifest_path = BASE_DIR.parent / "manifest.yaml"
+        raw = manifest_path.read_bytes()
+        checksum = hashlib.sha256(raw).hexdigest()
+        manifest_data = yaml.safe_load(raw)
+        manifest = ToolManifest.model_validate(
+            {
+                **manifest_data,
+                "manifest_path": manifest_path,
+                "manifest_checksum": checksum,
+            }
+        )
+
+        project_root = _find_project_root(manifest_path.parent)
+        cache_dir = Path.home() / ".bioimage-mcp" / "cache" / "dynamic" / manifest.tool_id
+        cache = IntrospectionCache(cache_dir)
+
+        discovered = discover_functions(
+            manifest, ADAPTER_REGISTRY, cache=cache, project_root=project_root
+        )
+
+        search_fn = target_fn
+        if search_fn.startswith("base."):
+            search_fn = search_fn[5:]
+
+        meta = next((m for m in discovered if m.fn_id == search_fn), None)
+        if meta is not None:
+            schema = DiscoveryEngine.parameters_to_json_schema(meta.parameters)
+            return {
+                "ok": True,
+                "result": {
+                    "params_schema": schema,
+                    "tool_version": TOOL_VERSION,
+                    "introspection_source": "dynamic_discovery",
+                },
+            }
+    except Exception:
+        # Fall back to python_api introspection below.
+        pass
 
     func = None
     descriptions = {}

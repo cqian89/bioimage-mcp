@@ -407,6 +407,42 @@ class DiscoveryEngine:
         params_schema = self._generate_static_params_schema(sc)
         introspection_source = "ast"
 
+        # Prefer runtime meta.list parameter schema when available.
+        # Runtime metadata comes from tool-pack dynamic discovery adapters and may include
+        # richer information than AST (descriptions, enums, array item schemas, and
+        # adapter-specific enrichments like regionprops property lists).
+        if runtime_entry:
+            runtime_params_schema = runtime_entry.get("params_schema")
+            if isinstance(runtime_params_schema, dict) and isinstance(
+                runtime_params_schema.get("properties"), dict
+            ):
+                params_schema = runtime_params_schema
+                runtime_source = runtime_entry.get("introspection_source") or "meta.list"
+                introspection_source = f"runtime:{runtime_source}"
+            else:
+                parameters = runtime_entry.get("parameters")
+                if isinstance(parameters, dict) and parameters:
+                    from bioimage_mcp.registry.dynamic.models import ParameterSchema
+
+                    param_models: dict[str, ParameterSchema] = {}
+                    for name, payload in parameters.items():
+                        if not isinstance(payload, dict):
+                            continue
+                        try:
+                            if "name" in payload:
+                                param_models[name] = ParameterSchema(**payload)
+                            else:
+                                param_models[name] = ParameterSchema(name=name, **payload)
+                        except Exception:
+                            continue
+
+                    runtime_params_schema = self.parameters_to_json_schema(param_models)
+                    if runtime_params_schema.get("properties"):
+                        params_schema = runtime_params_schema
+                        runtime_source = runtime_entry.get("introspection_source") or "meta.list"
+                        introspection_source = f"runtime:{runtime_source}"
+
+
         inputs: list[Port] = []
         outputs: list[Port] = []
         io_pattern: IOPattern | None = None

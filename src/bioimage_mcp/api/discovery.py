@@ -702,6 +702,29 @@ class DiscoveryService:
             for name, schema in base_properties.items():
                 if name not in merged_properties:
                     merged_properties[name] = schema
+                    continue
+
+                # Merge missing fields for shared properties (e.g., keep python_api descriptions
+                # while preserving richer manifest/runtime metadata like type/enum/items).
+                existing = merged_properties.get(name)
+                if not isinstance(existing, dict) or not isinstance(schema, dict):
+                    continue
+
+                merged_prop = dict(existing)
+                for key, value in schema.items():
+                    if key not in merged_prop:
+                        merged_prop[key] = value
+                        continue
+
+                    # Shallow-merge items schema when present in both.
+                    if key == "items" and isinstance(merged_prop.get("items"), dict) and isinstance(value, dict):
+                        merged_items = dict(merged_prop["items"])
+                        for ik, iv in value.items():
+                            if ik not in merged_items:
+                                merged_items[ik] = iv
+                        merged_prop["items"] = merged_items
+
+                merged_properties[name] = merged_prop
 
             merged["properties"] = merged_properties
 

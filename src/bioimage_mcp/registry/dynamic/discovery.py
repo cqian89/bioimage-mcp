@@ -13,6 +13,9 @@ from bioimage_mcp.registry.dynamic.models import FunctionMetadata
 from bioimage_mcp.registry.manifest_schema import ToolManifest
 
 
+DYNAMIC_DISCOVERY_CACHE_VERSION = "2"
+
+
 def _calculate_lockfile_hash(manifest: ToolManifest, project_root: Path) -> str:
     """Calculate hash of environment lockfile for cache invalidation.
 
@@ -60,7 +63,7 @@ def discover_functions(
 
     # Include manifest checksum in the composite cache key (T13.07)
     manifest_checksum_16 = manifest.manifest_checksum[:16]
-    composite_key = f"{env_component}:{manifest_checksum_16}"
+    composite_key = f"{env_component}:{manifest_checksum_16}:{DYNAMIC_DISCOVERY_CACHE_VERSION}"
 
     for source in manifest.dynamic_sources:
         # Try cache first if available
