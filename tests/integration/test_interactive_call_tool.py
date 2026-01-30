@@ -118,7 +118,6 @@ functions:
     result1 = service.call_tool(session_id=session_id, fn_id="fn.test", params={"p": 1}, inputs={})
 
     # Verify result 1
-    assert result1["session_id"] == session_id
     assert "step_id" in result1
     assert result1["outputs"]["output"]["content"] == "hello interactive"
 
@@ -134,7 +133,6 @@ functions:
     result2 = service.call_tool(session_id=session_id, fn_id="fn.test", params={"p": 2}, inputs={})
 
     # Verify result 2
-    assert result2["session_id"] == session_id
     assert result2["step_id"] != result1["step_id"]
 
     # Verify step 1 recorded

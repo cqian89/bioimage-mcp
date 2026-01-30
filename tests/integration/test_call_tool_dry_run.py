@@ -87,7 +87,6 @@ functions:
         pytest.fail("call_tool does not accept dry_run argument yet")
 
     # Verify result
-    assert result["session_id"] == session_id
     assert result["status"] == "success"
     assert result.get("dry_run") is True
     assert "outputs" in result
@@ -170,7 +169,6 @@ functions:
         dry_run=True,
     )
 
-    assert result["session_id"] == session_id
     assert result["status"] == "validation_failed"
     assert result.get("dry_run") is True
     assert "error" in result

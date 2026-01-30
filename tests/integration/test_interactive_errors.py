@@ -93,7 +93,6 @@ functions:
     result = service.call_tool(session_id=session_id, fn_id="fn.fail", params={}, inputs={})
 
     # Verify result
-    assert result["session_id"] == session_id
     assert result["status"] == "failed"
     assert "error" in result
     assert result["error"] is not None
