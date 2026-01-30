@@ -20,6 +20,7 @@ class IOPattern(str, Enum):
     PHASOR_CALIBRATE = "phasor_calibrate"
     PHASOR_TO_OTHER = "phasor_to_other"
     PHASOR_TO_SCALAR = "phasor_to_scalar"
+    PHASOR_TO_LIFETIMES = "phasor_to_lifetimes"
     SCALAR_TO_PHASOR = "scalar_to_phasor"
     PLOT = "plot"
     PHASOR_PLOT = "phasor_plot"  # (real, imag) -> PlotRef

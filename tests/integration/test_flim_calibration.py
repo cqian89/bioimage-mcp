@@ -225,6 +225,77 @@ def test_flim_calibration_workflow(tmp_path: Path) -> None:
 
 
 @pytest.mark.integration
+def test_phasor_to_apparent_lifetime_naming(tmp_path: Path) -> None:
+    """Verify output naming for phasor_to_apparent_lifetime."""
+    if not _env_available("bioimage-mcp-base"):
+        pytest.skip("Required tool environment missing: bioimage-mcp-base")
+
+    if not FLUTE_DATASET_PATH.exists():
+        pytest.skip(f"Dataset missing at {FLUTE_DATASET_PATH}")
+
+    reference_file = FLUTE_DATASET_PATH / "Fluorescein_Embryo.tif"
+
+    # Setup test configuration
+    artifacts_root = tmp_path / "artifacts"
+    tools_root = Path(__file__).parent.parent.parent / "tools"
+    config = Config(
+        artifact_store_root=artifacts_root,
+        tool_manifest_roots=[tools_root],
+        fs_allowlist_read=[FLUTE_DATASET_PATH, tools_root, tmp_path],
+        fs_allowlist_write=[tmp_path],
+        fs_denylist=[],
+    )
+    conn = connect(config)
+    artifact_store = ArtifactStore(config, conn=conn)
+    execution = ExecutionService(config, artifact_store=artifact_store)
+
+    # 1. Compute phasor from reference
+    workflow_ref = {
+        "steps": [
+            {
+                "id": "phasorpy.phasor.phasor_from_signal",
+                "inputs": {
+                    "signal": {
+                        "type": "BioImageRef",
+                        "format": "OME-TIFF",
+                        "uri": _path_to_uri(reference_file),
+                    }
+                },
+                "params": {"axis": -1, "harmonic": 1},
+            }
+        ]
+    }
+    run_ref = execution.run_workflow(workflow_ref)
+    status_ref = execution.get_run_status(run_ref["run_id"])
+    assert status_ref["status"] == "success"
+
+    # 2. Compute apparent lifetimes
+    workflow_lifetime = {
+        "steps": [
+            {
+                "id": "phasorpy.lifetime.phasor_to_apparent_lifetime",
+                "inputs": {
+                    "real": status_ref["outputs"]["real"],
+                    "imag": status_ref["outputs"]["imag"],
+                },
+                "params": {"frequency": 80.0},
+            }
+        ]
+    }
+
+    run_lt = execution.run_workflow(workflow_lifetime)
+    status_lt = execution.get_run_status(run_lt["run_id"])
+    assert status_lt["status"] == "success", status_lt.get("error")
+
+    # Verify output names match PHASOR_TO_LIFETIMES pattern
+    outputs = status_lt["outputs"]
+    assert "phase_lifetime" in outputs
+    assert "modulation_lifetime" in outputs
+    assert outputs["phase_lifetime"]["metadata"]["output_name"] == "phase_lifetime"
+    assert outputs["modulation_lifetime"]["metadata"]["output_name"] == "modulation_lifetime"
+
+
+@pytest.mark.integration
 def test_phasorpy_functions_discoverable(tmp_path: Path) -> None:
     """Test that phasorpy functions are discoverable via dynamic sources.
 

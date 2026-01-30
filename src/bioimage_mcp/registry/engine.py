@@ -438,6 +438,20 @@ class DiscoveryEngine:
         # Filter out port names from parameters (enforce artifact separation)
         # We do this BEFORE deciding to fallback so we know if AST is truly incomplete
         port_names = {p.name for p in inputs} | {p.name for p in outputs}
+        # Add common artifact parameter names that should be filtered even if not in ports (T051)
+        port_names.update(
+            {
+                "label_image",
+                "intensity_image",
+                "input_image",
+                "src",
+                "source",
+                "signal",
+                "real",
+                "imag",
+                "mean",
+            }
+        )
         artifact_types = {
             "BioImageRef",
             "LabelImageRef",
@@ -684,14 +698,18 @@ class DiscoveryEngine:
             inputs = [Port(name="image", artifact_type="BioImageRef")]
             outputs = [Port(name="output", artifact_type="BioImageRef")]
         elif pattern == IOPattern.IMAGE_TO_LABELS:
-            inputs = [Port(name="image", artifact_type="BioImageRef")]
+            inputs = [
+                Port(name="image", artifact_type="BioImageRef"),
+                Port(name="label_image", artifact_type="BioImageRef", required=False),
+            ]
             outputs = [Port(name="labels", artifact_type="LabelImageRef")]
         elif pattern == IOPattern.LABELS_TO_LABELS:
             inputs = [Port(name="image", artifact_type="LabelImageRef")]
             outputs = [Port(name="labels", artifact_type="LabelImageRef")]
         elif pattern == IOPattern.LABELS_TO_TABLE:
             inputs = [
-                Port(name="labels", artifact_type="LabelImageRef"),
+                Port(name="label_image", artifact_type="LabelImageRef"),
+                Port(name="labels", artifact_type="LabelImageRef", required=False),
                 Port(name="intensity_image", artifact_type="BioImageRef", required=False),
             ]
             outputs = [Port(name="table", artifact_type="TableRef")]
@@ -784,6 +802,15 @@ class DiscoveryEngine:
                 Port(name="imag", artifact_type="BioImageRef"),
             ]
             outputs = [Port(name="output", artifact_type="BioImageRef")]
+        elif pattern == IOPattern.PHASOR_TO_LIFETIMES:
+            inputs = [
+                Port(name="real", artifact_type="BioImageRef"),
+                Port(name="imag", artifact_type="BioImageRef"),
+            ]
+            outputs = [
+                Port(name="phase_lifetime", artifact_type="BioImageRef"),
+                Port(name="modulation_lifetime", artifact_type="BioImageRef"),
+            ]
         elif pattern == IOPattern.SCALAR_TO_PHASOR:
             inputs = []
             outputs = [

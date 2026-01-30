@@ -199,8 +199,12 @@ class PhasorPyAdapter:
         if func_name == "phasor_calibrate":
             return IOPattern.PHASOR_CALIBRATE
 
-        # PHASOR_TO_SCALAR: phasor_to_apparent_lifetime, phasor_to_polar
-        if "to_apparent_lifetime" in func_name or "to_polar" in func_name:
+        # PHASOR_TO_LIFETIMES: phasor_to_apparent_lifetime
+        if func_name == "phasor_to_apparent_lifetime":
+            return IOPattern.PHASOR_TO_LIFETIMES
+
+        # PHASOR_TO_SCALAR: phasor_to_polar
+        if "to_polar" in func_name:
             return IOPattern.PHASOR_TO_SCALAR
 
         # SCALAR_TO_PHASOR: phasor_from_lifetime, phasor_from_polar
@@ -621,6 +625,8 @@ class PhasorPyAdapter:
                         name_hint = f"output-{i}"
                         if func_name == "phasor_from_signal" and i < 3:
                             name_hint = ["mean", "real", "imag"][i]
+                        elif func_name == "phasor_to_apparent_lifetime" and i < 2:
+                            name_hint = ["phase_lifetime", "modulation_lifetime"][i]
                         elif "phasor" in func_name and len(result) == 2 and i < 2:
                             name_hint = ["real", "imag"][i]
 
