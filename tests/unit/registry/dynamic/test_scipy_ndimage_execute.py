@@ -641,8 +641,67 @@ def test_execute_fourier_complex_workflow(adapter, tmp_path):
             work_dir=tmp_path,
         )
 
-        # Should be cast to real because mock returns complex with 0 imag
-        assert res_ifft[0]["metadata"]["dtype"] == "float64"  # complex128.real is float64
+    # Should be cast to real because mock returns complex with 0 imag
+    assert res_ifft[0]["metadata"]["dtype"] == "float64"  # complex128.real is float64
+
+
+def test_execute_callable_resolution_expansion(adapter, mock_module, tmp_path):
+    # Setup mock data
+    img_data = np.array([[10, 20], [30, 40]], dtype=np.float32)
+    img_uri = "obj://img_expansion"
+    OBJECT_CACHE[img_uri] = img_data
+
+    inputs = [("image", {"uri": img_uri, "metadata": {"axes": "YX"}})]
+
+    # We want to verify that these parameter names trigger resolve_callable
+    # CALLABLE_PARAM_NAMES = {"function", "function1", "function2", "callback",
+    #                         "mapping", "derivative", "derivative2"}
+
+    # We'll mock the actual functions in scipy.ndimage to check what they receive
+    def check_params(image, **kwargs):
+        # Verify that strings were resolved to callables
+        assert callable(kwargs.get("derivative"))
+        assert callable(kwargs.get("mapping"))
+        # extra_arguments should remain a tuple/list (not resolved as callable)
+        assert isinstance(kwargs.get("extra_arguments"), (list, tuple))
+        return image
+
+    mock_module.generic_filter = check_params
+
+    params = {
+        "derivative": "numpy.mean",
+        "mapping": "numpy.max",
+        "extra_arguments": [1, 2, 3],
+    }
+
+    adapter.execute(
+        fn_id="scipy.ndimage.generic_filter", inputs=inputs, params=params, work_dir=tmp_path
+    )
+
+
+def test_execute_callable_resolution_prefixes_removed(adapter, mock_module, tmp_path):
+    # Setup mock data
+    img_data = np.array([[10, 20], [30, 40]], dtype=np.float32)
+    img_uri = "obj://img_prefixes"
+    OBJECT_CACHE[img_uri] = img_data
+
+    inputs = [("image", {"uri": img_uri, "metadata": {"axes": "YX"}})]
+
+    # The new logic uses 'in CALLABLE_PARAM_NAMES' instead of 'startswith'.
+    # So "function_alt" should NOT be resolved anymore if it's not in the set.
+
+    def check_params(image, **kwargs):
+        # "function_alt" should still be a string because it's not in CALLABLE_PARAM_NAMES
+        assert isinstance(kwargs.get("function_alt"), str)
+        return image
+
+    mock_module.generic_filter = check_params
+
+    params = {"function_alt": "numpy.mean"}
+
+    adapter.execute(
+        fn_id="scipy.ndimage.generic_filter", inputs=inputs, params=params, work_dir=tmp_path
+    )
 
 
 def test_determine_io_pattern_fourier(adapter):

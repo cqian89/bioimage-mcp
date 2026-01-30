@@ -22,6 +22,18 @@ from bioimage_mcp.registry.dynamic.introspection import Introspector
 from bioimage_mcp.registry.dynamic.models import FunctionMetadata, IOPattern
 from bioimage_mcp.registry.dynamic.object_cache import OBJECT_CACHE
 
+CALLABLE_PARAM_NAMES = frozenset(
+    {
+        "function",
+        "function1",
+        "function2",
+        "callback",
+        "mapping",  # geometric_transform
+        "derivative",  # gradient functions
+        "derivative2",  # gradient functions
+    }
+)
+
 logger = logging.getLogger(__name__)
 
 try:
@@ -503,9 +515,9 @@ class ScipyNdimageAdapter(BaseAdapter):
         params.pop("output", None)
 
         # 3) Callable parameters
-        # For known callable parameter names (start with: function, callback), resolve if string
+        # For known callable parameter names, resolve if string
         for key, val in list(params.items()):
-            if (key.startswith("function") or key.startswith("callback")) and isinstance(val, str):
+            if key in CALLABLE_PARAM_NAMES and isinstance(val, str):
                 params[key] = resolve_callable(val)
 
         # 4) Auxiliary array artifacts
