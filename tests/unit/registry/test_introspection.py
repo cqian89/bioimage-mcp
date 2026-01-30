@@ -293,3 +293,21 @@ class TestIntrospector:
         assert metadata.parameters["channel_axis"].type == "integer"
         # plural 'axes' should NOT be forced to integer
         assert metadata.parameters["axes"].type == "array"
+
+    def test_arraylike_maps_to_array(self):
+        """ArrayLike and ndarray annotations should map to array type."""
+        from bioimage_mcp.registry.dynamic.introspection import Introspector
+
+        def fn_with_scientific_types(
+            sigma: "ArrayLike" = 1.0,
+            image: "ndarray" = None,
+            kernel: "numpy.ndarray" = None,
+        ):
+            pass
+
+        introspector = Introspector()
+        metadata = introspector.introspect(fn_with_scientific_types, "test")
+
+        assert metadata.parameters["sigma"].type == "array"
+        assert metadata.parameters["image"].type == "array"
+        assert metadata.parameters["kernel"].type == "array"

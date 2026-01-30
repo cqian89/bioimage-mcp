@@ -299,11 +299,11 @@ class Introspector:
                 return "boolean"
             # Scientific array types - treat as number for scalar compatibility
             elif "arraylike" in lower_annotation or "array_like" in lower_annotation:
-                # ArrayLike often means "scalar or array" - use number for MCP
-                return "number"
+                # ArrayLike can be scalar or array - use array to allow sequences
+                return "array"
             elif "ndarray" in lower_annotation:
-                # numpy ndarray - for scalar params, treat as number
-                return "number"
+                # ndarray hints usually mean array input is expected
+                return "array"
 
         # Handle typing module types like Optional[float], Union[int, float]
         origin = getattr(annotation, "__origin__", None)
