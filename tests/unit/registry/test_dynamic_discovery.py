@@ -233,7 +233,7 @@ class TestCacheIntegration:
                 source_adapter="test-adapter",
             )
         ]
-        composite_key = f"{lockfile_hash}:{manifest.manifest_checksum[:16]}"
+        composite_key = f"{lockfile_hash}:{manifest.manifest_checksum[:16]}:2"
         cache.put("test-adapter", "test", composite_key, cached_results)
 
         # Call discover_functions with cache and project_root
@@ -356,7 +356,7 @@ class TestCacheIntegration:
         # Verify results were stored in cache
         lockfile_content = lockfile_path.read_text()
         lockfile_hash = hashlib.sha256(lockfile_content.encode()).hexdigest()[:16]
-        composite_key = f"{lockfile_hash}:{manifest.manifest_checksum[:16]}"
+        composite_key = f"{lockfile_hash}:{manifest.manifest_checksum[:16]}:2"
         cached_results = cache.get("test-adapter", "test", composite_key)
 
         assert cached_results is not None
@@ -405,7 +405,7 @@ class TestCacheIntegration:
         cache_dir = tmp_path / ".bioimage-mcp" / "cache"
         cache = IntrospectionCache(cache_dir)
         lockfile_hash = hashlib.sha256(lockfile_path.read_text().encode()).hexdigest()[:16]
-        composite_key_a = f"{lockfile_hash}:checksum_A"
+        composite_key_a = f"{lockfile_hash}:checksum_A:2"
 
         cached_results = [
             FunctionMetadata(
@@ -430,7 +430,7 @@ class TestCacheIntegration:
         assert results[0].fn_id == "test.fresh_func"
 
         # Verify new cache entry created for checksum_B
-        composite_key_b = f"{lockfile_hash}:checksum_B"
+        composite_key_b = f"{lockfile_hash}:checksum_B:2"
         cached_results_b = cache.get("test-adapter", "test", composite_key_b)
         assert cached_results_b is not None
         assert cached_results_b[0].fn_id == "test.fresh_func"
@@ -475,7 +475,7 @@ class TestCacheIntegration:
         assert mock_adapter.discover.call_count == 1
 
         # Verify cache was written with 'no-lockfile' sentinel
-        composite_key = f"no-lockfile:{manifest.manifest_checksum[:16]}"
+        composite_key = f"no-lockfile:{manifest.manifest_checksum[:16]}:2"
         cached_results = cache.get("test-adapter", "test", composite_key)
         assert cached_results is not None
         assert cached_results[0].fn_id == "t.f"
