@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from bioimage_mcp.artifacts.preview import generate_image_preview
+from bioimage_mcp.artifacts.preview import generate_image_preview, generate_label_preview
 from bioimage_mcp.artifacts.store import ArtifactStore
 from bioimage_mcp.errors import ArtifactStoreError
 
@@ -85,16 +85,29 @@ class ArtifactsService:
                     elif isinstance(channels, list) and channels:
                         channel_idx = channels[0]
 
-                    preview = generate_image_preview(
-                        path=path,
-                        dims=response.get("dims"),
-                        shape=response.get("shape"),
-                        dtype=response.get("dtype"),
-                        max_size=image_preview_size,
-                        projection=projection,
-                        slice_indices=slice_indices,
-                        channel=channel_idx,
-                    )
+                    if ref.type == "LabelImageRef":
+                        preview = generate_label_preview(
+                            path=path,
+                            dims=response.get("dims"),
+                            shape=response.get("shape"),
+                            dtype=response.get("dtype"),
+                            max_size=image_preview_size,
+                            projection=projection,
+                            slice_indices=slice_indices,
+                            channel=channel_idx,
+                        )
+                    else:
+                        preview = generate_image_preview(
+                            path=path,
+                            dims=response.get("dims"),
+                            shape=response.get("shape"),
+                            dtype=response.get("dtype"),
+                            max_size=image_preview_size,
+                            projection=projection,
+                            slice_indices=slice_indices,
+                            channel=channel_idx,
+                        )
+
                     if preview:
                         response["image_preview"] = preview
 
