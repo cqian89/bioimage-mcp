@@ -56,4 +56,4 @@ async def test_scipy_discovery_describe(live_server, fn_id):
 
     # Basic validation of params_schema
     assert isinstance(res["params_schema"], dict)
-    assert res["params_schema"].get("type") == "object"
+    assert "type" not in res["params_schema"]

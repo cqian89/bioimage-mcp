@@ -946,7 +946,8 @@ class DiscoveryService:
             info["description"] = _normalize_text(info.get("description", ""))
             processed_outputs[port_name] = info
 
-        if params_schema:
+        if isinstance(params_schema, dict):
+            params_schema.pop("type", None)
             _sanitize_schema_descriptions(params_schema)
 
         res = {

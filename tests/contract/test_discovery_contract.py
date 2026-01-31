@@ -119,7 +119,7 @@ def test_discovery_describe_function_returns_schema() -> None:
     assert {"id", "params_schema"}.issubset(described.keys())
     assert set(described.keys()).issubset(allowed_keys)
     assert described["id"] == "base.bioimage_mcp_base.preprocess.gaussian"
-    assert described["params_schema"]["type"] == "object"
+    assert "type" not in described["params_schema"]
     conn.close()
 
 

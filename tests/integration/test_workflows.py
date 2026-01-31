@@ -135,7 +135,7 @@ def test_full_discovery_to_execution_flow(mcp_test_client, sample_flim_image) ->
 
     schema = mcp_test_client.describe_function(id="base.xarray.DataArray.rename")
     assert schema["id"] == "base.xarray.DataArray.rename"
-    assert schema["params_schema"]["type"] == "object"
+    assert "type" not in schema["params_schema"]
 
     relabeled = mcp_test_client.call_tool(
         fn_id="base.xarray.DataArray.rename",
