@@ -224,9 +224,25 @@ def create_server(
         return response
 
     @mcp.tool()
-    def artifact_info(ref_id: str, text_preview_bytes: int | None = None) -> dict[str, Any]:
+    def artifact_info(
+        ref_id: str,
+        text_preview_bytes: int | None = None,
+        include_image_preview: bool = False,
+        image_preview_size: int = 256,
+        channels: int | list[int] | None = None,
+        projection: str | dict = "max",
+        slice_indices: dict | None = None,
+    ) -> dict[str, Any]:
         """Get full metadata and optional text preview for an artifact."""
-        return artifacts.artifact_info(ref_id, text_preview_bytes=text_preview_bytes)
+        return artifacts.artifact_info(
+            ref_id,
+            text_preview_bytes=text_preview_bytes,
+            include_image_preview=include_image_preview,
+            image_preview_size=image_preview_size,
+            channels=channels,
+            projection=projection,
+            slice_indices=slice_indices,
+        )
 
     @mcp.tool()
     def session_export(

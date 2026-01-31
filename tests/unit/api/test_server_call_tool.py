@@ -30,8 +30,13 @@ class _DummyExecution:
     pass
 
 
-class _DummyArtifacts:
-    pass
+class _CapturingArtifacts:
+    def __init__(self) -> None:
+        self.calls: list[dict[str, Any]] = []
+
+    def artifact_info(self, ref_id: str, **kwargs) -> dict[str, Any]:
+        self.calls.append({"ref_id": ref_id, **kwargs})
+        return {"ref_id": ref_id}
 
 
 class _CapturingInteractive:
@@ -101,3 +106,38 @@ def test_run_params_optional(monkeypatch, tmp_path) -> None:
     assert result["status"] == "success"
     assert interactive.calls
     assert interactive.calls[0]["params"] == {}
+
+
+def test_artifact_info_wiring(monkeypatch) -> None:
+    """Verify artifact_info tool forwards all parameters to service."""
+    monkeypatch.setattr(server_module, "FastMCP", _FakeMCP)
+    server_module.FastMCP.__module__ = "fake_mcp"
+
+    artifacts = _CapturingArtifacts()
+    mcp = server_module.create_server(
+        _DummyDiscovery(),
+        execution=_DummyExecution(),
+        interactive=_CapturingInteractive(),
+        artifacts=artifacts,
+        session_manager=None,  # Not used for artifact_info
+    )
+
+    mcp.tools["artifact_info"](
+        ref_id="ref-123",
+        text_preview_bytes=100,
+        include_image_preview=True,
+        image_preview_size=512,
+        channels=[0, 1],
+        projection={"Z": "max"},
+        slice_indices={"T": 5},
+    )
+
+    assert len(artifacts.calls) == 1
+    call = artifacts.calls[0]
+    assert call["ref_id"] == "ref-123"
+    assert call["text_preview_bytes"] == 100
+    assert call["include_image_preview"] is True
+    assert call["image_preview_size"] == 512
+    assert call["channels"] == [0, 1]
+    assert call["projection"] == {"Z": "max"}
+    assert call["slice_indices"] == {"T": 5}
