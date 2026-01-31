@@ -5,6 +5,8 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from bioimage_mcp.registry.cache_version import get_cache_version_key
+
 logger = logging.getLogger(__name__)
 
 
@@ -19,7 +21,8 @@ class MetaListCache:
         """Initialize cache in the specified directory.
 
         Args:
-            cache_dir: Directory to store the cache file (e.g. ~/.bioimage-mcp/cache/dynamic/<tool_id>/).
+            cache_dir: Directory to store the cache file.
+                       (e.g. ~/.bioimage-mcp/cache/dynamic/<tool_id>/).
         """
         self.cache_dir = Path(cache_dir)
         self.cache_file = self.cache_dir / "meta_list_cache.json"
@@ -44,8 +47,12 @@ class MetaListCache:
             if not isinstance(data, dict):
                 return None
 
+            vkey = get_cache_version_key()
+            if vkey not in data or not isinstance(data[vkey], dict):
+                return None
+
             key = f"{lockfile_hash}:{manifest_checksum}"
-            results = data.get(key)
+            results = data[vkey].get(key)
 
             if isinstance(results, list):
                 return results
@@ -79,8 +86,12 @@ class MetaListCache:
             if not isinstance(data, dict):
                 data = {}
 
+            vkey = get_cache_version_key()
+            if vkey not in data or not isinstance(data[vkey], dict):
+                data[vkey] = {}
+
             key = f"{lockfile_hash}:{manifest_checksum}"
-            data[key] = results
+            data[vkey][key] = results
 
             with open(self.cache_file, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2)
