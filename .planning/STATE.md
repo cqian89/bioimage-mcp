@@ -9,19 +9,21 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 
 ## Current Position
 
-Phase: 14 of 15 (OME-Zarr Standardization)
-Plan: 2 of 2 in current phase
-Status: Phase complete (verified)
-Last activity: 2026-01-31 - Added Phase 15: Enhance artifact_info with Multimodal Previews and ObjectRef Type Visibility
-**Next Phase:** Phase 15 - Enhance artifact_info with Multimodal Previews and ObjectRef Type Visibility
+Phase: 15 of 15 (Enhance artifact_info with Multimodal Previews and ObjectRef Type Visibility)
+Plan: 1 of 4 in current phase
+Status: In progress
+Last activity: 2026-01-31 - Completed 15-01-PLAN.md
 
-Progress: ██████████ 93%
+Progress: ██████████ 95%
 
 ## Accumulated Context
 
 ### Decisions Made
 | Phase | Decision | Rationale |
 |-------|----------|-----------|
+| 15 | Default to max projection for multi-dimensional images | standard in bioimaging for quick visibility. |
+| 15 | Map images to 8-bit PNG for previews | Universal compatibility for browsers and LLMs. |
+| 15 | Fail silently on preview generation | Omit field rather than failing entire request if image is corrupt/unsupported. |
 | 10 | Use 'datasets/smoke_tmp' for test CSVs | Ensure live server read access within allowed paths. |
 | 10 | Map mean_table to tmean | scipy.stats lacks a bare mean function. |
 | 10 | Standardize on NativeOutputRef for stats JSON | Allows flexible structured output for distribution/summary stats. |
