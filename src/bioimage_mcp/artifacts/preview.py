@@ -234,7 +234,9 @@ def generate_image_preview(
 
         # bioio data property returns xarray-wrapped dask/numpy array
         # We want the underlying data for processing
-        data = img.data.values
+        data = img.data
+        if hasattr(data, "values"):
+            data = data.values
 
         # Reduce to 2D
         # bioio dims are typically TCZYX or similar
@@ -282,7 +284,9 @@ def generate_label_preview(
     """Main entry point for LabelImageRef preview (colormap + metadata)."""
     try:
         img = BioImage(path)
-        data = img.data.values
+        data = img.data
+        if hasattr(data, "values"):
+            data = data.values
         img_dims = list(img.dims.order)
 
         # 1. Reduce to 2D

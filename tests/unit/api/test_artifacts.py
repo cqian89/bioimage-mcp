@@ -1,8 +1,14 @@
 from __future__ import annotations
 
+import csv
+import pickle
 from pathlib import Path
 
+import numpy as np
+import tifffile
+
 from bioimage_mcp.api.artifacts import ArtifactsService
+from bioimage_mcp.artifacts.models import ObjectRef
 from bioimage_mcp.artifacts.store import ArtifactStore
 from bioimage_mcp.config.schema import Config
 
@@ -38,3 +44,154 @@ def test_artifacts_service_artifact_info(tmp_path: Path) -> None:
         # Test artifact_info not found
         info = svc.artifact_info("missing")
         assert info["error"]["code"] == "NOT_FOUND"
+
+
+def test_artifact_info_objectref_native_type(tmp_path: Path) -> None:
+    from bioimage_mcp.artifacts.models import ObjectRef
+
+    config = Config(
+        artifact_store_root=tmp_path / "artifacts",
+        tool_manifest_roots=[],
+    )
+    with ArtifactStore(config) as store:
+        ref = ObjectRef(
+            ref_id="obj1",
+            uri="obj://session/env/obj1",
+            storage_type="memory",
+            python_class="test.module.TestClass",
+        )
+        # We manually put it in memory store for testing
+        store._memory_store.register(ref)
+
+        svc = ArtifactsService(store)
+        info = svc.artifact_info("obj1")
+
+        assert info["ref_id"] == "obj1"
+        assert info["type"] == "ObjectRef"
+        assert info["native_type"] == "test.module.TestClass"
+        assert info["object_preview"] == "In-memory object (not serialized)"
+
+
+def test_artifact_info_objectref_preview_truncation(tmp_path: Path) -> None:
+    import pickle
+
+    from bioimage_mcp.artifacts.models import ObjectRef
+
+    config = Config(
+        artifact_store_root=tmp_path / "artifacts",
+        tool_manifest_roots=[],
+    )
+
+    obj = "A" * 600
+    sim_path = tmp_path / "obj.pkl"
+    with open(sim_path, "wb") as f:
+        pickle.dump(obj, f)
+
+    with ArtifactStore(config) as store:
+        ref = ObjectRef(
+            ref_id="obj2",
+            uri="obj://session/env/obj2",
+            storage_type="memory",
+            python_class="str",
+            metadata={"_simulated_path": str(sim_path)},
+        )
+        store._memory_store.register(ref)
+
+        svc = ArtifactsService(store)
+        info = svc.artifact_info("obj2")
+
+        assert "object_preview" in info
+        assert len(info["object_preview"]) == 500
+        assert info["object_preview"].endswith("...")
+
+
+def test_artifact_info_objectref_expired(tmp_path: Path) -> None:
+    from bioimage_mcp.artifacts.models import ObjectRef
+
+    config = Config(
+        artifact_store_root=tmp_path / "artifacts",
+        tool_manifest_roots=[],
+    )
+
+    with ArtifactStore(config) as store:
+        # Path does not exist
+        ref = ObjectRef(
+            ref_id="expired",
+            uri="obj://session/env/expired",
+            storage_type="memory",
+            python_class="str",
+            metadata={"_simulated_path": str(tmp_path / "missing.pkl")},
+        )
+        store._memory_store.register(ref)
+
+        svc = ArtifactsService(store)
+        info = svc.artifact_info("expired")
+
+        assert info["error"]["code"] == "OBJECT_REF_EXPIRED"
+
+
+def test_artifact_info_label_image_preview(tmp_path: Path) -> None:
+    config = Config(
+        artifact_store_root=tmp_path / "artifacts",
+        tool_manifest_roots=[tmp_path / "tools"],
+        fs_allowlist_read=[tmp_path],
+        fs_allowlist_write=[tmp_path],
+        fs_denylist=[],
+    )
+
+    # Create a small label image
+    label_img = np.zeros((10, 10), dtype=np.uint16)
+    label_img[2:5, 2:5] = 1
+    label_path = tmp_path / "labels.ome.tif"
+    tifffile.imwrite(label_path, label_img, ome=True)
+
+    with ArtifactStore(config) as store:
+        ref = store.import_file(
+            label_path,
+            artifact_type="LabelImageRef",
+            format="ome-tiff",
+            metadata_override={"dims": "YX", "shape": [10, 10], "dtype": "uint16", "ndim": 2},
+        )
+        svc = ArtifactsService(store)
+
+        # Test with preview
+        info = svc.artifact_info(ref.ref_id, include_image_preview=True)
+        assert "image_preview" in info
+        preview = info["image_preview"]
+        assert "base64" in preview
+        assert preview["region_count"] == 1
+        assert len(preview["centroids"]) == 1
+
+
+def test_artifact_info_table_preview(tmp_path: Path) -> None:
+    config = Config(
+        artifact_store_root=tmp_path / "artifacts",
+        tool_manifest_roots=[tmp_path / "tools"],
+        fs_allowlist_read=[tmp_path],
+        fs_allowlist_write=[tmp_path],
+        fs_denylist=[],
+    )
+
+    csv_path = tmp_path / "test.csv"
+    with open(csv_path, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["A", "B"])
+        writer.writerow([1, 2])
+
+    with ArtifactStore(config) as store:
+        ref = store.import_file(
+            csv_path,
+            artifact_type="TableRef",
+            format="csv",
+            metadata_override={
+                "columns": [{"name": "A", "dtype": "int64"}, {"name": "B", "dtype": "string"}]
+            },
+        )
+        svc = ArtifactsService(store)
+
+        # Test with preview
+        info = svc.artifact_info(ref.ref_id, include_table_preview=True)
+        assert "table_preview" in info
+        assert "dtypes" in info
+        assert info["dtypes"]["A"] == "int64"
+        assert info["total_rows"] is not None
