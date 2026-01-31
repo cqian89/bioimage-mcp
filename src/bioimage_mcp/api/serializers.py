@@ -212,3 +212,80 @@ class RunResponseSerializer:
         storage_type = ref_dict.get("storage_type")
         uri = ref_dict.get("uri", "")
         return storage_type == "memory" or uri.startswith("mem://") or uri.startswith("obj://")
+
+
+class DescribeResponseSerializer:
+    """Verbosity-aware serializer for MCP describe tool responses."""
+
+    VERBOSITY_LEVELS = ("minimal", "standard", "full")
+
+    def serialize(
+        self,
+        result: dict[str, Any],
+        *,
+        verbosity: Literal["minimal", "standard", "full"] | str = "minimal",
+    ) -> dict[str, Any]:
+        """Serialize a describe result with the specified verbosity level."""
+        # Validate verbosity - coerce invalid values to minimal (token-safe default)
+        if verbosity not in self.VERBOSITY_LEVELS:
+            logger.warning(
+                f"Invalid verbosity '{verbosity}', coercing to 'minimal' for token safety"
+            )
+            verbosity = "minimal"
+
+        if verbosity in ("standard", "full"):
+            return result
+
+        # Minimal verbosity
+
+        # Handle batch responses
+        if "schemas" in result and "errors" in result:
+            return {
+                "schemas": {
+                    fn_id: self._serialize_single(schema)
+                    for fn_id, schema in result["schemas"].items()
+                },
+                "errors": result["errors"],
+            }
+
+        # Handle single error response
+        if "error" in result and len(result) == 1:
+            return result
+
+        return self._serialize_single(result)
+
+    def _serialize_single(self, result: dict[str, Any]) -> dict[str, Any]:
+        """Serialize a single describe result for minimal verbosity."""
+        # Core fields only: id, type, summary, inputs, outputs, params_schema
+        # Omit 'hints', 'name', 'tags', etc.
+        serialized: dict[str, Any] = {}
+
+        # Explicitly allowed core fields
+        for field in ("id", "type", "summary", "inputs", "outputs"):
+            if field in result:
+                serialized[field] = result[field]
+
+        # Handle params_schema with description stripping
+        if "params_schema" in result:
+            params_schema = result["params_schema"]
+            if isinstance(params_schema, dict):
+                serialized["params_schema"] = self._strip_property_descriptions(params_schema)
+            else:
+                serialized["params_schema"] = params_schema
+
+        return serialized
+
+    def _strip_property_descriptions(self, schema: dict[str, Any]) -> dict[str, Any]:
+        """Strip 'description' field from each property in params_schema['properties']."""
+        new_schema = dict(schema)
+        if "properties" in new_schema and isinstance(new_schema["properties"], dict):
+            new_properties = {}
+            for k, v in new_schema["properties"].items():
+                if isinstance(v, dict):
+                    new_v = dict(v)
+                    new_v.pop("description", None)
+                    new_properties[k] = new_v
+                else:
+                    new_properties[k] = v
+            new_schema["properties"] = new_properties
+        return new_schema
