@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from bioimage_mcp.bootstrap import list as list_mod
+from bioimage_mcp.bootstrap.list_cache import ListToolsCache
+from bioimage_mcp.registry.cache_version import get_cache_version_key
 
 
 @pytest.fixture
@@ -204,3 +206,39 @@ def test_list_tools_dynamic_cache_fallback(mock_setup, monkeypatch):
     exit_code = list_mod.list_tools(json_output=True)
     assert exit_code == 0
     assert len(load_calls) == 3
+
+
+def test_list_tools_cache_fingerprint_includes_version(tmp_path):
+    cache = ListToolsCache(tmp_path)
+    manifest_path = tmp_path / "manifest.yaml"
+    manifest_path.write_text("dummy")
+
+    envs_hash = "somehash"
+
+    # Verify that the fingerprint changes if the version key changes
+    with patch("bioimage_mcp.bootstrap.list_cache.get_cache_version_key") as mock_vkey:
+        mock_vkey.return_value = "v1"
+        fp1 = cache.get_fingerprint([manifest_path], envs_hash)
+
+        mock_vkey.return_value = "v2"
+        fp2 = cache.get_fingerprint([manifest_path], envs_hash)
+
+        assert fp1 != fp2
+
+    # Verify that it includes the actual version key by default
+    assert cache.get_fingerprint([manifest_path], envs_hash) == cache.get_fingerprint(
+        [manifest_path], envs_hash
+    )
+
+
+def test_list_tools_cache_fingerprint_ordering(tmp_path):
+    cache = ListToolsCache(tmp_path)
+    p1 = tmp_path / "a.yaml"
+    p2 = tmp_path / "b.yaml"
+    p1.write_text("a")
+    p2.write_text("b")
+
+    fp1 = cache.get_fingerprint([p1, p2], "hash")
+    fp2 = cache.get_fingerprint([p2, p1], "hash")
+
+    assert fp1 == fp2

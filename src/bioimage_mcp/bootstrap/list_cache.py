@@ -8,9 +8,11 @@ import time
 from pathlib import Path
 from typing import Any
 
+from bioimage_mcp.registry.cache_version import get_cache_version_key
+
 logger = logging.getLogger(__name__)
 
-CACHE_VERSION = 1
+CACHE_VERSION = 2
 # Default TTL for envs cache in seconds (e.g., 1 hour)
 ENVS_CACHE_TTL = 3600
 
@@ -87,7 +89,7 @@ class ListToolsCache:
 
     def get_fingerprint(self, manifest_paths: list[Path], envs_hash: str) -> str:
         """Compute fingerprint based on manifest stats and envs state."""
-        parts = [f"envs:{envs_hash}"]
+        parts = [f"vkey:{get_cache_version_key()}", f"envs:{envs_hash}"]
         for p in sorted(manifest_paths):
             try:
                 st = p.stat()
