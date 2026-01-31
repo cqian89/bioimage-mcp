@@ -82,19 +82,22 @@ Plans:
 ### Phase 15: Enhance artifact_info with Multimodal Previews and ObjectRef Type Visibility
 
 **Goal:** Extend artifact_info to support image previews for multimodal LLMs, table row previews, and improved ObjectRef type identification.
-**Status:** Not started
+**Status:** Planning complete
 **Depends on:** Phase 14
-**Plans:** 0 plans
+**Plans:** 4 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 15 to break down)
+- [ ] 15-01-PLAN.md — Image preview foundation (utilities + BioimageRef preview)
+- [ ] 15-02-PLAN.md — Label image colormap + table markdown previews
+- [ ] 15-03-PLAN.md — ObjectRef type visibility (native_type, x-native-type)
+- [ ] 15-04-PLAN.md — Integration tests + human verification
 
 **Details:**
-Key enhancements identified from artifact_info analysis:
-- BioimageRef/LabelImageRef: Add base64-encoded 2D image preview with configurable size and dimensionality reduction (slice, max, mean, sum, min projections)
-- TableRef: Add first N rows text preview capability
-- ObjectRef: Fix in-memory artifact accessibility, add native_type field, add x-native-types to params_schema
-- Improve text_preview implementation for CSV/text formats
+Key enhancements:
+- BioimageRef/LabelImageRef: Base64-encoded PNG preview with projection (max/mean/sum/min/slice)
+- LabelImageRef: Tab20 colormap + region_count + centroids metadata
+- TableRef: Markdown table preview with dtypes and row/column counts
+- ObjectRef: native_type field, repr() preview, x-native-type in params_schema
 
 ---
 
