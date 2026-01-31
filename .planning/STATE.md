@@ -9,12 +9,13 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 
 ## Current Position
 
-Phase: 14 of 14 (OME-Zarr Standardization)
+Phase: 14 of 15 (OME-Zarr Standardization)
 Plan: 2 of 2 in current phase
 Status: Phase complete (verified)
-Last activity: 2026-01-30 - Completed quick task 004: Fix describe schema response cleanup (meta, hints, newlines)
+Last activity: 2026-01-31 - Added Phase 15: Enhance artifact_info with Multimodal Previews and ObjectRef Type Visibility
+**Next Phase:** Phase 15 - Enhance artifact_info with Multimodal Previews and ObjectRef Type Visibility
 
-Progress: ██████████ 100%
+Progress: ██████████ 93%
 
 ## Accumulated Context
 
@@ -77,6 +78,7 @@ Progress: ██████████ 100%
 - Phase 12 added: Core Engine + AST-First
 - Phase 13 added: Dynamic Introspection Cache Reuse (incl. trackpy)
 - Phase 14 added: OME-Zarr Standardization
+- Phase 15 added: Enhance artifact_info with Multimodal Previews and ObjectRef Type Visibility
 
 ### Pending Todos
 - [ ] Implement artifact store retention and quota management (general)
