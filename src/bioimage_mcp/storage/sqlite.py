@@ -96,6 +96,7 @@ def init_schema(conn: sqlite3.Connection) -> None:
             env_lock_hash TEXT,
             callable_fingerprint TEXT,
             source_hash TEXT,
+            program_version TEXT,
             PRIMARY KEY (tool_id, fn_id)
         );
 
@@ -149,5 +150,7 @@ def init_schema(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE schema_cache ADD COLUMN callable_fingerprint TEXT")
     if "source_hash" not in cache_cols:
         conn.execute("ALTER TABLE schema_cache ADD COLUMN source_hash TEXT")
+    if "program_version" not in cache_cols:
+        conn.execute("ALTER TABLE schema_cache ADD COLUMN program_version TEXT")
 
     conn.commit()

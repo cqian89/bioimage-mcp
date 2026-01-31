@@ -4,6 +4,7 @@ import json
 import sqlite3
 from datetime import UTC, datetime
 
+from bioimage_mcp.registry.cache_version import get_cache_version_key
 from bioimage_mcp.registry.diagnostics import ManifestDiagnostic
 
 
@@ -305,21 +306,32 @@ class RegistryIndex:
         if not actual_id:
             raise ValueError("id or fn_id is required")
 
-        row = self._conn.execute(
-            """
-            SELECT params_schema_json, introspection_source, tool_version,
-                   env_lock_hash, source_hash, callable_fingerprint
-            FROM schema_cache
-            WHERE tool_id = ? AND fn_id = ?
-            """,
-            (tool_id, actual_id),
-        ).fetchone()
+        try:
+            row = self._conn.execute(
+                """
+                SELECT params_schema_json, introspection_source, tool_version,
+                       env_lock_hash, source_hash, callable_fingerprint,
+                       program_version
+                FROM schema_cache
+                WHERE tool_id = ? AND fn_id = ?
+                """,
+                (tool_id, actual_id),
+            ).fetchone()
+        except sqlite3.OperationalError as e:
+            if "no such column: program_version" in str(e):
+                return None
+            raise
 
         if row is None:
             return None
 
         # Invalidate cache if tool version changed
         if row["tool_version"] != tool_version:
+            return None
+
+        # Invalidate if program_version mismatches
+        current_program_version = get_cache_version_key()
+        if row["program_version"] != current_program_version:
             return None
 
         # Invalidate if env_lock_hash provided and differs
@@ -338,6 +350,7 @@ class RegistryIndex:
             "tool_version": row["tool_version"],
             "env_lock_hash": row["env_lock_hash"],
             "source_hash": row["source_hash"] or row["callable_fingerprint"],
+            "program_version": row["program_version"],
         }
 
     def upsert_schema_cache(
@@ -359,14 +372,16 @@ class RegistryIndex:
             raise ValueError("id or fn_id is required")
 
         now = datetime.now(UTC).isoformat()
+        program_version = get_cache_version_key()
         self._conn.execute(
             """
             INSERT INTO schema_cache(
                 tool_id, tool_version, fn_id,
                 params_schema_json, introspection_source, introspected_at,
-                env_lock_hash, callable_fingerprint, source_hash
+                env_lock_hash, callable_fingerprint, source_hash,
+                program_version
             )
-            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(tool_id, fn_id) DO UPDATE SET
               tool_version=excluded.tool_version,
               params_schema_json=excluded.params_schema_json,
@@ -374,7 +389,8 @@ class RegistryIndex:
               introspected_at=excluded.introspected_at,
               env_lock_hash=excluded.env_lock_hash,
               callable_fingerprint=excluded.callable_fingerprint,
-              source_hash=excluded.source_hash
+              source_hash=excluded.source_hash,
+              program_version=excluded.program_version
             """,
             (
                 tool_id,
@@ -386,6 +402,7 @@ class RegistryIndex:
                 env_lock_hash,
                 callable_fingerprint,
                 source_hash,
+                program_version,
             ),
         )
         self._conn.commit()
