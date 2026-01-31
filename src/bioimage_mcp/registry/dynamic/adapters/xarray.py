@@ -19,6 +19,19 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# Parameters that are artifact inputs, not schema params
+XARRAY_ARTIFACT_INPUT_PARAMS = frozenset(
+    [
+        "objs",  # concat
+        "objects",  # merge
+        "data_objects",  # combine_by_coords, combine_nested
+        "arrays",  # align, broadcast
+        "other",  # some functions use this for the template array
+        "cond",  # xarray.where condition
+        "x",  # common first positional arg name
+    ]
+)
+
 # Unified object cache is imported from object_cache module
 
 
@@ -77,6 +90,10 @@ class XarrayAdapterForRegistry(BaseAdapter):
         params.pop("args", None)
         params.pop("kwargs", None)
 
+        # Filter out artifact input parameters
+        for param_name in XARRAY_ARTIFACT_INPUT_PARAMS:
+            params.pop(param_name, None)
+
         # Merge with explicit params from allowlist (allowlist overrides)
         if "params" in info:
             for p_name, p_info in info["params"].items():
@@ -106,6 +123,10 @@ class XarrayAdapterForRegistry(BaseAdapter):
         params.pop("args", None)
         params.pop("kwargs", None)
 
+        # Filter out artifact input parameters
+        for param_name in XARRAY_ARTIFACT_INPUT_PARAMS:
+            params.pop(param_name, None)
+
         # Merge with explicit params from allowlist (allowlist overrides)
         if "params" in info:
             for p_name, p_info in info["params"].items():
@@ -133,6 +154,10 @@ class XarrayAdapterForRegistry(BaseAdapter):
         # Filter out args and kwargs
         params.pop("args", None)
         params.pop("kwargs", None)
+
+        # Filter out artifact input parameters
+        for param_name in XARRAY_ARTIFACT_INPUT_PARAMS:
+            params.pop(param_name, None)
 
         # Merge with explicit params from allowlist (allowlist overrides)
         if "params" in info:
