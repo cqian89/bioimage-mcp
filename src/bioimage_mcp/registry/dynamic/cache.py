@@ -1,5 +1,12 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
+from typing import Any
+
+from bioimage_mcp.registry.cache_version import get_cache_version_key
+from bioimage_mcp.registry.dynamic.models import FunctionMetadata
+
 """Introspection result caching with lockfile invalidation.
 
 Caches adapter discovery results in nested JSON structure:
@@ -13,13 +20,6 @@ Caches adapter discovery results in nested JSON structure:
   }
 }
 """
-
-import json
-from pathlib import Path
-from typing import Any
-
-from bioimage_mcp.registry.cache_version import get_cache_version_key
-from bioimage_mcp.registry.dynamic.models import FunctionMetadata
 
 
 class IntrospectionCache:

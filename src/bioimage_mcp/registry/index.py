@@ -227,7 +227,8 @@ class RegistryIndex:
             raise ValueError("id or fn_id is required")
 
         row = self._conn.execute(
-            "SELECT fn_id, tool_id, module, params_schema_json, introspection_source FROM functions WHERE fn_id = ?",
+            "SELECT fn_id, tool_id, module, params_schema_json, introspection_source "
+            "FROM functions WHERE fn_id = ?",
             (actual_id,),
         ).fetchone()
         if row is None:
