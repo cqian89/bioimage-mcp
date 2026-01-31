@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Tests for introspection caching with lockfile invalidation.
 
 This module tests the IntrospectionCache class that caches adapter discovery
@@ -178,3 +180,70 @@ class TestIntrospectionCache:
         assert cached_results is not None
         assert len(cached_results) == 2
         assert cached_results[0].name == "gaussian_blur"
+
+    def test_cache_version_invalidation(self, cache_dir, sample_function_metadata):
+        """Test that changing cache version key invalidates the cache."""
+        adapter = "adapter"
+        prefix = "prefix"
+        lh = "hash"
+        from unittest.mock import patch
+
+        # 1. Put with version V1
+        with patch("bioimage_mcp.registry.dynamic.cache.get_cache_version_key") as mock_vkey:
+            mock_vkey.return_value = "V1"
+            cache = IntrospectionCache(cache_dir)
+            cache.put(adapter, prefix, lh, sample_function_metadata)
+
+            # Verify it's there
+            assert cache.get(adapter, prefix, lh) is not None
+
+        # 2. Try to get with version V2
+        with patch("bioimage_mcp.registry.dynamic.cache.get_cache_version_key") as mock_vkey:
+            mock_vkey.return_value = "V2"
+            # Same cache file, but different version key
+            assert cache.get(adapter, prefix, lh) is None
+
+        # 3. Put with V2 and verify V1 still exists in file
+        with patch("bioimage_mcp.registry.dynamic.cache.get_cache_version_key") as mock_vkey:
+            mock_vkey.return_value = "V2"
+            cache.put(adapter, prefix, lh, sample_function_metadata)
+
+        import json
+
+        with open(cache_dir / "introspection_cache.json") as f:
+            data = json.load(f)
+            assert "V1" in data
+            assert "V2" in data
+
+    def test_cache_migration_from_old_format(self, cache_dir, sample_function_metadata):
+        """Test that old format (no version key) is handled as a miss."""
+        adapter = "adapter"
+        prefix = "prefix"
+        lh = "hash"
+        import json
+        from unittest.mock import patch
+
+        # Manually create old format cache file
+        old_data = {
+            adapter: {prefix: {lh: [item.model_dump() for item in sample_function_metadata]}}
+        }
+        cache_file = cache_dir / "introspection_cache.json"
+        with open(cache_file, "w") as f:
+            json.dump(old_data, f)
+
+        cache = IntrospectionCache(cache_dir)
+
+        # Should be a miss because it expects a version key at top level
+        with patch("bioimage_mcp.registry.dynamic.cache.get_cache_version_key") as mock_vkey:
+            mock_vkey.return_value = "V1"
+            assert cache.get(adapter, prefix, lh) is None
+
+        # Put with V1 should now add V1 alongside
+        with patch("bioimage_mcp.registry.dynamic.cache.get_cache_version_key") as mock_vkey:
+            mock_vkey.return_value = "V1"
+            cache.put(adapter, prefix, lh, sample_function_metadata)
+
+        with open(cache_file) as f:
+            data = json.load(f)
+            assert "V1" in data
+            assert adapter in data
