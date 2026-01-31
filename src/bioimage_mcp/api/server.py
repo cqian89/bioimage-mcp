@@ -6,7 +6,7 @@ from bioimage_mcp.api.artifacts import ArtifactsService
 from bioimage_mcp.api.discovery import DiscoveryService
 from bioimage_mcp.api.execution import ExecutionService
 from bioimage_mcp.api.interactive import InteractiveExecutionService
-from bioimage_mcp.api.serializers import RunResponseSerializer
+from bioimage_mcp.api.serializers import RunResponseSerializer, DescribeResponseSerializer
 from bioimage_mcp.sessions.manager import SessionManager
 
 try:
@@ -114,9 +114,17 @@ def create_server(
     def describe(
         id: str | None = None,
         ids: list[str] | None = None,
+        verbosity: str = "minimal",
     ) -> dict[str, Any]:
-        """Get full details for a function or catalog node."""
-        return discovery.describe_function(id=id, ids=ids)
+        """Get full details for a function or catalog node.
+
+        Args:
+            verbosity: Response detail level ('minimal', 'standard', or 'full').
+                       Defaults to 'minimal' for token-efficient LLM interaction.
+        """
+        result = discovery.describe_function(id=id, ids=ids)
+        serializer = DescribeResponseSerializer()
+        return serializer.serialize(result, verbosity=verbosity)
 
     @mcp.tool()
     def search(
