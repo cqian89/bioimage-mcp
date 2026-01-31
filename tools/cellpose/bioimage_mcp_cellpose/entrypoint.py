@@ -369,6 +369,13 @@ def _introspect_cellpose_fn(target_fn: str) -> dict[str, Any]:
             "default": False,
             "description": SEGMENT_DESCRIPTIONS.get("tile", "Enable tiling for large images"),
         }
+        schema["properties"]["diameter"] = {
+            "type": "number",
+            "default": 30.0,
+            "description": SEGMENT_DESCRIPTIONS.get(
+                "diameter", "Estimated cell diameter in pixels."
+            ),
+        }
 
     if target_fn == "cellpose.train.train_seg":
         schema["properties"]["normalize"] = {
