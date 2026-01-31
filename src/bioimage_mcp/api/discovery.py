@@ -909,8 +909,8 @@ class DiscoveryService:
 
             filtered_properties = {}
             for k, v in properties.items():
-                # Filter by name
-                if k in port_names:
+                # Filter by name (T036), but keep parameters with x-native-type (T021)
+                if k in port_names and not (isinstance(v, dict) and "x-native-type" in v):
                     continue
                 # Filter by type (T109)
                 if isinstance(v, dict) and v.get("type") in artifact_types:
@@ -922,7 +922,12 @@ class DiscoveryService:
                 params_schema["required"] = [
                     r
                     for r in params_schema["required"]
-                    if r not in port_names
+                    if (
+                        r not in port_names
+                        or (
+                            isinstance(properties.get(r), dict) and "x-native-type" in properties[r]
+                        )
+                    )
                     and (
                         not isinstance(properties.get(r), dict)
                         or properties.get(r).get("type") not in artifact_types

@@ -58,7 +58,10 @@ class ArtifactsService:
                         "details": [
                             {
                                 "path": "/ref_id",
-                                "hint": "Object references are session-scoped and expire when the session ends",
+                                "hint": (
+                                    "Object references are session-scoped and "
+                                    "expire when the session ends"
+                                ),
                             }
                         ],
                     }
@@ -127,7 +130,8 @@ class ArtifactsService:
                     # Handle channel selection:
                     # - If channels is int, use that channel index
                     # - If channels is list, use first element
-                    # - If None and image has C axis, use channel 0 (handled by generate_image_preview)
+                    # - If None and image has C axis, use channel 0
+                    #   (handled by generate_image_preview)
                     channel_idx = None
                     if isinstance(channels, int):
                         channel_idx = channels
@@ -179,11 +183,8 @@ class ArtifactsService:
                         if preview:
                             response["table_preview"] = preview.get("table_preview")
                             # Use metadata columns for high-fidelity dtypes if available
-                            if ref.metadata.get("columns"):
-                                response["dtypes"] = {
-                                    c["name"]: c.get("dtype", "string")
-                                    for c in ref.metadata["columns"]
-                                }
+                            if hasattr(ref.metadata, "columns") and ref.metadata.columns:
+                                response["dtypes"] = {c.name: c.dtype for c in ref.metadata.columns}
                             else:
                                 response["dtypes"] = preview.get("dtypes")
 

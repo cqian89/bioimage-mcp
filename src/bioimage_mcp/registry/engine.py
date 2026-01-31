@@ -269,7 +269,9 @@ class DiscoveryEngine:
                         params_schema=params_schema,
                         io_pattern=io_pattern.value if io_pattern else fn_data.get("io_pattern"),
                         module=fn_data.get("module"),
-                        introspection_source=f"runtime:{fn_data.get('introspection_source', 'meta.list')}",
+                        introspection_source=(
+                            f"runtime:{fn_data.get('introspection_source', 'meta.list')}"
+                        ),
                     )
                     discovered_functions.append(fn)
                     existing_ids.add(final_fn_id)
@@ -503,14 +505,60 @@ class DiscoveryEngine:
             "LogRef",
             "NativeOutputRef",
             "PlotRef",
+            "ObjectRef",
+            "GroupByRef",
+            "FigureRef",
+            "AxesRef",
+            "AxesImageRef",
         }
-        original_param_names = {p.name for p in sc.parameters}
+
+        # T021: Add x-native-type annotation for ObjectRef parameters
+        # We do this BEFORE filtering so we can use the information to potentially exempt them
+        if isinstance(params_schema, dict) and "properties" in params_schema:
+            for p_name, p_schema in params_schema["properties"].items():
+                # 1. Identify if this parameter is associated with an ObjectRef port
+                is_obj_ref = False
+                port = next((p for p in inputs if p.name == p_name), None)
+                if port:
+                    p_types = (
+                        [port.artifact_type]
+                        if isinstance(port.artifact_type, str)
+                        else port.artifact_type
+                    )
+                    object_types = {
+                        "ObjectRef",
+                        "FigureRef",
+                        "AxesRef",
+                        "AxesImageRef",
+                        "GroupByRef",
+                    }
+                    if any(t in object_types or "ObjectRef" in t for t in p_types):
+                        is_obj_ref = True
+
+                if is_obj_ref:
+                    # 2. Determine native type (default to "object")
+                    native_type = "object"
+
+                    # 3. Try to get specific type from hints
+                    if runtime_entry and "hints" in runtime_entry:
+                        hints_data = runtime_entry["hints"]
+                        if isinstance(hints_data, dict) and "inputs" in hints_data:
+                            input_hints = hints_data["inputs"]
+                            if p_name in input_hints:
+                                h = input_hints[p_name]
+                                if isinstance(h, dict):
+                                    native_type = h.get("native_type", native_type)
+                                elif hasattr(h, "native_type"):
+                                    native_type = h.native_type or native_type
+
+                    p_schema["x-native-type"] = native_type
 
         if "properties" in params_schema:
             params_schema["properties"] = {
                 k: v
                 for k, v in params_schema["properties"].items()
-                if k not in port_names and v.get("type") not in artifact_types
+                if (k not in port_names or "x-native-type" in v)
+                and v.get("type") not in artifact_types
             }
             if "required" in params_schema:
                 params_schema["required"] = [
@@ -518,6 +566,7 @@ class DiscoveryEngine:
                 ]
 
         # Only fallback when params were expected but missing after filtering
+        original_param_names = {p.name for p in sc.parameters}
         artifact_only = bool(original_param_names) and original_param_names.issubset(port_names)
         is_ast_incomplete = not params_schema.get("properties") and not artifact_only
 
@@ -555,46 +604,6 @@ class DiscoveryEngine:
             for p_name, p_schema in params_schema["properties"].items():
                 if not p_schema.get("description"):
                     p_schema["description"] = f"{p_name} parameter"
-
-        # T021: Add x-native-type annotation for ObjectRef parameters
-        if isinstance(params_schema, dict) and "properties" in params_schema:
-            for p_name, p_schema in params_schema["properties"].items():
-                # 1. Identify if this parameter is associated with an ObjectRef port
-                is_obj_ref = False
-                port = next((p for p in inputs if p.name == p_name), None)
-                if port:
-                    p_types = (
-                        [port.artifact_type]
-                        if isinstance(port.artifact_type, str)
-                        else port.artifact_type
-                    )
-                    object_types = {
-                        "ObjectRef",
-                        "FigureRef",
-                        "AxesRef",
-                        "AxesImageRef",
-                        "GroupByRef",
-                    }
-                    if any(t in object_types or "ObjectRef" in t for t in p_types):
-                        is_obj_ref = True
-
-                if is_obj_ref:
-                    # 2. Determine native type (default to "object")
-                    native_type = "object"
-
-                    # 3. Try to get specific type from hints
-                    if runtime_entry and "hints" in runtime_entry:
-                        hints_data = runtime_entry["hints"]
-                        if isinstance(hints_data, dict) and "inputs" in hints_data:
-                            input_hints = hints_data["inputs"]
-                            if p_name in input_hints:
-                                h = input_hints[p_name]
-                                if isinstance(h, dict):
-                                    native_type = h.get("native_type", native_type)
-                                elif hasattr(h, "native_type"):
-                                    native_type = getattr(h, "native_type") or native_type
-
-                    p_schema["x-native-type"] = native_type
 
         hints = None
         if runtime_entry and runtime_entry.get("hints"):
