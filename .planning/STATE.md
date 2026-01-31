@@ -10,17 +10,19 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 ## Current Position
 
 Phase: 15 of 15 (Enhance artifact_info with Multimodal Previews and ObjectRef Type Visibility)
-Plan: 1 of 4 in current phase
+Plan: 2 of 4 in current phase
 Status: In progress
-Last activity: 2026-01-31 - Completed 15-01-PLAN.md
+Last activity: 2026-01-31 - Completed 15-02-PLAN.md
 
-Progress: ██████████ 95%
+Progress: ██████████ 96%
 
 ## Accumulated Context
 
 ### Decisions Made
 | Phase | Decision | Rationale |
 |-------|----------|-----------|
+| 15 | Use TAB20 colormap for label images | High-contrast distinct colors for instance labels. |
+| 15 | Opt-in Table Previews | Avoid token bloat while providing structured visibility for CSVs. |
 | 15 | Default to max projection for multi-dimensional images | standard in bioimaging for quick visibility. |
 | 15 | Map images to 8-bit PNG for previews | Universal compatibility for browsers and LLMs. |
 | 15 | Fail silently on preview generation | Omit field rather than failing entire request if image is corrupt/unsupported. |
