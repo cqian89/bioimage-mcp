@@ -58,6 +58,8 @@ ARTIFACT_PORTS = {
     "image_path",
     "label_image",
     "intensity_image",
+    "XA",
+    "XB",
 }
 
 

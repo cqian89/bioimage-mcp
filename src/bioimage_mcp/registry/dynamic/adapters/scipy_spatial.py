@@ -217,6 +217,11 @@ class ScipySpatialAdapter(ScipyStatsAdapter):
             )
         )
 
+        # Filter out artifact params (XA, XB) from all results
+        # This ensures that even if introspection was used, they are removed
+        for meta in results:
+            meta.parameters = {k: v for k, v in meta.parameters.items() if k not in {"XA", "XB"}}
+
         return results
 
     def execute(

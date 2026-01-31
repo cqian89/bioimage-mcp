@@ -36,6 +36,20 @@ CALLABLE_PARAM_NAMES = frozenset(
 
 logger = logging.getLogger(__name__)
 
+# Parameters that are artifact inputs, not schema params
+ARTIFACT_INPUT_PARAMS = {
+    "image",
+    "input",
+    "labels",
+    "label_image",
+    "intensity_image",
+    "input_image",
+    "source",
+    "src",
+    "XA",
+    "XB",
+}
+
 try:
     import tifffile
 except ImportError:
@@ -112,6 +126,14 @@ class ScipyNdimageAdapter(BaseAdapter):
                 meta.module = mod_name
                 meta.qualified_name = f"{mod_name}.{name}"
                 meta.fn_id = f"{mod_name}.{name}"
+
+                # Filter out parameters that are artifact inputs, not schema params
+                meta.parameters = {
+                    p_name: p_schema
+                    for p_name, p_schema in meta.parameters.items()
+                    if p_name not in ARTIFACT_INPUT_PARAMS
+                }
+
                 results.append(meta)
         return results
 

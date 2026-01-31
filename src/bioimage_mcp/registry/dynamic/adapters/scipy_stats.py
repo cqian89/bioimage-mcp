@@ -53,6 +53,10 @@ class ScipyStatsAdapter(ScipyNdimageAdapter):
         for dist_name in curated_dists:
             results.extend(self._create_dist_metadata(dist_name))
 
+        # Filter out artifact params from all results
+        for meta in results:
+            meta.parameters = {k: v for k, v in meta.parameters.items() if k not in {"XA", "XB"}}
+
         return results
 
     def _create_stats_wrapper_metadata(self, name: str) -> FunctionMetadata:
