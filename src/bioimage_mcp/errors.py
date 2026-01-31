@@ -23,6 +23,10 @@ class ArtifactStoreError(BioimageMcpError):
     code = "ARTIFACT_STORE_FAILED"
 
 
+class ObjectRefExpiredError(BioimageMcpError):
+    code = "OBJECT_REF_EXPIRED"
+
+
 class InternalBioimageMcpError(Exception):
     """An unexpected error that indicates a bug."""
 

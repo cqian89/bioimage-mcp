@@ -40,6 +40,23 @@ class ArtifactsService:
                 }
             }
 
+        # Check for expired memory artifacts
+        if ref.storage_type == "memory":
+            sim_path = ref.metadata.get("_simulated_path")
+            if sim_path and not Path(sim_path).exists():
+                return {
+                    "error": {
+                        "code": "OBJECT_REF_EXPIRED",
+                        "message": f"ObjectRef {ref_id} is no longer accessible",
+                        "details": [
+                            {
+                                "path": "/ref_id",
+                                "hint": "Object references are session-scoped and expire when the session ends",
+                            }
+                        ],
+                    }
+                }
+
         response = {
             "ref_id": ref.ref_id,
             "type": ref.type,
@@ -48,6 +65,31 @@ class ArtifactsService:
             "size_bytes": ref.size_bytes,
             "checksums": [c.model_dump() for c in ref.checksums],
         }
+
+        # Add ObjectRef specific metadata
+        if ref.type in ("ObjectRef", "GroupByRef", "FigureRef", "AxesRef", "AxesImageRef"):
+            # Add native_type from python_class
+            if hasattr(ref, "python_class") and ref.python_class:
+                response["native_type"] = ref.python_class
+
+            # Add object_preview
+            if ref.storage_type == "memory":
+                sim_path = ref.metadata.get("_simulated_path")
+                if sim_path:
+                    try:
+                        import pickle
+
+                        with open(sim_path, "rb") as f:
+                            obj = pickle.load(f)
+                        obj_repr = repr(obj)
+                        if len(obj_repr) > 500:
+                            obj_repr = obj_repr[:497] + "..."
+                        response["object_preview"] = obj_repr
+                    except Exception:  # noqa: BLE001
+                        # Omit the field on any exception
+                        pass
+                else:
+                    response["object_preview"] = "In-memory object (not serialized)"
 
         # Add image-specific metadata (read from metadata dict after model cleanup)
         if ref.type in ("BioImageRef", "LabelImageRef"):

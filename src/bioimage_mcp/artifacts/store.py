@@ -18,6 +18,11 @@ from bioimage_mcp.artifacts.metadata import (
 from bioimage_mcp.artifacts.models import (
     ArtifactChecksum,
     ArtifactRef,
+    AxesImageRef,
+    AxesRef,
+    FigureRef,
+    GroupByRef,
+    ObjectRef,
     PlotMetadata,
     PlotRef,
     ScalarRef,
@@ -423,6 +428,16 @@ class ArtifactStore:
             return TTTRRef(**kwargs)
         elif artifact_type == "PlotRef":
             return PlotRef(**kwargs)
+        elif artifact_type == "ObjectRef":
+            return ObjectRef(**kwargs)
+        elif artifact_type == "GroupByRef":
+            return GroupByRef(**kwargs)
+        elif artifact_type == "FigureRef":
+            return FigureRef(**kwargs)
+        elif artifact_type == "AxesRef":
+            return AxesRef(**kwargs)
+        elif artifact_type == "AxesImageRef":
+            return AxesImageRef(**kwargs)
         else:
             return ArtifactRef(**kwargs)
 
