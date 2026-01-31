@@ -9,16 +9,15 @@ from urllib.parse import unquote, urlparse
 
 import numpy as np
 
-logger = logging.getLogger(__name__)
-
+from bioimage_mcp.artifacts.base import Artifact
+from bioimage_mcp.registry.dynamic.adapters import BaseAdapter
+from bioimage_mcp.registry.dynamic.models import FunctionMetadata, IOPattern, ParameterSchema
+from bioimage_mcp.registry.dynamic.object_cache import OBJECT_CACHE
 
 if TYPE_CHECKING:
     from bioimage_mcp.api.schemas import DimensionRequirement
 
-from bioimage_mcp.artifacts.base import Artifact
-from bioimage_mcp.registry.dynamic.adapters import BaseAdapter
-from bioimage_mcp.registry.dynamic.models import FunctionMetadata, IOPattern
-from bioimage_mcp.registry.dynamic.object_cache import OBJECT_CACHE
+logger = logging.getLogger(__name__)
 
 # Unified object cache is imported from object_cache module
 
@@ -50,10 +49,43 @@ class XarrayAdapterForRegistry(BaseAdapter):
     """Adapter for xarray operations that satisfies the BaseAdapter protocol."""
 
     def __init__(self) -> None:
+        from bioimage_mcp.registry.dynamic.introspection import Introspector
         from bioimage_mcp.registry.dynamic.xarray_adapter import XarrayAdapter
         from bioimage_mcp.registry.dynamic.xarray_allowlists import XARRAY_DATAARRAY_ALLOWLIST
 
         self.core = XarrayAdapter(allowlist=XARRAY_DATAARRAY_ALLOWLIST)
+        self.introspector = Introspector()
+
+    def _introspect_dataarray_method(
+        self, method_name: str, info: dict[str, Any]
+    ) -> dict[str, ParameterSchema]:
+        """Dynamically extract parameters from xarray.DataArray methods."""
+        import xarray as xr
+
+        method = getattr(xr.DataArray, method_name, None)
+        params: dict[str, ParameterSchema] = {}
+
+        if method:
+            try:
+                # Use the internal _extract_parameters to get the dict
+                params = self.introspector._extract_parameters(method)
+            except Exception as e:
+                logger.warning("Introspection failed for DataArray.%s: %s", method_name, e)
+
+        # Filter out self, args, and kwargs
+        params.pop("self", None)
+        params.pop("args", None)
+        params.pop("kwargs", None)
+
+        # Merge with explicit params from allowlist (allowlist overrides)
+        if "params" in info:
+            for p_name, p_info in info["params"].items():
+                if isinstance(p_info, str):
+                    params[p_name] = ParameterSchema(name=p_name, type=p_info)
+                elif isinstance(p_info, dict):
+                    params[p_name] = ParameterSchema(name=p_name, **p_info)
+
+        return params
 
     def discover(self, module_config: dict[str, Any]) -> list[FunctionMetadata]:
         """Dynamically discover xarray functions from the new allowlists."""
@@ -75,8 +107,6 @@ class XarrayAdapterForRegistry(BaseAdapter):
 
             params = {}
             if "params" in info:
-                from bioimage_mcp.registry.dynamic.models import ParameterSchema
-
                 for p_name, p_info in info["params"].items():
                     if isinstance(p_info, str):
                         params[p_name] = ParameterSchema(name=p_name, type=p_info)
@@ -105,8 +135,6 @@ class XarrayAdapterForRegistry(BaseAdapter):
 
             params = {}
             if "params" in info:
-                from bioimage_mcp.registry.dynamic.models import ParameterSchema
-
                 for p_name, p_info in info["params"].items():
                     if isinstance(p_info, str):
                         params[p_name] = ParameterSchema(name=p_name, type=p_info)
@@ -137,8 +165,6 @@ class XarrayAdapterForRegistry(BaseAdapter):
 
             params = {}
             if "params" in info:
-                from bioimage_mcp.registry.dynamic.models import ParameterSchema
-
                 for p_name, p_info in info["params"].items():
                     if isinstance(p_info, str):
                         params[p_name] = ParameterSchema(name=p_name, type=p_info)
@@ -167,15 +193,7 @@ class XarrayAdapterForRegistry(BaseAdapter):
             if "category" in info:
                 tags.add(info["category"])
 
-            params = {}
-            if "params" in info:
-                from bioimage_mcp.registry.dynamic.models import ParameterSchema
-
-                for p_name, p_info in info["params"].items():
-                    if isinstance(p_info, str):
-                        params[p_name] = ParameterSchema(name=p_name, type=p_info)
-                    elif isinstance(p_info, dict):
-                        params[p_name] = ParameterSchema(name=p_name, **p_info)
+            params = self._introspect_dataarray_method(name, info)
 
             io_pattern = (
                 IOPattern.OBJECTREF_CHAIN
