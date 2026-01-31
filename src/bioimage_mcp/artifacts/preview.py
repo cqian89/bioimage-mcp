@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import csv
 from io import BytesIO
 from pathlib import Path
 from typing import Any
@@ -327,5 +328,46 @@ def generate_label_preview(
             "centroids": meta["centroids"],
         }
 
+    except Exception:
+        return None
+
+
+def generate_table_preview(
+    path: Path, *, preview_rows: int = 5, preview_columns: int | None = None
+) -> dict | None:
+    """Generate a markdown preview and dtypes for a CSV table."""
+    try:
+        with open(path, mode="r", encoding="utf-8", newline="") as f:
+            reader = csv.reader(f)
+            header = next(reader, None)
+            if not header:
+                return None
+
+            # Limit columns
+            display_header = header
+            if preview_columns is not None:
+                display_header = header[:preview_columns]
+
+            rows = []
+            for _ in range(preview_rows):
+                row = next(reader, None)
+                if row is None:
+                    break
+                if preview_columns is not None:
+                    row = row[:preview_columns]
+                # Clean up values for markdown (prevent | breaking table)
+                row = [str(cell).replace("|", "\\|") for cell in row]
+                rows.append(row)
+
+        # Build markdown
+        md = "| " + " | ".join(display_header) + " |\n"
+        md += "| " + " | ".join(["---"] * len(display_header)) + " |\n"
+        for row in rows:
+            md += "| " + " | ".join(row) + " |\n"
+
+        return {
+            "table_preview": md,
+            "dtypes": {col: "string" for col in header},
+        }
     except Exception:
         return None

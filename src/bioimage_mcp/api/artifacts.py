@@ -2,7 +2,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from bioimage_mcp.artifacts.preview import generate_image_preview, generate_label_preview
+from bioimage_mcp.artifacts.preview import (
+    generate_image_preview,
+    generate_label_preview,
+    generate_table_preview,
+)
 from bioimage_mcp.artifacts.store import ArtifactStore
 from bioimage_mcp.errors import ArtifactStoreError
 
@@ -20,6 +24,9 @@ class ArtifactsService:
         channels: int | list[int] | None = None,
         projection: str | dict = "max",
         slice_indices: dict | None = None,
+        include_table_preview: bool = False,
+        preview_rows: int = 5,
+        preview_columns: int | None = None,
     ) -> dict:
         """Get full metadata and optional text preview for an artifact."""
         try:
@@ -152,6 +159,33 @@ class ArtifactsService:
 
                     if preview:
                         response["image_preview"] = preview
+
+        # Add table-specific metadata and preview
+        if ref.type == "TableRef":
+            response["total_rows"] = getattr(ref, "row_count", None)
+            cols = getattr(ref, "columns", [])
+            if not cols and ref.metadata.get("columns"):
+                cols = [c.get("name") for c in ref.metadata.get("columns", [])]
+            response["total_columns"] = len(cols)
+
+            if include_table_preview:
+                uri = ref.uri
+                if uri.startswith("file://"):
+                    path = Path(uri.replace("file://", ""))
+                    if path.exists():
+                        preview = generate_table_preview(
+                            path, preview_rows=preview_rows, preview_columns=preview_columns
+                        )
+                        if preview:
+                            response["table_preview"] = preview.get("table_preview")
+                            # Use metadata columns for high-fidelity dtypes if available
+                            if ref.metadata.get("columns"):
+                                response["dtypes"] = {
+                                    c["name"]: c.get("dtype", "string")
+                                    for c in ref.metadata["columns"]
+                                }
+                            else:
+                                response["dtypes"] = preview.get("dtypes")
 
         # Add text preview if requested and safe
         if text_preview_bytes is not None and self._is_safe_text_type(ref.mime_type):

@@ -232,6 +232,9 @@ def create_server(
         channels: int | list[int] | None = None,
         projection: str | dict = "max",
         slice_indices: dict | None = None,
+        include_table_preview: bool = False,
+        preview_rows: int = 5,
+        preview_columns: int | None = None,
     ) -> dict[str, Any]:
         """Get full metadata and optional text preview for an artifact."""
         return artifacts.artifact_info(
@@ -242,6 +245,9 @@ def create_server(
             channels=channels,
             projection=projection,
             slice_indices=slice_indices,
+            include_table_preview=include_table_preview,
+            preview_rows=preview_rows,
+            preview_columns=preview_columns,
         )
 
     @mcp.tool()
