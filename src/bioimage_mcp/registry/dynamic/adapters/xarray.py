@@ -87,6 +87,63 @@ class XarrayAdapterForRegistry(BaseAdapter):
 
         return params
 
+    def _introspect_toplevel_function(
+        self, name: str, info: dict[str, Any]
+    ) -> dict[str, ParameterSchema]:
+        """Dynamically extract parameters from top-level xarray functions."""
+        import xarray as xr
+
+        func = getattr(xr, name, None)
+        params: dict[str, ParameterSchema] = {}
+
+        if func:
+            try:
+                params = self.introspector._extract_parameters(func)
+            except Exception as e:
+                logger.warning("Introspection failed for xarray.%s: %s", name, e)
+
+        # Filter out args and kwargs
+        params.pop("args", None)
+        params.pop("kwargs", None)
+
+        # Merge with explicit params from allowlist (allowlist overrides)
+        if "params" in info:
+            for p_name, p_info in info["params"].items():
+                if isinstance(p_info, str):
+                    params[p_name] = ParameterSchema(name=p_name, type=p_info)
+                elif isinstance(p_info, dict):
+                    params[p_name] = ParameterSchema(name=p_name, **p_info)
+
+        return params
+
+    def _introspect_ufunc(self, name: str, info: dict[str, Any]) -> dict[str, ParameterSchema]:
+        """Dynamically extract parameters from xarray or numpy ufuncs."""
+        import xarray as xr
+
+        func = getattr(xr, name, None) or getattr(np, name, None)
+        params: dict[str, ParameterSchema] = {}
+
+        if func:
+            try:
+                params = self.introspector._extract_parameters(func)
+            except Exception as e:
+                # Common for numpy ufuncs which are C extensions
+                logger.debug("Introspection failed for ufunc %s: %s", name, e)
+
+        # Filter out args and kwargs
+        params.pop("args", None)
+        params.pop("kwargs", None)
+
+        # Merge with explicit params from allowlist (allowlist overrides)
+        if "params" in info:
+            for p_name, p_info in info["params"].items():
+                if isinstance(p_info, str):
+                    params[p_name] = ParameterSchema(name=p_name, type=p_info)
+                elif isinstance(p_info, dict):
+                    params[p_name] = ParameterSchema(name=p_name, **p_info)
+
+        return params
+
     def discover(self, module_config: dict[str, Any]) -> list[FunctionMetadata]:
         """Dynamically discover xarray functions from the new allowlists."""
         from bioimage_mcp.registry.dynamic.xarray_allowlists import (
@@ -133,13 +190,7 @@ class XarrayAdapterForRegistry(BaseAdapter):
             if "category" in info:
                 tags.add(info["category"])
 
-            params = {}
-            if "params" in info:
-                for p_name, p_info in info["params"].items():
-                    if isinstance(p_info, str):
-                        params[p_name] = ParameterSchema(name=p_name, type=p_info)
-                    elif isinstance(p_info, dict):
-                        params[p_name] = ParameterSchema(name=p_name, **p_info)
+            params = self._introspect_toplevel_function(name, info)
 
             discovery.append(
                 FunctionMetadata(
@@ -163,13 +214,7 @@ class XarrayAdapterForRegistry(BaseAdapter):
             if "category" in info:
                 tags.add(info["category"])
 
-            params = {}
-            if "params" in info:
-                for p_name, p_info in info["params"].items():
-                    if isinstance(p_info, str):
-                        params[p_name] = ParameterSchema(name=p_name, type=p_info)
-                    elif isinstance(p_info, dict):
-                        params[p_name] = ParameterSchema(name=p_name, **p_info)
+            params = self._introspect_ufunc(name, info)
 
             discovery.append(
                 FunctionMetadata(
