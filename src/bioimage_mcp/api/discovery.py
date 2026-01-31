@@ -75,6 +75,30 @@ def _normalize_text(text: str | None) -> str | None:
     return " ".join(text.splitlines())
 
 
+def _get_input_description(port_name: str, description: str | None = None) -> str:
+    if description:
+        return description
+    mapping = {
+        "input": "Primary input",
+        "image": "Input image",
+        "data": "Input data",
+        "result": "Input result",
+    }
+    return mapping.get(port_name.lower(), f"{port_name} input")
+
+
+def _get_output_description(port_name: str, description: str | None = None) -> str:
+    if description:
+        return description
+    mapping = {
+        "output": "Primary output",
+        "image": "Output image",
+        "data": "Output data",
+        "result": "Primary result",
+    }
+    return mapping.get(port_name.lower(), f"{port_name} output")
+
+
 def _sanitize_schema_descriptions(schema: Any) -> None:
     if isinstance(schema, dict):
         if "description" in schema and isinstance(schema["description"], str):
@@ -554,7 +578,7 @@ class DiscoveryService:
         if function_def:
             for port in function_def.inputs:
                 input_names.add(port.name)
-                description = port.description or f"{port.name} input"
+                description = _get_input_description(port.name, port.description)
                 hints_payload = (
                     port.hints.model_dump(exclude_none=True)
                     if hasattr(port, "hints") and port.hints
@@ -619,7 +643,7 @@ class DiscoveryService:
         outputs: dict[str, Any] = {}
         if function_def:
             for port in function_def.outputs:
-                description = port.description or f"{port.name} output"
+                description = _get_output_description(port.name, port.description)
                 outputs[port.name] = {
                     "type": port.artifact_type,
                     "description": description,
@@ -717,7 +741,11 @@ class DiscoveryService:
                         continue
 
                     # Shallow-merge items schema when present in both.
-                    if key == "items" and isinstance(merged_prop.get("items"), dict) and isinstance(value, dict):
+                    if (
+                        key == "items"
+                        and isinstance(merged_prop.get("items"), dict)
+                        and isinstance(value, dict)
+                    ):
                         merged_items = dict(merged_prop["items"])
                         for ik, iv in value.items():
                             if ik not in merged_items:
