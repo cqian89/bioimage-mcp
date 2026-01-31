@@ -50,37 +50,88 @@ class SkimageAdapter(BaseAdapter):
 
     def __init__(self) -> None:
         self.introspector = Introspector()
-        self._cached_props: list[str] | None = None
+        self._cached_regionprops: tuple[list[str], dict[str, Any]] | None = None
 
-    def _get_regionprops_properties(self) -> list[str]:
-        """Get valid property names via runtime introspection of RegionProperties."""
-        if self._cached_props is not None:
-            return self._cached_props
-
+    def _introspect_props(
+        self, label_image: np.ndarray, intensity_image: np.ndarray | None = None
+    ) -> set[str]:
+        """Introspect available properties for a given label and intensity image."""
         try:
-            import numpy as np
             from skimage.measure import regionprops
 
-            # Create minimal label image with one region
-            label_img = np.array([[0, 0], [0, 1]], dtype=np.int32)
-            regions = regionprops(label_img)
+            regions = regionprops(label_image, intensity_image=intensity_image)
             if not regions:
-                return []
+                return set()
 
             region = regions[0]
-            props = []
+            props = set()
             for name in dir(region):
                 if not name.startswith("_"):
                     try:
                         val = getattr(region, name)
                         if not callable(val):
-                            props.append(name)
+                            props.add(name)
                     except Exception:
                         pass
-            self._cached_props = sorted(props)
-            return self._cached_props
+            return props
         except Exception:
-            return []
+            return set()
+
+    def _get_regionprops_properties(self) -> tuple[list[str], dict[str, Any]]:
+        """Get valid property names via runtime introspection of RegionProperties."""
+        if self._cached_regionprops is not None:
+            return self._cached_regionprops
+
+        try:
+            # 1. 2D without intensity
+            label_2d = np.zeros((4, 4), dtype=np.int32)
+            label_2d[1:3, 1:3] = 1
+            props_2d = self._introspect_props(label_2d)
+
+            # 2. 2D with intensity
+            intensity_2d = np.zeros((4, 4), dtype=np.float32)
+            intensity_2d[1:3, 1:3] = 0.5
+            props_2d_intensity = self._introspect_props(label_2d, intensity_2d)
+
+            # 3. 3D without intensity
+            label_3d = np.zeros((4, 4, 4), dtype=np.int32)
+            label_3d[1:3, 1:3, 1:3] = 1
+            props_3d = self._introspect_props(label_3d)
+
+            # 4. 3D with intensity
+            intensity_3d = np.zeros((4, 4, 4), dtype=np.float32)
+            intensity_3d[1:3, 1:3, 1:3] = 0.5
+            props_3d_intensity = self._introspect_props(label_3d, intensity_3d)
+
+            all_props_set = props_2d_intensity | props_3d_intensity
+            all_props = sorted(list(all_props_set))
+
+            # Classification
+            basic = sorted(list(props_2d & props_3d))
+            intensity = sorted(list(all_props_set - (props_2d | props_3d)))
+            two_d_only = sorted(list(props_2d_intensity - props_3d_intensity))
+
+            property_groups = {
+                "basic": {
+                    "description": "Available for all label images",
+                    "values": basic,
+                },
+                "intensity": {
+                    "description": "Requires intensity_image input",
+                    "requires_input": "intensity_image",
+                    "values": intensity,
+                },
+                "2d_only": {
+                    "description": "Only valid for 2D label images",
+                    "constraint": "label_image.ndim == 2",
+                    "values": two_d_only,
+                },
+            }
+
+            self._cached_regionprops = (all_props, property_groups)
+            return self._cached_regionprops
+        except Exception:
+            return [], {}
 
     def discover(self, module_config: dict[str, Any]) -> list[FunctionMetadata]:
         """Discover functions from configured modules."""
@@ -160,11 +211,11 @@ class SkimageAdapter(BaseAdapter):
                 )
 
                 if is_regionprops_redirect:
-                    # Restore the original name (which would be regionprops_table from introspection)
+                    # Restore original name (regionprops_table redirect)
                     meta.name = name
                     meta.description = (
-                        "NOTE: This function is redirected to regionprops_table for serializable output. "
-                        + (meta.description or "")
+                        "NOTE: This function is redirected to regionprops_table "
+                        "for serializable output. " + (meta.description or "")
                     )
                     # Ensure offset and coordinates are removed (if they were somehow present)
                     meta.parameters.pop("offset", None)
@@ -188,14 +239,17 @@ class SkimageAdapter(BaseAdapter):
                 # Enrich regionprops parameters with valid property names
                 if name in ("regionprops", "regionprops_table"):
                     if "properties" in meta.parameters:
-                        props = self._get_regionprops_properties()
+                        props, property_groups = self._get_regionprops_properties()
                         if props:
-                            meta.parameters["properties"].items = {"type": "string", "enum": props}
-                            # Update description with examples
-                            examples = ", ".join(props[:5])
+                            meta.parameters["properties"].items = {
+                                "type": "string",
+                                "enum": props,
+                                "x-property-groups": property_groups,
+                            }
+                            # Update description to mention groups
                             meta.parameters["properties"].description = (
-                                f"Properties to compute. Valid values include: {examples}, ... "
-                                f"({len(props)} total). Add 'label' to track region identities."
+                                f"Properties to compute ({len(props)} available). "
+                                f"See x-property-groups for requirements."
                             )
 
                 # Add dimension hints (T203)
