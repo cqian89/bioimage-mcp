@@ -442,7 +442,6 @@ class DiscoveryEngine:
                         runtime_source = runtime_entry.get("introspection_source") or "meta.list"
                         introspection_source = f"runtime:{runtime_source}"
 
-
         inputs: list[Port] = []
         outputs: list[Port] = []
         io_pattern: IOPattern | None = None
@@ -486,6 +485,14 @@ class DiscoveryEngine:
                 "real",
                 "imag",
                 "mean",
+                "objs",
+                "objects",
+                "data_objects",
+                "arrays",
+                "XA",
+                "XB",
+                "x",
+                "cond",
             }
         )
         artifact_types = {
