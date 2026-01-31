@@ -69,6 +69,14 @@ class XarrayAdapterForRegistry(BaseAdapter):
         self.core = XarrayAdapter(allowlist=XARRAY_DATAARRAY_ALLOWLIST)
         self.introspector = Introspector()
 
+    def _create_parameter_schema(self, name: str, info: str | dict[str, Any]) -> ParameterSchema:
+        """Create a ParameterSchema from a string or dict definition."""
+        if isinstance(info, str):
+            is_optional = info.endswith("?")
+            clean_type = info.rstrip("?")
+            return ParameterSchema(name=name, type=clean_type, required=not is_optional)
+        return ParameterSchema(name=name, **info)
+
     def _introspect_dataarray_method(
         self, method_name: str, info: dict[str, Any]
     ) -> dict[str, ParameterSchema]:
@@ -97,10 +105,7 @@ class XarrayAdapterForRegistry(BaseAdapter):
         # Merge with explicit params from allowlist (allowlist overrides)
         if "params" in info:
             for p_name, p_info in info["params"].items():
-                if isinstance(p_info, str):
-                    params[p_name] = ParameterSchema(name=p_name, type=p_info)
-                elif isinstance(p_info, dict):
-                    params[p_name] = ParameterSchema(name=p_name, **p_info)
+                params[p_name] = self._create_parameter_schema(p_name, p_info)
 
         return params
 
@@ -130,10 +135,7 @@ class XarrayAdapterForRegistry(BaseAdapter):
         # Merge with explicit params from allowlist (allowlist overrides)
         if "params" in info:
             for p_name, p_info in info["params"].items():
-                if isinstance(p_info, str):
-                    params[p_name] = ParameterSchema(name=p_name, type=p_info)
-                elif isinstance(p_info, dict):
-                    params[p_name] = ParameterSchema(name=p_name, **p_info)
+                params[p_name] = self._create_parameter_schema(p_name, p_info)
 
         return params
 
@@ -162,10 +164,7 @@ class XarrayAdapterForRegistry(BaseAdapter):
         # Merge with explicit params from allowlist (allowlist overrides)
         if "params" in info:
             for p_name, p_info in info["params"].items():
-                if isinstance(p_info, str):
-                    params[p_name] = ParameterSchema(name=p_name, type=p_info)
-                elif isinstance(p_info, dict):
-                    params[p_name] = ParameterSchema(name=p_name, **p_info)
+                params[p_name] = self._create_parameter_schema(p_name, p_info)
 
         return params
 
@@ -190,10 +189,7 @@ class XarrayAdapterForRegistry(BaseAdapter):
             params = {}
             if "params" in info:
                 for p_name, p_info in info["params"].items():
-                    if isinstance(p_info, str):
-                        params[p_name] = ParameterSchema(name=p_name, type=p_info)
-                    elif isinstance(p_info, dict):
-                        params[p_name] = ParameterSchema(name=p_name, **p_info)
+                    params[p_name] = self._create_parameter_schema(p_name, p_info)
 
             discovery.append(
                 FunctionMetadata(
