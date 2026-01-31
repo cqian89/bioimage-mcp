@@ -60,6 +60,12 @@ ARTIFACT_PORTS = {
     "intensity_image",
     "XA",
     "XB",
+    "objs",
+    "objects",
+    "data_objects",
+    "arrays",
+    "x",
+    "cond",
 }
 
 
