@@ -556,6 +556,55 @@ class DiscoveryEngine:
                 if not p_schema.get("description"):
                     p_schema["description"] = f"{p_name} parameter"
 
+        # T021: Add x-native-type annotation for ObjectRef parameters
+        if isinstance(params_schema, dict) and "properties" in params_schema:
+            for p_name, p_schema in params_schema["properties"].items():
+                # 1. Identify if this parameter is associated with an ObjectRef port
+                is_obj_ref = False
+                port = next((p for p in inputs if p.name == p_name), None)
+                if port:
+                    p_types = (
+                        [port.artifact_type]
+                        if isinstance(port.artifact_type, str)
+                        else port.artifact_type
+                    )
+                    object_types = {
+                        "ObjectRef",
+                        "FigureRef",
+                        "AxesRef",
+                        "AxesImageRef",
+                        "GroupByRef",
+                    }
+                    if any(t in object_types or "ObjectRef" in t for t in p_types):
+                        is_obj_ref = True
+
+                if is_obj_ref:
+                    # 2. Determine native type (default to "object")
+                    native_type = "object"
+
+                    # 3. Try to get specific type from hints
+                    if runtime_entry and "hints" in runtime_entry:
+                        hints_data = runtime_entry["hints"]
+                        if isinstance(hints_data, dict) and "inputs" in hints_data:
+                            input_hints = hints_data["inputs"]
+                            if p_name in input_hints:
+                                h = input_hints[p_name]
+                                if isinstance(h, dict):
+                                    native_type = h.get("native_type", native_type)
+                                elif hasattr(h, "native_type"):
+                                    native_type = getattr(h, "native_type") or native_type
+
+                    p_schema["x-native-type"] = native_type
+
+        hints = None
+        if runtime_entry and runtime_entry.get("hints"):
+            try:
+                from bioimage_mcp.api.schemas import FunctionHints
+
+                hints = FunctionHints.model_validate(runtime_entry["hints"])
+            except Exception:  # noqa: BLE001
+                pass
+
         return Function(
             fn_id=fn_id,
             tool_id=manifest.tool_id,
@@ -567,6 +616,7 @@ class DiscoveryEngine:
             introspection_source=introspection_source,
             module=sc.qualified_name.rsplit(".", 1)[0],
             io_pattern=io_pattern_value,
+            hints=hints,
         )
 
     def _generate_static_params_schema(self, sc: Any) -> dict[str, Any]:
