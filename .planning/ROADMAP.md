@@ -104,7 +104,7 @@ Key enhancements:
 **Goal:** Add StarDist to the list of tool environments with dynamic function/class discovery through the unified introspection engine, following the Cellpose integration pattern.
 **Status:** Complete (2026-02-01)
 **Depends on:** Phase 15
-**Plans:** 4/4 plans complete
+**Plans:** 5/5 plans complete
 
 Plans:
 - [x] 16-01-PLAN.md — StarDist conda environment + lockfile
