@@ -99,6 +99,24 @@ Key enhancements:
 - TableRef: Markdown table preview with dtypes and row/column counts
 - ObjectRef: native_type field, repr() preview, x-native-type in params_schema
 
+### Phase 16: StarDist Tool Environment
+
+**Goal:** Add StarDist to the list of tool environments with dynamic function/class discovery through the unified introspection engine, following the Cellpose integration pattern.
+**Status:** Planned
+**Depends on:** Phase 15
+**Plans:** 4 plans
+
+Plans:
+- [ ] 16-01-PLAN.md — StarDist conda environment + lockfile
+- [ ] 16-02-PLAN.md — StarDist tool pack scaffold + runtime discovery
+- [ ] 16-03-PLAN.md — StarDist execution: ObjectRef + predict_instances outputs
+- [ ] 16-04-PLAN.md — StarDist tests + docs updates
+
+**Details:**
+- Add `bioimage-mcp-stardist` conda env (StarDist + TensorFlow + CSBDeep) with pinned lockfile.
+- Create `tools/stardist` tool pack with manifest + entrypoint implementing meta.list/meta.describe.
+- Implement inference pipeline producing (labels, details) as artifacts (LabelImageRef + NativeOutputRef).
+
 ---
 
 *Roadmap updated: 2026-02-01*
