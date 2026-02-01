@@ -9,11 +9,11 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 
 ## Current Position
 
-Phase: 16 of 16 (StarDist Tool Environment)
+Phase: 16 of 17 (StarDist Tool Environment)
 Plan: 5 of 5 in current phase
 Status: Complete
 Last activity: 2026-02-01 - Completed Phase 16: StarDist Tool Environment (Goal verified)
-**Next Phase:** None (Roadmap complete)
+**Next Phase:** Phase 17: Update list table formatting and versioning
 
 Progress: ██████████ 100% (verified)
 
@@ -91,6 +91,7 @@ Progress: ██████████ 100% (verified)
 - Phase 14 added: OME-Zarr Standardization
 - Phase 15 added: Enhance artifact_info with Multimodal Previews and ObjectRef Type Visibility
 - Phase 16 added: StarDist Tool Environment
+- Phase 17 added: Update list table formatting and versioning
 
 ### Pending Todos
 - [ ] Implement artifact store retention and quota management (general)

@@ -118,6 +118,21 @@ Plans:
 - Create `tools/stardist` tool pack with manifest + entrypoint implementing meta.list/meta.describe.
 - Implement inference pipeline producing (labels, details) as artifacts (LabelImageRef + NativeOutputRef).
 
+### Phase 17: Update list table formatting and versioning
+
+**Goal:** Update `bioimage-mcp list` CLI output to show hierarchical tool/package structure with actual library versions (lockfile-first) instead of a flat tool-pack list with manifest versions.
+**Depends on:** Phase 16
+**Plans:** 2 plans
+
+Plans:
+- [ ] 17-01-PLAN.md — Hierarchical CLI list output + new JSON schema
+- [ ] 17-02-PLAN.md — Lockfile-first library versions + cache invalidation + tests
+
+**Details:**
+- CLI-only change; MCP API (`tools/list`) remains unchanged.
+- Default output is hierarchical (tool-pack with nested package breakdown).
+- Versions come from `envs/<env_id>.lock.yml` when available, with fallback behavior.
+
 ---
 
 *Roadmap updated: 2026-02-01*
