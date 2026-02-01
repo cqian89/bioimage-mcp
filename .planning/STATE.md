@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 Phase: 15 of 15 (Enhance artifact_info with Multimodal Previews and ObjectRef Type Visibility)
 Plan: 4 of 4 in current phase
 Status: Phase complete
-Last activity: 2026-02-01 - Completed 15-04-PLAN.md
+Last activity: 2026-02-01 - Completed quick task 006: PlotRef previews
 
 Progress: ██████████ 100%
 
@@ -107,6 +107,7 @@ Progress: ██████████ 100%
 | 002 | Migrate run response id to fn_id per spec | 2026-01-30 | fec100d | [002-migrate-run-response-id-to-fn-id-per-spe](./quick/002-migrate-run-response-id-to-fn-id-per-spe/) |
 | 003 | Fix tool schema validation issues (phasorpy outputs, regionprops params, export dest_path) | 2026-01-30 | 98a926b | [003-fix-tool-schema-validation-issues](./quick/003-fix-tool-schema-validation-issues/) |
 | 004 | Fix describe schema response cleanup (meta, hints, newlines) | 2026-01-30 | 9deb2d9 | [004-fix-describe-schema-response-cleanup](./quick/004-fix-describe-schema-response-cleanup/) |
+| 006 | Enable image previews for PlotRef in artifact_info | 2026-02-01 | f855f1a | [006-enable-image-previews-for-plotref-in-art](./quick/006-enable-image-previews-for-plotref-in-art/) |
 
 ### Session Continuity
 Last session: 2026-02-01T00:50:00Z
