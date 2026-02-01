@@ -168,7 +168,19 @@ Deep learning-based segmentation using the Cellpose framework.
 
 ---
 
-## MCP Tool Interface (v0.2.0)
+## Tools.StarDist (`bioimage-mcp-stardist`)
+
+Deep learning-based instance segmentation using star-convex shapes. Optimized for nucleus detection.
+
+*   `stardist.models.StarDist2D.from_pretrained`: Load a pretrained 2D model.
+    *   **Params**: `name` (e.g., '2D_versatile_fluo')
+    *   **Outputs**: `model` (ObjectRef)
+*   `stardist.models.StarDist2D.predict_instances`: Run 2D inference.
+    *   **Inputs**: `model` (ObjectRef), `image` (BioImageRef)
+    *   **Outputs**: `labels` (LabelImageRef), `details` (dict)
+    *   **Params**: `prob_thresh`, `nms_thresh`, `n_tiles`.
+
+---
 
 BioImage-MCP exposes 8 MCP tools for LLM interaction:
 
