@@ -12,7 +12,7 @@ from bioimage_mcp.registry.cache_version import get_cache_version_key
 
 logger = logging.getLogger(__name__)
 
-CACHE_VERSION = 3
+CACHE_VERSION = 4
 # Default TTL for envs cache in seconds (e.g., 1 hour)
 ENVS_CACHE_TTL = 3600
 
@@ -87,16 +87,27 @@ class ListToolsCache:
     def __init__(self, cache_dir: Path):
         self.cache_file = cache_dir / "list_tools.json"
 
-    def get_fingerprint(self, manifest_paths: list[Path], envs_hash: str) -> str:
+    def get_fingerprint(
+        self, manifest_paths: list[Path], envs_hash: str, lockfile_paths: list[Path] | None = None
+    ) -> str:
         """Compute fingerprint based on manifest stats and envs state."""
         parts = [f"vkey:{get_cache_version_key()}", f"envs:{envs_hash}"]
         for p in sorted(manifest_paths):
             try:
                 st = p.stat()
                 # Include resolve() to handle symlinks, though usually not needed here
-                parts.append(f"{p.resolve()}:{st.st_mtime_ns}:{st.st_size}")
+                parts.append(f"m:{p.resolve()}:{st.st_mtime_ns}:{st.st_size}")
             except OSError:
                 continue
+
+        if lockfile_paths:
+            for p in sorted(lockfile_paths):
+                try:
+                    st = p.stat()
+                    parts.append(f"l:{p.resolve()}:{st.st_mtime_ns}:{st.st_size}")
+                except OSError:
+                    continue
+
         return hashlib.sha256("\n".join(parts).encode()).hexdigest()
 
     def get(self, fingerprint: str) -> list[dict[str, Any]] | None:
