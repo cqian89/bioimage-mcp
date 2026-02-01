@@ -102,15 +102,16 @@ Key enhancements:
 ### Phase 16: StarDist Tool Environment
 
 **Goal:** Add StarDist to the list of tool environments with dynamic function/class discovery through the unified introspection engine, following the Cellpose integration pattern.
-**Status:** Planned
+**Status:** Complete (2026-02-01)
 **Depends on:** Phase 15
-**Plans:** 4 plans
+**Plans:** 4/4 plans complete
 
 Plans:
-- [ ] 16-01-PLAN.md — StarDist conda environment + lockfile
-- [ ] 16-02-PLAN.md — StarDist tool pack scaffold + runtime discovery
-- [ ] 16-03-PLAN.md — StarDist execution: ObjectRef + predict_instances outputs
-- [ ] 16-04-PLAN.md — StarDist tests + docs updates
+- [x] 16-01-PLAN.md — StarDist conda environment + lockfile
+- [x] 16-02-PLAN.md — StarDist tool pack scaffold + runtime discovery
+- [x] 16-03-PLAN.md — StarDist execution: ObjectRef + predict_instances outputs
+- [x] 16-04-PLAN.md — StarDist tests + docs updates
+- [x] 16-05-PLAN.md — StarDist E2E Test Core-Env Migration
 
 **Details:**
 - Add `bioimage-mcp-stardist` conda env (StarDist + TensorFlow + CSBDeep) with pinned lockfile.

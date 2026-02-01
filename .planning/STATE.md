@@ -9,10 +9,10 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 
 ## Current Position
 
-Phase: 15 of 15 (Enhance artifact_info with Multimodal Previews and ObjectRef Type Visibility)
-Plan: 4 of 4 in current phase
+Phase: 16 of 16 (StarDist Tool Environment)
+Plan: 5 of 5 in current phase
 Status: Phase complete
-Last activity: 2026-02-01 - Completed quick task 006: PlotRef previews
+Last activity: 2026-02-01 - Completed 16-05-PLAN.md
 
 Progress: ██████████ 100%
 
@@ -31,6 +31,7 @@ Progress: ██████████ 100%
 | 15 | Default to max projection for multi-dimensional images | standard in bioimaging for quick visibility. |
 | 15 | Map images to 8-bit PNG for previews | Universal compatibility for browsers and LLMs. |
 | 15 | Fail silently on preview generation | Omit field rather than failing entire request if image is corrupt/unsupported. |
+| 16 | Redirect tool stdout to stderr in entrypoint | Avoid breaking NDJSON IPC when tools print non-JSON noise to stdout. |
 | 10 | Use 'datasets/smoke_tmp' for test CSVs | Ensure live server read access within allowed paths. |
 | 10 | Map mean_table to tmean | scipy.stats lacks a bare mean function. |
 | 10 | Standardize on NativeOutputRef for stats JSON | Allows flexible structured output for distribution/summary stats. |
@@ -88,6 +89,7 @@ Progress: ██████████ 100%
 - Phase 13 added: Dynamic Introspection Cache Reuse (incl. trackpy)
 - Phase 14 added: OME-Zarr Standardization
 - Phase 15 added: Enhance artifact_info with Multimodal Previews and ObjectRef Type Visibility
+- Phase 16 added: StarDist Tool Environment
 
 ### Pending Todos
 - [ ] Implement artifact store retention and quota management (general)
@@ -110,9 +112,10 @@ Progress: ██████████ 100%
 | 006 | Enable image previews for PlotRef in artifact_info | 2026-02-01 | f855f1a | [006-enable-image-previews-for-plotref-in-art](./quick/006-enable-image-previews-for-plotref-in-art/) |
 
 ### Session Continuity
-Last session: 2026-02-01T00:50:00Z
-Stopped at: Completed 15-04-PLAN.md
+Last session: 2026-02-01T20:15:00Z
+Stopped at: Completed 16-05-PLAN.md
 Resume file: None
 
 ## Next Steps
-1. Release v0.4.0 Unified Introspection Engine.
+1. Plan Phase 16: StarDist Tool Environment
+2. Release v0.4.0 Unified Introspection Engine.
