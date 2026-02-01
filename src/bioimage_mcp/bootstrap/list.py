@@ -42,24 +42,48 @@ def _get_installed_envs(manager_exe: str) -> set[str]:
 
 def _render_list(tool_details: list[dict[str, Any]], json_output: bool) -> int:
     if json_output:
-        print(json.dumps({"tools": tool_details}))
+        # Filter out internal metadata for JSON output to match schema
+        json_payload = []
+        for t in tool_details:
+            json_payload.append(
+                {
+                    "id": t["id"],
+                    "tool_version": t["tool_version"],
+                    "library_version": t["library_version"],
+                    "status": t["status"],
+                    "function_count": t["function_count"],
+                    "packages": t["packages"],
+                }
+            )
+        print(json.dumps({"tools": json_payload}))
         return 0
 
     if not tool_details:
         print("No tools found in registry.")
         return 0
 
-    print(
-        f"{'Tool':<25} | {'Version':<10} | {'Status':<12} | {'Functions':<10} | {'Introspection':<15}"
-    )
-    print("-" * 85)
-    for t in tool_details:
-        status_str = f"{t['status_char']} {t['status']}"
-        introspection_str = ", ".join(t["introspection_source"])
-        print(
-            f"{t['id']:<25} | {t['tool_version']:<10} | {status_str:<12} | "
-            f"{t['function_count']:<10} | {introspection_str:<15}"
-        )
+    print(f"{'Tool':<25} | {'Version':<10} | {'Status':<12} | {'Functions'}")
+    print("-" * 65)
+    for i, t in enumerate(tool_details):
+        if i > 0:
+            print()
+
+        pkg_summary = ""
+        if t["packages"]:
+            pkg_list = [f"{p['id']}:{p['function_count']}" for p in t["packages"][:3]]
+            pkg_summary = f" ({', '.join(pkg_list)}"
+            if len(t["packages"]) > 3:
+                pkg_summary += ", ..."
+            pkg_summary += ")"
+
+        functions_str = f"{t['function_count']}{pkg_summary}"
+        print(f"{t['id']:<25} | {t['tool_version']:<10} | {t['status']:<12} | {functions_str}")
+
+        # Render package rows
+        for j, pkg in enumerate(t["packages"]):
+            is_last = j == len(t["packages"]) - 1
+            prefix = "  └── " if is_last else "  ├── "
+            print(f"{prefix + pkg['id']:<25} | {'':<10} | {'':<12} | {pkg['function_count']}")
 
     return 0
 
@@ -73,7 +97,7 @@ def list_tools(*, json_output: bool, tool: str | None = None) -> int:
     ) -> list[dict[str, Any]]:
         if not filter_val:
             return details
-        return [t for t in details if t["id"] == filter_val or t["id"] == f"tools.{filter_val}"]
+        return [t for t in details if t["id"] == filter_val or f"tools.{t['id']}" == filter_val]
 
     # Cache setup
     cache_dir = get_cli_cache_dir()
@@ -136,28 +160,41 @@ def list_tools(*, json_output: bool, tool: str | None = None) -> int:
 
     tool_details: list[dict[str, Any]] = []
     for m in manifests:
-        tool_id = m.tool_id or "unknown"
+        full_tool_id = m.tool_id or "unknown"
+        tool_id = full_tool_id.removeprefix("tools.")
         env_id = m.env_id
         fn_count = len(m.functions)
         env_exists = env_id in installed_envs if env_id else False
 
-        if env_exists:
-            status = "installed"
-            status_char = "✓"
-        else:
-            status = "partial"
-            status_char = "⚠"
+        status = "installed" if env_exists else "partial"
+
+        # Group functions into packages
+        pkg_counts: dict[str, int] = {}
+        for fn in m.functions:
+            fn_id = fn.fn_id
+            if fn_id.startswith(f"{tool_id}."):
+                # Strip tool_id and dot
+                pkg_id = fn_id[len(tool_id) + 1 :].split(".")[0]
+            else:
+                pkg_id = fn_id.split(".")[0]
+            pkg_counts[pkg_id] = pkg_counts.get(pkg_id, 0) + 1
+
+        packages = [
+            {"id": pid, "library_version": None, "function_count": count}
+            for pid, count in sorted(pkg_counts.items())
+        ]
 
         sources = sorted({s for s in (fn.introspection_source for fn in m.functions) if s})
 
         tool_details.append(
             {
                 "id": tool_id,
-                "status": status,
-                "status_char": status_char,
-                "function_count": fn_count,
-                "env_id": env_id,
                 "tool_version": m.tool_version,
+                "library_version": None,
+                "status": status,
+                "function_count": fn_count,
+                "packages": packages,
+                "env_id": env_id,
                 "introspection_source": sources,
             }
         )
