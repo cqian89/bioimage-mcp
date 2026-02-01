@@ -120,3 +120,130 @@ def test_list_tools_empty(monkeypatch, capsys, tmp_path) -> None:
 
     assert exit_code == 0
     assert "No tools found in registry." in out
+
+
+def test_list_tools_lockfile_version(tmp_path, monkeypatch, capsys) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+
+    # 1. Create envs/bioimage-mcp-cellpose.lock.yml
+    envs_dir = tmp_path / "envs"
+    envs_dir.mkdir()
+    lock_data = {
+        "version": 1,
+        "package": [{"name": "cellpose", "version": "3.1.0", "platform": "linux-64"}],
+    }
+    lock_file = envs_dir / "bioimage-mcp-cellpose.lock.yml"
+    with open(lock_file, "w") as f:
+        yaml.dump(lock_data, f)
+
+    # 2. Create manifest for cellpose
+    manifest_root = tmp_path / "tools"
+    manifest_root.mkdir()
+    tool_root = manifest_root / "cellpose"
+    tool_root.mkdir()
+    manifest_data = {
+        "manifest_version": "1.0",
+        "tool_id": "tools.cellpose",
+        "tool_version": "0.1.0",
+        "env_id": "bioimage-mcp-cellpose",
+        "entrypoint": "main.py",
+        "name": "Cellpose",
+        "description": "Cellpose tool",
+        "functions": [
+            {
+                "id": "cellpose.models.run",
+                "tool_id": "tools.cellpose",
+                "name": "Run Cellpose",
+                "description": "Run cellpose",
+                "params_schema": {"type": "object", "properties": {}},
+            }
+        ],
+    }
+    with open(tool_root / "manifest.yaml", "w") as f:
+        yaml.dump(manifest_data, f)
+
+    # 3. Setup mocks
+    mock_config = MagicMock()
+    mock_config.tool_manifest_roots = [manifest_root]
+    monkeypatch.setattr("bioimage_mcp.bootstrap.list.load_config", lambda: mock_config)
+    monkeypatch.setattr(list_mod, "detect_env_manager", lambda: ("micromamba", "exe", "1.0"))
+    monkeypatch.setattr(list_mod, "_get_installed_envs", lambda _: {"bioimage-mcp-cellpose"})
+
+    # Force platform for test reliability
+    monkeypatch.setattr(list_mod, "_get_conda_platform", lambda: "linux-64")
+
+    # 4. Run list_tools
+    exit_code = list_mod.list_tools(json_output=True)
+    out = capsys.readouterr().out
+
+    assert exit_code == 0
+    payload = json.loads(out)
+    tool = payload["tools"][0]
+    assert tool["id"] == "cellpose"
+    assert tool["library_version"] == "3.1.0"
+    assert tool["packages"][0]["id"] == "models"
+    assert tool["packages"][0]["library_version"] == "3.1.0"
+
+
+def test_list_tools_cache_invalidation_on_lockfile_change(tmp_path, monkeypatch, capsys) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+
+    # 1. Create initial lockfile
+    envs_dir = tmp_path / "envs"
+    envs_dir.mkdir()
+    lock_file = envs_dir / "bioimage-mcp-base.lock.yml"
+    lock_data = {"version": 1, "package": [{"name": "scipy", "version": "1.14.1"}]}
+    with open(lock_file, "w") as f:
+        yaml.dump(lock_data, f)
+
+    # 2. Create manifest for base
+    manifest_root = tmp_path / "tools"
+    manifest_root.mkdir()
+    tool_root = manifest_root / "base"
+    tool_root.mkdir()
+    manifest_data = {
+        "manifest_version": "1.0",
+        "tool_id": "tools.base",
+        "tool_version": "0.2.0",
+        "env_id": "bioimage-mcp-base",
+        "entrypoint": "main.py",
+        "name": "Base",
+        "description": "Base tools",
+        "functions": [
+            {
+                "id": "base.scipy.test",
+                "tool_id": "tools.base",
+                "name": "test",
+                "description": "test",
+                "params_schema": {"type": "object", "properties": {}},
+            }
+        ],
+    }
+    with open(tool_root / "manifest.yaml", "w") as f:
+        yaml.dump(manifest_data, f)
+
+    # 3. Setup mocks
+    mock_config = MagicMock()
+    mock_config.tool_manifest_roots = [manifest_root]
+    monkeypatch.setattr("bioimage_mcp.bootstrap.list.load_config", lambda: mock_config)
+    monkeypatch.setattr(list_mod, "detect_env_manager", lambda: ("micromamba", "exe", "1.0"))
+    monkeypatch.setattr(list_mod, "_get_installed_envs", lambda _: {"bioimage-mcp-base"})
+
+    # 4. First run - populates cache
+    list_mod.list_tools(json_output=True)
+    out1 = capsys.readouterr().out
+    payload1 = json.loads(out1)
+    assert payload1["tools"][0]["packages"][0]["library_version"] == "1.14.1"
+
+    # 5. Update lockfile version
+    lock_data["package"][0]["version"] = "1.15.0"
+    with open(lock_file, "w") as f:
+        yaml.dump(lock_data, f)
+
+    # 6. Second run - should show new version
+    list_mod.list_tools(json_output=True)
+    out2 = capsys.readouterr().out
+    payload2 = json.loads(out2)
+    assert payload2["tools"][0]["packages"][0]["library_version"] == "1.15.0"
