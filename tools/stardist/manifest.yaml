@@ -1,0 +1,155 @@
+manifest_version: "1.0"
+tool_id: tools.stardist
+tool_version: "0.1.0"
+name: StarDist Instance Segmentation
+description: Star-convex object detection (mostly nuclei) using StarDist deep learning models.
+
+env_id: bioimage-mcp-stardist
+entrypoint: bioimage_mcp_stardist/entrypoint.py
+python_version: "3.11"
+platforms_supported:
+  - linux-64
+
+# Dynamic sources for runtime discovery via meta.list
+dynamic_sources:
+  - adapter: stardist
+    prefix: stardist
+    modules:
+      - stardist.models
+    include_patterns: ["*"]
+    exclude_patterns: ["_*", "test_*"]
+
+functions:
+  - id: stardist.models.StarDist2D.from_pretrained
+    tool_id: tools.stardist
+    name: Load Pretrained StarDist 2D Model
+    description: Instantiate a StarDist2D model from a pretrained source and return an ObjectRef.
+    tags: [initialization, deep-learning, 2d]
+    inputs: []
+    outputs:
+      - name: model
+        artifact_type: ObjectRef
+        required: true
+    params_schema:
+      type: object
+      properties:
+        name:
+          type: string
+          default: "2D_versatile_fluo"
+          description: "Name of the pretrained model"
+
+  - id: stardist.models.StarDist3D.from_pretrained
+    tool_id: tools.stardist
+    name: Load Pretrained StarDist 3D Model
+    description: Instantiate a StarDist3D model from a pretrained source and return an ObjectRef.
+    tags: [initialization, deep-learning, 3d]
+    inputs: []
+    outputs:
+      - name: model
+        artifact_type: ObjectRef
+        required: true
+    params_schema:
+      type: object
+      properties:
+        name:
+          type: string
+          default: "3D_demo"
+          description: "Name of the pretrained model"
+
+  - id: stardist.models.StarDist2D.predict_instances
+    tool_id: tools.stardist
+    name: StarDist 2D Inference
+    description: Predict instance segmentation masks for a 2D image.
+    tags: [segmentation, deep-learning, 2d]
+    inputs:
+      - name: model
+        artifact_type: ObjectRef
+        required: true
+        description: "Initialized StarDist2D model"
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+        supported_storage_types: ["file", "zarr-temp"]
+        description: "Input image (should be normalized)"
+    outputs:
+      - name: labels
+        artifact_type: LabelImageRef
+        format: OME-Zarr
+        required: true
+        description: "Segmented label image"
+      - name: details
+        artifact_type: NativeOutputRef
+        format: stardist-details-json
+        required: true
+        description: "Dictionary containing object coordinates and probabilities"
+    params_schema:
+      type: object
+      properties:
+        prob_thresh:
+          type: number
+          description: "Probability threshold for object detection"
+        nms_thresh:
+          type: number
+          description: "Threshold for non-maximum suppression"
+        n_tiles:
+          type: array
+          items:
+            type: integer
+          description: "Number of tiles for large image processing"
+
+  - id: stardist.models.StarDist3D.predict_instances
+    tool_id: tools.stardist
+    name: StarDist 3D Inference
+    description: Predict instance segmentation masks for a 3D image.
+    tags: [segmentation, deep-learning, 3d]
+    inputs:
+      - name: model
+        artifact_type: ObjectRef
+        required: true
+        description: "Initialized StarDist3D model"
+      - name: image
+        artifact_type: BioImageRef
+        required: true
+        supported_storage_types: ["file", "zarr-temp"]
+        description: "Input image (should be normalized)"
+    outputs:
+      - name: labels
+        artifact_type: LabelImageRef
+        format: OME-Zarr
+        required: true
+        description: "Segmented label image"
+      - name: details
+        artifact_type: NativeOutputRef
+        format: stardist-details-json
+        required: true
+        description: "Dictionary containing object coordinates and probabilities"
+    params_schema:
+      type: object
+      properties:
+        prob_thresh:
+          type: number
+          description: "Probability threshold for object detection"
+        nms_thresh:
+          type: number
+          description: "Threshold for non-maximum suppression"
+        n_tiles:
+          type: array
+          items:
+            type: integer
+          description: "Number of tiles for large image processing"
+
+  - id: meta.describe
+    tool_id: tools.stardist
+    name: Describe Function
+    description: Return parameter schema for a StarDist function.
+    tags: [meta]
+    inputs: []
+    outputs: []
+    params_schema:
+      type: object
+      properties:
+        target_fn:
+          type: string
+          description: "The function id to describe"
+      required:
+        - target_fn
