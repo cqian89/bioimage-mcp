@@ -2,9 +2,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+import platform
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
+
+import yaml
 
 from bioimage_mcp.bootstrap.env_manager import detect_env_manager
 from bioimage_mcp.bootstrap.list_cache import (
@@ -14,6 +18,84 @@ from bioimage_mcp.bootstrap.list_cache import (
 )
 from bioimage_mcp.config.loader import load_config
 from bioimage_mcp.registry.loader import discover_manifest_paths, load_manifests
+
+
+PACKAGE_TO_CONDA = {
+    "scipy": "scipy",
+    "phasorpy": "phasorpy",
+    "skimage": "scikit-image",
+    "pandas": "pandas",
+    "xarray": "xarray",
+    "cellpose": "cellpose",
+    "trackpy": "trackpy",
+    "stardist": "stardist",
+    "tttrlib": "tttrlib",
+}
+
+
+def _get_conda_platform() -> str | None:
+    plt = sys.platform
+    arch = platform.machine().lower()
+    if plt == "linux":
+        return "linux-64" if arch == "x86_64" else "linux-aarch64"
+    elif plt == "darwin":
+        return "osx-arm64" if arch == "arm64" else "osx-64"
+    elif plt == "win32":
+        return "win-64"
+    return None
+
+
+def _resolve_version(env_id: str | None, package_id: str, manager_exe: str) -> str | None:
+    if not env_id:
+        return None
+
+    conda_name = PACKAGE_TO_CONDA.get(package_id)
+    if not conda_name:
+        return None
+
+    # 1. Lockfile resolution
+    lock_path = Path("envs") / f"{env_id}.lock.yml"
+    if lock_path.exists():
+        try:
+            with open(lock_path, encoding="utf-8") as f:
+                data = yaml.safe_load(f)
+
+            current_plt = _get_conda_platform()
+            packages = data.get("package", [])
+
+            # First pass: try to match platform
+            for pkg in packages:
+                if pkg.get("name") == conda_name:
+                    if current_plt and pkg.get("platform") == current_plt:
+                        return str(pkg.get("version"))
+
+            # Second pass: just return first match if platform didn't match or current_plt unknown
+            for pkg in packages:
+                if pkg.get("name") == conda_name:
+                    return str(pkg.get("version"))
+        except Exception:
+            pass
+
+    # 2. Live query resolution
+    if manager_exe:
+        try:
+            proc = subprocess.run(
+                [manager_exe, "list", "-n", env_id, "--json", conda_name],
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=5,
+            )
+            if proc.returncode == 0:
+                data = json.loads(proc.stdout)
+                if isinstance(data, list):
+                    for pkg in data:
+                        if pkg.get("name") == conda_name:
+                            return str(pkg.get("version"))
+        except Exception:
+            pass
+
+    return None
 
 
 def _get_installed_envs(manager_exe: str) -> set[str]:
@@ -77,13 +159,17 @@ def _render_list(tool_details: list[dict[str, Any]], json_output: bool) -> int:
             pkg_summary += ")"
 
         functions_str = f"{t['function_count']}{pkg_summary}"
-        print(f"{t['id']:<25} | {t['tool_version']:<10} | {t['status']:<12} | {functions_str}")
+        version = t["library_version"] or t["tool_version"]
+        print(f"{t['id']:<25} | {version:<10} | {t['status']:<12} | {functions_str}")
 
         # Render package rows
         for j, pkg in enumerate(t["packages"]):
             is_last = j == len(t["packages"]) - 1
             prefix = "  └── " if is_last else "  ├── "
-            print(f"{prefix + pkg['id']:<25} | {'':<10} | {'':<12} | {pkg['function_count']}")
+            pkg_version = pkg["library_version"] or ""
+            print(
+                f"{prefix + pkg['id']:<25} | {pkg_version:<10} | {'':<12} | {pkg['function_count']}"
+            )
 
     return 0
 
@@ -110,6 +196,7 @@ def list_tools(*, json_output: bool, tool: str | None = None) -> int:
 
     # 2. Try fast path with caches
     manifest_paths = discover_manifest_paths(config.tool_manifest_roots)
+    lockfile_paths = list(Path("envs").glob("*.lock.yml"))
     installed_envs = None
     if manager_exe:
         installed_envs = envs_cache.get(manager_exe)
@@ -117,7 +204,7 @@ def list_tools(*, json_output: bool, tool: str | None = None) -> int:
     if installed_envs is not None:
         # We have cached envs, check tools cache
         envs_hash = hashlib.sha256(json.dumps(sorted(list(installed_envs))).encode()).hexdigest()
-        fingerprint = tools_cache.get_fingerprint(manifest_paths, envs_hash)
+        fingerprint = tools_cache.get_fingerprint(manifest_paths, envs_hash, lockfile_paths)
         cached_payload = tools_cache.get(fingerprint)
         if cached_payload is not None:
             # Check if all required dynamic caches exist
@@ -179,10 +266,24 @@ def list_tools(*, json_output: bool, tool: str | None = None) -> int:
                 pkg_id = fn_id.split(".")[0]
             pkg_counts[pkg_id] = pkg_counts.get(pkg_id, 0) + 1
 
-        packages = [
-            {"id": pid, "library_version": None, "function_count": count}
-            for pid, count in sorted(pkg_counts.items())
-        ]
+        # Resolve versions
+        # For tools with primary library (e.g. cellpose), tool.library_version = resolved version
+        # For base, it might be None if multiple libs.
+        tool_lib_version = _resolve_version(env_id, tool_id, manager_exe)
+
+        packages = []
+        for pid, count in sorted(pkg_counts.items()):
+            pkg_lib_version = None
+            if tool_lib_version:
+                # If tool itself has primary lib, all its subpackages get it
+                pkg_lib_version = tool_lib_version
+            else:
+                # Try to resolve per package (useful for base)
+                pkg_lib_version = _resolve_version(env_id, pid, manager_exe)
+
+            packages.append(
+                {"id": pid, "library_version": pkg_lib_version, "function_count": count}
+            )
 
         sources = sorted({s for s in (fn.introspection_source for fn in m.functions) if s})
 
@@ -190,7 +291,7 @@ def list_tools(*, json_output: bool, tool: str | None = None) -> int:
             {
                 "id": tool_id,
                 "tool_version": m.tool_version,
-                "library_version": None,
+                "library_version": tool_lib_version,
                 "status": status,
                 "function_count": fn_count,
                 "packages": packages,
@@ -200,7 +301,7 @@ def list_tools(*, json_output: bool, tool: str | None = None) -> int:
         )
 
     # Update tools cache
-    fingerprint = tools_cache.get_fingerprint(manifest_paths, envs_hash)
+    fingerprint = tools_cache.get_fingerprint(manifest_paths, envs_hash, lockfile_paths)
     tools_cache.put(fingerprint, tool_details)
 
     filtered = _filter_tools(tool_details, tool)
