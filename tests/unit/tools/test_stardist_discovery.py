@@ -31,13 +31,15 @@ def test_stardist_adapter_get_pretrained_model_names_mock():
 def test_stardist_adapter_get_pretrained_model_names_import_error():
     adapter = StarDistAdapter()
 
-    # Ensure csbdeep is NOT in sys.modules and will fail import
-    with patch.dict(sys.modules, {}):
-        if "csbdeep" in sys.modules:
-            del sys.modules["csbdeep"]
-        if "csbdeep.models.pretrained" in sys.modules:
-            del sys.modules["csbdeep.models.pretrained"]
-
+    # Set modules to None to reliably force ImportError
+    with patch.dict(
+        sys.modules,
+        {
+            "csbdeep": None,
+            "csbdeep.models": None,
+            "csbdeep.models.pretrained": None,
+        },
+    ):
         names = adapter._get_pretrained_model_names(MagicMock())
         assert names == []
 

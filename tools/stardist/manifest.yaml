@@ -36,7 +36,7 @@ functions:
         name:
           type: string
           default: "2D_versatile_fluo"
-          description: "Name of the pretrained model"
+          description: "Name of the pretrained model. Available models are discovered dynamically from the StarDist library."
 
   - id: stardist.models.StarDist3D.from_pretrained
     tool_id: tools.stardist
@@ -54,7 +54,7 @@ functions:
         name:
           type: string
           default: "3D_demo"
-          description: "Name of the pretrained model"
+          description: "Name of the pretrained model. Available models are discovered dynamically from the StarDist library."
 
   - id: stardist.models.StarDist2D.predict_instances
     tool_id: tools.stardist
