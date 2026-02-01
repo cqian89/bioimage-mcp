@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 ## Current Position
 
 Phase: 17 of 17 (Update list table formatting and versioning)
-Plan: 1 of 2 in current phase
-Status: In progress
-Last activity: 2026-02-01 - Completed 17-01-PLAN.md
+Plan: 2 of 2 in current phase
+Status: Phase complete
+Last activity: 2026-02-01 - Completed 17-02-PLAN.md
 
-Progress: █████████░ 96%
+Progress: ██████████ 100%
 
 ## Accumulated Context
 
@@ -86,6 +86,8 @@ Progress: █████████░ 96%
 | 17 | Use short tool IDs (drop 'tools.' prefix) in CLI list output | Reduce visual noise in CLI list output. |
 | 17 | Provide a tree-style view for packages within tool-packs | Better visibility into tool-pack contents. |
 | 17 | Group functions into packages based on ID prefix | Logical organization of tool-pack contents. |
+| 17 | Use lockfiles as primary source of truth for library versions | Fast, reproducible resolution without expensive conda query. |
+| 17 | Include lockfiles in CLI cache fingerprint | Ensures listing stays fresh when environments change. |
 
 ### Roadmap Evolution
 - Phase 12 added: Core Engine + AST-First
@@ -116,8 +118,8 @@ Progress: █████████░ 96%
 | 006 | Enable image previews for PlotRef in artifact_info | 2026-02-01 | f855f1a | [006-enable-image-previews-for-plotref-in-art](./quick/006-enable-image-previews-for-plotref-in-art/) |
 
 ### Session Continuity
-Last session: 2026-02-01T20:15:00Z
-Stopped at: Completed 16-05-PLAN.md
+Last session: 2026-02-01T23:33:00Z
+Stopped at: Completed 17-02-PLAN.md
 Resume file: None
 
 ## Next Steps

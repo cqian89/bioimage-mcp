@@ -121,12 +121,13 @@ Plans:
 ### Phase 17: Update list table formatting and versioning
 
 **Goal:** Update `bioimage-mcp list` CLI output to show hierarchical tool/package structure with actual library versions (lockfile-first) instead of a flat tool-pack list with manifest versions.
+**Status:** Complete (2026-02-01)
 **Depends on:** Phase 16
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 17-01-PLAN.md — Hierarchical CLI list output + new JSON schema
-- [ ] 17-02-PLAN.md — Lockfile-first library versions + cache invalidation + tests
+- [x] 17-02-PLAN.md — Lockfile-first library versions + cache invalidation + tests
 
 **Details:**
 - CLI-only change; MCP API (`tools/list`) remains unchanged.
