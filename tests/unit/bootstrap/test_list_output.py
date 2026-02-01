@@ -77,12 +77,13 @@ def test_list_tools_table_output(mock_registry, monkeypatch, capsys) -> None:
     assert exit_code == 0
     assert "Tool" in out
     assert "Version" in out
-    assert "Introspection" in out
+    assert "Status" in out
+    assert "Functions" in out
     assert "test-tool" in out
     assert "1.2.3" in out
-    assert "✓ installed" in out
+    assert "installed" in out
     assert "1" in out  # function count
-    assert "python_api" in out
+    assert "└── test" in out
 
 
 def test_list_tools_json_output(mock_registry, monkeypatch, capsys) -> None:
@@ -99,7 +100,10 @@ def test_list_tools_json_output(mock_registry, monkeypatch, capsys) -> None:
     assert tool["id"] == "test-tool"
     assert tool["tool_version"] == "1.2.3"
     assert tool["status"] == "partial"
-    assert "python_api" in tool["introspection_source"]
+    assert "packages" in tool
+    assert len(tool["packages"]) == 1
+    assert tool["packages"][0]["id"] == "test"
+    assert tool["packages"][0]["function_count"] == 1
 
 
 def test_list_tools_empty(monkeypatch, capsys, tmp_path) -> None:
