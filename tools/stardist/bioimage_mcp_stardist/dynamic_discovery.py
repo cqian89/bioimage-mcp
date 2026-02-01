@@ -85,9 +85,26 @@ class StarDistAdapter:
                     meta.tags.append("constructor")
                     meta.tags.append(f"returns:{class_path}")
 
+                # Inject pretrained model names as enum values
+                if method_name == "from_pretrained" and "name" in meta.parameters:
+                    model_names = self._get_pretrained_model_names(cls)
+                    if model_names:
+                        meta.parameters["name"].enum = model_names
+
                 all_metadata.append(meta)
 
         return all_metadata
+
+    def _get_pretrained_model_names(self, cls: Any) -> list[str]:
+        """Get available pretrained model names for a StarDist class."""
+        try:
+            # Import inside to avoid hard dependency in core server
+            from csbdeep.models.pretrained import get_registered_models
+
+            models, _ = get_registered_models(cls, return_aliases=True)
+            return list(models)
+        except (ImportError, Exception):
+            return []
 
     def _resolve_class(self, class_path: str) -> Any:
         try:
