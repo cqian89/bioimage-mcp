@@ -375,3 +375,99 @@ def generate_table_preview(
         }
     except Exception:
         return None
+
+
+def generate_plot_preview(
+    path: Path,
+    *,
+    max_size: int = 256,
+    width_px: int | None = None,
+    height_px: int | None = None,
+) -> dict | None:
+    """Generate a preview for a PlotRef (PNG, JPG, SVG)."""
+    try:
+        if path.suffix.lower() == ".svg":
+            # For SVG: base64-encode bytes directly
+            with open(path, "rb") as f:
+                svg_bytes = f.read()
+            b64 = base64.b64encode(svg_bytes).decode("utf-8")
+
+            # Use provided dimensions if available
+            w = float(width_px) if width_px is not None else None
+            h = float(height_px) if height_px is not None else None
+
+            # Fallback to parsing <svg> if not provided
+            if w is None or h is None:
+                # Basic parsing for <svg ... width="123" height="456" ...>
+                # and <svg ... viewBox="0 0 100 200" ...>
+                import re
+
+                content = svg_bytes.decode("utf-8", errors="ignore")[:2000]  # Read first 2k chars
+
+                # Check for width/height attributes
+                w_match = re.search(r'<svg[^>]+width=["\']([\d.]+)["\']', content)
+                h_match = re.search(r'<svg[^>]+height=["\']([\d.]+)["\']', content)
+                if w_match:
+                    w = float(w_match.group(1))
+                if h_match:
+                    h = float(h_match.group(1))
+
+                # Check for viewBox if width/height missing
+                if w is None or h is None:
+                    vb_match = re.search(
+                        r'<svg[^>]+viewBox=["\'][\d.]+ [\d.]+ ([\d.]+) ([\d.]+)["\']', content
+                    )
+                    if vb_match:
+                        if w is None:
+                            w = float(vb_match.group(1))
+                        if h is None:
+                            h = float(vb_match.group(2))
+
+            # Default to 100x100 if we still can't find anything
+            w = w or 100.0
+            h = h or 100.0
+
+            # Scale reported dimensions to max_size
+            if max(w, h) > max_size:
+                if w > h:
+                    h = h * (max_size / w)
+                    w = float(max_size)
+                else:
+                    w = w * (max_size / h)
+                    h = float(max_size)
+
+            return {
+                "base64": b64,
+                "format": "svg",
+                "width": int(round(w)),
+                "height": int(round(h)),
+            }
+        else:
+            # For raster: PNG/JPG
+            img = Image.open(path)
+            # Ensure RGB/RGBA
+            if img.mode not in ("RGB", "RGBA"):
+                img = img.convert("RGBA")
+
+            w_orig, h_orig = img.size
+            if max(w_orig, h_orig) > max_size:
+                if w_orig > h_orig:
+                    new_w = max_size
+                    new_h = int(h_orig * (max_size / w_orig))
+                else:
+                    new_h = max_size
+                    new_w = int(w_orig * (max_size / h_orig))
+                img = img.resize((new_w, new_h), resample=Image.BILINEAR)
+
+            buf = BytesIO()
+            img.save(buf, format="PNG")
+            b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+
+            return {
+                "base64": b64,
+                "format": "png",
+                "width": img.width,
+                "height": img.height,
+            }
+    except Exception:
+        return None

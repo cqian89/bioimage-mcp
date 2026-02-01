@@ -5,6 +5,7 @@ from pathlib import Path
 from bioimage_mcp.artifacts.preview import (
     generate_image_preview,
     generate_label_preview,
+    generate_plot_preview,
     generate_table_preview,
 )
 from bioimage_mcp.artifacts.store import ArtifactStore
@@ -161,6 +162,36 @@ class ArtifactsService:
                             channel=channel_idx,
                         )
 
+                    if preview:
+                        response["image_preview"] = preview
+
+        # Add PlotRef specific metadata and preview
+        if ref.type == "PlotRef":
+            meta = ref.metadata
+            if not isinstance(meta, dict):
+                meta = meta.model_dump()
+
+            response["width_px"] = meta.get("width_px")
+            response["height_px"] = meta.get("height_px")
+            response["dpi"] = meta.get("dpi")
+
+            if include_image_preview:
+                uri = ref.uri
+                if uri.startswith("file://"):
+                    path = Path(uri.replace("file://", ""))
+                elif uri.startswith("mem://"):
+                    sim_path = meta.get("_simulated_path")
+                    path = Path(sim_path) if sim_path else None
+                else:
+                    path = None
+
+                if path and path.exists():
+                    preview = generate_plot_preview(
+                        path,
+                        max_size=image_preview_size,
+                        width_px=response.get("width_px"),
+                        height_px=response.get("height_px"),
+                    )
                     if preview:
                         response["image_preview"] = preview
 

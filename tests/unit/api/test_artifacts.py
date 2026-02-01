@@ -195,3 +195,59 @@ def test_artifact_info_table_preview(tmp_path: Path) -> None:
         assert "dtypes" in info
         assert info["dtypes"]["A"] == "int64"
         assert info["total_rows"] is not None
+
+
+def test_artifact_info_plot_preview(tmp_path: Path) -> None:
+    from PIL import Image
+
+    config = Config(
+        artifact_store_root=tmp_path / "artifacts",
+        tool_manifest_roots=[],
+        fs_allowlist_read=[tmp_path],
+        fs_allowlist_write=[tmp_path],
+    )
+
+    # 1. Create a 500x300 PNG plot
+    plot_path = tmp_path / "plot.png"
+    img = Image.new("RGB", (500, 300), color="red")
+    img.save(plot_path)
+
+    with ArtifactStore(config) as store:
+        # 2. Import as PlotRef
+        ref = store.import_file(
+            plot_path,
+            artifact_type="PlotRef",
+            format="PNG",
+            metadata_override={"width_px": 500, "height_px": 300, "dpi": 72},
+        )
+        svc = ArtifactsService(store)
+
+        # 3. Request preview with 128px cap
+        info = svc.artifact_info(ref.ref_id, include_image_preview=True, image_preview_size=128)
+
+        assert "image_preview" in info
+        preview = info["image_preview"]
+        assert preview["format"] == "png"
+        assert preview["width"] == 128
+        assert preview["height"] == int(300 * (128 / 500))
+        assert "base64" in preview
+
+        # 4. Test SVG preview
+        svg_path = tmp_path / "plot.svg"
+        svg_path.write_text(
+            '<svg width="1000" height="500"><rect width="100" height="100" fill="blue"/></svg>'
+        )
+
+        ref_svg = store.import_file(
+            svg_path,
+            artifact_type="PlotRef",
+            format="SVG",
+            metadata_override={"width_px": 1000, "height_px": 500},
+        )
+
+        info_svg = svc.artifact_info(
+            ref_svg.ref_id, include_image_preview=True, image_preview_size=256
+        )
+        assert info_svg["image_preview"]["format"] == "svg"
+        assert info_svg["image_preview"]["width"] == 256
+        assert info_svg["image_preview"]["height"] == 128
