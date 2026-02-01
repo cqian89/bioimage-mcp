@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 Phase: 17 of 17 (Update list table formatting and versioning)
 Plan: 2 of 2 in current phase
 Status: Complete (verified)
-Last activity: 2026-02-02 - Completed quick-008 (CLI List Stability)
+Last activity: 2026-02-02 - Completed quick task 008: The CLI command `bioimage-mcp list` shows down to function level in some environments. It should only show down to package level.
 
 Progress: ██████████ 100% (verified)
 
@@ -116,7 +116,7 @@ Progress: ██████████ 100% (verified)
 | 003 | Fix tool schema validation issues (phasorpy outputs, regionprops params, export dest_path) | 2026-01-30 | 98a926b | [003-fix-tool-schema-validation-issues](./quick/003-fix-tool-schema-validation-issues/) |
 | 004 | Fix describe schema response cleanup (meta, hints, newlines) | 2026-01-30 | 9deb2d9 | [004-fix-describe-schema-response-cleanup](./quick/004-fix-describe-schema-response-cleanup/) |
 | 006 | Enable image previews for PlotRef in artifact_info | 2026-02-01 | f855f1a | [006-enable-image-previews-for-plotref-in-art](./quick/006-enable-image-previews-for-plotref-in-art/) |
-| 008 | CLI List Stability for non-namespaced IDs | 2026-02-02 | 69a37c7 | [008-the-cli-command-bioimage-mcp-list-shows-](./quick/008-the-cli-command-bioimage-mcp-list-shows-/) |
+| 008 | The CLI command `bioimage-mcp list` shows down to function level in some environments. It should only show down to package level. | 2026-02-02 | 69a37c7 | [008-the-cli-command-bioimage-mcp-list-shows-](./quick/008-the-cli-command-bioimage-mcp-list-shows-/) |
 
 ## Session Continuity
 Last session: 2026-02-02T00:00:00Z
