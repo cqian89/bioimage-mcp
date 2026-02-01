@@ -9,13 +9,12 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 
 ## Current Position
 
-Phase: 16 of 17 (StarDist Tool Environment)
-Plan: 5 of 5 in current phase
-Status: Complete
-Last activity: 2026-02-01 - Completed Phase 16: StarDist Tool Environment (Goal verified)
-**Next Phase:** Phase 17: Update list table formatting and versioning
+Phase: 17 of 17 (Update list table formatting and versioning)
+Plan: 1 of 2 in current phase
+Status: In progress
+Last activity: 2026-02-01 - Completed 17-01-PLAN.md
 
-Progress: ██████████ 100% (verified)
+Progress: █████████░ 96%
 
 ## Accumulated Context
 
@@ -84,6 +83,9 @@ Progress: ██████████ 100% (verified)
 | quick-004 | Omit meta from describe responses | Internal metadata (tool_version, introspection_source) not useful to LLM consumers. |
 | quick-004 | Omit null hints from describe responses | Reduces token bloat; only include hints when meaningful. |
 | quick-004 | Normalize newlines in describe text | Replace \\n with space in summary/description for cleaner output. |
+| 17 | Use short tool IDs (drop 'tools.' prefix) in CLI list output | Reduce visual noise in CLI list output. |
+| 17 | Provide a tree-style view for packages within tool-packs | Better visibility into tool-pack contents. |
+| 17 | Group functions into packages based on ID prefix | Logical organization of tool-pack contents. |
 
 ### Roadmap Evolution
 - Phase 12 added: Core Engine + AST-First

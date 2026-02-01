@@ -125,7 +125,7 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 17-01-PLAN.md — Hierarchical CLI list output + new JSON schema
+- [x] 17-01-PLAN.md — Hierarchical CLI list output + new JSON schema
 - [ ] 17-02-PLAN.md — Lockfile-first library versions + cache invalidation + tests
 
 **Details:**
