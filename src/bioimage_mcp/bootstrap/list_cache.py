@@ -12,7 +12,7 @@ from bioimage_mcp.registry.cache_version import get_cache_version_key
 
 logger = logging.getLogger(__name__)
 
-CACHE_VERSION = 2
+CACHE_VERSION = 3
 # Default TTL for envs cache in seconds (e.g., 1 hour)
 ENVS_CACHE_TTL = 3600
 
