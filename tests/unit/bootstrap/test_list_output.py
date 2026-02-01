@@ -247,3 +247,76 @@ def test_list_tools_cache_invalidation_on_lockfile_change(tmp_path, monkeypatch,
     out2 = capsys.readouterr().out
     payload2 = json.loads(out2)
     assert payload2["tools"][0]["packages"][0]["library_version"] == "1.15.0"
+
+
+def test_list_tools_non_namespaced_ids(tmp_path, monkeypatch, capsys) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+
+    # 1. Create manifest with non-namespaced function IDs
+    manifest_root = tmp_path / "tools"
+    manifest_root.mkdir()
+    tool_root = manifest_root / "test-tool"
+    tool_root.mkdir()
+    manifest_data = {
+        "manifest_version": "1.0",
+        "tool_id": "test-tool",
+        "tool_version": "1.2.3",
+        "env_id": "bioimage-mcp-test",
+        "entrypoint": "main.py",
+        "name": "Test Tool",
+        "description": "A test tool",
+        "functions": [
+            {
+                "id": "alpha",  # No '.'
+                "tool_id": "test-tool",
+                "name": "Alpha",
+                "description": "Alpha description",
+                "params_schema": {"type": "object", "properties": {}},
+            },
+            {
+                "id": "beta",  # No '.'
+                "tool_id": "test-tool",
+                "name": "Beta",
+                "description": "Beta description",
+                "params_schema": {"type": "object", "properties": {}},
+            },
+            {
+                "id": "test-tool.gamma",  # With tool prefix but no sub-package
+                "tool_id": "test-tool",
+                "name": "Gamma",
+                "description": "Gamma description",
+                "params_schema": {"type": "object", "properties": {}},
+            },
+        ],
+    }
+    with open(tool_root / "manifest.yaml", "w") as f:
+        yaml.dump(manifest_data, f)
+
+    # 2. Setup mocks
+    mock_config = MagicMock()
+    mock_config.tool_manifest_roots = [manifest_root]
+    monkeypatch.setattr("bioimage_mcp.bootstrap.list.load_config", lambda: mock_config)
+    monkeypatch.setattr(list_mod, "detect_env_manager", lambda: ("micromamba", "exe", "1.0"))
+    monkeypatch.setattr(list_mod, "_get_installed_envs", lambda _: {"bioimage-mcp-test"})
+
+    # 3. Run list_tools (JSON)
+    exit_code = list_mod.list_tools(json_output=True)
+    out = capsys.readouterr().out
+    assert exit_code == 0
+    payload = json.loads(out)
+    tool = payload["tools"][0]
+
+    # We expect exactly 1 package entry (the fallback) for all 3 functions
+    assert len(tool["packages"]) == 1
+    # We'll use "root" as fallback in Task 2
+    assert tool["packages"][0]["id"] == "root"
+    assert tool["packages"][0]["function_count"] == 3
+
+    # 4. Run list_tools (Table)
+    exit_code = list_mod.list_tools(json_output=False)
+    out = capsys.readouterr().out
+    assert exit_code == 0
+    # Should only show the package row once, not one per function
+    # The count should be 3
+    assert " 3 " in out
