@@ -406,7 +406,8 @@ class ExecutionService:
         self._owns_worker_manager = worker_manager is None
         self._artifact_store = artifact_store or ArtifactStore(config)
         self._run_store = run_store or RunStore(config)
-        self._memory_store = memory_store or MemoryArtifactStore()
+        # Share memory store with artifact store if not explicitly provided (T016, T046 fix)
+        self._memory_store = memory_store or self._artifact_store.memory_store
         self._worker_manager = worker_manager or PersistentWorkerManager(
             memory_store=self._memory_store,
             max_workers=config.max_workers,

@@ -133,6 +133,10 @@ class ArtifactStore:
         self._conn: sqlite3.Connection = conn or connect(config)
         self._memory_store = memory_store or MemoryArtifactStore()
 
+    @property
+    def memory_store(self) -> MemoryArtifactStore:
+        return self._memory_store
+
     def resolve_memory_artifact(self, ref_id: str) -> ArtifactRef | None:
         """Resolve a mem:// artifact from the memory store."""
         return self._memory_store.get(ref_id)
