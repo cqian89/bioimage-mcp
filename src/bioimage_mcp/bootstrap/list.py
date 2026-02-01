@@ -259,11 +259,14 @@ def list_tools(*, json_output: bool, tool: str | None = None) -> int:
         pkg_counts: dict[str, int] = {}
         for fn in m.functions:
             fn_id = fn.fn_id
+            remainder = fn_id
             if fn_id.startswith(f"{tool_id}."):
-                # Strip tool_id and dot
-                pkg_id = fn_id[len(tool_id) + 1 :].split(".")[0]
+                remainder = fn_id[len(tool_id) + 1 :]
+
+            if "." in remainder:
+                pkg_id = remainder.split(".")[0]
             else:
-                pkg_id = fn_id.split(".")[0]
+                pkg_id = "root"
             pkg_counts[pkg_id] = pkg_counts.get(pkg_id, 0) + 1
 
         # Resolve versions
