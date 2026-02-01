@@ -10,17 +10,19 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 ## Current Position
 
 Phase: 15 of 15 (Enhance artifact_info with Multimodal Previews and ObjectRef Type Visibility)
-Plan: 3 of 4 in current phase
-Status: In progress
-Last activity: 2026-01-31 - Completed 15-03-PLAN.md
+Plan: 4 of 4 in current phase
+Status: Phase complete
+Last activity: 2026-02-01 - Completed 15-04-PLAN.md
 
-Progress: ██████████ 97%
+Progress: ██████████ 100%
 
 ## Accumulated Context
 
 ### Decisions Made
 | Phase | Decision | Rationale |
 |-------|----------|-----------|
+| 15 | Use OME-Zarr as default save format in SkimageAdapter | Aligns with project-wide standardization on OME-Zarr for intermediate interchange. |
+| 15 | Cast uint16/int64 to uint8/int32 for previews | Ensure compatibility with 8-bit PNG encoding and standard JSON/Pydantic types. |
 | 15 | Exempt ObjectRef parameters from artifact filtering | Ensure x-native-type annotations remain visible in params_schema for LLM discoverability. |
 | 15 | Use 500 char limit for object repr previews | Balance between useful object visibility and token efficiency. |
 | 15 | Prefer fully qualified class names for native_type | Unambiguous identification of Python objects across tool packs. |
@@ -107,8 +109,8 @@ Progress: ██████████ 97%
 | 004 | Fix describe schema response cleanup (meta, hints, newlines) | 2026-01-30 | 9deb2d9 | [004-fix-describe-schema-response-cleanup](./quick/004-fix-describe-schema-response-cleanup/) |
 
 ### Session Continuity
-Last session: 2026-01-31T23:55:00Z
-Stopped at: Completed 15-03-PLAN.md
+Last session: 2026-02-01T00:50:00Z
+Stopped at: Completed 15-04-PLAN.md
 Resume file: None
 
 ## Next Steps
