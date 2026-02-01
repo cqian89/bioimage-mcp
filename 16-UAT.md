@@ -30,10 +30,15 @@ When running `conda run -n bioimage-mcp-stardist pytest ...`, the core server's 
 
 The StarDist tool pack was designed to reuse the core server's introspection utilities (`IntrospectionCache`, `discover_functions`, `DiscoveryEngine`, `Introspector`), but this creates a dependency on the core server from within the isolated tool environment. Unlike Cellpose (which has a `CellposeAdapter` in the core server itself), StarDist's adapter lives entirely in the tool pack.
 
-## Recommended Fixes
+## Fix Plan
 
-1. **Option A (Minimal):** Move StarDist introspection utilities to be self-contained within the tool pack, eliminating core server imports for the entrypoint's critical paths.
+**Selected Fix: Option C (Test Fix)** — Rewrite the integration test to run from the core server environment (Python 3.13), invoking StarDist tools via the MCP subprocess execution path rather than direct imports.
 
-2. **Option B (Refactor):** Create a `stardist` adapter in the core server (`src/bioimage_mcp/registry/dynamic/adapters/stardist.py`) like Cellpose, and have the tool pack entrypoint only handle execution, not discovery.
+**Plan:** `.planning/phases/16-stardist-tool-environment/16-05-PLAN.md`  
+**Status:** Verified ✓
 
-3. **Option C (Test Fix):** Rewrite the integration test to run from the core server environment (Python 3.13), invoking StarDist tools via the MCP subprocess execution path rather than direct imports.
+### Fix Approach
+1. Remove `pytest.importorskip("stardist")` and direct imports from `bioimage_mcp_stardist.entrypoint`
+2. Use `execute_step()` to invoke StarDist functions via subprocess worker (PersistentWorkerManager)
+3. Test two-step workflow: `from_pretrained` → `predict_instances` with ObjectRef handoff
+4. Add assertions proving subprocess path is used (worker PID reuse)
