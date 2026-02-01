@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 Phase: 17 of 17 (Update list table formatting and versioning)
 Plan: 2 of 2 in current phase
 Status: Complete (verified)
-Last activity: 2026-02-02 - Verified Phase 17
+Last activity: 2026-02-02 - Completed quick-008 (CLI List Stability)
 
 Progress: ██████████ 100% (verified)
 
@@ -88,8 +88,9 @@ Progress: ██████████ 100% (verified)
 | 17 | Group functions into packages based on ID prefix | Logical organization of tool-pack contents. |
 | 17 | Use lockfiles as primary source of truth for library versions | Fast, reproducible resolution without expensive conda query. |
 | 17 | Include lockfiles in CLI cache fingerprint | Ensures listing stays fresh when environments change. |
+| quick-008 | Use `root` as fallback package ID | Ensure functions without dots are grouped stably in CLI list output. |
 
-### Roadmap Evolution
+## Roadmap Evolution
 - Phase 12 added: Core Engine + AST-First
 - Phase 13 added: Dynamic Introspection Cache Reuse (incl. trackpy)
 - Phase 14 added: OME-Zarr Standardization
@@ -97,16 +98,16 @@ Progress: ██████████ 100% (verified)
 - Phase 16 added: StarDist Tool Environment
 - Phase 17 added: Update list table formatting and versioning
 
-### Pending Todos
+## Pending Todos
 - [ ] Implement artifact store retention and quota management (general)
 - [ ] Strategize and execute test consolidation (testing)
 
-### Blockers/Concerns Carried Forward
+## Blockers/Concerns Carried Forward
 - trackpy schema descriptions missing (contract test failure).
 - contract tests need to skip non-manifest YAMLs.
 - Existing failures in bootstrap/test_install.py need investigation.
 
-### Quick Tasks Completed
+## Quick Tasks Completed
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
@@ -115,10 +116,11 @@ Progress: ██████████ 100% (verified)
 | 003 | Fix tool schema validation issues (phasorpy outputs, regionprops params, export dest_path) | 2026-01-30 | 98a926b | [003-fix-tool-schema-validation-issues](./quick/003-fix-tool-schema-validation-issues/) |
 | 004 | Fix describe schema response cleanup (meta, hints, newlines) | 2026-01-30 | 9deb2d9 | [004-fix-describe-schema-response-cleanup](./quick/004-fix-describe-schema-response-cleanup/) |
 | 006 | Enable image previews for PlotRef in artifact_info | 2026-02-01 | f855f1a | [006-enable-image-previews-for-plotref-in-art](./quick/006-enable-image-previews-for-plotref-in-art/) |
+| 008 | CLI List Stability for non-namespaced IDs | 2026-02-02 | 69a37c7 | [008-the-cli-command-bioimage-mcp-list-shows-](./quick/008-the-cli-command-bioimage-mcp-list-shows-/) |
 
-### Session Continuity
+## Session Continuity
 Last session: 2026-02-02T00:00:00Z
-Stopped at: Verified Phase 17
+Stopped at: Completed quick-008
 Resume file: None
 
 ## Next Steps
