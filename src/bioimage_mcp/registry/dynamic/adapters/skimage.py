@@ -429,6 +429,7 @@ class SkimageAdapter(BaseAdapter):
         work_dir: Path | None = None,
         axes: str | None = None,
         metadata_override: dict[str, Any] | None = None,
+        artifact_type: str = "BioImageRef",
     ) -> dict:
         """Save image array to file and return artifact reference dict.
         Defaults to OME-Zarr for standard interchange. (T049)
@@ -491,7 +492,7 @@ class SkimageAdapter(BaseAdapter):
                     channels = [Channel(label=name, color="ffffff") for name in channel_names]
 
             writer = OMEZarrWriter(
-                store=str(out_path),
+                store=str(temp_path := out_path),  # T049 fix: avoid uninitialized temp_path
                 level_shapes=[array.shape],
                 dtype=array.dtype,
                 axes_names=axes_names,
@@ -561,7 +562,7 @@ class SkimageAdapter(BaseAdapter):
                 meta["channel_names"] = metadata_override["channel_names"]
 
         ref = {
-            "type": "BioImageRef",
+            "type": artifact_type,
             "format": fmt,
             "uri": out_path.absolute().as_uri(),
             "path": str(out_path.absolute()),
@@ -763,11 +764,15 @@ class SkimageAdapter(BaseAdapter):
                     output_ref["metadata"] = {}
                 output_ref["metadata"]["notice"] = notice
         else:
-            if io_pattern == IOPattern.IMAGE_TO_LABELS and isinstance(result, np.ndarray):
-                if not np.issubdtype(result.dtype, np.integer):
-                    result = result.astype(np.int32)
-                elif result.dtype in {np.int64, np.uint64}:
-                    result = result.astype(np.int32)
+            artifact_type = "BioImageRef"
+            if io_pattern in (IOPattern.IMAGE_TO_LABELS, IOPattern.LABELS_TO_LABELS):
+                artifact_type = "LabelImageRef"
+                if isinstance(result, np.ndarray):
+                    if not np.issubdtype(result.dtype, np.integer):
+                        result = result.astype(np.int32)
+                    elif result.dtype in {np.int64, np.uint64}:
+                        result = result.astype(np.int32)
+
             # Use processed axes from inputs if available, otherwise find first
             axes = output_axes
             if not axes:
@@ -785,7 +790,11 @@ class SkimageAdapter(BaseAdapter):
             # Here we just pass the result as is, _save_image handles expansion
             # to TCZYX if using OmeTiffWriter.
             output_ref = self._save_image(
-                result, work_dir=work_dir, axes=axes, metadata_override=metadata_override
+                result,
+                work_dir=work_dir,
+                axes=axes,
+                metadata_override=metadata_override,
+                artifact_type=artifact_type,
             )
 
         return [output_ref]
