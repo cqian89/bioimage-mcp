@@ -82,7 +82,7 @@ Plans:
 ### Phase 15: Enhance artifact_info with Multimodal Previews and ObjectRef Type Visibility
 
 **Goal:** Extend artifact_info to support image previews for multimodal LLMs, table row previews, and improved ObjectRef type identification.
-**Status:** Complete (2026-02-01)
+**Status:** Complete (2026-02-02)
 **Depends on:** Phase 14
 **Plans:** 4/4 plans complete
 

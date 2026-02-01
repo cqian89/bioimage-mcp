@@ -11,10 +11,10 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 
 Phase: 17 of 17 (Update list table formatting and versioning)
 Plan: 2 of 2 in current phase
-Status: Phase complete
-Last activity: 2026-02-01 - Completed 17-02-PLAN.md
+Status: Complete (verified)
+Last activity: 2026-02-02 - Verified Phase 17
 
-Progress: ██████████ 100%
+Progress: ██████████ 100% (verified)
 
 ## Accumulated Context
 
@@ -99,7 +99,6 @@ Progress: ██████████ 100%
 
 ### Pending Todos
 - [ ] Implement artifact store retention and quota management (general)
-- [ ] Update bioimage-mcp list table formatting and versioning (tooling)
 - [ ] Strategize and execute test consolidation (testing)
 
 ### Blockers/Concerns Carried Forward
@@ -118,10 +117,10 @@ Progress: ██████████ 100%
 | 006 | Enable image previews for PlotRef in artifact_info | 2026-02-01 | f855f1a | [006-enable-image-previews-for-plotref-in-art](./quick/006-enable-image-previews-for-plotref-in-art/) |
 
 ### Session Continuity
-Last session: 2026-02-01T23:33:00Z
-Stopped at: Completed 17-02-PLAN.md
+Last session: 2026-02-02T00:00:00Z
+Stopped at: Verified Phase 17
 Resume file: None
 
 ## Next Steps
-1. Plan Phase 16: StarDist Tool Environment
-2. Release v0.4.0 Unified Introspection Engine.
+1. Audit milestone readiness for v0.4.0 Unified Introspection Engine.
+2. Plan next milestone phases.
