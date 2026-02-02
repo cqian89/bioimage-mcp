@@ -134,6 +134,25 @@ Plans:
 - Default output is hierarchical (tool-pack with nested package breakdown).
 - Versions come from `envs/<env_id>.lock.yml` when available, with fallback behavior.
 
+### Phase 18: Implement artifact store retention and quota management
+
+**Goal:** Add retention policies and storage limits for artifacts to prevent unbounded growth and manage storage costs.
+**Depends on:** Phase 17
+**Plans:** 5 plans
+
+Plans:
+- [ ] 18-01-PLAN.md — SQLite schema + artifact/session linkage + usage tracking
+- [ ] 18-02-PLAN.md — Storage policy config + StorageManager queries
+- [ ] 18-03-PLAN.md — Cleanup engine + background scheduler (non-blocking)
+- [ ] 18-04-PLAN.md — CLI status/cleanup/pin commands + cleanup event visibility
+- [ ] 18-05-PLAN.md — Integration + unit tests for retention/quota/cleanup
+
+**Details:**
+- Time-based retention (default 14 days) with pinned exemptions.
+- Global quota monitoring (default 100 GB) with warning at 80% and cleanup at 100% -> 80%.
+- Cleanup safety: skip active-session artifacts, protect most recent session, dry-run support, cooldown between runs.
+- CLI visibility: storage status + last cleanup summary + manual cleanup trigger.
+
 ---
 
-*Roadmap updated: 2026-02-01*
+*Roadmap updated: 2026-02-02*

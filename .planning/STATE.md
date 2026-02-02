@@ -9,7 +9,7 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 
 ## Current Position
 
-Phase: 17 of 17 (Update list table formatting and versioning)
+Phase: 18 of 18 (Implement artifact store retention and quota management)
 Plan: 2 of 2 in current phase
 Status: Complete (verified)
 Last activity: 2026-02-02 - Completed quick task 008: The CLI command `bioimage-mcp list` shows down to function level in some environments. It should only show down to package level.
@@ -97,6 +97,7 @@ Progress: ██████████ 100% (verified)
 - Phase 15 added: Enhance artifact_info with Multimodal Previews and ObjectRef Type Visibility
 - Phase 16 added: StarDist Tool Environment
 - Phase 17 added: Update list table formatting and versioning
+- Phase 18 added: Implement artifact store retention and quota management
 
 ## Pending Todos
 - [ ] Implement artifact store retention and quota management (general)
@@ -124,5 +125,4 @@ Stopped at: Completed quick-008
 Resume file: None
 
 ## Next Steps
-1. Audit milestone readiness for v0.4.0 Unified Introspection Engine.
-2. Plan next milestone phases.
+1. Plan Phase 18: Implement artifact store retention and quota management
