@@ -367,8 +367,10 @@ class ArtifactStore:
     def _persist(
         self, ref: ArtifactRef, session_id: str | None = None, pinned: bool = False
     ) -> None:
+        from pydantic import BaseModel
+
         metadata = ref.metadata
-        if hasattr(metadata, "model_dump"):
+        if isinstance(metadata, BaseModel):
             metadata = metadata.model_dump(exclude_none=True)
 
         self._conn.execute(
@@ -399,7 +401,7 @@ class ArtifactStore:
                 ref.mime_type,
                 ref.size_bytes,
                 json.dumps([c.model_dump() for c in ref.checksums]),
-                json.dumps(metadata),
+                json.dumps(metadata, default=str),
                 ref.created_at,
                 session_id,
                 1 if pinned else 0,
@@ -473,7 +475,7 @@ class ArtifactStore:
 
         row = self._conn.execute(
             "SELECT ref_id, type, uri, format, storage_type, mime_type, size_bytes, "
-            "checksums_json, metadata_json, created_at "
+            "checksums_json, metadata_json, created_at, pinned "
             "FROM artifacts WHERE ref_id = ?",
             (ref_id,),
         ).fetchone()
@@ -492,6 +494,7 @@ class ArtifactStore:
             size_bytes=int(row["size_bytes"]),
             checksums=checksums,
             created_at=row["created_at"],
+            pinned=bool(row["pinned"]),
             metadata=metadata,
         )
 

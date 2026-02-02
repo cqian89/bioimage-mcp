@@ -47,6 +47,7 @@ class ArtifactRef(BaseModel):
     size_bytes: int | None = None
     checksums: list[ArtifactChecksum] = Field(default_factory=list)
     created_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
+    pinned: bool = False
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     # Schema version for artifact format versioning

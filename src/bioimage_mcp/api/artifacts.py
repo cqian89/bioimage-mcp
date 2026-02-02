@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from bioimage_mcp.artifacts.preview import (
@@ -75,7 +76,30 @@ class ArtifactsService:
             "mime_type": ref.mime_type,
             "size_bytes": ref.size_bytes,
             "checksums": [c.model_dump() for c in ref.checksums],
+            "created_at": ref.created_at,
+            "pinned": getattr(ref, "pinned", False),
         }
+
+        # Add retention info
+        if not response["pinned"] and ref.storage_type != "memory":
+            retention_days = self._store._config.storage.retention_days
+            try:
+                created_at = datetime.fromisoformat(ref.created_at)
+                if created_at.tzinfo is None:
+                    created_at = created_at.replace(tzinfo=timezone.utc)
+
+                expires_at = created_at + timedelta(days=retention_days)
+                now = datetime.now(timezone.utc)
+                time_to_cleanup = max(0, int((expires_at - now).total_seconds()))
+
+                response["retention_expires_at"] = expires_at.isoformat()
+                response["time_to_cleanup_seconds"] = time_to_cleanup
+            except (ValueError, TypeError):
+                response["retention_expires_at"] = None
+                response["time_to_cleanup_seconds"] = None
+        else:
+            response["retention_expires_at"] = None
+            response["time_to_cleanup_seconds"] = None
 
         # Add ObjectRef specific metadata
         if ref.type in ("ObjectRef", "GroupByRef", "FigureRef", "AxesRef", "AxesImageRef"):
