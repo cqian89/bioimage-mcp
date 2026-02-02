@@ -60,7 +60,25 @@ def init_schema(conn: sqlite3.Connection) -> None:
             size_bytes INTEGER NOT NULL,
             checksums_json TEXT NOT NULL,
             metadata_json TEXT NOT NULL,
-            created_at TEXT NOT NULL
+            created_at TEXT NOT NULL,
+            session_id TEXT,
+            pinned INTEGER NOT NULL DEFAULT 0,
+            last_accessed_at TEXT
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_artifacts_created_at ON artifacts(created_at);
+
+        CREATE TABLE IF NOT EXISTS cleanup_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            started_at TEXT NOT NULL,
+            ended_at TEXT NOT NULL,
+            reason TEXT NOT NULL,
+            dry_run INTEGER NOT NULL,
+            deleted_count INTEGER NOT NULL,
+            freed_bytes INTEGER NOT NULL,
+            before_bytes INTEGER NOT NULL,
+            after_bytes INTEGER NOT NULL,
+            notes_json TEXT
         );
 
         CREATE TABLE IF NOT EXISTS runs (
@@ -158,5 +176,74 @@ def init_schema(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE schema_cache ADD COLUMN source_hash TEXT")
     if "program_version" not in cache_cols:
         conn.execute("ALTER TABLE schema_cache ADD COLUMN program_version TEXT")
+
+    # artifacts migrations
+    art_cols = {row["name"] for row in conn.execute("PRAGMA table_info(artifacts)")}
+    if "session_id" not in art_cols:
+        conn.execute("ALTER TABLE artifacts ADD COLUMN session_id TEXT")
+    if "pinned" not in art_cols:
+        conn.execute("ALTER TABLE artifacts ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0")
+    if "last_accessed_at" not in art_cols:
+        conn.execute("ALTER TABLE artifacts ADD COLUMN last_accessed_at TEXT")
+
+    # Final indexes and triggers (after migrations)
+    conn.executescript(
+        """
+        CREATE INDEX IF NOT EXISTS idx_artifacts_session_id ON artifacts(session_id);
+        CREATE INDEX IF NOT EXISTS idx_artifacts_pinned ON artifacts(pinned);
+
+        -- Trigger to update total artifact bytes on insert
+        CREATE TRIGGER IF NOT EXISTS trg_artifacts_total_bytes_insert
+        AFTER INSERT ON artifacts
+        WHEN NEW.storage_type != 'memory'
+        BEGIN
+            INSERT INTO registry_state (key, value, updated_at)
+            VALUES ('total_artifact_bytes', CAST(NEW.size_bytes AS TEXT), datetime('now'))
+            ON CONFLICT(key) DO UPDATE SET
+                value = CAST(CAST(value AS INTEGER) + NEW.size_bytes AS TEXT),
+                updated_at = datetime('now')
+            WHERE key = 'total_artifact_bytes';
+        END;
+
+        -- Trigger to update total artifact bytes on delete
+        CREATE TRIGGER IF NOT EXISTS trg_artifacts_total_bytes_delete
+        AFTER DELETE ON artifacts
+        WHEN OLD.storage_type != 'memory'
+        BEGIN
+            UPDATE registry_state
+            SET value = CAST(CAST(value AS INTEGER) - OLD.size_bytes AS TEXT),
+                updated_at = datetime('now')
+            WHERE key = 'total_artifact_bytes';
+        END;
+        """
+    )
+
+    # Recompute/Backfill total_artifact_bytes if missing or clearly invalid
+    total_row = conn.execute(
+        "SELECT SUM(size_bytes) as total FROM artifacts WHERE storage_type != 'memory'"
+    ).fetchone()
+    actual_total = total_row["total"] or 0
+
+    state_row = conn.execute(
+        "SELECT value FROM registry_state WHERE key = 'total_artifact_bytes'"
+    ).fetchone()
+    if state_row is None:
+        conn.execute(
+            "INSERT INTO registry_state (key, value, updated_at) VALUES (?, ?, datetime('now'))",
+            ("total_artifact_bytes", str(actual_total)),
+        )
+    else:
+        try:
+            stored_total = int(state_row["value"])
+            if stored_total < 0:  # Clearly invalid
+                conn.execute(
+                    "UPDATE registry_state SET value = ?, updated_at = datetime('now') WHERE key = 'total_artifact_bytes'",
+                    (str(actual_total),),
+                )
+        except ValueError:
+            conn.execute(
+                "UPDATE registry_state SET value = ?, updated_at = datetime('now') WHERE key = 'total_artifact_bytes'",
+                (str(actual_total),),
+            )
 
     conn.commit()
