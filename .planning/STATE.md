@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 ## Current Position
 
 Phase: 18 of 18 (Implement artifact store retention and quota management)
-Plan: 4 of 5 in current phase
-Status: In progress
-Last activity: 2026-02-02 - Completed 18-04-PLAN.md
+Plan: 5 of 5 in current phase
+Status: Phase complete
+Last activity: 2026-02-02 - Completed 18-05-PLAN.md
 
-Progress: █████████░ 97%
+Progress: ██████████ 100%
 
 ## Accumulated Context
 
@@ -97,6 +97,8 @@ Progress: █████████░ 97%
 | 18 | Use a SQLite-based lock for cleanup | ensures only one instance performs cleanup at a time. |
 | 18 | Run cleanup in background daemon thread | Avoids blocking MCP stdio communication during server operations. |
 | 18 | Implement rename-to-trash | safer multi-step deletion handles partial deletions gracefully. |
+| 18 | Use in-memory SQLite for StorageManager unit tests | ensure fast and deterministic trigger validation. |
+| 18 | Use subprocess-based integration tests for CLI | verify real-world behavior and JSON contracts. |
 
 ## Roadmap Evolution
 - Phase 12 added: Core Engine + AST-First
@@ -108,7 +110,7 @@ Progress: █████████░ 97%
 - Phase 18 added: Implement artifact store retention and quota management
 
 ## Pending Todos
-- [ ] Implement artifact store retention and quota management (general)
+- [x] Implement artifact store retention and quota management (general)
 - [ ] Strategize and execute test consolidation (testing)
 
 ## Blockers/Concerns Carried Forward
@@ -128,10 +130,9 @@ Progress: █████████░ 97%
 | 008 | The CLI command `bioimage-mcp list` shows down to function level in some environments. It should only show down to package level. | 2026-02-02 | 69a37c7 | [008-the-cli-command-bioimage-mcp-list-shows-](./quick/008-the-cli-command-bioimage-mcp-list-shows-/) |
 
 ## Session Continuity
-Last session: 2026-02-02T22:06:18Z
-Stopped at: Completed 18-04-PLAN.md
+Last session: 2026-02-02T22:23:00Z
+Stopped at: Completed 18-05-PLAN.md
 Resume file: None
 
 ## Next Steps
-1. Execute Phase 18 Plan 5: Integration + unit tests for retention/quota/cleanup
-
+1. Transition to next phase (if any) or conclude work.
