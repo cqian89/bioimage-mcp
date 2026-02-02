@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 ## Current Position
 
 Phase: 18 of 18 (Implement artifact store retention and quota management)
-Plan: 1 of 5 in current phase
+Plan: 2 of 5 in current phase
 Status: In progress
-Last activity: 2026-02-02 - Completed 18-01-PLAN.md
+Last activity: 2026-02-02 - Completed 18-02-PLAN.md
 
-Progress: █████████░ 94%
+Progress: █████████░ 95%
 
 ## Accumulated Context
 
@@ -92,6 +92,9 @@ Progress: █████████░ 94%
 | 18 | Use SQLite triggers for real-time tracking of total artifact bytes | Avoids expensive filesystem scans and ensures accuracy. |
 | 18 | Link artifacts to sessions via session_id | Enables session-aware cleanup policies and protection of active session data. |
 | 18 | Implement a 'touch' mechanism for artifacts | Tracks artifact access time independently of creation time for better retention decisions. |
+| 18 | Use Pydantic v2 for StoragePolicy | Ensures strict validation of retention periods and quota thresholds. |
+| 18 | Expose expiration in artifact_info | Provides transparency into when specific artifacts will be eligible for cleanup. |
+| 18 | Sanitize mocked metadata in store | Prevents JSON serialization failures in tests using MagicMock by falling back to string representation. |
 
 ## Roadmap Evolution
 - Phase 12 added: Core Engine + AST-First
@@ -123,8 +126,8 @@ Progress: █████████░ 94%
 | 008 | The CLI command `bioimage-mcp list` shows down to function level in some environments. It should only show down to package level. | 2026-02-02 | 69a37c7 | [008-the-cli-command-bioimage-mcp-list-shows-](./quick/008-the-cli-command-bioimage-mcp-list-shows-/) |
 
 ## Session Continuity
-Last session: 2026-02-02T21:31:49Z
-Stopped at: Completed 18-01-PLAN.md
+Last session: 2026-02-02T21:49:15Z
+Stopped at: Completed 18-02-PLAN.md
 Resume file: None
 
 ## Next Steps
