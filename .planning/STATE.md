@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 ## Current Position
 
 Phase: 18 of 18 (Implement artifact store retention and quota management)
-Plan: 2 of 2 in current phase
-Status: Complete (verified)
-Last activity: 2026-02-02 - Completed quick task 008: The CLI command `bioimage-mcp list` shows down to function level in some environments. It should only show down to package level.
+Plan: 1 of 5 in current phase
+Status: In progress
+Last activity: 2026-02-02 - Completed 18-01-PLAN.md
 
-Progress: ██████████ 100% (verified)
+Progress: █████████░ 94%
 
 ## Accumulated Context
 
@@ -89,6 +89,9 @@ Progress: ██████████ 100% (verified)
 | 17 | Use lockfiles as primary source of truth for library versions | Fast, reproducible resolution without expensive conda query. |
 | 17 | Include lockfiles in CLI cache fingerprint | Ensures listing stays fresh when environments change. |
 | quick-008 | Use `root` as fallback package ID | Ensure functions without dots are grouped stably in CLI list output. |
+| 18 | Use SQLite triggers for real-time tracking of total artifact bytes | Avoids expensive filesystem scans and ensures accuracy. |
+| 18 | Link artifacts to sessions via session_id | Enables session-aware cleanup policies and protection of active session data. |
+| 18 | Implement a 'touch' mechanism for artifacts | Tracks artifact access time independently of creation time for better retention decisions. |
 
 ## Roadmap Evolution
 - Phase 12 added: Core Engine + AST-First
@@ -120,8 +123,8 @@ Progress: ██████████ 100% (verified)
 | 008 | The CLI command `bioimage-mcp list` shows down to function level in some environments. It should only show down to package level. | 2026-02-02 | 69a37c7 | [008-the-cli-command-bioimage-mcp-list-shows-](./quick/008-the-cli-command-bioimage-mcp-list-shows-/) |
 
 ## Session Continuity
-Last session: 2026-02-02T00:00:00Z
-Stopped at: Completed quick-008
+Last session: 2026-02-02T21:31:49Z
+Stopped at: Completed 18-01-PLAN.md
 Resume file: None
 
 ## Next Steps
