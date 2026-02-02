@@ -1,20 +1,25 @@
 from __future__ import annotations
 
+import logging
+import threading
+from pathlib import Path
+
 from bioimage_mcp.api.artifacts import ArtifactsService
 from bioimage_mcp.api.discovery import DiscoveryService
 from bioimage_mcp.api.execution import ExecutionService
 from bioimage_mcp.api.interactive import InteractiveExecutionService
 from bioimage_mcp.api.server import create_server
 from bioimage_mcp.artifacts.store import ArtifactStore
-from bioimage_mcp.config.loader import load_config
-from pathlib import Path
-
-from bioimage_mcp.registry.loader import discover_manifest_paths, load_manifests
 from bioimage_mcp.bootstrap.list_cache import ListToolsCache, get_cli_cache_dir
+from bioimage_mcp.config.loader import load_config
+from bioimage_mcp.registry.loader import discover_manifest_paths, load_manifests
 from bioimage_mcp.runs.store import RunStore
 from bioimage_mcp.sessions.manager import SessionManager
 from bioimage_mcp.sessions.store import SessionStore
+from bioimage_mcp.storage.cleanup import maybe_cleanup
 from bioimage_mcp.storage.sqlite import connect
+
+logger = logging.getLogger(__name__)
 
 
 def serve(*, stdio: bool) -> int:
@@ -99,9 +104,41 @@ def serve(*, stdio: bool) -> int:
         session_manager=session_manager,
     )
 
+    stop_event = threading.Event()
+
+    def cleanup_worker():
+        logger.info("Background cleanup worker started.")
+        # Initial sleep to let server start up
+        if stop_event.wait(10):
+            return
+
+        while not stop_event.is_set():
+            try:
+                bg_conn = connect(config)
+                try:
+                    summary = maybe_cleanup(config, bg_conn)
+                    if summary and summary["deleted_count"] > 0:
+                        logger.info(
+                            f"Periodic cleanup deleted {summary['deleted_count']} artifacts, "
+                            f"freed {summary['freed_bytes']} bytes."
+                        )
+                finally:
+                    bg_conn.close()
+            except Exception as e:
+                logger.error(f"Error in background cleanup: {e}")
+
+            if stop_event.wait(config.storage.check_interval_seconds):
+                break
+        logger.info("Background cleanup worker stopped.")
+
+    cleanup_thread = threading.Thread(target=cleanup_worker, daemon=True)
+    cleanup_thread.start()
+
     try:
         mcp.run(transport="stdio")
     finally:
+        stop_event.set()
+        cleanup_thread.join(timeout=5)
         execution.close()
         artifact_store.close()
         run_store.close()
