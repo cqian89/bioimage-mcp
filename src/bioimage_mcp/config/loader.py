@@ -146,6 +146,7 @@ def load_config(*, global_path: Path | None = None, local_path: Path | None = No
     merged.setdefault("fs_allowlist_read", [merged["artifact_store_root"]])
     merged.setdefault("fs_allowlist_write", [str(Path.home() / ".bioimage-mcp")])
     merged.setdefault("fs_denylist", [])
+    merged.setdefault("storage", {})
 
     # Ensure artifact_store_root is always writable
     artifact_root = str(merged["artifact_store_root"])

@@ -5,6 +5,8 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from bioimage_mcp.storage.policy import StoragePolicy
+
 
 def _to_abs_path(value: str | Path) -> Path:
     path = value if isinstance(value, Path) else Path(value)
@@ -76,6 +78,8 @@ class Config(BaseModel):
     worker_timeout_seconds: int = 600  # Maximum time for a single operation
     max_workers: int = 8  # Maximum number of concurrent worker processes
     session_timeout_seconds: int = 1800  # Idle timeout before worker shutdown (30 min)
+
+    storage: StoragePolicy = Field(default_factory=StoragePolicy)
 
     @field_validator(
         "artifact_store_root",
