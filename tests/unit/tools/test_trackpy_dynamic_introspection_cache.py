@@ -5,8 +5,9 @@ from unittest.mock import patch
 
 import pytest
 import yaml
-from bioimage_mcp.registry.dynamic.models import FunctionMetadata, IOPattern
 from bioimage_mcp_trackpy.entrypoint import handle_meta_list
+
+from bioimage_mcp.registry.dynamic.models import FunctionMetadata, IOPattern
 
 
 @pytest.fixture

@@ -12,7 +12,6 @@ from bioimage_mcp.registry.dynamic.cache import IntrospectionCache
 from bioimage_mcp.registry.dynamic.models import FunctionMetadata
 from bioimage_mcp.registry.manifest_schema import ToolManifest
 
-
 DYNAMIC_DISCOVERY_CACHE_VERSION = "2"
 
 

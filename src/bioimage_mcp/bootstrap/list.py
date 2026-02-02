@@ -19,7 +19,6 @@ from bioimage_mcp.bootstrap.list_cache import (
 from bioimage_mcp.config.loader import load_config
 from bioimage_mcp.registry.loader import discover_manifest_paths, load_manifests
 
-
 PACKAGE_TO_CONDA = {
     "scipy": "scipy",
     "phasorpy": "phasorpy",

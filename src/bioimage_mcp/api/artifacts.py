@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from bioimage_mcp.artifacts.preview import (
@@ -86,10 +86,10 @@ class ArtifactsService:
             try:
                 created_at = datetime.fromisoformat(ref.created_at)
                 if created_at.tzinfo is None:
-                    created_at = created_at.replace(tzinfo=timezone.utc)
+                    created_at = created_at.replace(tzinfo=UTC)
 
                 expires_at = created_at + timedelta(days=retention_days)
-                now = datetime.now(timezone.utc)
+                now = datetime.now(UTC)
                 time_to_cleanup = max(0, int((expires_at - now).total_seconds()))
 
                 response["retention_expires_at"] = expires_at.isoformat()

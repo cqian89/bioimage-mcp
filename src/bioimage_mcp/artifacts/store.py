@@ -412,10 +412,11 @@ class ArtifactStore:
 
     def touch(self, ref_id: str) -> None:
         """Update last_accessed_at for a non-memory artifact."""
-        self._conn.execute(
-            "UPDATE artifacts SET last_accessed_at = ? WHERE ref_id = ? AND storage_type != 'memory'",
-            (ArtifactRef.now(), ref_id),
+        query = (
+            "UPDATE artifacts SET last_accessed_at = ? "
+            "WHERE ref_id = ? AND storage_type != 'memory'"
         )
+        self._conn.execute(query, (ArtifactRef.now(), ref_id))
         self._conn.commit()
 
     def _reconstruct_ref(self, **kwargs) -> ArtifactRef:

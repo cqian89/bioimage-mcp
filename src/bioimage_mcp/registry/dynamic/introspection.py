@@ -17,7 +17,6 @@ from bioimage_mcp.registry.dynamic.models import (
 )
 from bioimage_mcp.registry.utils import summarize_docstring
 
-
 # Parameter names that must be integer-only (numpy arrays don't support string axes)
 AXIS_PARAM_NAMES = frozenset(
     {

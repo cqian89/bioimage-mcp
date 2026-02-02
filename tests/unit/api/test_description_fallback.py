@@ -1,9 +1,11 @@
 from __future__ import annotations
+
 import sqlite3
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 from bioimage_mcp.api.discovery import DiscoveryService
+from bioimage_mcp.registry.manifest_schema import Function, Port, ToolManifest
 from bioimage_mcp.storage.sqlite import init_schema
-from bioimage_mcp.registry.manifest_schema import ToolManifest, Function, Port
 
 
 def test_description_fallback_avoids_stuttering():

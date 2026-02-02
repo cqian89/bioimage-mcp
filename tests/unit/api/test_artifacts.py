@@ -47,7 +47,6 @@ def test_artifacts_service_artifact_info(tmp_path: Path) -> None:
 
 
 def test_artifact_info_objectref_native_type(tmp_path: Path) -> None:
-    from bioimage_mcp.artifacts.models import ObjectRef
 
     config = Config(
         artifact_store_root=tmp_path / "artifacts",
@@ -73,7 +72,6 @@ def test_artifact_info_objectref_native_type(tmp_path: Path) -> None:
 
 
 def test_artifact_info_objectref_preview_truncation(tmp_path: Path) -> None:
-    import pickle
 
     from bioimage_mcp.artifacts.models import ObjectRef
 
@@ -106,7 +104,6 @@ def test_artifact_info_objectref_preview_truncation(tmp_path: Path) -> None:
 
 
 def test_artifact_info_objectref_expired(tmp_path: Path) -> None:
-    from bioimage_mcp.artifacts.models import ObjectRef
 
     config = Config(
         artifact_store_root=tmp_path / "artifacts",

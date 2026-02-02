@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from bioimage_mcp.registry.dynamic.models import FunctionMetadata, IOPattern
 from bioimage_mcp_trackpy.entrypoint import handle_meta_describe, handle_meta_list
+
+from bioimage_mcp.registry.dynamic.models import FunctionMetadata, IOPattern
 
 
 def test_handle_meta_list_shape():

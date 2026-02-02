@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+
 from bioimage_mcp.config.loader import load_config
 from bioimage_mcp.storage.sqlite import connect
 

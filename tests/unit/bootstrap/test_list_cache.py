@@ -7,7 +7,6 @@ import pytest
 
 from bioimage_mcp.bootstrap import list as list_mod
 from bioimage_mcp.bootstrap.list_cache import ListToolsCache
-from bioimage_mcp.registry.cache_version import get_cache_version_key
 
 
 @pytest.fixture

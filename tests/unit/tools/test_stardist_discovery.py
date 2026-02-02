@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import sys
-import pytest
 from unittest.mock import MagicMock, patch
+
 from bioimage_mcp_stardist.dynamic_discovery import StarDistAdapter
-from bioimage_mcp.registry.dynamic.models import ParameterSchema, FunctionMetadata
+
+from bioimage_mcp.registry.dynamic.models import FunctionMetadata, ParameterSchema
 
 
 def test_stardist_adapter_get_pretrained_model_names_mock():

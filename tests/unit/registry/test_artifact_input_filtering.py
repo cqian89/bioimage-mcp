@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from unittest.mock import MagicMock
 from pathlib import Path
-from bioimage_mcp.registry.dynamic.models import IOPattern
-from bioimage_mcp.registry.dynamic.adapters.xarray import XarrayAdapterForRegistry
+from unittest.mock import MagicMock
+
 from bioimage_mcp.registry.dynamic.adapters.scipy_spatial import ScipySpatialAdapter
+from bioimage_mcp.registry.dynamic.adapters.xarray import XarrayAdapterForRegistry
+from bioimage_mcp.registry.dynamic.models import IOPattern
 from bioimage_mcp.registry.engine import DiscoveryEngine
 from bioimage_mcp.registry.manifest_schema import ToolManifest
 

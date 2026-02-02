@@ -4,7 +4,6 @@ import csv
 from pathlib import Path
 
 import numpy as np
-import pytest
 
 from bioimage_mcp.artifacts.preview import (
     apply_tab20_colormap,

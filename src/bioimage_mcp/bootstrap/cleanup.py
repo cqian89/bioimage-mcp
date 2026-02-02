@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import json
+
 from bioimage_mcp.config.loader import load_config
+from bioimage_mcp.storage.cleanup import maybe_cleanup, run_cleanup
 from bioimage_mcp.storage.sqlite import connect
-from bioimage_mcp.storage.cleanup import run_cleanup, maybe_cleanup
 
 
 def cleanup(*, dry_run: bool, json_output: bool, force: bool) -> int:

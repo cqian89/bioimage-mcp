@@ -6,7 +6,7 @@ from bioimage_mcp.api.artifacts import ArtifactsService
 from bioimage_mcp.api.discovery import DiscoveryService
 from bioimage_mcp.api.execution import ExecutionService
 from bioimage_mcp.api.interactive import InteractiveExecutionService
-from bioimage_mcp.api.serializers import RunResponseSerializer, DescribeResponseSerializer
+from bioimage_mcp.api.serializers import DescribeResponseSerializer, RunResponseSerializer
 from bioimage_mcp.sessions.manager import SessionManager
 
 try:

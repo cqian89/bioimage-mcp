@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -35,8 +35,9 @@ class StorageManager:
         # Store repaired value
         self._conn.execute(
             "INSERT INTO registry_state (key, value, updated_at) VALUES (?, ?, ?) "
-            "ON CONFLICT(key) DO UPDATE SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at",
-            ("total_artifact_bytes", str(total), datetime.now(timezone.utc).isoformat()),
+            "ON CONFLICT(key) DO UPDATE SET "
+            "value = EXCLUDED.value, updated_at = EXCLUDED.updated_at",
+            ("total_artifact_bytes", str(total), datetime.now(UTC).isoformat()),
         )
         self._conn.commit()
         return total
@@ -74,7 +75,7 @@ class StorageManager:
     ) -> list[dict]:
         """Select artifacts eligible for deletion based on retention rules."""
         if now_iso is None:
-            now_iso = datetime.now(timezone.utc).isoformat()
+            now_iso = datetime.now(UTC).isoformat()
 
         now = datetime.fromisoformat(now_iso)
         retention_days = self._config.storage.retention_days

@@ -4,12 +4,10 @@ import base64
 import csv
 from io import BytesIO
 from pathlib import Path
-from typing import Any
 
 import numpy as np
 from bioio import BioImage
 from PIL import Image
-
 
 TAB20_RGB = [
     (31, 119, 180),
@@ -341,7 +339,7 @@ def generate_table_preview(
 ) -> dict | None:
     """Generate a markdown preview and dtypes for a CSV table."""
     try:
-        with open(path, mode="r", encoding="utf-8", newline="") as f:
+        with open(path, encoding="utf-8", newline="") as f:
             reader = csv.reader(f)
             header = next(reader, None)
             if not header:

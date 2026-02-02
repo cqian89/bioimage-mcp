@@ -236,14 +236,16 @@ def init_schema(conn: sqlite3.Connection) -> None:
         try:
             stored_total = int(state_row["value"])
             if stored_total < 0:  # Clearly invalid
-                conn.execute(
-                    "UPDATE registry_state SET value = ?, updated_at = datetime('now') WHERE key = 'total_artifact_bytes'",
-                    (str(actual_total),),
+                query = (
+                    "UPDATE registry_state SET value = ?, updated_at = datetime('now') "
+                    "WHERE key = 'total_artifact_bytes'"
                 )
+                conn.execute(query, (str(actual_total),))
         except ValueError:
-            conn.execute(
-                "UPDATE registry_state SET value = ?, updated_at = datetime('now') WHERE key = 'total_artifact_bytes'",
-                (str(actual_total),),
+            query = (
+                "UPDATE registry_state SET value = ?, updated_at = datetime('now') "
+                "WHERE key = 'total_artifact_bytes'"
             )
+            conn.execute(query, (str(actual_total),))
 
     conn.commit()

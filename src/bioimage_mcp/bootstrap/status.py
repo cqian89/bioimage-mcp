@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import json
+
 from bioimage_mcp.config.loader import load_config
-from bioimage_mcp.storage.sqlite import connect
 from bioimage_mcp.storage.manager import StorageManager
+from bioimage_mcp.storage.sqlite import connect
 
 
 def status(*, json_output: bool) -> int:
