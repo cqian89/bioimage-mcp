@@ -255,38 +255,33 @@ def list_tools(*, json_output: bool, tool: str | None = None) -> int:
 
         status = "installed" if env_exists else "partial"
 
-        # Group functions into packages
-        pkg_counts: dict[str, int] = {}
-        for fn in m.functions:
-            fn_id = fn.fn_id
-            remainder = fn_id
-            if fn_id.startswith(f"{tool_id}."):
-                remainder = fn_id[len(tool_id) + 1 :]
-
-            if "." in remainder:
-                pkg_id = remainder.split(".")[0]
-            else:
-                pkg_id = "root"
-            pkg_counts[pkg_id] = pkg_counts.get(pkg_id, 0) + 1
-
         # Resolve versions
         # For tools with primary library (e.g. cellpose), tool.library_version = resolved version
         # For base, it might be None if multiple libs.
         tool_lib_version = _resolve_version(env_id, tool_id, manager_exe)
+        if tool_id == "base" and env_id:
+            tool_lib_version = None
 
         packages = []
-        for pid, count in sorted(pkg_counts.items()):
-            pkg_lib_version = None
-            if tool_lib_version:
-                # If tool itself has primary lib, all its subpackages get it
-                pkg_lib_version = tool_lib_version
-            else:
-                # Try to resolve per package (useful for base)
-                pkg_lib_version = _resolve_version(env_id, pid, manager_exe)
+        if tool_id == "base":
+            pkg_counts: dict[str, int] = {}
+            for fn in m.functions:
+                fn_id = fn.fn_id
+                remainder = fn_id
+                if fn_id.startswith(f"{tool_id}."):
+                    remainder = fn_id[len(tool_id) + 1 :]
 
-            packages.append(
-                {"id": pid, "library_version": pkg_lib_version, "function_count": count}
-            )
+                if "." in remainder:
+                    pkg_id = remainder.split(".")[0]
+                else:
+                    pkg_id = "root"
+                pkg_counts[pkg_id] = pkg_counts.get(pkg_id, 0) + 1
+
+            for pid, count in sorted(pkg_counts.items()):
+                pkg_lib_version = _resolve_version(env_id, pid, manager_exe)
+                packages.append(
+                    {"id": pid, "library_version": pkg_lib_version, "function_count": count}
+                )
 
         sources = sorted({s for s in (fn.introspection_source for fn in m.functions) if s})
 

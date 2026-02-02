@@ -83,7 +83,7 @@ def test_list_tools_table_output(mock_registry, monkeypatch, capsys) -> None:
     assert "1.2.3" in out
     assert "installed" in out
     assert "1" in out  # function count
-    assert "└── test" in out
+    assert "└──" not in out
 
 
 def test_list_tools_json_output(mock_registry, monkeypatch, capsys) -> None:
@@ -101,9 +101,7 @@ def test_list_tools_json_output(mock_registry, monkeypatch, capsys) -> None:
     assert tool["tool_version"] == "1.2.3"
     assert tool["status"] == "partial"
     assert "packages" in tool
-    assert len(tool["packages"]) == 1
-    assert tool["packages"][0]["id"] == "test"
-    assert tool["packages"][0]["function_count"] == 1
+    assert tool["packages"] == []
 
 
 def test_list_tools_empty(monkeypatch, capsys, tmp_path) -> None:
@@ -182,8 +180,7 @@ def test_list_tools_lockfile_version(tmp_path, monkeypatch, capsys) -> None:
     tool = payload["tools"][0]
     assert tool["id"] == "cellpose"
     assert tool["library_version"] == "3.1.0"
-    assert tool["packages"][0]["id"] == "models"
-    assert tool["packages"][0]["library_version"] == "3.1.0"
+    assert tool["packages"] == []
 
 
 def test_list_tools_cache_invalidation_on_lockfile_change(tmp_path, monkeypatch, capsys) -> None:
@@ -235,7 +232,8 @@ def test_list_tools_cache_invalidation_on_lockfile_change(tmp_path, monkeypatch,
     list_mod.list_tools(json_output=True)
     out1 = capsys.readouterr().out
     payload1 = json.loads(out1)
-    assert payload1["tools"][0]["packages"][0]["library_version"] == "1.14.1"
+    packages1 = payload1["tools"][0]["packages"]
+    assert packages1[0]["library_version"] == "1.14.1"
 
     # 5. Update lockfile version
     lock_data["package"][0]["version"] = "1.15.0"
@@ -246,7 +244,8 @@ def test_list_tools_cache_invalidation_on_lockfile_change(tmp_path, monkeypatch,
     list_mod.list_tools(json_output=True)
     out2 = capsys.readouterr().out
     payload2 = json.loads(out2)
-    assert payload2["tools"][0]["packages"][0]["library_version"] == "1.15.0"
+    packages2 = payload2["tools"][0]["packages"]
+    assert packages2[0]["library_version"] == "1.15.0"
 
 
 def test_list_tools_non_namespaced_ids(tmp_path, monkeypatch, capsys) -> None:
@@ -307,16 +306,12 @@ def test_list_tools_non_namespaced_ids(tmp_path, monkeypatch, capsys) -> None:
     payload = json.loads(out)
     tool = payload["tools"][0]
 
-    # We expect exactly 1 package entry (the fallback) for all 3 functions
-    assert len(tool["packages"]) == 1
-    # We'll use "root" as fallback in Task 2
-    assert tool["packages"][0]["id"] == "root"
-    assert tool["packages"][0]["function_count"] == 3
+    # Non-base tools should not emit package rows
+    assert tool["packages"] == []
 
     # 4. Run list_tools (Table)
     exit_code = list_mod.list_tools(json_output=False)
     out = capsys.readouterr().out
     assert exit_code == 0
-    # Should only show the package row once, not one per function
-    # The count should be 3
-    assert " 3 " in out
+    # Should not render package rows for non-base tools
+    assert "└──" not in out
