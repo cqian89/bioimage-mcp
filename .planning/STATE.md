@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 ## Current Position
 
 Phase: 18 of 18 (Implement artifact store retention and quota management)
-Plan: 3 of 5 in current phase
+Plan: 4 of 5 in current phase
 Status: In progress
-Last activity: 2026-02-02 - Completed 18-03-PLAN.md
+Last activity: 2026-02-02 - Completed 18-04-PLAN.md
 
 Progress: █████████░ 97%
 
@@ -128,10 +128,10 @@ Progress: █████████░ 97%
 | 008 | The CLI command `bioimage-mcp list` shows down to function level in some environments. It should only show down to package level. | 2026-02-02 | 69a37c7 | [008-the-cli-command-bioimage-mcp-list-shows-](./quick/008-the-cli-command-bioimage-mcp-list-shows-/) |
 
 ## Session Continuity
-Last session: 2026-02-02T22:01:21Z
-Stopped at: Completed 18-03-PLAN.md
+Last session: 2026-02-02T22:06:18Z
+Stopped at: Completed 18-04-PLAN.md
 Resume file: None
 
 ## Next Steps
-1. Execute Phase 18 Plan 4: CLI status/cleanup/pin commands
+1. Execute Phase 18 Plan 5: Integration + unit tests for retention/quota/cleanup
 
