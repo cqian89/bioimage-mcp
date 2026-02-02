@@ -35,6 +35,28 @@ def _build_parser() -> argparse.ArgumentParser:
     configure = subparsers.add_parser("configure", help="Write starter configuration")
     configure.set_defaults(_handler=_handle_configure)
 
+    status_cmd = subparsers.add_parser("status", help="Show storage usage and cleanup status")
+    status_cmd.add_argument("--json", action="store_true", help="Output machine-readable JSON")
+    status_cmd.set_defaults(_handler=_handle_status)
+
+    cleanup = subparsers.add_parser("cleanup", help="Trigger manual storage cleanup")
+    cleanup.add_argument(
+        "--dry-run", action="store_true", help="Preview deletions without modifying disk/DB"
+    )
+    cleanup.add_argument("--force", action="store_true", help="Override cooldown and lock")
+    cleanup.add_argument("--json", action="store_true", help="Output machine-readable JSON")
+    cleanup.set_defaults(_handler=_handle_cleanup)
+
+    pin = subparsers.add_parser("pin", help="Pin an artifact to exempt it from cleanup")
+    pin.add_argument("ref_id", help="Artifact reference ID")
+    pin.add_argument("--json", action="store_true", help="Output machine-readable JSON")
+    pin.set_defaults(_handler=_handle_pin)
+
+    unpin = subparsers.add_parser("unpin", help="Unpin an artifact so it can be cleaned up")
+    unpin.add_argument("ref_id", help="Artifact reference ID")
+    unpin.add_argument("--json", action="store_true", help="Output machine-readable JSON")
+    unpin.set_defaults(_handler=_handle_unpin)
+
     serve = subparsers.add_parser("serve", help="Start the MCP server")
     serve.add_argument("--stdio", action="store_true", help="Use stdio transport")
     serve.set_defaults(_handler=_handle_serve)
@@ -83,6 +105,30 @@ def _handle_configure(args: argparse.Namespace) -> int:
     from bioimage_mcp.bootstrap.configure import configure
 
     return configure()
+
+
+def _handle_status(args: argparse.Namespace) -> int:
+    from bioimage_mcp.bootstrap.status import status
+
+    return status(json_output=args.json)
+
+
+def _handle_cleanup(args: argparse.Namespace) -> int:
+    from bioimage_mcp.bootstrap.cleanup import cleanup
+
+    return cleanup(dry_run=args.dry_run, json_output=args.json, force=args.force)
+
+
+def _handle_pin(args: argparse.Namespace) -> int:
+    from bioimage_mcp.bootstrap.pin import pin
+
+    return pin(args.ref_id, unpin=False, json_output=args.json)
+
+
+def _handle_unpin(args: argparse.Namespace) -> int:
+    from bioimage_mcp.bootstrap.pin import pin
+
+    return pin(args.ref_id, unpin=True, json_output=args.json)
 
 
 def _handle_serve(args: argparse.Namespace) -> int:
