@@ -329,7 +329,7 @@ def _get_function_ports(
 
 
 def _materialize_zarr_to_file(
-    artifact_ref: dict, work_dir: Path, artifact_store: ArtifactStore
+    artifact_ref: dict, work_dir: Path, artifact_store: ArtifactStore, session_id: str | None = None
 ) -> dict:
     """Legacy helper for materializing Zarr artifacts to files.
 
@@ -371,13 +371,13 @@ def _materialize_zarr_to_file(
         # Core can now materialize directory-backed artifacts (OME-Zarr) (T049)
         materialized_format = artifact_ref.get("format") or "OME-Zarr"
         new_ref = artifact_store.import_directory(
-            src_path, artifact_type=artifact_type, format=materialized_format
+            src_path, artifact_type=artifact_type, format=materialized_format, session_id=session_id
         )
         return new_ref.model_dump()
 
     materialized_format = artifact_ref.get("format") or "OME-TIFF"
     new_ref = artifact_store.import_file(
-        src_path, artifact_type=artifact_type, format=materialized_format
+        src_path, artifact_type=artifact_type, format=materialized_format, session_id=session_id
     )
     return new_ref.model_dump()
 
@@ -677,7 +677,7 @@ class ExecutionService:
                     input_metadata[name] = {}
 
         # Create the run early so we can use its ID to isolate outputs (FR-009).
-        log_ref = self._artifact_store.write_log("workflow started")
+        log_ref = self._artifact_store.write_log("workflow started", session_id=session_id)
         run = self._run_store.create_run(
             workflow_spec=spec,
             inputs=inputs,
@@ -864,7 +864,9 @@ class ExecutionService:
             if legacy_needs_mat:
                 # Use compatibility helper for legacy zarr-temp materialization
                 # (facilitates mocking in tests)
-                materialized = _materialize_zarr_to_file(val, work_dir, self._artifact_store)
+                materialized = _materialize_zarr_to_file(
+                    val, work_dir, self._artifact_store, session_id=session_id
+                )
                 if materialized and materialized.get("ref_id") != ref_id:
                     materialized_inputs[input_name] = ref_id
                     return materialized
@@ -911,12 +913,14 @@ class ExecutionService:
                                 p,
                                 artifact_type=artifact.type,
                                 format=negotiated_format,
+                                session_id=session_id,
                             )
                         else:
                             new_ref = self._artifact_store.import_file(
                                 p,
                                 artifact_type=artifact.type,
                                 format=negotiated_format,
+                                session_id=session_id,
                             )
 
                         # Record handoff
@@ -991,7 +995,7 @@ class ExecutionService:
             else:
                 log_text = warning_prefix
 
-        log_ref = self._artifact_store.write_log(log_text or str(response))
+        log_ref = self._artifact_store.write_log(log_text or str(response), session_id=session_id)
         run.log_ref_id = log_ref.ref_id
         self._run_store.set_log_ref(run.run_id, log_ref.ref_id)
 
@@ -1166,6 +1170,7 @@ class ExecutionService:
                         format=fmt,
                         metadata_override=tool_metadata,
                         ref_id=out.get("ref_id"),
+                        session_id=session_id,
                     )
                 else:
                     # Pass tool metadata as override to preserve native dimensions (T048)
@@ -1175,6 +1180,7 @@ class ExecutionService:
                         format=fmt,
                         metadata_override=tool_metadata,
                         ref_id=out.get("ref_id"),
+                        session_id=session_id,
                     )
 
                 ref_data = ref.model_dump()
@@ -1248,6 +1254,7 @@ class ExecutionService:
             workflow_record,
             format="workflow-record-json",
             metadata={"run_id": run.run_id},
+            session_id=session_id,
         )
         outputs_payload["workflow_record"] = workflow_record_ref.model_dump()
         self._run_store.set_native_output_ref(run.run_id, workflow_record_ref.ref_id)

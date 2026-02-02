@@ -213,6 +213,8 @@ class ArtifactStore:
         format: str,
         metadata_override: dict | None = None,
         ref_id: str | None = None,
+        session_id: str | None = None,
+        pinned: bool = False,
     ) -> ArtifactRef:
         src = src.expanduser().absolute()
 
@@ -284,7 +286,7 @@ class ArtifactStore:
         }
 
         ref = self._reconstruct_ref(**kwargs)
-        self._persist(ref)
+        self._persist(ref, session_id=session_id, pinned=pinned)
         return ref
 
     def import_directory(
@@ -295,6 +297,8 @@ class ArtifactStore:
         format: str,
         metadata_override: dict | None = None,
         ref_id: str | None = None,
+        session_id: str | None = None,
+        pinned: bool = False,
     ) -> ArtifactRef:
         assert_path_allowed("read", src, self._config)
 
@@ -357,10 +361,12 @@ class ArtifactStore:
         }
 
         ref = self._reconstruct_ref(**kwargs)
-        self._persist(ref)
+        self._persist(ref, session_id=session_id, pinned=pinned)
         return ref
 
-    def _persist(self, ref: ArtifactRef) -> None:
+    def _persist(
+        self, ref: ArtifactRef, session_id: str | None = None, pinned: bool = False
+    ) -> None:
         metadata = ref.metadata
         if hasattr(metadata, "model_dump"):
             metadata = metadata.model_dump(exclude_none=True)
@@ -377,9 +383,12 @@ class ArtifactStore:
                 size_bytes,
                 checksums_json,
                 metadata_json,
-                created_at
+                created_at,
+                session_id,
+                pinned,
+                last_accessed_at
             )
-            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 ref.ref_id,
@@ -392,7 +401,18 @@ class ArtifactStore:
                 json.dumps([c.model_dump() for c in ref.checksums]),
                 json.dumps(metadata),
                 ref.created_at,
+                session_id,
+                1 if pinned else 0,
+                ref.created_at,
             ),
+        )
+        self._conn.commit()
+
+    def touch(self, ref_id: str) -> None:
+        """Update last_accessed_at for a non-memory artifact."""
+        self._conn.execute(
+            "UPDATE artifacts SET last_accessed_at = ? WHERE ref_id = ? AND storage_type != 'memory'",
+            (ArtifactRef.now(), ref_id),
         )
         self._conn.commit()
 
@@ -620,7 +640,9 @@ class ArtifactStore:
 
         return dest_path
 
-    def write_log(self, content: str) -> ArtifactRef:
+    def write_log(
+        self, content: str, *, session_id: str | None = None, pinned: bool = False
+    ) -> ArtifactRef:
         ref_id = uuid.uuid4().hex
         dest = self._artifact_path(ref_id, ".log")
         dest.parent.mkdir(parents=True, exist_ok=True)
@@ -641,7 +663,7 @@ class ArtifactStore:
             created_at=ArtifactRef.now(),
             metadata={},
         )
-        self._persist(ref)
+        self._persist(ref, session_id=session_id, pinned=pinned)
         return ref
 
     def write_native_output(
@@ -650,6 +672,8 @@ class ArtifactStore:
         *,
         format: str,
         metadata: dict | None = None,
+        session_id: str | None = None,
+        pinned: bool = False,
     ) -> ArtifactRef:
         """Write a native output artifact (NativeOutputRef).
 
@@ -708,7 +732,7 @@ class ArtifactStore:
             created_at=ArtifactRef.now(),
             metadata=metadata or {},
         )
-        self._persist(ref)
+        self._persist(ref, session_id=session_id, pinned=pinned)
         return ref
 
 
