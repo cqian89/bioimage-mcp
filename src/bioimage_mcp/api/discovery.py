@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -265,6 +266,28 @@ class DiscoveryService:
             "next_cursor": next_cursor,
             "expanded_from": expanded_from,
         }
+
+    def get_registry_fingerprint(self) -> str | None:
+        row = self._conn.execute(
+            "SELECT value FROM registry_state WHERE key = ?",
+            ("registry_fingerprint",),
+        ).fetchone()
+        if row is None:
+            return None
+        return row["value"]
+
+    def set_registry_fingerprint(self, fingerprint: str) -> None:
+        now = datetime.now(UTC).isoformat()
+        self._conn.execute(
+            "INSERT INTO registry_state(key, value, updated_at) VALUES(?, ?, ?) "
+            "ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at",
+            ("registry_fingerprint", fingerprint, now),
+        )
+        self._conn.commit()
+
+    def has_functions(self) -> bool:
+        row = self._conn.execute("SELECT 1 FROM functions LIMIT 1").fetchone()
+        return row is not None
 
     def describe_tool(self, tool_id: str) -> dict[str, Any]:
         tool = self._index.get_tool(tool_id)

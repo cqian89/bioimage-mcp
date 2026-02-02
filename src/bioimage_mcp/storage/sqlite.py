@@ -132,6 +132,12 @@ def init_schema(conn: sqlite3.Connection) -> None:
             PRIMARY KEY (session_id, fn_id),
             FOREIGN KEY (session_id) REFERENCES sessions(session_id)
         );
+
+        CREATE TABLE IF NOT EXISTS registry_state (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
         """
     )
 

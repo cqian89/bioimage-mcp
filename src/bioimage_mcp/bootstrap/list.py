@@ -212,15 +212,28 @@ def list_tools(*, json_output: bool, tool: str | None = None) -> int:
             for t in cached_payload:
                 if any("dynamic_discovery" in s for s in t.get("introspection_source", [])):
                     tool_id = t["id"]
-                    dynamic_cache = (
-                        Path.home()
-                        / ".bioimage-mcp"
-                        / "cache"
-                        / "dynamic"
-                        / tool_id
-                        / "introspection_cache.json"
-                    )
-                    if not dynamic_cache.exists():
+                    full_tool_id = t.get("tool_id_full") or t.get("full_tool_id")
+                    candidates = [tool_id]
+                    if full_tool_id:
+                        candidates.append(full_tool_id)
+                    if not tool_id.startswith("tools."):
+                        candidates.append(f"tools.{tool_id}")
+
+                    dynamic_cache_exists = False
+                    for cache_id in candidates:
+                        dynamic_cache = (
+                            Path.home()
+                            / ".bioimage-mcp"
+                            / "cache"
+                            / "dynamic"
+                            / cache_id
+                            / "introspection_cache.json"
+                        )
+                        if dynamic_cache.exists():
+                            dynamic_cache_exists = True
+                            break
+
+                    if not dynamic_cache_exists:
                         missing_dynamic = True
                         break
 
@@ -288,6 +301,7 @@ def list_tools(*, json_output: bool, tool: str | None = None) -> int:
         tool_details.append(
             {
                 "id": tool_id,
+                "tool_id_full": full_tool_id,
                 "tool_version": m.tool_version,
                 "library_version": tool_lib_version,
                 "status": status,

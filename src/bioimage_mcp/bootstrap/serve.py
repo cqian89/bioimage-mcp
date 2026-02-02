@@ -7,7 +7,10 @@ from bioimage_mcp.api.interactive import InteractiveExecutionService
 from bioimage_mcp.api.server import create_server
 from bioimage_mcp.artifacts.store import ArtifactStore
 from bioimage_mcp.config.loader import load_config
-from bioimage_mcp.registry.loader import load_manifests
+from pathlib import Path
+
+from bioimage_mcp.registry.loader import discover_manifest_paths, load_manifests
+from bioimage_mcp.bootstrap.list_cache import ListToolsCache, get_cli_cache_dir
 from bioimage_mcp.runs.store import RunStore
 from bioimage_mcp.sessions.manager import SessionManager
 from bioimage_mcp.sessions.store import SessionStore
@@ -25,46 +28,60 @@ def serve(*, stdio: bool) -> int:
 
     service = DiscoveryService(conn)
 
-    manifests, diagnostics = load_manifests(config.tool_manifest_roots)
-    service.clear_diagnostics()
-    for diag in diagnostics:
-        service.record_diagnostic(diag)
+    cache_dir = get_cli_cache_dir()
+    tools_cache = ListToolsCache(cache_dir)
+    manifest_paths = discover_manifest_paths(config.tool_manifest_roots)
+    lockfile_paths = list(Path("envs").glob("*.lock.yml"))
+    fingerprint = tools_cache.get_fingerprint(
+        manifest_paths, envs_hash="", lockfile_paths=lockfile_paths
+    )
 
-    # Collect valid IDs for pruning stale entries
-    valid_tool_ids: set[str] = set()
-    valid_fn_ids: set[str] = set()
+    cached_fingerprint = service.get_registry_fingerprint()
+    if cached_fingerprint == fingerprint and service.has_functions():
+        manifests = []
+        diagnostics = []
+    else:
+        manifests, diagnostics = load_manifests(config.tool_manifest_roots)
+        service.clear_diagnostics()
+        for diag in diagnostics:
+            service.record_diagnostic(diag)
 
-    for manifest in manifests:
-        valid_tool_ids.add(manifest.tool_id)
-        service.upsert_tool(
-            tool_id=manifest.tool_id,
-            name=manifest.name,
-            description=manifest.description,
-            tool_version=manifest.tool_version,
-            env_id=manifest.env_id,
-            manifest_path=str(manifest.manifest_path),
-            available=True,
-            installed=True,
-        )
-        for fn in manifest.functions:
-            valid_fn_ids.add(fn.fn_id)
-            service.upsert_function(
-                id=fn.fn_id,
-                tool_id=fn.tool_id,
-                name=fn.name,
-                description=fn.description,
-                tags=fn.tags,
-                inputs=[p.model_dump() for p in fn.inputs],
-                outputs=[p.model_dump() for p in fn.outputs],
-                params_schema=fn.params_schema,
-                introspection_source=fn.introspection_source,
-                module=fn.module,
-                io_pattern=fn.io_pattern,
+        # Collect valid IDs for pruning stale entries
+        valid_tool_ids: set[str] = set()
+        valid_fn_ids: set[str] = set()
+
+        for manifest in manifests:
+            valid_tool_ids.add(manifest.tool_id)
+            service.upsert_tool(
+                tool_id=manifest.tool_id,
+                name=manifest.name,
+                description=manifest.description,
+                tool_version=manifest.tool_version,
+                env_id=manifest.env_id,
+                manifest_path=str(manifest.manifest_path),
+                available=True,
+                installed=True,
             )
+            for fn in manifest.functions:
+                valid_fn_ids.add(fn.fn_id)
+                service.upsert_function(
+                    id=fn.fn_id,
+                    tool_id=fn.tool_id,
+                    name=fn.name,
+                    description=fn.description,
+                    tags=fn.tags,
+                    inputs=[p.model_dump() for p in fn.inputs],
+                    outputs=[p.model_dump() for p in fn.outputs],
+                    params_schema=fn.params_schema,
+                    introspection_source=fn.introspection_source,
+                    module=fn.module,
+                    io_pattern=fn.io_pattern,
+                )
 
-    # Prune stale functions and tools that are no longer in manifests
-    service.prune_stale_functions(valid_fn_ids)
-    service.prune_stale_tools(valid_tool_ids)
+        # Prune stale functions and tools that are no longer in manifests
+        service.prune_stale_functions(valid_fn_ids)
+        service.prune_stale_tools(valid_tool_ids)
+        service.set_registry_fingerprint(fingerprint)
 
     artifact_store = ArtifactStore(config, conn=conn)
     run_store = RunStore(config, conn=conn)
