@@ -137,13 +137,14 @@ Plans:
 ### Phase 18: Implement artifact store retention and quota management
 
 **Goal:** Add retention policies and storage limits for artifacts to prevent unbounded growth and manage storage costs.
+**Status:** In progress
 **Depends on:** Phase 17
-**Plans:** 1/5 plans complete
+**Plans:** 3/5 plans complete
 
 Plans:
 - [x] 18-01-PLAN.md — SQLite schema + artifact/session linkage + usage tracking
-- [ ] 18-02-PLAN.md — Storage policy config + StorageManager queries
-- [ ] 18-03-PLAN.md — Cleanup engine + background scheduler (non-blocking)
+- [x] 18-02-PLAN.md — Storage policy config + StorageManager queries
+- [x] 18-03-PLAN.md — Cleanup engine + background scheduler (non-blocking)
 - [ ] 18-04-PLAN.md — CLI status/cleanup/pin commands + cleanup event visibility
 - [ ] 18-05-PLAN.md — Integration + unit tests for retention/quota/cleanup
 

@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 ## Current Position
 
 Phase: 18 of 18 (Implement artifact store retention and quota management)
-Plan: 2 of 5 in current phase
+Plan: 3 of 5 in current phase
 Status: In progress
-Last activity: 2026-02-02 - Completed 18-02-PLAN.md
+Last activity: 2026-02-02 - Completed 18-03-PLAN.md
 
-Progress: █████████░ 95%
+Progress: █████████░ 97%
 
 ## Accumulated Context
 
@@ -65,7 +65,6 @@ Progress: █████████░ 95%
 | 13 | Persistent CLI List Cache | Used ~/.bioimage-mcp/cache/cli with manifest fingerprinting to achieve <1.5s warm list. |
 | 13 | Composite cache key: env:manifest | Force refresh on metadata changes by including manifest checksum. |
 | 13 | no-lockfile sentinel | Enable cache reuse even when environment indicators are missing. |
-| 13 | Validate dynamic cache presence on CLI cache-hit | Ensures that deleting a per-tool cache file triggers its regeneration even when the higher-level CLI cache is still valid. |
 | 13 | Propagate top-level introspection_source in meta.list | Critical for detecting tools that use dynamic discovery (like trackpy) from the cached function metadata. |
 | 14 | Standardize on OME-Zarr (.ome.zarr) | Default interchange format for all cross-env handoffs. |
 | 14 | Enable import_directory in core | Support materializing directory-backed artifacts (OME-Zarr). |
@@ -95,6 +94,9 @@ Progress: █████████░ 95%
 | 18 | Use Pydantic v2 for StoragePolicy | Ensures strict validation of retention periods and quota thresholds. |
 | 18 | Expose expiration in artifact_info | Provides transparency into when specific artifacts will be eligible for cleanup. |
 | 18 | Sanitize mocked metadata in store | Prevents JSON serialization failures in tests using MagicMock by falling back to string representation. |
+| 18 | Use a SQLite-based lock for cleanup | ensures only one instance performs cleanup at a time. |
+| 18 | Run cleanup in background daemon thread | Avoids blocking MCP stdio communication during server operations. |
+| 18 | Implement rename-to-trash | safer multi-step deletion handles partial deletions gracefully. |
 
 ## Roadmap Evolution
 - Phase 12 added: Core Engine + AST-First
@@ -126,9 +128,10 @@ Progress: █████████░ 95%
 | 008 | The CLI command `bioimage-mcp list` shows down to function level in some environments. It should only show down to package level. | 2026-02-02 | 69a37c7 | [008-the-cli-command-bioimage-mcp-list-shows-](./quick/008-the-cli-command-bioimage-mcp-list-shows-/) |
 
 ## Session Continuity
-Last session: 2026-02-02T21:49:15Z
-Stopped at: Completed 18-02-PLAN.md
+Last session: 2026-02-02T22:01:21Z
+Stopped at: Completed 18-03-PLAN.md
 Resume file: None
 
 ## Next Steps
-1. Plan Phase 18: Implement artifact store retention and quota management
+1. Execute Phase 18 Plan 4: CLI status/cleanup/pin commands
+
