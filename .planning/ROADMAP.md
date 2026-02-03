@@ -135,18 +135,18 @@ Plans:
 - Versions come from `envs/<env_id>.lock.yml` when available, with fallback behavior.
 
 ### Phase 18: Implement artifact store retention and quota management
- 
- **Goal:** Add retention policies and storage limits for artifacts to prevent unbounded growth and manage storage costs.
- **Status:** Complete (2026-02-02)
- **Depends on:** Phase 17
- **Plans:** 5/5 plans complete
- 
- Plans:
- - [x] 18-01-PLAN.md — SQLite schema + artifact/session linkage + usage tracking
- - [x] 18-02-PLAN.md — Storage policy config + StorageManager queries
- - [x] 18-03-PLAN.md — Cleanup engine + background scheduler (non-blocking)
- - [x] 18-04-PLAN.md — CLI status/cleanup/pin commands + cleanup event visibility
- - [x] 18-05-PLAN.md — Integration + unit tests for retention/quota/cleanup
+  
+  **Goal:** Add retention policies and storage limits for artifacts to prevent unbounded growth and manage storage costs.
+  **Status:** Complete (2026-02-02)
+  **Depends on:** Phase 17
+  **Plans:** 5/5 plans complete
+  
+  Plans:
+  - [x] 18-01-PLAN.md — SQLite schema + artifact/session linkage + usage tracking
+  - [x] 18-02-PLAN.md — Storage policy config + StorageManager queries
+  - [x] 18-03-PLAN.md — Cleanup engine + background scheduler (non-blocking)
+  - [x] 18-04-PLAN.md — CLI status/cleanup/pin commands + cleanup event visibility
+  - [x] 18-05-PLAN.md — Integration + unit tests for retention/quota/cleanup
 
 **Details:**
 - Time-based retention (default 14 days) with pinned exemptions.
@@ -154,6 +154,19 @@ Plans:
 - Cleanup safety: skip active-session artifacts, protect most recent session, dry-run support, cooldown between runs.
 - CLI visibility: storage status + last cleanup summary + manual cleanup trigger.
 
+### Phase 19: Add smoke test for stardist
+
+**Goal:** Add smoke test for stardist
+**Status:** Not started
+**Depends on:** Phase 18
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 19 to break down)
+
+**Details:**
+[To be added during planning]
+
 ---
 
-*Roadmap updated: 2026-02-02*
+*Roadmap updated: 2026-02-04*
