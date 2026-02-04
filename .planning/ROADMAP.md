@@ -32,48 +32,12 @@ Establish the isolated environment and prerequisite models for µSAM.
   3. Tool execution automatically selects the fastest available device (CUDA > MPS > CPU).
 - **Plans:** 4 plans
   - [x] 21-01-PLAN.md — Microsam tool pack scaffold (manifest + entrypoint + model bootstrap script)
-  - [ ] 21-02-PLAN.md — Microsam conda environment + lockfile
-  - [ ] 21-03-PLAN.md — CLI + installer wiring for `bioimage-mcp install microsam` (profiles + model download)
-  - [ ] 21-04-PLAN.md — Config + doctor verification (microsam.device + model readiness)
-
-### Phase 22: Headless Tools
-Implement the non-interactive core of SAM to verify inference before adding GUI complexity.
-
-- **Goal:** Users can run SAM segmentation workflows via headless MCP tools.
-- **Dependencies:** Phase 21
-- **Requirements:** USAM-03, USAM-04, INFRA-04, SESS-04
-- **Success Criteria:**
-  1. User can run `compute_embeddings` on an OME-Zarr image and see progress in the terminal.
-  2. User can run `segment_automatic` and receive a new OME-Zarr artifact containing labels.
-  3. Running interactive tools on a headless server returns a graceful "GUI not available" error.
-
-### Phase 23: Interactive Bridge
-Build the parent-child process model to launch and communicate with the napari µSAM plugin.
-
-- **Goal:** Users can interactively segment images using the napari µSAM plugin via MCP.
-- **Dependencies:** Phase 22
-- **Requirements:** INFRA-01, INFRA-02, INFRA-03, USAM-02, ANNOT-01, ANNOT-02, ANNOT-03, ANNOT-04, ANNOT-05, ANNOT-06, ANNOT-07
-- **Success Criteria:**
-  1. Agent launches napari with µSAM plugin; user sees their image pre-loaded.
-  2. User adds point prompts/scribbles and sees the mask update in real-time.
-  3. User clicks "Commit" or closes the viewer, and results are saved as a new MCP artifact.
-
-### Phase 24: Session Management
-Ensure robustness, session persistence, and resource cleanup.
-
-- **Goal:** Interactive sessions are robust, resumable, and clean up after themselves.
-- **Dependencies:** Phase 23
-- **Requirements:** SESS-01, SESS-02, SESS-03
-- **Success Criteria:**
-  1. Re-opening a session for the same image is instant (uses cached embeddings).
-  2. Closing the MCP server automatically terminates any orphaned napari subprocesses.
-  3. User can resume a half-finished session with previous prompts and masks intact.
-
-## Progress
-
+  - [x] 21-02-PLAN.md — Microsam conda environment + lockfile
+...
 | Phase | Description | Status | Progress |
 |-------|-------------|--------|----------|
-| 21 | µSAM Tool Pack Foundation | Pending | 0% |
+| 21 | µSAM Tool Pack Foundation | In Progress | 50% |
+
 | 22 | Headless Tools | Pending | 0% |
 | 23 | Interactive Bridge | Pending | 0% |
 | 24 | Session Management | Pending | 0% |

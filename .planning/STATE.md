@@ -9,11 +9,11 @@
 ## Current Position
 
 - **Phase:** 21 - µSAM Tool Pack Foundation
-- **Plan:** 1 of 4 in current phase
+- **Plan:** 2 of 4 in current phase
 - **Status:** In progress
-- **Last activity:** 2026-02-04 - Completed 21-01-PLAN.md
+- **Last activity:** 2026-02-05 - Completed 21-02-PLAN.md
 
-Progress: ███████████████████░ 96%
+Progress: ███████████████████░ 97%
 
 ## Performance Metrics
 
@@ -29,10 +29,12 @@ Progress: ███████████████████░ 96%
 - **Bridge over Build:** Reusing the existing `micro-sam` napari plugin instead of building a custom annotation UI.
 - **Process Isolation:** Spawning napari in a managed subprocess to prevent event loop blocking.
 - **Cache Priority:** SAM embeddings will be cached as hidden artifacts to enable instant session resume.
+- **Conda Lock naming:** Used `micro_sam` (underscore) for conda-forge compatibility in foundation environment.
 
 ### Decisions Made (History)
 | Phase | Decision | Rationale |
 |-------|----------|-----------|
+| 21 | Use micro_sam (underscore) for conda package | Matches conda-forge registry name. |
 | 21 | Use vit_b variants as the minimum model requirement | Balances capability with download size/speed. |
 | 20 | Designated representative PR tests (skimage, cellpose, trackpy) | Balances coverage with PR latency. |
 | 20 | Demoted non-representative smoke tests to smoke_extended | Keeps the PR-gating tier lean and focused. |
