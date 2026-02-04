@@ -9,11 +9,11 @@
 ## Current Position
 
 - **Phase:** 21 - µSAM Tool Pack Foundation
-- **Plan:** 2 of 4 in current phase
+- **Plan:** 3 of 4 in current phase
 - **Status:** In progress
-- **Last activity:** 2026-02-05 - Completed 21-02-PLAN.md
+- **Last activity:** 2026-02-05 - Completed 21-03-PLAN.md
 
-Progress: ███████████████████░ 97%
+Progress: ████████████████████ 99%
 
 ## Performance Metrics
 
@@ -36,6 +36,8 @@ Progress: ███████████████████░ 97%
 |-------|----------|-----------|
 | 21 | Use micro_sam (underscore) for conda package | Matches conda-forge registry name. |
 | 21 | Use vit_b variants as the minimum model requirement | Balances capability with download size/speed. |
+| 21 | Default microsam install to CPU profile if unspecified | Keeps default install lean and compatible. |
+| 21 | Use pytorch-cuda=12.1 for Linux GPU installs of microsam | Aligns with modern microsam/torch requirements. |
 | 20 | Designated representative PR tests (skimage, cellpose, trackpy) | Balances coverage with PR latency. |
 | 20 | Demoted non-representative smoke tests to smoke_extended | Keeps the PR-gating tier lean and focused. |
 | 15 | Use OME-Zarr as default save format in SkimageAdapter | Aligns with project-wide standardization. |
@@ -45,5 +47,6 @@ Progress: ███████████████████░ 97%
 
 ## Session Continuity
 
-- **Last Session:** Created Roadmap for v0.5.0.
-- **Next Step:** Plan Phase 21 (µSAM Tool Pack Foundation).
+- **Last Session:** 2026-02-05 - Completed 21-03-PLAN.md
+- **Stopped at:** Completed 21-03-PLAN.md
+- **Next Step:** 21-04-PLAN.md — Microsam doctor verification.
