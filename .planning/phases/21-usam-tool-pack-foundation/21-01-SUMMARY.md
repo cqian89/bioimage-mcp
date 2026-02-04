@@ -64,7 +64,7 @@ Each task was committed atomically:
 1. **Task 1: Add microsam tool pack manifest + entrypoint skeleton** - `de2b2b3` (feat)
 2. **Task 2: Add tool-local model ensure-cached script used by the installer** - `204b706` (feat)
 
-**Plan metadata:** `2df9ed2` (docs: complete plan)
+**Plan metadata:** `e8959b8` (docs: complete plan)
 
 ## Files Created/Modified
 - `tools/microsam/manifest.yaml` - Tool pack declaration

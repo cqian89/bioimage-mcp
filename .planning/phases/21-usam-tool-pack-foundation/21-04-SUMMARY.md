@@ -61,10 +61,10 @@ completed: 2026-02-05
 
 Each task was committed atomically:
 
-1. **Task 1: Add microsam.device to config schema and starter config** - `3a2b1c4` (feat)
-2. **Task 2: Add doctor check for required microsam models** - `5d6e7f8` (feat)
+1. **Task 1: Add microsam.device to config schema and starter config** - `aa421a8` (feat)
+2. **Task 2: Add doctor check for required microsam models** - `fa36ae8` (feat)
 
-**Plan metadata:** `9a0b1c2` (docs: complete plan)
+**Plan metadata:** `c193032` (docs: complete plan)
 
 ## Files Created/Modified
 - `src/bioimage_mcp/config/schema.py` - Added MicrosamSettings and MicrosamDevice StrEnum.

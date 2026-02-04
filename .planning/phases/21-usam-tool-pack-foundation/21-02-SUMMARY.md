@@ -58,7 +58,7 @@ Each task was committed atomically:
 1. **Task 1: Create microsam conda environment spec (CPU-first, cross-platform)** - `5ff1a28` (feat)
 2. **Task 2: Generate and check in conda-lock lockfile for microsam** - `d0c4281` (feat)
 
-**Plan metadata:** `pending` (docs: complete plan)
+**Plan metadata:** `df3b18d` (docs: complete plan)
 
 ## Files Created/Modified
 - `envs/bioimage-mcp-microsam.yaml` - Conda environment specification.

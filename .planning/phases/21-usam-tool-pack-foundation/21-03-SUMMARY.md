@@ -63,7 +63,7 @@ Each task was committed atomically:
 2. **Task 2: implement microsam install orchestration** - `43ad703` (feat)
 3. **Task 3: keep install utility behavior stable** - (No changes needed, verified via existing tests)
 
-**Plan metadata:** `[PENDING]` (docs: complete plan)
+**Plan metadata:** `8ed2073` (docs: complete plan)
 
 ## Files Created/Modified
 - `src/bioimage_mcp/cli.py` - Updated `_handle_install` to allow `microsam` + `--profile`.
