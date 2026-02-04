@@ -9,11 +9,11 @@
 ## Current Position
 
 - **Phase:** 21 - µSAM Tool Pack Foundation
-- **Plan:** 3 of 4 in current phase
-- **Status:** In progress
-- **Last activity:** 2026-02-05 - Completed 21-03-PLAN.md
+- **Plan:** 4 of 4 in current phase
+- **Status:** Phase complete
+- **Last activity:** 2026-02-05 - Completed 21-04-PLAN.md
 
-Progress: ████████████████████ 99%
+Progress: ████████████████████ 100%
 
 ## Performance Metrics
 
@@ -34,6 +34,8 @@ Progress: ████████████████████ 99%
 ### Decisions Made (History)
 | Phase | Decision | Rationale |
 |-------|----------|-----------|
+| 21 | Use StrEnum for MicrosamDevice | Ensures str(enum) returns the value string, satisfying validation and user-facing requirements. |
+| 21 | Check for microsam models only if env is installed | Avoids noise in base-only installations; models are only required for microsam tools. |
 | 21 | Use micro_sam (underscore) for conda package | Matches conda-forge registry name. |
 | 21 | Use vit_b variants as the minimum model requirement | Balances capability with download size/speed. |
 | 21 | Default microsam install to CPU profile if unspecified | Keeps default install lean and compatible. |
@@ -47,6 +49,6 @@ Progress: ████████████████████ 99%
 
 ## Session Continuity
 
-- **Last Session:** 2026-02-05 - Completed 21-03-PLAN.md
-- **Stopped at:** Completed 21-03-PLAN.md
-- **Next Step:** 21-04-PLAN.md — Microsam doctor verification.
+- **Last Session:** 2026-02-05 - Completed 21-04-PLAN.md
+- **Stopped at:** Completed 21-04-PLAN.md
+- **Resume file:** None

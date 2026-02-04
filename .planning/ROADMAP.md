@@ -34,11 +34,11 @@ Establish the isolated environment and prerequisite models for µSAM.
   - [x] 21-01-PLAN.md — Microsam tool pack scaffold (manifest + entrypoint + model bootstrap script)
   - [x] 21-02-PLAN.md — Microsam conda environment + lockfile
   - [x] 21-03-PLAN.md — Microsam install integration (CLI wiring + GPU profiles + model bootstrap)
-  - [ ] 21-04-PLAN.md — Microsam doctor verification (validation of env + models)
+  - [x] 21-04-PLAN.md — Microsam doctor verification (validation of env + models)
 
 | Phase | Description | Status | Progress |
 |-------|-------------|--------|----------|
-| 21 | µSAM Tool Pack Foundation | In Progress | 75% |
+| 21 | µSAM Tool Pack Foundation | Complete | 100% |
 
 | 22 | Headless Tools | Pending | 0% |
 | 23 | Interactive Bridge | Pending | 0% |
