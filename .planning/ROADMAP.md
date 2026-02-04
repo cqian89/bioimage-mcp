@@ -169,16 +169,17 @@ Plans:
  [To be added during planning]
  
 ### Phase 20: Strategize and execute test consolidation
+ 
+ **Goal:** Coherent, marker-driven test suite tiers (unit/contract/integration/smoke) with predictable local runs and a small PR-gating smoke set.
+ **Depends on:** Phase 19
+ **Plans:** 3/4 plans complete
+ 
+ Plans:
+ - [x] 20-01-PLAN.md — Define smoke tiers + global env gating (warn-on-skip)
+ - [x] 20-02-PLAN.md — Relax contract strictness (additive discovery + best-effort descriptions)
+ - [x] 20-03-PLAN.md — Retag smoke suite into smoke_pr vs smoke_extended + tolerance fixes
+ - [ ] 20-04-PLAN.md — Update testing docs and PR-gate runbook
 
-**Goal:** Coherent, marker-driven test suite tiers (unit/contract/integration/smoke) with predictable local runs and a small PR-gating smoke set.
-**Depends on:** Phase 19
-**Plans:** 1/4 plans complete
-
-Plans:
-- [x] 20-01-PLAN.md — Define smoke tiers + global env gating (warn-on-skip)
-- [ ] 20-02-PLAN.md — Relax contract strictness (additive discovery + best-effort descriptions)
-- [ ] 20-03-PLAN.md — Retag smoke suite into smoke_pr vs smoke_extended + tolerance fixes
-- [ ] 20-04-PLAN.md — Update testing docs and PR-gate runbook
 
 **Details:**
 - Standardize smoke tiers: smoke_minimal, smoke_pr, smoke_extended (smoke_full deprecated).

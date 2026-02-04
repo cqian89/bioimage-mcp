@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 ## Current Position
  
  Phase: 20 of 20 (Strategize and execute test consolidation)
- Plan: 2 of 3 in current phase
+ Plan: 3 of 4 in current phase
  Status: In progress
- Last activity: 2026-02-04 - Completed 20-02-PLAN.md
+ Last activity: 2026-02-04 - Completed 20-03-PLAN.md
  
- Progress: █████████░ 97%
+ Progress: ██████████ 100%
  
 
 ## Accumulated Context
@@ -22,6 +22,9 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 ### Decisions Made
 | Phase | Decision | Rationale |
 |-------|----------|-----------|
+| 20 | Designated representative PR tests (skimage, cellpose, trackpy) | Balances coverage with PR latency. |
+| 20 | Demoted non-representative smoke tests to smoke_extended | Keeps the PR-gating tier lean and focused. |
+| 20 | Switched to tolerance-based numeric equivalence for Scipy | Prevents false failures due to minor float differences across platforms. |
 | 20 | Relaxed discovery contract assertions to use subset matching | Allows additive evolution without breaking existing tests. |
 | 20 | Treated tool-pack params_schema descriptions as best-effort | Avoids contract failures for tools with sparse documentation (e.g. trackpy). |
 | 20 | Strictly enforced manifest-only YAML discovery | Prevents accidental validation of arbitrary YAML files in tool directories. |
@@ -112,6 +115,6 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 - Existing failures in bootstrap/test_install.py need investigation.
 
 ## Session Continuity
-Last session: 2026-02-04T12:36:56Z
-Stopped at: Completed 20-02-PLAN.md
+Last session: 2026-02-04T13:00:00Z
+Stopped at: Completed 20-03-PLAN.md
 Resume file: None
