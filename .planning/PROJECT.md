@@ -8,26 +8,20 @@ Bioimage-MCP is a local Python package that exposes bioimage analysis tools to A
 
 Enables AI agents to safely and reproducibly execute bioimage analysis tools without dependency conflicts.
 
-## Current Milestone: v0.4.0 Unified Introspection Engine
+## Current Milestone: v0.5.0 TBD (Planned after v0.4.0)
 
-**Goal:** Consolidate discovery/introspection into a single engine and align meta.describe schema output.
+**Goal:** TBD (Run /gsd-new-milestone to define)
 
 **Target features:**
-- Shared introspection engine (AST-first + runtime fallback) replacing duplicate paths
-- Unified params_schema emission (tool_version + introspection_source) with artifact separation
-- Consolidated schema cache with strong invalidation (tool_version + env lock + engine version)
-- Overlay/patch pipeline consolidation with diagnostics
-- fn_id/module metadata cleanup with callable_fingerprint
+- TBD
 
 ## Current State
 
-Shipped v0.3.0 Scipy Integration (2026-01-27) with dynamic adapters for `scipy.ndimage`, `scipy.stats`, `scipy.spatial`, and `scipy.signal`, plus metadata preservation and parity-grade testing.
+Shipped v0.4.0 Unified Introspection Engine (2026-02-04) featuring AST-first discovery, OME-Zarr standardization, multimodal artifact previews, StarDist integration, and automated storage management.
 
 ## Next Milestone Goals
 
-- Consolidate discovery/introspection into a single AST-first engine with runtime fallback.
-- Align params_schema emission (tool_version + introspection_source) with artifact separation.
-- Unify schema caching, overlays, and diagnostic reporting.
+- TBD
 
 ## Requirements
 
@@ -43,16 +37,17 @@ Shipped v0.3.0 Scipy Integration (2026-01-27) with dynamic adapters for `scipy.n
 - ✓ **GPU Passthrough**: NVIDIA (CUDA) and Apple Silicon (MPS) detection — v0.2.0
 - ✓ **Trackpy Integration**: First major tool pack with dynamic introspection — v0.2.0
 - ✓ **Scipy Integration**: ndimage/stats/spatial/signal adapters with parity testing — v0.3.0
+- ✓ **Unified Introspection Engine**: AST-first discovery with isolated runtime fallback — v0.4.0
+- ✓ **OME-Zarr Standardization**: Standardized interchange format with directory support — v0.4.0
+- ✓ **Multimodal Previews**: Image, Table, and Label previews in artifact_info — v0.4.0
+- ✓ **StarDist Integration**: Isolated inference pipeline for StarDist — v0.4.0
+- ✓ **Artifact Retention**: Automated storage quota and retention management — v0.4.0
 
 ### Active
 
 <!-- Current scope. Building toward these. -->
 
-- [ ] **Unified Introspection Engine**: Single engine for discovery + meta.describe (v0.4.0)
-- [ ] **Schema Emission Alignment**: params_schema pipeline with tool_version/introspection_source
-- [ ] **Cache Consolidation**: Single schema cache with strong invalidation
-- [ ] **Overlay/Patch Consolidation**: Unified patch pipeline with diagnostics
-- [ ] **fn_id & Module Metadata Cleanup**: Full module paths + callable_fingerprint
+- [ ] TBD
 
 ### Out of Scope
 
