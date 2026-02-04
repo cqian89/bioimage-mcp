@@ -29,7 +29,7 @@ def synthetic_image():
     return path
 
 
-@pytest.mark.smoke_full
+@pytest.mark.smoke_pr
 @pytest.mark.uses_minimal_data
 @pytest.mark.requires_env("bioimage-mcp-base")
 @pytest.mark.anyio
@@ -96,7 +96,7 @@ async def test_skimage_gaussian_equivalence(
     helper.assert_arrays_equivalent(np.asarray(mcp_img.data), np.asarray(native_img.data))
 
 
-@pytest.mark.smoke_full
+@pytest.mark.smoke_pr
 @pytest.mark.uses_minimal_data
 @pytest.mark.requires_env("bioimage-mcp-base")
 @pytest.mark.anyio

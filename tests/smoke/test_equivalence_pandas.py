@@ -28,7 +28,7 @@ def sample_csv():
     return path
 
 
-@pytest.mark.smoke_full
+@pytest.mark.smoke_pr
 @pytest.mark.uses_minimal_data
 @pytest.mark.requires_env("bioimage-mcp-base")
 @pytest.mark.anyio

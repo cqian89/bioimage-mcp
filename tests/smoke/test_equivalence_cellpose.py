@@ -60,7 +60,7 @@ def synthetic_cell_image(tmp_path):
         path.unlink()
 
 
-@pytest.mark.smoke_full
+@pytest.mark.smoke_extended
 @pytest.mark.uses_minimal_data
 @pytest.mark.requires_env("bioimage-mcp-cellpose")
 @pytest.mark.anyio

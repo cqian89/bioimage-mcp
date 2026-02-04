@@ -11,7 +11,9 @@ from typing import Any
 import pytest
 
 
-def get_markers(node: ast.ClassDef | ast.FunctionDef) -> list[tuple[str, list[Any]]]:
+def get_markers(
+    node: ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef,
+) -> list[tuple[str, list[Any]]]:
     markers = []
     for decorator in node.decorator_list:
         marker_name = None
@@ -48,7 +50,7 @@ def test_equivalence_markers_enforcement():
     Ensure all test_equivalence_*.py tests follow marker conventions (FR-009).
 
     Rules:
-    - Must have @pytest.mark.smoke_full
+    - Must have EXACTLY ONE of: @pytest.mark.smoke_pr OR @pytest.mark.smoke_extended.
     - Must have @pytest.mark.requires_env("bioimage-mcp-...")
     - Must have exactly one of: @pytest.mark.uses_minimal_data OR @pytest.mark.requires_lfs_dataset
     - Must NOT have @pytest.mark.smoke_minimal
@@ -72,12 +74,16 @@ def test_equivalence_markers_enforcement():
 
         # Second pass: find functions and check their markers (including inherited)
         for node in tree.body:
-            if isinstance(node, ast.FunctionDef) and node.name.startswith("test_"):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name.startswith(
+                "test_"
+            ):
                 check_test_node(test_file.name, node, [], errors)
             elif isinstance(node, ast.ClassDef):
                 parent_markers = class_markers.get(node.name, [])
                 for subnode in node.body:
-                    if isinstance(subnode, ast.FunctionDef) and subnode.name.startswith("test_"):
+                    if isinstance(
+                        subnode, (ast.FunctionDef, ast.AsyncFunctionDef)
+                    ) and subnode.name.startswith("test_"):
                         check_test_node(
                             f"{test_file.name}::{node.name}", subnode, parent_markers, errors
                         )
@@ -98,9 +104,13 @@ def check_test_node(
 
     test_id = f"{context}:{node.name}"
 
-    # 1. smoke_full
-    if "smoke_full" not in marker_names:
-        errors.append(f"{test_id} missing @pytest.mark.smoke_full")
+    # 1. smoke_pr XOR smoke_extended
+    tier_markers = {"smoke_pr", "smoke_extended"}
+    present_tier_markers = tier_markers.intersection(set(marker_names))
+    if len(present_tier_markers) != 1:
+        errors.append(
+            f"{test_id} must have exactly one of {tier_markers}, found: {present_tier_markers}"
+        )
 
     # 2. smoke_minimal (should NOT be present)
     if "smoke_minimal" in marker_names:
@@ -108,9 +118,13 @@ def check_test_node(
 
     # 3. requires_env
     env_markers = [m for m in all_markers if m[0] == "requires_env"]
-    if not env_markers:
+    # Also support convenience markers as valid env declarations for now
+    convenience_markers = {"requires_stardist", "requires_cellpose", "requires_base"}
+    has_convenience = convenience_markers.intersection(set(marker_names))
+
+    if not env_markers and not has_convenience:
         errors.append(f"{test_id} missing @pytest.mark.requires_env(...)")
-    else:
+    elif env_markers:
         valid_env = False
         for _, args in env_markers:
             if args and any(isinstance(a, str) and a.startswith("bioimage-mcp-") for a in args):

@@ -29,7 +29,8 @@ def vendored_trackpy_image():
     return path
 
 
-@pytest.mark.smoke_full
+@pytest.mark.smoke_extended
+@pytest.mark.uses_minimal_data
 @pytest.mark.requires_env("bioimage-mcp-trackpy")
 @pytest.mark.anyio
 async def test_trackpy_locate_equivalence(
