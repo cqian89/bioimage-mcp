@@ -39,6 +39,7 @@ LAZY_IMPORT_ALLOWLIST = [
     "registry/dynamic/adapters/scipy_ndimage.py",
     "artifacts/metadata.py",  # Uses graceful fallback if bioio not available
     "artifacts/store.py",  # Lazy imports for export conversions
+    "artifacts/preview.py",  # Lazy imports for BioImageRef previews
 ]
 
 # Files/directories that must NEVER have bioio imports (top-level or lazy)

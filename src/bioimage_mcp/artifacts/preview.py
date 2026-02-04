@@ -6,7 +6,6 @@ from io import BytesIO
 from pathlib import Path
 
 import numpy as np
-from bioio import BioImage
 from PIL import Image
 
 TAB20_RGB = [
@@ -226,6 +225,8 @@ def generate_image_preview(
 ) -> dict | None:
     """Main entry point for BioImageRef preview."""
     try:
+        from bioio import BioImage
+
         # Load image data using bioio
         # Note: we use BioImage to handle various formats
         img = BioImage(path)
@@ -281,6 +282,8 @@ def generate_label_preview(
 ) -> dict | None:
     """Main entry point for LabelImageRef preview (colormap + metadata)."""
     try:
+        from bioio import BioImage
+
         img = BioImage(path)
         data = img.data
         if hasattr(data, "values"):
