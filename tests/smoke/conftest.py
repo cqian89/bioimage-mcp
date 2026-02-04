@@ -1,13 +1,21 @@
 import datetime
-import subprocess
 import time
 from dataclasses import dataclass, field
+from enum import Enum
 from pathlib import Path
 
 import pytest
 
 from tests.smoke.utils.interaction_logger import InteractionLog, InteractionLogger
 from tests.smoke.utils.mcp_client import TestMCPClient
+
+
+class SmokeMode(Enum):
+    """Smoke suite execution modes."""
+
+    MINIMAL = "minimal"
+    PR = "pr"
+    EXTENDED = "extended"
 
 
 @pytest.fixture(scope="session")
@@ -25,35 +33,20 @@ class SmokeConfig:
     minimal_suite_budget_s: float = 120.0  # Max seconds for minimal suite
     scenario_timeout_s: float = 300.0  # Max seconds per scenario
     log_dir: Path = field(default_factory=lambda: Path(".bioimage-mcp/smoke_logs"))
-    minimal_mode: bool = True  # True for CI, False for full suite
+    mode: SmokeMode = SmokeMode.MINIMAL
     session_start_time: float | None = None
 
 
 def _is_smoke_item(item: pytest.Item) -> bool:
     """Return True if the test item is part of the smoke suite."""
     marker_names = {marker.name for marker in item.iter_markers()}
-    if {"smoke_minimal", "smoke_full"}.intersection(marker_names):
+    if {"smoke_minimal", "smoke_pr", "smoke_extended", "smoke_full"}.intersection(marker_names):
         return True
 
     item_path = getattr(item, "path", None)
     if item_path is None:
         item_path = Path(str(item.fspath))
     return "tests" in item_path.parts and "smoke" in item_path.parts
-
-
-def _env_available(env_name: str) -> bool:
-    """Check if a conda environment is available and functional."""
-    try:
-        # Use conda run -n env_name python -c "print('ok')" to verify
-        result = subprocess.run(
-            ["conda", "run", "-n", env_name, "python", "-c", "print('ok')"],
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-        return result.returncode == 0
-    except Exception:
-        return False
 
 
 def pytest_addoption(parser):
@@ -65,10 +58,22 @@ def pytest_addoption(parser):
         help="Enable recording mode for smoke tests",
     )
     parser.addoption(
+        "--smoke-pr",
+        action="store_true",
+        default=False,
+        help="Run PR-gating smoke tests (+ minimal items)",
+    )
+    parser.addoption(
+        "--smoke-extended",
+        action="store_true",
+        default=False,
+        help="Run extended smoke tests (+ PR + minimal items)",
+    )
+    parser.addoption(
         "--smoke-full",
         action="store_true",
         default=False,
-        help="Run full smoke test suite instead of minimal",
+        help="Alias for --smoke-extended (deprecated)",
     )
 
 
@@ -82,8 +87,13 @@ def smoke_record(request):
 def smoke_config(request):
     """Global smoke test configuration fixture."""
     config = SmokeConfig()
-    if request.config.getoption("--smoke-full", default=False):
-        config.minimal_mode = False
+    if request.config.getoption("--smoke-extended", default=False) or request.config.getoption(
+        "--smoke-full", default=False
+    ):
+        config.mode = SmokeMode.EXTENDED
+    elif request.config.getoption("--smoke-pr", default=False):
+        config.mode = SmokeMode.PR
+
     # Store on session for hook access
     request.session._smoke_config = config
     return config
@@ -168,7 +178,7 @@ def pytest_runtest_makereport(item, call):
 def pytest_runtest_setup(item):
     """Enforce suite-level time budget (T012)."""
     config = getattr(item.session, "_smoke_config", None)
-    if config and config.minimal_mode and _is_smoke_item(item):
+    if config and config.mode == SmokeMode.MINIMAL and _is_smoke_item(item):
         if config.session_start_time is None:
             config.session_start_time = time.time()
         elapsed = time.time() - config.session_start_time
@@ -179,33 +189,31 @@ def pytest_runtest_setup(item):
 
 
 @pytest.fixture(autouse=True)
-def check_required_env(request):
-    """Skip test if required environment is not available."""
-    # Check for explicit requires_env marker
-    marker = request.node.get_closest_marker("requires_env")
-    if marker:
-        env_name = marker.args[0]
-        if not _env_available(env_name):
-            pytest.skip(f"Required environment not available: {env_name}")
+def enforce_smoke_tiers(request, smoke_config):
+    """Skip smoke tests based on selected tier."""
+    if not _is_smoke_item(request.node):
+        return
 
-    # Check for convenience environment markers
-    env_mapping = {
-        "requires_stardist": "bioimage-mcp-stardist",
-        "requires_cellpose": "bioimage-mcp-cellpose",
-        "requires_base": "bioimage-mcp-base",
-    }
+    # EXTENDED mode skips nothing
+    if smoke_config.mode == SmokeMode.EXTENDED:
+        return
 
-    for marker_name, env_name in env_mapping.items():
-        if request.node.get_closest_marker(marker_name):
-            if not _env_available(env_name):
-                pytest.skip(f"Required environment not available: {env_name}")
+    # PR mode skips EXTENDED
+    if smoke_config.mode == SmokeMode.PR:
+        if request.node.get_closest_marker("smoke_extended") or request.node.get_closest_marker(
+            "smoke_full"
+        ):
+            pytest.skip("Skipping smoke_extended test in PR mode")
+        return
 
-
-@pytest.fixture(autouse=True)
-def skip_smoke_full_in_minimal_mode(request, smoke_config):
-    """Skip smoke_full tests when running minimal smoke suite."""
-    if smoke_config.minimal_mode and request.node.get_closest_marker("smoke_full"):
-        pytest.skip("Skipping smoke_full test in minimal mode")
+    # MINIMAL mode (default) skips PR and EXTENDED
+    if smoke_config.mode == SmokeMode.MINIMAL:
+        if (
+            request.node.get_closest_marker("smoke_pr")
+            or request.node.get_closest_marker("smoke_extended")
+            or request.node.get_closest_marker("smoke_full")
+        ):
+            pytest.skip("Skipping PR/Extended smoke test in minimal mode")
 
 
 @pytest.fixture(scope="session")
