@@ -155,14 +155,15 @@ Plans:
 - CLI visibility: storage status + last cleanup summary + manual cleanup trigger.
 
 ### Phase 19: Add smoke test for stardist
+ 
+ **Goal:** Add smoke test for stardist
+ **Status:** Complete (2026-02-04)
+ **Depends on:** Phase 18
+ **Plans:** 1/1 plans complete
+ 
+ Plans:
+ - [x] 19-01-PLAN.md — StarDist smoke equivalence test (MCP vs native baseline)
 
-**Goal:** Add smoke test for stardist
-**Status:** Not started
-**Depends on:** Phase 18
-**Plans:** 1 plan
-
-Plans:
-- [ ] 19-01-PLAN.md — StarDist smoke equivalence test (MCP vs native baseline)
 
 **Details:**
 [To be added during planning]

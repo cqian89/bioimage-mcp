@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 ## Current Position
 
 Phase: 19 of 19 (Add smoke test for stardist)
-Plan: 0 of 0 in current phase
-Status: Not started
-Last activity: 2026-02-04 - Phase 19 added
+Plan: 1 of 1 in current phase
+Status: Phase complete
+Last activity: 2026-02-04 - Completed 19-01-PLAN.md
 
-Progress: ░░░░░░░░░░ 0%
+Progress: ██████████ 100%
 
 ## Accumulated Context
 
@@ -99,6 +99,8 @@ Progress: ░░░░░░░░░░ 0%
 | 18 | Implement rename-to-trash | safer multi-step deletion handles partial deletions gracefully. |
 | 18 | Use in-memory SQLite for StorageManager unit tests | ensure fast and deterministic trigger validation. |
 | 18 | Use subprocess-based integration tests for CLI | verify real-world behavior and JSON contracts. |
+| 19 | Use 'datasets/smoke_tmp' for smoke test input | Comply with server read-path restrictions for E2E tests. |
+| 19 | Convenience environment markers in conftest | Map requires_stardist/cellpose to bioimage-mcp-* envs for simpler test skipping. |
 
 ## Roadmap Evolution
 - Phase 12 added: Core Engine + AST-First
@@ -131,8 +133,8 @@ Progress: ░░░░░░░░░░ 0%
 | 008 | The CLI command `bioimage-mcp list` shows down to function level in some environments. It should only show down to package level. | 2026-02-02 | 69a37c7 | [008-the-cli-command-bioimage-mcp-list-shows-](./quick/008-the-cli-command-bioimage-mcp-list-shows-/) |
 
 ## Session Continuity
-Last session: 2026-02-02T22:23:00Z
-Stopped at: Completed 18-05-PLAN.md
+Last session: 2026-02-04T00:22:52Z
+Stopped at: Completed 19-01-PLAN.md
 Resume file: None
 
 ## Next Steps
