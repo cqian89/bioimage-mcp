@@ -159,10 +159,10 @@ Plans:
 **Goal:** Add smoke test for stardist
 **Status:** Not started
 **Depends on:** Phase 18
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 19 to break down)
+- [ ] 19-01-PLAN.md — StarDist smoke equivalence test (MCP vs native baseline)
 
 **Details:**
 [To be added during planning]
