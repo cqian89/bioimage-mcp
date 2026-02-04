@@ -228,7 +228,7 @@ async def live_server(smoke_config):
 @pytest.fixture
 def sample_image(request, smoke_config):
     """Provide sample image path based on test mode."""
-    if smoke_config.minimal_mode:
+    if smoke_config.mode == SmokeMode.MINIMAL:
         path = Path("datasets/synthetic/test.tif")
     else:
         path = Path("datasets/FLUTE_FLIM_data_tif/hMSC control.tif")
