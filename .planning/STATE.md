@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 ## Current Position
  
  Phase: 20 of 20 (Strategize and execute test consolidation)
- Plan: 3 of 4 in current phase
- Status: In progress
- Last activity: 2026-02-04 - Completed 20-03-PLAN.md
+ Plan: 4 of 4 in current phase
+ Status: Phase complete
+ Last activity: 2026-02-04 - Completed 20-04-PLAN.md
  
  Progress: ██████████ 100%
  
@@ -107,7 +107,8 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 | 18 | Use in-memory SQLite for StorageManager unit tests | ensure fast and deterministic trigger validation. |
 | 18 | Use subprocess-based integration tests for CLI | verify real-world behavior and JSON contracts. |
 | 19 | Use 'datasets/smoke_tmp' for smoke test input | Comply with server read-path restrictions for E2E tests. |
-| 19 | Convenience environment markers in conftest | Map requires_stardist/cellpose to bioimage-mcp-* envs for simpler test skipping. |
+| 20 | Preferred requires_env marker for environment-gated tests | Standardizes how tool-specific tests are skipped. |
+| 20 | Standardized local PR gate command set | Ensures consistent local verification before CI. |
 
 ## Blockers/Concerns Carried Forward
 - trackpy schema descriptions missing (contract test failure) - FIXED.
@@ -115,6 +116,6 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 - Existing failures in bootstrap/test_install.py need investigation.
 
 ## Session Continuity
-Last session: 2026-02-04T13:00:00Z
-Stopped at: Completed 20-03-PLAN.md
+Last session: 2026-02-04T13:06:25Z
+Stopped at: Completed 20-04-PLAN.md
 Resume file: None
