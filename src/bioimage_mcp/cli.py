@@ -79,8 +79,12 @@ def _handle_install(args: argparse.Namespace) -> int:
     from bioimage_mcp.bootstrap.install import install
 
     if args.tools and args.profile:
-        print("Error: tools and --profile are mutually exclusive", file=sys.stderr)
-        return 1
+        if args.tools != ["microsam"]:
+            print(
+                "Error: tools and --profile are mutually exclusive (except for microsam)",
+                file=sys.stderr,
+            )
+            return 1
 
     return install(
         tools=args.tools if args.tools else None,

@@ -80,6 +80,9 @@ def test_cli_wires_install(monkeypatch) -> None:
     assert called["install"] == (None, None, True)
 
     # Test mutual exclusivity
+    assert cli.main(["install", "microsam", "--profile", "cpu"]) == 0
+    assert called["install"] == (["microsam"], "cpu", False)
+
     assert cli.main(["install", "cellpose", "--profile", "cpu"]) == 1
 
 
