@@ -9,14 +9,14 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 
 ## Current Position
  
- Phase: 19 of 20 (Add smoke test for stardist)
- Plan: 1 of 1 in current phase
- Status: Phase complete
- Last activity: 2026-02-04 - Completed 19-01-PLAN.md
+ Phase: 20 of 20 (Strategize and execute test consolidation)
+ Plan: 1 of 4 in current phase
+ Status: In progress
+ Last activity: 2026-02-04 - Completed 20-01-PLAN.md
  
- Progress: ██████████ 100%
+ Progress: █████████░ 92%
  
- **Next Phase:** Phase 20 (Strategize and execute test consolidation)
+ **Next Plan:** 20-02-PLAN.md
 
 
 ## Accumulated Context
@@ -104,6 +104,9 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 | 18 | Use subprocess-based integration tests for CLI | verify real-world behavior and JSON contracts. |
 | 19 | Use 'datasets/smoke_tmp' for smoke test input | Comply with server read-path restrictions for E2E tests. |
 | 19 | Convenience environment markers in conftest | Map requires_stardist/cellpose to bioimage-mcp-* envs for simpler test skipping. |
+| 20 | Tiered Smoke Testing | minimal, PR, and extended tiers for predictable local and CI runs. |
+| 20 | Global Env Gating with Caching | Centralized requires_env skipping in tests/conftest.py with session-scoped caching. |
+| 20 | Actionable Skip Warnings | Use bioimage-mcp install commands in skip messages when tool envs are missing. |
 
 ## Roadmap Evolution
 - Phase 12 added: Core Engine + AST-First
@@ -137,8 +140,8 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 | 008 | The CLI command `bioimage-mcp list` shows down to function level in some environments. It should only show down to package level. | 2026-02-02 | 69a37c7 | [008-the-cli-command-bioimage-mcp-list-shows-](./quick/008-the-cli-command-bioimage-mcp-list-shows-/) |
 
 ## Session Continuity
-Last session: 2026-02-04T00:22:52Z
-Stopped at: Completed 19-01-PLAN.md
+Last session: 2026-02-04T12:32:18Z
+Stopped at: Completed 20-01-PLAN.md
 Resume file: None
 
 ## Next Steps
