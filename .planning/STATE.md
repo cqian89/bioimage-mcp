@@ -10,8 +10,8 @@
 
 - **Phase:** 21 - µSAM Tool Pack Foundation
 - **Plan:** 4 of 4 in current phase
-- **Status:** Phase complete
-- **Last activity:** 2026-02-05 - Completed 21-04-PLAN.md
+- **Status:** Gaps found (see 21-VERIFICATION.md)
+- **Last activity:** 2026-02-05 - Verification reported gaps
 
 Progress: ████████████████████ 100%
 
@@ -45,7 +45,7 @@ Progress: ████████████████████ 100%
 | 15 | Use OME-Zarr as default save format in SkimageAdapter | Aligns with project-wide standardization. |
 
 ### Blockers
-- None currently.
+- Phase 21 verification gap: tool/device auto-selection (CUDA > MPS > CPU) not wired.
 
 ## Session Continuity
 
