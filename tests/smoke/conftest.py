@@ -181,11 +181,24 @@ def pytest_runtest_setup(item):
 @pytest.fixture(autouse=True)
 def check_required_env(request):
     """Skip test if required environment is not available."""
+    # Check for explicit requires_env marker
     marker = request.node.get_closest_marker("requires_env")
     if marker:
         env_name = marker.args[0]
         if not _env_available(env_name):
             pytest.skip(f"Required environment not available: {env_name}")
+
+    # Check for convenience environment markers
+    env_mapping = {
+        "requires_stardist": "bioimage-mcp-stardist",
+        "requires_cellpose": "bioimage-mcp-cellpose",
+        "requires_base": "bioimage-mcp-base",
+    }
+
+    for marker_name, env_name in env_mapping.items():
+        if request.node.get_closest_marker(marker_name):
+            if not _env_available(env_name):
+                pytest.skip(f"Required environment not available: {env_name}")
 
 
 @pytest.fixture(autouse=True)
