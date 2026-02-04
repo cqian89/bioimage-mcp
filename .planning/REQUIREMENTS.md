@@ -68,30 +68,30 @@ Explicitly excluded from v0.5.0:
 
 ## Traceability
 
-| Requirement | Phase | Plan | Status |
-|-------------|-------|------|--------|
-| INFRA-01 | — | — | Pending |
-| INFRA-02 | — | — | Pending |
-| INFRA-03 | — | — | Pending |
-| INFRA-04 | — | — | Pending |
-| INFRA-05 | — | — | Pending |
-| USAM-01 | — | — | Pending |
-| USAM-02 | — | — | Pending |
-| USAM-03 | — | — | Pending |
-| USAM-04 | — | — | Pending |
-| USAM-05 | — | — | Pending |
-| USAM-06 | — | — | Pending |
-| ANNOT-01 | — | — | Pending |
-| ANNOT-02 | — | — | Pending |
-| ANNOT-03 | — | — | Pending |
-| ANNOT-04 | — | — | Pending |
-| ANNOT-05 | — | — | Pending |
-| ANNOT-06 | — | — | Pending |
-| ANNOT-07 | — | — | Pending |
-| SESS-01 | — | — | Pending |
-| SESS-02 | — | — | Pending |
-| SESS-03 | — | — | Pending |
-| SESS-04 | — | — | Pending |
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| INFRA-01 | Phase 23 | Pending |
+| INFRA-02 | Phase 23 | Pending |
+| INFRA-03 | Phase 23 | Pending |
+| INFRA-04 | Phase 22 | Pending |
+| INFRA-05 | Phase 21 | Pending |
+| USAM-01 | Phase 21 | Pending |
+| USAM-02 | Phase 23 | Pending |
+| USAM-03 | Phase 22 | Pending |
+| USAM-04 | Phase 22 | Pending |
+| USAM-05 | Phase 21 | Pending |
+| USAM-06 | Phase 21 | Pending |
+| ANNOT-01 | Phase 23 | Pending |
+| ANNOT-02 | Phase 23 | Pending |
+| ANNOT-03 | Phase 23 | Pending |
+| ANNOT-04 | Phase 23 | Pending |
+| ANNOT-05 | Phase 23 | Pending |
+| ANNOT-06 | Phase 23 | Pending |
+| ANNOT-07 | Phase 23 | Pending |
+| SESS-01 | Phase 24 | Pending |
+| SESS-02 | Phase 24 | Pending |
+| SESS-03 | Phase 24 | Pending |
+| SESS-04 | Phase 22 | Pending |
 
 ---
 *Requirements defined: 2026-02-04*
