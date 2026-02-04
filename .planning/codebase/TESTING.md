@@ -12,10 +12,21 @@
 - Standard `assert` (built-in to pytest)
 
 **Run Commands:**
+
+### Local PR Gate
+Run these to verify changes before pushing:
 ```bash
-pytest                 # Run all tests
-pytest tests/unit/     # Run unit tests
-pytest -m "integration" # Run integration tests
+pytest tests/unit -q
+pytest tests/contract -q
+pytest tests/smoke -m smoke_minimal -q
+pytest tests/smoke -m smoke_pr -q
+```
+
+### Full Suite
+```bash
+pytest                 # Run all tests (may be slow)
+pytest tests/unit/     # Run only unit tests
+pytest -m "smoke_extended" # Run all smoke tests
 ```
 
 ## Test File Organization
@@ -27,15 +38,11 @@ pytest -m "integration" # Run integration tests
 - `test_*.py` for test files.
 - `test_*` for test functions.
 
-**Structure:**
-```text
-tests/
-├── unit/         # Unit tests
-├── integration/  # Integration tests
-├── contract/     # API/schema contract tests
-├── smoke/        # Basic readiness checks
-└── fixtures/     # Shared test data/utilities
-```
+**Structure & Markers:**
+- `tests/unit/`: Logic isolation. Markers: (none required).
+- `tests/contract/`: Protocol/Schema compliance. Markers: (none required).
+- `tests/integration/`: Multi-service flows. Markers: `integration`.
+- `tests/smoke/`: E2E readiness. Markers: `smoke_minimal`, `smoke_pr`, `smoke_extended`.
 
 ## Test Structure
 
@@ -115,7 +122,8 @@ def test_error_hints_selected_by_error_code(tmp_path: Path, monkeypatch) -> None
 ## Common Patterns
 
 **Async Testing:**
-- Use `@pytest.mark.asyncio` (via `pytest-asyncio`).
+- Use `@pytest.mark.anyio`.
+- Most server-side and smoke tests are async.
 
 **Error Testing:**
 - `with pytest.raises(ErrorCode):`
