@@ -9,14 +9,12 @@ See: .planning/PROJECT.md (updated 2026-02-04)
 
 ## Current Position
 
-Phase: N/A
-Plan: N/A
-Status: Milestone archived; Ready for next milestone
-Last activity: 2026-02-04 - Archived v0.4.0 milestone
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-02-04 — Milestone v0.5.0 Interactive Annotation started
 
-Progress: ░░░░░░░░░░ 0% (Waiting for new milestone)
-
-**Milestone v0.4.0 complete!** 10 phases delivered.
+Progress: ░░░░░░░░░░ 0% (Defining requirements)
  
 
 ## Accumulated Context

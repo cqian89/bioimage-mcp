@@ -8,12 +8,16 @@ Bioimage-MCP is a local Python package that exposes bioimage analysis tools to A
 
 Enables AI agents to safely and reproducibly execute bioimage analysis tools without dependency conflicts.
 
-## Current Milestone: v0.5.0 TBD (Planned after v0.4.0)
+## Current Milestone: v0.5.0 Interactive Annotation
 
-**Goal:** TBD (Run /gsd-new-milestone to define)
+**Goal:** Enable napari-based image annotation workflows for µSAM segmentation, allowing users to interactively guide AI segmentation through point prompts and scribbles.
 
 **Target features:**
-- TBD
+- Napari viewer integration for image display and annotation
+- Point/box prompting interface for µSAM
+- Scribble-based prompting for mask refinement
+- Full µSAM tool pack with inference pipeline
+- Annotation → segmentation bridge (napari ↔ MCP)
 
 ## Current State
 
@@ -21,7 +25,9 @@ Shipped v0.4.0 Unified Introspection Engine (2026-02-04) featuring AST-first dis
 
 ## Next Milestone Goals
 
-- TBD
+- Interactive annotation via napari
+- µSAM integration for prompted segmentation
+- Human-in-the-loop workflows for bioimage analysis
 
 ## Requirements
 
@@ -47,7 +53,11 @@ Shipped v0.4.0 Unified Introspection Engine (2026-02-04) featuring AST-first dis
 
 <!-- Current scope. Building toward these. -->
 
-- [ ] TBD
+- [ ] Napari viewer integration for annotation display
+- [ ] Point/box prompting for µSAM segmentation
+- [ ] Scribble-based prompting for mask refinement
+- [ ] µSAM tool pack with isolated inference pipeline
+- [ ] Bidirectional annotation bridge (napari ↔ MCP artifacts)
 
 ### Out of Scope
 
@@ -85,4 +95,4 @@ Developing a "standard library" for bioimage AI. Building on top of the `mcp` Py
 | **Automatic float32 promotion** | Prevent uint16 overflow, ensure parity | ✓ Implemented (v0.3.0) |
 
 ---
-*Last updated: 2026-01-27 after v0.3.0 milestone completion*
+*Last updated: 2026-02-04 after v0.5.0 milestone initialization*
