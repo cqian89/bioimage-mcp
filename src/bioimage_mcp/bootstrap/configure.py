@@ -25,6 +25,8 @@ fs_allowlist_write:
 fs_denylist:
   - /etc
   - /proc
+microsam:
+  device: auto
 """.lstrip().format(
         artifact_store_root=str(home / ".bioimage-mcp" / "artifacts"),
         tool_manifest_root=str(home / ".bioimage-mcp" / "tools"),

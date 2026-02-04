@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from enum import Enum
+from enum import Enum, StrEnum
 from pathlib import Path
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -40,6 +40,21 @@ class DiagnosticLevel(str, Enum):
     FULL = "full"
 
 
+class MicrosamDevice(StrEnum):
+    """Device selection for microsam inference."""
+
+    AUTO = "auto"
+    CUDA = "cuda"
+    MPS = "mps"
+    CPU = "cpu"
+
+
+class MicrosamSettings(BaseModel):
+    """Configuration for microsam tool pack."""
+
+    device: MicrosamDevice = MicrosamDevice.AUTO
+
+
 class PermissionSettings(BaseModel):
     """Configuration for file access behavior."""
 
@@ -68,6 +83,7 @@ class Config(BaseModel):
 
     permissions: PermissionSettings = Field(default_factory=PermissionSettings)
     agent_guidance: AgentGuidance = Field(default_factory=AgentGuidance)
+    microsam: MicrosamSettings = Field(default_factory=MicrosamSettings)
 
     default_pagination_limit: int = 20
     max_pagination_limit: int = 200
