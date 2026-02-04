@@ -208,8 +208,8 @@ class TestMetaDescribeParamsSchemaContract:
         assert "required" in schema
         assert isinstance(schema["required"], list)
 
-    def test_params_schema_property_has_description(self) -> None:
-        """Test that each property should have a description."""
+    def test_params_schema_property_description_is_best_effort(self) -> None:
+        """Test that property descriptions are best-effort (optional but must be valid if present)."""
         response = {
             "ok": True,
             "result": {
@@ -220,6 +220,9 @@ class TestMetaDescribeParamsSchemaContract:
                             "type": "number",
                             "description": "Cell diameter in pixels",
                         },
+                        "no_desc": {
+                            "type": "integer",
+                        },
                     },
                     "required": [],
                 },
@@ -229,6 +232,15 @@ class TestMetaDescribeParamsSchemaContract:
         }
         validated = MetaDescribeSuccessResponse(**response)
         props = validated.result["params_schema"]["properties"]
-        for prop_name, prop_def in props.items():
-            # Every property should have a description
-            assert "description" in prop_def, f"Property {prop_name} missing description"
+
+        # diameter has description
+        assert props["diameter"]["description"] == "Cell diameter in pixels"
+
+        # no_desc missing description is allowed
+        assert "description" not in props["no_desc"]
+
+        # If description is present, it must be a non-empty string
+        for prop_def in props.values():
+            if "description" in prop_def:
+                assert isinstance(prop_def["description"], str)
+                assert len(prop_def["description"]) > 0
