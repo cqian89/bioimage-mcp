@@ -159,7 +159,7 @@ Plans:
  **Goal:** Add smoke test for stardist
  **Status:** Complete (2026-02-04)
  **Depends on:** Phase 18
- **Plans:** 1/1 plans complete
+ **Plans:** 2/3 plans complete
  
  Plans:
  - [x] 19-01-PLAN.md — StarDist smoke equivalence test (MCP vs native baseline)
