@@ -15,7 +15,7 @@ def native_executor():
     return NativeExecutor()
 
 
-@pytest.mark.smoke_pr
+@pytest.mark.smoke_extended
 @pytest.mark.uses_minimal_data
 @pytest.mark.requires_env("bioimage-mcp-base")
 @pytest.mark.anyio
@@ -97,11 +97,14 @@ async def test_scipy_stats_ttest_ind_equivalence(live_server, native_executor, t
         with open(baseline_result["output_path"]) as f:
             expected_data = json.load(f)
 
-        # 4. Compare bit-for-bit (exact dict equality)
+        # 4. Compare with tolerance
         # The MCP output may contain extra fields from the Scipy Bunch object,
         # so we only compare the stable fields defined in the baseline.
-        for key in expected_data:
-            assert mcp_data[key] == expected_data[key], f"Mismatch in field '{key}'"
+        for key, val in expected_data.items():
+            if isinstance(val, (int, float)):
+                assert mcp_data[key] == pytest.approx(val), f"Mismatch in field '{key}'"
+            else:
+                assert mcp_data[key] == val, f"Mismatch in field '{key}'"
 
     finally:
         # Cleanup

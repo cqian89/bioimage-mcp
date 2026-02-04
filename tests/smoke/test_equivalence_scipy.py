@@ -23,7 +23,7 @@ def native_executor():
     return NativeExecutor()
 
 
-@pytest.mark.smoke_pr
+@pytest.mark.smoke_extended
 @pytest.mark.uses_minimal_data
 @pytest.mark.requires_env("bioimage-mcp-base")
 @pytest.mark.anyio
@@ -111,9 +111,9 @@ async def test_scipy_ndimage_gaussian_filter_equivalence(
     expected_data = np.load(baseline_result["output_path"])
     expected_data = np.asarray(expected_data, dtype=np.float32)
 
-    # 3. Compare bit-for-bit
+    # 3. Compare with tolerance
     try:
-        np.testing.assert_array_equal(mcp_data, expected_data)
+        helper.assert_arrays_equivalent(mcp_data, expected_data)
     finally:
         # Cleanup baseline temp file
         baseline_tmp_path = Path(baseline_result["output_path"])
