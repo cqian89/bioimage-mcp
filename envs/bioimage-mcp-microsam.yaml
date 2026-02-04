@@ -12,7 +12,7 @@ dependencies:
   - python=3.11
   - pip
   - numpy
-  - micro-sam>=1.7.1
+  - micro_sam>=1.7.0
   - napari
   # Standard image I/O
   - bioio
