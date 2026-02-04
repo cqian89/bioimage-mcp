@@ -9,9 +9,11 @@
 ## Current Position
 
 - **Phase:** 21 - µSAM Tool Pack Foundation
-- **Plan:** None (Ready for `/gsd-plan-phase 21`)
-- **Status:** Initialized
-- **Progress:** [░░░░░░░░░░░░░░░░░░░░] 0%
+- **Plan:** 1 of 4 in current phase
+- **Status:** In progress
+- **Last activity:** 2026-02-04 - Completed 21-01-PLAN.md
+
+Progress: ███████████████████░ 96%
 
 ## Performance Metrics
 
@@ -31,6 +33,7 @@
 ### Decisions Made (History)
 | Phase | Decision | Rationale |
 |-------|----------|-----------|
+| 21 | Use vit_b variants as the minimum model requirement | Balances capability with download size/speed. |
 | 20 | Designated representative PR tests (skimage, cellpose, trackpy) | Balances coverage with PR latency. |
 | 20 | Demoted non-representative smoke tests to smoke_extended | Keeps the PR-gating tier lean and focused. |
 | 15 | Use OME-Zarr as default save format in SkimageAdapter | Aligns with project-wide standardization. |

@@ -31,7 +31,7 @@ Establish the isolated environment and prerequisite models for µSAM.
   2. Specialist SAM models (LM, EM, Generalist) are present in local cache after installation.
   3. Tool execution automatically selects the fastest available device (CUDA > MPS > CPU).
 - **Plans:** 4 plans
-  - [ ] 21-01-PLAN.md — Microsam tool pack scaffold (manifest + entrypoint + model bootstrap script)
+  - [x] 21-01-PLAN.md — Microsam tool pack scaffold (manifest + entrypoint + model bootstrap script)
   - [ ] 21-02-PLAN.md — Microsam conda environment + lockfile
   - [ ] 21-03-PLAN.md — CLI + installer wiring for `bioimage-mcp install microsam` (profiles + model download)
   - [ ] 21-04-PLAN.md — Config + doctor verification (microsam.device + model readiness)
