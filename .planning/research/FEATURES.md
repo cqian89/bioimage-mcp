@@ -6,7 +6,7 @@
 
 ## User Workflow
 
-The interactive annotation workflow in `bioimage-mcp` v0.5.0 aims to provide a tight loop between user input in napari and µSAM inference on the server.
+The interactive annotation workflow in `bioimage-mcp` v0.5.0 leverages the **existing micro-sam napari plugin**. The agent launches napari with the plugin via MCP `run()`, and the user interacts with the plugin's native UI.
 
 1.  **Artifact Selection**: The user selects a `BioImageRef` (e.g., a Z-stack or 2D image) from the MCP server.
 2.  **Session Initialization**: The user triggers the "Interactive Annotator" via an MCP `run` command. This spawns a napari instance (managed subprocess).
@@ -25,11 +25,13 @@ Must-have features for the interactive annotation to be usable and competitive.
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| **Embedding Caching** | Interactivity requires <200ms response. Embeddings take >1s to compute. | Medium | Must handle cache invalidation if image changes. |
-| **Point Prompts** | Primary way users interact with SAM. Requires +/- labels. | Low | Maps directly to `micro_sam.inference.predict_from_points`. |
-| **Box Prompts** | Efficient for large objects or clusters. | Low | Standard napari Shapes layer integration. |
-| **Mask Preview Layer** | Users need to see the result *before* committing. | Medium | Requires efficient transport of mask data (e.g., RLE or low-res). |
-| **Artifact Commit** | Save annotations back to the MCP store. | Medium | Integration with existing OME-Zarr artifact system. |
+| **Plugin Launch via MCP** | Agent triggers annotation session via `run()` | Medium | Core integration work |
+| **Artifact-to-Viewer Bridge** | Load OME-Zarr into napari layers | Medium | Integration with napari-ome-zarr |
+| **Viewer-to-Artifact Persistence** | Save Labels back to MCP store | Medium | Export on commit/close |
+| **Embedding Caching** | Interactivity requires <200ms response | Medium | Cache invalidation on image change |
+| **Point/Box/Scribble Prompts** | Core annotation interactions | **Provided by micro-sam plugin** | No custom UI work needed |
+| **Mask Preview** | Real-time feedback | **Provided by micro-sam plugin** | No custom UI work needed |
+| **Undo/Redo** | Essential UX | **Provided by micro-sam plugin** | No custom UI work needed |
 
 ## Differentiators
 
@@ -70,9 +72,12 @@ graph TD
 ## MVP Recommendation
 
 For the v0.5.0 milestone, prioritize:
-1. **Embedding Cache**: Implementation of a transient server-side cache for SAM embeddings.
-2. **Point/Box UI**: Basic napari event handlers to capture clicks/boxes and trigger MCP tools.
-3. **Labels Sync**: Efficient transfer of the final `Labels` layer back to the MCP `ObjectRef` store.
+1. **Plugin Launch Integration**: Agent can call `run()` to open napari with micro-sam plugin loaded
+2. **Artifact Bridge**: Load OME-Zarr images into napari, export Labels back to MCP
+3. **Embedding Cache**: Cache SAM embeddings for instant re-entry
+4. **Commit Hook**: Capture Labels layer on window close/commit button
+
+**Note:** Point/Box/Scribble UI, mask preview, undo/redo, and 3D propagation are all provided by the micro-sam plugin. No custom UI development required.
 
 ## Sources
 

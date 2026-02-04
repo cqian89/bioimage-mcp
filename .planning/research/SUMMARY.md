@@ -6,34 +6,41 @@
 
 ## Executive Summary
 
-The v0.5.0 milestone aims to transition `bioimage-mcp` from a pure CLI/server tool to a "Human-in-the-loop" platform. Research indicates that `napari` integrated with `micro-sam` (µSAM) is the current state-of-the-art for this workflow. The primary technical challenge is the integration of a blocking Desktop GUI (Qt) with a non-blocking MCP server (asyncio).
+The v0.5.0 milestone aims to transition `bioimage-mcp` from a pure CLI/server tool to a "Human-in-the-loop" platform. Research indicates that `napari` with the **micro-sam plugin** is the current state-of-the-art for this workflow.
 
-The recommended approach is a **Process-Isolated Interactive Manager**. This architecture spawns the napari viewer in a managed subprocess, preventing server hangs and dependency conflicts. User interaction is centered around SAM-based prompting, which provides high-accuracy segmentation with minimal manual effort.
+**Key architectural decision:** We are **reusing the existing micro-sam napari plugin** rather than building custom annotation UI. The plugin already provides point prompts, box prompts, scribble refinement, undo/redo, and 3D propagation. Our work focuses on:
+1. Launching the plugin via MCP `run()` calls
+2. Bridging MCP artifacts (OME-Zarr) to/from napari layers
+3. Managing the subprocess lifecycle and embedding cache
+
+The recommended approach is a **Process-Isolated Interactive Manager**. This architecture spawns napari with the micro-sam plugin in a managed subprocess, preventing server hangs and dependency conflicts.
 
 ## Key Findings
 
-**Stack:** `napari` (0.5.5+) + `micro-sam` (1.4.2+) + `PyTorch` (2.5.1+) running in an isolated conda environment.
-**Architecture:** Parent-Child process model with file-based artifact bridging (OME-Zarr).
+**Stack:** `napari` (0.5.5+) + `micro-sam` plugin (1.4.2+) + `PyTorch` (2.5.1+) in isolated conda environment.
+**Architecture:** Parent-Child process model. Agent launches napari+plugin via MCP, plugin handles all annotation UI.
+**Integration scope:** Artifact bridging (OME-Zarr ↔ napari layers), subprocess lifecycle, embedding cache.
+**Not building:** Custom annotation UI, prompt handling, mask preview, undo/redo (all provided by plugin).
 **Critical pitfall:** GPU VRAM exhaustion and event loop blocking in a headless-capable server environment.
 
 ## Implications for Roadmap
 
 Based on research, the suggested phase structure for this milestone is:
 
-1. **Phase 1: Isolated Interactive Runtime** - Rationale: Establishing the hub-and-spoke architecture for the interactive tool pack is the highest technical risk.
-   - Addresses: Subprocess management, `napari` environment isolation, and artifact-to-viewer bridging.
-   - Avoids: Server-side event loop blocking and dependency bloat.
+1. **Phase 1: µSAM Tool Pack Foundation** - Rationale: Establish isolated environment with all dependencies.
+   - Addresses: Conda environment, model download during install, device detection (CUDA/MPS/CPU).
+   - Avoids: First-run download latency, dependency conflicts.
 
-2. **Phase 2: µSAM Inference Pipeline** - Rationale: Delivering the core segmentation capability.
-   - Addresses: Embedding precomputation, specialist model selection (LM/EM), and point/box prompt processing.
-   - Avoids: GPU out-of-memory (OOM) by enforcing model size limits.
+2. **Phase 2: Headless Tools** - Rationale: Verify SAM inference works before adding GUI complexity.
+   - Addresses: `compute_embeddings`, `segment_automatic` (headless), embedding caching.
+   - Avoids: Debugging inference issues through GUI layer.
 
-3. **Phase 3: Human-in-the-loop Bridge** - Rationale: Closing the loop between manual refinement and automated artifacts.
-   - Addresses: "Commit" button logic, OME-Zarr persistence, and "Scribble-to-Point" conversion.
-   - Avoids: Manual data loss and synchronization drift.
+3. **Phase 3: Interactive Bridge** - Rationale: Core integration work connecting MCP to micro-sam plugin.
+   - Addresses: Launch napari+plugin via `run()`, artifact bridging (OME-Zarr ↔ layers), subprocess isolation.
+   - Note: All annotation UI (prompts, preview, undo/redo) provided by plugin, not custom code.
 
-4. **Phase 4: Advanced Annotations & Tracking** - Rationale: Enhancing the UX with specialized features.
-   - Addresses: 3D volume propagation and integration with `trackastra` for temporal annotation.
+4. **Phase 4: Session Management** - Rationale: Production-readiness and robustness.
+   - Addresses: Orphan cleanup, session resume, progress indicators, headless detection.
 
 ## Confidence Assessment
 

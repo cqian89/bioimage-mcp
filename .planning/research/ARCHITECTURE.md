@@ -10,7 +10,7 @@ The `bioimage-mcp` server uses a **hub-and-spoke** architecture:
 ## Integration Challenge
 Interactive annotation (napari + µSAM) differs fundamentally from "fire-and-forget" batch tools:
 1. **Blocking Lifecycle:** GUI applications like napari require a blocking event loop (`gui_qt()`) that prevents the worker from responding to standard NDJSON requests on the same thread.
-2. **Interactive Loop:** µSAM requires a high-frequency "Prompt → Inference → Display" loop. Round-tripping annotations through the main MCP server would introduce unacceptable latency.
+2. **Plugin Reuse:** We are **reusing the micro-sam napari plugin** which already provides all annotation UI (prompts, preview, undo/redo, 3D propagation). Our work is launching the plugin and bridging artifacts.
 3. **Hardware Locality:** The GUI must open on the host machine. This architecture assumes **Local MCP** usage (e.g., Claude Desktop on the same machine as the bioimage-mcp server).
 4. **State Persistence:** Segmenting a large image involves "Session State" (embeddings, current masks) that must survive across user refinements.
 
@@ -38,28 +38,34 @@ We recommend **Option 1** with **Embedding Caching** and **Subprocess Isolation*
 ### 1. `micro-sam` Tool Pack
 Located in `tools/micro_sam/`:
 - `compute_embeddings(image)`: Pre-calculates SAM embeddings and returns an `ObjectRef`.
-- `annotate(image, embeddings)`: Launches napari with the µSAM plugin, using cached embeddings.
+- `annotate(image, embeddings)`: Launches napari with the **micro-sam plugin** (reusing its UI), loading the image from artifacts.
 - `segment_automatic(image)`: Headless zero-shot segmentation.
 
-### 2. `NapariBridge` (Internal Utility)
+### 2. `ArtifactBridge` (Internal Utility)
 A helper class to manage the transition from:
-- `ArtifactRef` (input) → `xarray/numpy` (viewer) → `LabelImageRef` (output).
-- It injects a "Commit" button into napari to signal that annotation is complete.
+- `BioImageRef` (input) → napari Image layer (via napari-ome-zarr)
+- napari Labels layer → `BioImageRef` (output, OME-Zarr export)
 
-### 3. `AnnotationSession` Manager
-Logic within the worker to track active segments, prompting state, and layer synchronization.
+**Note:** The micro-sam plugin provides its own UI including the commit button. We hook into layer state on window close.
+
+### 3. `SessionManager` (Internal Utility)
+Logic within the worker to:
+- Track embedding cache (keyed by image hash)
+- Handle window close events and artifact persistence
+- Manage orphan cleanup if parent process terminates
 
 ## Data Flow
 1. **Initiate:** AI Agent calls `micro_sam.annotate(image_artifact)`.
 2. **Spawning:** MCP Server dispatches to a persistent `bioimage-mcp-microsam` worker.
-3. **Interactive Subprocess:** Worker spawns a child process for the GUI to avoid blocking the IPC pipe.
-4. **Inference Loop (Local):** 
-   - User clicks point in napari.
-   - napari event handler calls `µSAM` model (in-process).
-   - `µSAM` returns mask; napari updates `Labels` layer ($<100ms$).
-5. **Completion:** User clicks "Commit" in napari.
-6. **Serialization:** Worker writes the final `Labels` layer to OME-Zarr.
-7. **Response:** Worker returns the `LabelImageRef` artifact to the MCP server.
+3. **Interactive Subprocess:** Worker spawns napari with **micro-sam plugin loaded** in a child process.
+4. **Artifact Load:** `ArtifactBridge` loads OME-Zarr image into napari Image layer.
+5. **Inference Loop (Plugin-Managed):** 
+   - User interacts with micro-sam plugin UI (points, boxes, scribbles)
+   - Plugin handles inference loop internally ($<100ms$ per prompt)
+   - All annotation features provided by plugin, not custom code
+6. **Completion:** User closes napari window (or uses plugin's commit).
+7. **Serialization:** `ArtifactBridge` exports Labels layer to OME-Zarr artifact.
+8. **Response:** Worker returns the `BioImageRef` artifact to the MCP server.
 
 ## Build Order
 

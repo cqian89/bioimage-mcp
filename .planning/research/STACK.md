@@ -6,7 +6,9 @@
 
 ## Core Dependencies
 
-The interactive annotation stack for v0.5.0 is centered around **napari** for visualization and **micro-sam** (Segment Anything for Microscopy) for inference.
+The interactive annotation stack for v0.5.0 is centered around **napari** for visualization and the **micro-sam napari plugin** for SAM-based annotation. 
+
+**Key architectural decision:** We are **reusing the existing micro-sam napari plugin** rather than building custom annotation UI. Our work focuses on integrating the plugin with the MCP artifact system.
 
 | Technology | Version | Purpose | Rationale |
 |------------|---------|---------|-----------|
@@ -20,16 +22,20 @@ The interactive annotation stack for v0.5.0 is centered around **napari** for vi
 
 ## napari Ecosystem
 
-Leveraging the native napari event system and layer types is critical for a smooth user experience.
+We leverage the **micro-sam napari plugin** which provides a complete annotation UI out of the box.
 
-### Layer-Based Prompting
-- **Points Layer**: For positive (object) and negative (background) clicks. `micro-sam` maps click coordinates to the SAM prompt encoder.
-- **Shapes Layer**: For bounding boxes. Encapsulates a region of interest to constrain segmentation.
-- **Labels Layer**: Used for "Scribbles" (dense point prompts) and displaying the final segmentation mask.
+### micro-sam Plugin Features (Reused, Not Rebuilt)
+The micro-sam plugin already provides:
+- **Points Layer**: For positive (object) and negative (background) clicks
+- **Shapes Layer**: For bounding boxes
+- **Labels Layer**: For scribbles and displaying segmentation masks
+- **Model Selection**: UI for choosing SAM model variants
+- **Undo/Redo**: Built-in prompt history
+- **3D Propagation**: Multi-slice annotation support
 
 ### Essential Plugins
-- **napari-ome-zarr**: Native loader for OME-Zarr, ensuring `BioImageRef` artifacts are opened without memory-intensive data copying.
-- **magicgui**: Used for generating the control panel (model selection, commit buttons, parameter sliders) directly from Python functions.
+- **micro-sam**: The core annotation plugin - provides all interactive UI
+- **napari-ome-zarr**: Native loader for OME-Zarr, ensuring `BioImageRef` artifacts are opened without memory-intensive data copying
 
 ## µSAM Requirements
 
@@ -67,7 +73,7 @@ How the new stack connects to the existing `bioimage-mcp` infrastructure:
 ## Anti-Recommendations
 
 - **Avoid SAM-H (Huge)**: Do not recommend `vit_h` for general users. It requires extreme VRAM and slows down the interactive loop with minimal accuracy gains over `vit_l_lm`.
-- **Avoid Custom GUI**: Do not build a standalone Qt/React GUI for the viewer. napari is the industry standard; building a custom one creates massive technical debt.
+- **Avoid Custom Annotation UI**: Do not rebuild micro-sam plugin features. The plugin already provides point prompts, box prompts, scribbles, undo/redo, and 3D propagation. Our work is integration only.
 - **Avoid Raw Pixel Pipes**: Never transfer raw image arrays over the MCP protocol. Always pass URIs to artifacts.
 
 ## Sources
