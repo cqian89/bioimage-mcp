@@ -27,7 +27,7 @@ Establish the isolated environment and prerequisite models for µSAM.
 - **Dependencies:** None
 - **Requirements:** USAM-01, USAM-05, USAM-06, INFRA-05
 - **Success Criteria:**
-  1. `bioimage-mcp install --profile usam` completes successfully on Linux/macOS.
+  1. `bioimage-mcp install microsam --profile gpu` completes successfully on Linux/macOS.
   2. Specialist SAM models (LM, EM, Generalist) are present in local cache after installation.
   3. Tool execution automatically selects the fastest available device (CUDA > MPS > CPU).
 
