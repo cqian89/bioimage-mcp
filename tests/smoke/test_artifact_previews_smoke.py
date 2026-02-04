@@ -118,7 +118,7 @@ async def test_smoke_table_preview(live_server):
     assert "dtypes" in info
 
 
-@pytest.mark.smoke_full
+@pytest.mark.smoke_extended
 @pytest.mark.anyio
 async def test_smoke_preview_performance(live_server, sample_image):
     # Load image

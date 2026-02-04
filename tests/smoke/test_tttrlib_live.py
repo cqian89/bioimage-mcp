@@ -57,7 +57,7 @@ def assert_valid_artifact_ref(ref: dict, expected_type: str | None = None):
         )
 
 
-@pytest.mark.smoke_full
+@pytest.mark.smoke_extended
 @pytest.mark.requires_env("bioimage-mcp-tttrlib")
 class TestTTTRLibSmoke:
     """Smoke tests for tttrlib workflows."""

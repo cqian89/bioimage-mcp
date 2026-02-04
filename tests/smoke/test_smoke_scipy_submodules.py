@@ -136,7 +136,7 @@ async def test_scipy_minimal_matrix(
     assert found_expected, f"Expected output type {expected_output_type} not found in {outputs}"
 
 
-@pytest.mark.smoke_full
+@pytest.mark.smoke_extended
 @pytest.mark.uses_minimal_data
 @pytest.mark.requires_env("bioimage-mcp-base")
 @pytest.mark.anyio
@@ -242,7 +242,7 @@ async def test_scipy_full_matrix(
     assert found_expected, f"Expected output type {expected_output_type} not found in {outputs}"
 
 
-@pytest.mark.smoke_full
+@pytest.mark.smoke_extended
 @pytest.mark.uses_minimal_data
 @pytest.mark.requires_env("bioimage-mcp-base")
 @pytest.mark.anyio

@@ -25,7 +25,6 @@ def native_executor():
 @pytest.mark.smoke_extended
 @pytest.mark.uses_minimal_data
 @pytest.mark.requires_env("bioimage-mcp-stardist")
-@pytest.mark.requires_stardist
 @pytest.mark.anyio
 async def test_stardist_equivalence(live_server, helper, native_executor, tmp_path):
     """Test that MCP StarDist matches native StarDist (IoU > 0.95)."""

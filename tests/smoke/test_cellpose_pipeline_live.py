@@ -31,7 +31,7 @@ def cellpose_image():
     return SYNTHETIC_IMAGE
 
 
-@pytest.mark.smoke_full
+@pytest.mark.smoke_extended
 @pytest.mark.requires_env("bioimage-mcp-cellpose")
 @pytest.mark.anyio
 @pytest.mark.timeout(300)

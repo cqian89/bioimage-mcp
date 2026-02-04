@@ -24,7 +24,7 @@ def trackpy_image():
     return path
 
 
-@pytest.mark.smoke_full
+@pytest.mark.smoke_extended
 @pytest.mark.requires_env("bioimage-mcp-trackpy")
 @pytest.mark.anyio
 async def test_locate_link_batch_workflow(live_server, trackpy_image):

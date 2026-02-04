@@ -29,7 +29,7 @@ def flim_image():
     return FLIM_IMAGE
 
 
-@pytest.mark.smoke_full
+@pytest.mark.smoke_extended
 @pytest.mark.anyio
 @pytest.mark.timeout(300)
 async def test_flim_phasor_workflow(live_server, flim_image):
