@@ -1,124 +1,81 @@
-# Feature Research
+# Features Research: Interactive Annotation
 
-**Domain:** MCP tool registry & introspection
-**Researched:** 2026-01-27
-**Confidence:** HIGH
+**Domain:** napari + µSAM Interactive Annotation
+**Researched:** 2026-02-04
+**Overall confidence:** HIGH (Verified via `micro-sam` source and `v0.5.0` project goals)
 
-## Feature Landscape
+## User Workflow
 
-### Table Stakes (Users Expect These)
+The interactive annotation workflow in `bioimage-mcp` v0.5.0 aims to provide a tight loop between user input in napari and µSAM inference on the server.
 
-Features users assume exist. Missing these = product feels incomplete.
+1.  **Artifact Selection**: The user selects a `BioImageRef` (e.g., a Z-stack or 2D image) from the MCP server.
+2.  **Session Initialization**: The user triggers the "Interactive Annotator" via an MCP `run` command. This spawns a napari instance (managed subprocess).
+3.  **Embedding Generation**: The server computes image embeddings for the selected image/slice. This is a one-time expensive operation (1-5s depending on GPU) that enables near-instant subsequent interactions.
+4.  **Prompting Loop**:
+    *   **Point Prompts**: User adds "Positive" (green) points to include areas and "Negative" (red) points to exclude them.
+    *   **Box Prompts**: User draws a bounding box around the target object to provide a strong spatial constraint.
+    *   **Scribble/Brush**: User paints roughly over the object. These "scribbles" are converted into a mask prompt or a dense set of point prompts (High priority for mask refinement).
+5.  **Interactive Preview**: After each prompt update (debounced ~100ms), the MCP server executes µSAM inference using the cached embeddings and the new prompt set. The resulting mask is sent back to napari as a preview layer.
+6.  **Commit/Finalize**: Once satisfied, the user "commits" the current mask. The mask is assigned a unique ID in a permanent `Labels` layer and saved as an `ObjectRef` (OME-Zarr format).
+7.  **3D Propagation**: For Z-stacks, the user can "propagate" the current slice's mask to adjacent slices to seed the next round of interactive refinement.
+
+## Table Stakes
+
+Must-have features for the interactive annotation to be usable and competitive.
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| Automatic schema derivation | LLMs require valid JSON Schema to call tools accurately. | MEDIUM | Use Pydantic v2 with docstring parsing. |
-| AST-first discovery | Avoid importing heavy deps in core server. | MEDIUM | Use Griffe for static parsing. |
-| Environment readiness diagnostics | Operators need to know if a tool can run. | MEDIUM | Check conda env existence and package presence. |
-| Consolidated list/describe | MCP tools/list and meta.describe must match. | MEDIUM | Single engine feeds both endpoints. |
+| **Embedding Caching** | Interactivity requires <200ms response. Embeddings take >1s to compute. | Medium | Must handle cache invalidation if image changes. |
+| **Point Prompts** | Primary way users interact with SAM. Requires +/- labels. | Low | Maps directly to `micro_sam.inference.predict_from_points`. |
+| **Box Prompts** | Efficient for large objects or clusters. | Low | Standard napari Shapes layer integration. |
+| **Mask Preview Layer** | Users need to see the result *before* committing. | Medium | Requires efficient transport of mask data (e.g., RLE or low-res). |
+| **Artifact Commit** | Save annotations back to the MCP store. | Medium | Integration with existing OME-Zarr artifact system. |
 
-### Differentiators (Competitive Advantage)
+## Differentiators
 
-Features that set the product apart. Not required, but valuable.
+Features that set this integration apart.
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| Two-stage pipeline | Handles pure Python and dynamic factories safely. | HIGH | AST-first + runtime fallback. |
-| Persistent schema cache | Eliminates re-introspection after restart. | LOW | DiskCache-backed store. |
-| Strong cache invalidation | Zero stale schema issues. | MEDIUM | Use xxHash + env lock hash. |
-| Metadata overlays | Manual fixes without code changes. | MEDIUM | function_overlays precedence rules. |
-| Actionable diagnostics | Faster remediation for tool authors. | LOW | Emit hints for missing docs/fallback. |
+| **Scribble Refinement** | More intuitive for complex/concave shapes than points alone. | Medium | Convert napari Labels layer to SAM mask prompts. |
+| **Multi-Slice Propagation** | Drastically speeds up 3D volume annotation. | High | Uses the 2D mask of slice $i$ to prompt slice $i+1$. |
+| **Remote Launch Bridge** | Seamlessly bridge local napari with remote high-performance GPUs. | High | The core value of `bioimage-mcp` for users without local GPUs. |
+| **SAM2/SAM3 Support** | Future-proofing for significantly faster inference and video tracking. | High | `micro-sam` roadmap includes native SAM2/3 support. |
 
-### Anti-Features (Commonly Requested, Often Problematic)
+## Anti-Features
 
-Features that seem good but create problems.
+Features explicitly excluded from the v0.5.0 scope to ensure stability.
 
-| Feature | Why Requested | Why Problematic | Alternative |
-|---------|---------------|-----------------|-------------|
-| Runtime data introspection | Seeks higher fidelity schemas. | Slow and unsafe during discovery. | Use static signatures + docstrings. |
-| Direct binary introspection | Desire to auto-cover compiled libs. | Fragile, opaque, error-prone. | Use manifest overlays/wrappers. |
-| Implicit type guessing | Convenience when hints are missing. | Leads to incorrect schemas. | Require explicit hints + overlays. |
+| Anti-Feature | Why Avoid | What to Do Instead |
+|--------------|-----------|-------------------|
+| **Model Fine-tuning** | Requires large datasets and long training times. | Use high-quality pre-trained µSAM models. |
+| **Real-time Video Tracking** | Bandwidth and latency requirements are too high for initial MCP. | Focus on static Z-stacks (3D volumes). |
+| **In-browser Canvas** | High development cost; poor performance for large bioimages. | Use napari (native Desktop GUI). |
+| **Manual Mesh Editing** | High UI complexity for minimal gain in microscopy. | Use standard pixel-based Label layers. |
 
 ## Feature Dependencies
 
+The interactive annotation system builds on the v0.4.0 foundation:
+
+```mermaid
+graph TD
+    A[BioImageRef Artifact] --> B[SAM Embedding Precompute]
+    B --> C[Point/Box Prompting]
+    C --> D[Interactive Preview Loop]
+    D --> E[Scribble/Brush Refinement]
+    E --> F[ObjectRef Commitment]
+    F --> G[OME-Zarr Persistence]
 ```
-[Automatic schema derivation]
-    └──requires──> [AST-first discovery]
 
-[Two-stage pipeline] ──enhances──> [AST-first discovery]
-[Persistent schema cache] ──enhances──> [Consolidated list/describe]
-[Strong cache invalidation] ──enhances──> [Persistent schema cache]
-[Metadata overlays] ──enhances──> [Schema emission]
-[Runtime data introspection] ──conflicts──> [AST-first discovery]
-```
+## MVP Recommendation
 
-### Dependency Notes
-
-- **Automatic schema derivation requires AST-first discovery:** without safe parsing, schema derivation imports heavy deps.
-- **Two-stage pipeline enhances AST-first discovery:** handles factories/dynamic tools safely.
-- **Persistent cache enhances consolidated list/describe:** ensures consistent output across restarts.
-- **Strong invalidation enhances cache:** prevents stale schemas.
-- **Metadata overlays enhance schema emission:** manual overrides fill gaps.
-
-## MVP Definition
-
-### Launch With (v1)
-
-Minimum viable product — what's needed to validate the concept.
-
-- [ ] AST-first discovery (Griffe)
-- [ ] Automatic schema derivation with docstring support
-- [ ] Two-stage runtime fallback for dynamic tools
-- [ ] Consolidated list/describe output
-- [ ] Persistent cache + strong invalidation
-- [ ] Metadata overlay pipeline
-- [ ] Actionable diagnostics for missing docs/fallbacks
-
-### Add After Validation (v1.x)
-
-Features to add once core is working.
-
-- [ ] Configurable cache policies (TTL/size limits)
-- [ ] Diagnostics formatting polish (structured reports)
-
-### Future Consideration (v2+)
-
-Features to defer until product-market fit is established.
-
-- [ ] Semantic array typing (dims/axes/units)
-- [ ] Full runtime-generated signature support without imports
-- [ ] Backward compatibility for legacy fn_id/cache shapes
-
-## Feature Prioritization Matrix
-
-| Feature | User Value | Implementation Cost | Priority |
-|---------|------------|---------------------|----------|
-| AST-first discovery | HIGH | MEDIUM | P1 |
-| Automatic schema derivation | HIGH | MEDIUM | P1 |
-| Two-stage pipeline | HIGH | HIGH | P1 |
-| Persistent cache | MEDIUM | LOW | P1 |
-| Strong cache invalidation | HIGH | MEDIUM | P1 |
-| Metadata overlays | MEDIUM | MEDIUM | P1 |
-| Actionable diagnostics | MEDIUM | LOW | P2 |
-
-**Priority key:**
-- P1: Must have for launch
-- P2: Should have, add when possible
-- P3: Nice to have, future consideration
-
-## Competitor Feature Analysis
-
-| Feature | Competitor A | Competitor B | Our Approach |
-|---------|--------------|--------------|--------------|
-| Schema inference | LangChain StructuredTool | LlamaIndex FunctionTool | MCP-specific schema emission with artifact separation. |
-| Docstring parsing | Partial | Partial | Docstring-parser + Griffe AST for higher fidelity. |
+For the v0.5.0 milestone, prioritize:
+1. **Embedding Cache**: Implementation of a transient server-side cache for SAM embeddings.
+2. **Point/Box UI**: Basic napari event handlers to capture clicks/boxes and trigger MCP tools.
+3. **Labels Sync**: Efficient transfer of the final `Labels` layer back to the MCP `ObjectRef` store.
 
 ## Sources
 
-- https://mkdocstrings.github.io/griffe/
-- https://docs.pydantic.dev/latest/concepts/json_schema/
-- https://modelcontextprotocol.io/specification/
-
----
-*Feature research for: MCP tool registry & introspection*
-*Researched: 2026-01-27*
+- [micro-sam GitHub Repository](https://github.com/computational-cell-analytics/micro-sam)
+- [napari Documentation: Annotating with Labels](https://napari.org/stable/tutorials/annotation/annotate_with_labels.html)
+- [micro-sam Annotator Documentation](https://computational-cell-analytics.github.io/micro-sam/)

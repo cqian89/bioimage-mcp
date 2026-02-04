@@ -1,137 +1,54 @@
-# Project Research Summary
+# Research Summary: Interactive Annotation
 
-**Project:** Bioimage-MCP
-**Domain:** MCP tool registry & introspection
-**Researched:** 2026-01-27
-**Confidence:** HIGH
+**Domain:** napari + µSAM Interactive Annotation
+**Researched:** 2026-02-04
+**Overall confidence:** HIGH
 
 ## Executive Summary
 
-Bioimage-MCP needs a unified introspection engine to prevent schema drift and to keep MCP list/describe endpoints consistent. Research supports a static-first discovery model using Griffe to parse signatures and docstrings without importing heavy dependencies, with runtime fallback reserved for dynamic or factory-generated tools in isolated tool-pack environments.
+The v0.5.0 milestone aims to transition `bioimage-mcp` from a pure CLI/server tool to a "Human-in-the-loop" platform. Research indicates that `napari` integrated with `micro-sam` (µSAM) is the current state-of-the-art for this workflow. The primary technical challenge is the integration of a blocking Desktop GUI (Qt) with a non-blocking MCP server (asyncio).
 
-The main risks are environment-blind imports (crashing the server), stale schema caches, and signature loss from decorators. These are mitigated by an AST-first pipeline, content-hash invalidation, and a deterministic overlay/patch pipeline that logs applied changes.
+The recommended approach is a **Process-Isolated Interactive Manager**. This architecture spawns the napari viewer in a managed subprocess, preventing server hangs and dependency conflicts. User interaction is centered around SAM-based prompting, which provides high-accuracy segmentation with minimal manual effort.
 
 ## Key Findings
 
-### Recommended Stack
-
-The recommended stack centers on Griffe for AST parsing, Pydantic v2 for schema emission, docstring-parser for docstring extraction, and DiskCache/SQLite with xxHash for persistent caching and invalidation. See `.planning/research/STACK.md` for full details.
-
-**Core technologies:**
-- Griffe: AST-first static analysis
-- Pydantic v2: JSON Schema emission
-- docstring-parser: docstring parsing
-- DiskCache + xxHash: persistent cache + invalidation
-
-### Expected Features
-
-Table stakes include automatic schema derivation, AST-first discovery, readiness diagnostics, and consolidated list/describe output. Differentiators include a two-stage pipeline, persistent caching with strong invalidation, overlays, and actionable diagnostics. See `.planning/research/FEATURES.md` for details.
-
-**Must have (table stakes):**
-- Automatic schema derivation
-- AST-first discovery
-- Environment readiness diagnostics
-- Consolidated list/describe
-
-**Should have (competitive):**
-- Two-stage pipeline
-- Persistent schema cache
-- Strong cache invalidation
-- Metadata overlays
-- Actionable diagnostics
-
-**Defer (v2+):**
-- Semantic array typing
-- Full runtime-generated signature support
-- Backward compatibility for legacy fn_id/cache shapes
-
-### Architecture Approach
-
-Adopt an IntrospectionEngine that orchestrates AST parsing, optional runtime fallback, overlay application, and schema emission, while storing outputs in a consolidated cache and registry index. See `.planning/research/ARCHITECTURE.md`.
- 
- **Major components:**
- 1. IntrospectionEngine — orchestrates introspection and overlays
-2. SchemaCache (DiskCache/SQLite) — persists derived schemas
-3. Runtime fallback (tool-pack meta.describe) — handles dynamic tools
-
-### Critical Pitfalls
-
-1. **Environment-blind imports** — avoid by AST-first parsing.
-2. **Decorator erasure** — mitigate with Griffe and __wrapped__ support.
-3. **Stale cache** — prevent with content-hash invalidation.
+**Stack:** `napari` (0.5.5+) + `micro-sam` (1.4.2+) + `PyTorch` (2.5.1+) running in an isolated conda environment.
+**Architecture:** Parent-Child process model with file-based artifact bridging (OME-Zarr).
+**Critical pitfall:** GPU VRAM exhaustion and event loop blocking in a headless-capable server environment.
 
 ## Implications for Roadmap
 
-Based on research, suggested phase structure:
+Based on research, the suggested phase structure for this milestone is:
 
-### Phase 1: Core Engine + AST-First
-**Rationale:** Establish safe static introspection before any runtime probing.
-**Delivers:** Griffe-based extraction, normalized FunctionSpec, consistent list/describe source.
-**Addresses:** AST-first discovery, automatic schema derivation, consolidated list/describe.
-**Avoids:** environment-blind imports, decorator erasure.
+1. **Phase 1: Isolated Interactive Runtime** - Rationale: Establishing the hub-and-spoke architecture for the interactive tool pack is the highest technical risk.
+   - Addresses: Subprocess management, `napari` environment isolation, and artifact-to-viewer bridging.
+   - Avoids: Server-side event loop blocking and dependency bloat.
 
-### Phase 2: Cache Consolidation + Invalidation
-**Rationale:** Prevent repeated introspection and schema drift.
-**Delivers:** DiskCache/SQLite schema store with content-hash invalidation.
-**Uses:** DiskCache, xxHash.
-**Implements:** schema cache integration with RegistryIndex.
+2. **Phase 2: µSAM Inference Pipeline** - Rationale: Delivering the core segmentation capability.
+   - Addresses: Embedding precomputation, specialist model selection (LM/EM), and point/box prompt processing.
+   - Avoids: GPU out-of-memory (OOM) by enforcing model size limits.
 
-### Phase 3: Runtime Fallback + Overlays
-**Rationale:** Support dynamic tools and compiled bindings.
-**Delivers:** tool-pack meta.describe fallback, overlay pipeline with precedence.
-**Addresses:** two-stage pipeline, metadata overlays.
-**Avoids:** compiled binding blind spots.
+3. **Phase 3: Human-in-the-loop Bridge** - Rationale: Closing the loop between manual refinement and automated artifacts.
+   - Addresses: "Commit" button logic, OME-Zarr persistence, and "Scribble-to-Point" conversion.
+   - Avoids: Manual data loss and synchronization drift.
 
-### Phase 4: Metadata Cleanup + Diagnostics
-**Rationale:** Hardening and operator feedback.
-**Delivers:** fn_id/module cleanup, callable fingerprints, diagnostics output.
-
-### Phase Ordering Rationale
-
-- Static parsing and schema consistency are prerequisites for caching and fallback.
-- Cache consolidation must precede fallback to avoid rework.
-- Overlay precedence needs a stable core spec to target.
-
-### Research Flags
-
-Phases likely needing deeper research during planning:
-- **Phase 3:** runtime fallback across conda envs and compiled bindings
-
-Phases with standard patterns (skip research-phase):
-- **Phase 1:** AST-first parsing with Griffe
-- **Phase 2:** DiskCache + hash-based invalidation
+4. **Phase 4: Advanced Annotations & Tracking** - Rationale: Enhancing the UX with specialized features.
+   - Addresses: 3D volume propagation and integration with `trackastra` for temporal annotation.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | Standard libraries with official docs. |
-| Features | HIGH | Directly derived from MCP discovery requirements. |
-| Architecture | HIGH | Two-stage pipeline fits isolation constraints. |
-| Pitfalls | HIGH | Risks match current failure modes. |
+| Stack | HIGH | `micro-sam` 1.4.2 is stable; `PyTorch` 2.5 provides optimal support for current GPUs. |
+| Features | HIGH | Table-stakes features are well-implemented in the `micro-sam` plugin ecosystem. |
+| Architecture | MEDIUM | Cross-platform subprocess management (WSL2/macOS) requires careful implementation. |
+| Pitfalls | HIGH | VRAM management and headless detection are known bottlenecks. |
 
-**Overall confidence:** HIGH
+## Gaps to Address
 
-### Gaps to Address
-
-- **SWIG/C++ extensions:** rely on manifest overlays for compiled bindings.
-- **Complex type resolution:** validate Griffe + Pydantic handling of forward refs.
-- **Schema namespacing:** ensure `$defs` keys are tool-scoped.
-
-## Sources
-
-### Primary (HIGH confidence)
-- https://mkdocstrings.github.io/griffe/
-- https://docs.pydantic.dev/latest/concepts/json_schema/
-- https://modelcontextprotocol.io/specification/
-- http://www.grantjenks.com/docs/diskcache/tutorial.html
-
-### Secondary (MEDIUM confidence)
-- https://docs.python.org/3/library/inspect.html
-
-### Tertiary (LOW confidence)
-- https://pypi.org/project/xxhash/
+- **Remote-Desktop / Cloud:** This research assumes a local GUI. Research into web-based fallbacks (e.g., `napari-canvas` or `vizarr`) may be needed if cloud deployment is prioritized.
+- **Multi-user VRAM:** No standard strategy exists for sharing a single GPU across multiple concurrent interactive napari sessions on one server.
 
 ---
-*Research completed: 2026-01-27*
+*Research completed: 2026-02-04*
 *Ready for roadmap: yes*
