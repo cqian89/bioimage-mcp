@@ -1,0 +1,27 @@
+# microsam environment for bioimage-mcp
+# Foundation for µSAM (napari + micro-sam + torch)
+# Pinning python to 3.11 for consistency with other tool envs
+name: bioimage-mcp-microsam
+
+channels:
+  - conda-forge
+  - pytorch
+  - defaults
+
+dependencies:
+  - python=3.11
+  - pip
+  - numpy
+  - micro-sam>=1.7.1
+  - napari
+  # Standard image I/O
+  - bioio
+  - bioio-ome-tiff
+  - bioio-ome-zarr
+  # Use conda pytorch-cpu to avoid CUDA dependency resolution issues in the base lockfile
+  - pytorch>=2.4
+  - torchvision
+  - cpuonly
+  # Model caching dependencies
+  - pooch
+  - python-xxhash
