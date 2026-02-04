@@ -3,7 +3,7 @@
 ## Milestones
 
 - ✅ **v0.3.0 Scipy Integration** — Phases 5.1–10 (shipped 2026-01-27). Archive: `.planning/milestones/v0.3.0-ROADMAP.md`
-- 🚧 **v0.4.0 Unified Introspection Engine** — planning (see `.planning/PROJECT.md`)
+- ✅ **v0.4.0 Unified Introspection Engine** — Phases 11–20 (shipped 2026-02-04). Archive: `.planning/milestones/v0.4.0-ROADMAP.md`
 
 ## Current Milestone: v0.4.0 Unified Introspection Engine
 
@@ -171,14 +171,15 @@ Plans:
 ### Phase 20: Strategize and execute test consolidation
  
  **Goal:** Coherent, marker-driven test suite tiers (unit/contract/integration/smoke) with predictable local runs and a small PR-gating smoke set.
+ **Status:** Complete (2026-02-04)
  **Depends on:** Phase 19
- **Plans:** 3/4 plans complete
+ **Plans:** 4/4 plans complete
  
  Plans:
  - [x] 20-01-PLAN.md — Define smoke tiers + global env gating (warn-on-skip)
  - [x] 20-02-PLAN.md — Relax contract strictness (additive discovery + best-effort descriptions)
  - [x] 20-03-PLAN.md — Retag smoke suite into smoke_pr vs smoke_extended + tolerance fixes
- - [ ] 20-04-PLAN.md — Update testing docs and PR-gate runbook
+ - [x] 20-04-PLAN.md — Update testing docs and PR-gate runbook
 
 
 **Details:**
