@@ -124,3 +124,97 @@ def test_install_calls_micromamba_without_prune(tmp_path: Path, monkeypatch) -> 
     assert any("bioimage-mcp-cellpose" in cmd for cmd in called_commands)
     assert any("remove" in cmd and "cpuonly" in cmd for cmd in called_commands)
     assert any("install" in cmd and "pytorch-cuda=11.8" in cmd for cmd in called_commands)
+
+
+def test_install_microsam_orchestration(tmp_path: Path, monkeypatch) -> None:
+    """Test that install microsam triggers specialized post-install."""
+    import json
+
+    envs_dir = tmp_path / "envs"
+    envs_dir.mkdir()
+    (envs_dir / "bioimage-mcp-base.yaml").write_text("name: base")
+    (envs_dir / "bioimage-mcp-microsam.yaml").write_text("name: microsam")
+
+    tools_dir = tmp_path / "tools" / "microsam" / "bioimage_mcp_microsam"
+    tools_dir.mkdir(parents=True)
+    script = tools_dir / "install_models.py"
+    script.write_text("import json; print(json.dumps({'cache_path': '/tmp/models'}))")
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("bioimage_mcp.bootstrap.install.find_repo_root", lambda: tmp_path)
+    monkeypatch.setattr(
+        "bioimage_mcp.bootstrap.install.detect_env_manager",
+        lambda: ("conda", "conda", "24.1.0"),
+    )
+    monkeypatch.setattr("bioimage_mcp.bootstrap.install._env_exists", lambda *_: False)
+
+    called_commands = []
+
+    def mock_run(cmd, **kwargs):
+        called_commands.append(cmd)
+        # Mock success for most, but specialize for sanity check and pip
+        if "import micro_sam" in str(cmd):
+            return subprocess.CompletedProcess(
+                cmd, 0, stdout="micro_sam imported successfully", stderr=""
+            )
+        if "install_models.py" in str(cmd):
+            return subprocess.CompletedProcess(
+                cmd, 0, stdout=json.dumps({"cache_path": "/tmp/models"}), stderr=""
+            )
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(subprocess, "run", mock_run)
+    monkeypatch.setattr("bioimage_mcp.bootstrap.install._ensure_tool_manifest_roots", lambda: None)
+
+    from bioimage_mcp.bootstrap.install import install
+
+    result = install(tools=["microsam"])
+
+    assert result == 0
+    # Check that microsam specific steps were called
+    assert any(
+        "pip" in cmd and any("trackastra" in part for part in cmd) for cmd in called_commands
+    )
+    assert any("pip" in cmd and any("MobileSAM" in part for part in cmd) for cmd in called_commands)
+    assert any(any("install_models.py" in part for part in cmd) for cmd in called_commands)
+
+    # Check state file
+    state_file = tmp_path / ".bioimage-mcp" / "state" / "microsam_models.json"
+    assert state_file.exists()
+    data = json.loads(state_file.read_text())
+    assert data["cache_path"] == "/tmp/models"
+
+
+def test_install_microsam_gpu_linux(tmp_path: Path, monkeypatch) -> None:
+    """Test that install microsam --profile gpu triggers GPU setup on Linux."""
+    envs_dir = tmp_path / "envs"
+    envs_dir.mkdir()
+    (envs_dir / "bioimage-mcp-base.yaml").write_text("name: base")
+    (envs_dir / "bioimage-mcp-microsam.yaml").write_text("name: microsam")
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        "bioimage_mcp.bootstrap.install.detect_env_manager",
+        lambda: ("conda", "conda", "24.1.0"),
+    )
+    monkeypatch.setattr("bioimage_mcp.bootstrap.install._env_exists", lambda *_: False)
+    monkeypatch.setattr("platform.system", lambda: "Linux")
+
+    # Mock _microsam_post_install to avoid complexity
+    monkeypatch.setattr("bioimage_mcp.bootstrap.install._microsam_post_install", lambda *_: True)
+    monkeypatch.setattr("bioimage_mcp.bootstrap.install._ensure_tool_manifest_roots", lambda: None)
+
+    called_commands = []
+
+    def mock_run(cmd, **kwargs):
+        called_commands.append(cmd)
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(subprocess, "run", mock_run)
+
+    from bioimage_mcp.bootstrap.install import install
+
+    result = install(tools=["microsam"], profile="gpu")
+
+    assert result == 0
+    assert any("pytorch-cuda=12.1" in cmd for cmd in called_commands)

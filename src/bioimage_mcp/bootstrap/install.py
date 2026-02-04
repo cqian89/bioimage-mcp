@@ -229,6 +229,131 @@ def _gpu_post_install(exe: str, env_name: str) -> None:
     )
 
 
+def _microsam_gpu_post_install(exe: str, env_name: str) -> bool:
+    """Configure GPU support for microsam."""
+    import platform
+
+    system = platform.system()
+    machine = platform.machine()
+
+    if system == "Linux":
+        print(f"Configuring GPU support (CUDA) for {env_name}...")
+        subprocess.run([exe, "remove", "-n", env_name, "-y", "cpuonly"], check=False)
+        res = subprocess.run(
+            [
+                exe,
+                "install",
+                "-n",
+                env_name,
+                "-y",
+                "-c",
+                "nvidia",
+                "-c",
+                "pytorch",
+                "pytorch-cuda=12.1",
+            ],
+            check=False,
+        )
+        return res.returncode == 0
+    elif system == "Darwin":
+        if machine == "arm64":
+            print(f"Using MPS on Apple Silicon for {env_name} (no additional steps needed).")
+            return True
+        else:
+            print(
+                f"Warning: GPU profile requested on Intel Mac for {env_name}. Falling back to CPU.",
+                file=sys.stderr,
+            )
+            return True
+    elif system == "Windows":
+        print(f"GPU profile on Windows is best-effort for {env_name}.")
+        res = subprocess.run(
+            [
+                exe,
+                "install",
+                "-n",
+                env_name,
+                "-y",
+                "-c",
+                "nvidia",
+                "-c",
+                "pytorch",
+                "pytorch-cuda=12.1",
+            ],
+            check=False,
+        )
+        if res.returncode != 0:
+            print(
+                "GPU install failed on Windows. Recommend using WSL2, Linux, or macOS.",
+                file=sys.stderr,
+            )
+        return True
+    return True
+
+
+def _microsam_post_install(exe: str, env_name: str) -> bool:
+    """Run post-install steps for microsam (sanity, pip deps, models)."""
+    print(f"Finalizing microsam installation in {env_name}...")
+
+    # 1. Sanity import
+    cmd = [
+        exe,
+        "run",
+        "-n",
+        env_name,
+        "python",
+        "-c",
+        "import micro_sam; print('micro_sam imported successfully')",
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    if result.returncode != 0:
+        print(f"Sanity check failed for {env_name}: {result.stderr}", file=sys.stderr)
+        return False
+
+    # 2. Install pip-only dependencies
+    pip_deps = ["trackastra", "git+https://github.com/ChaoningZhang/MobileSAM.git"]
+    for dep in pip_deps:
+        cmd = [exe, "run", "-n", env_name, "python", "-m", "pip", "install", dep]
+        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+        if result.returncode != 0:
+            print(f"Failed to install pip dependency {dep}: {result.stderr}", file=sys.stderr)
+            return False
+
+    # 3. Model bootstrap
+    repo_root = find_repo_root()
+    script_path = repo_root / "tools" / "microsam" / "bioimage_mcp_microsam" / "install_models.py"
+    if not script_path.exists():
+        print(f"Model bootstrap script not found at {script_path}", file=sys.stderr)
+        return False
+
+    cmd = [exe, "run", "-n", env_name, "python", str(script_path)]
+    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    if result.returncode != 0:
+        print(f"Model bootstrap failed for {env_name}: {result.stderr}", file=sys.stderr)
+        print(
+            f"Remediation: Ensure network access and run: {exe} run -n {env_name} python {script_path}",
+            file=sys.stderr,
+        )
+        return False
+
+    # 4. Capture JSON output and persist
+    try:
+        # Script is expected to output JSON to stdout
+        output_data = json.loads(result.stdout)
+        state_dir = Path.cwd() / ".bioimage-mcp" / "state"
+        state_dir.mkdir(parents=True, exist_ok=True)
+        (state_dir / "microsam_models.json").write_text(json.dumps(output_data, indent=2))
+
+        cache_path = output_data.get("cache_path", "unknown")
+        print(f"SUCCESS: microsam environment '{env_name}' ready. Models cached at: {cache_path}")
+    except (json.JSONDecodeError, KeyError) as e:
+        print(f"Warning: Failed to parse model bootstrap output: {e}", file=sys.stderr)
+        if result.stdout:
+            print(f"Raw output: {result.stdout}")
+
+    return True
+
+
 def install(
     *,
     tools: list[str] | None = None,
@@ -245,7 +370,10 @@ def install(
     available_tools = discover_available_tools()
 
     # Resolve tool list
-    if profile:
+    if tools == ["microsam"]:
+        tool_names = ["microsam"]
+        profile = profile or "cpu"
+    elif profile:
         if profile not in PROFILES:
             choices = ", ".join(PROFILES.keys())
             print(f"Error: Invalid profile '{profile}'. Choices: {choices}", file=sys.stderr)
@@ -253,6 +381,9 @@ def install(
         tool_names = list(PROFILES[profile])
     elif tools:
         tool_names = list(tools)
+        # Default profile to cpu if not specified and microsam is present
+        if not profile and "microsam" in tool_names:
+            profile = "cpu"
     else:
         # Default to cpu profile
         profile = "cpu"
@@ -288,7 +419,8 @@ def install(
         # Install logic
         # Note: conda-lock pip integration can be brittle; for envs with pip deps we
         # install conda deps first (without pip) then install pip deps separately.
-        if conda_lock_exe and lockfile.exists() and not pip_deps:
+        # Microsam always uses the separate flow for extra pip deps + models.
+        if conda_lock_exe and lockfile.exists() and (not pip_deps or name == "microsam"):
             success = _install_env_with_lock(conda_lock_exe, env_name, lockfile)
         else:
             success = _install_env(exe, manager, env_name, env_file)
@@ -299,9 +431,19 @@ def install(
             stats["failed"] += 1
             continue
 
-        # GPU post-install for cellpose
+        # Tool-specific post-install steps
         if profile == "gpu" and name == "cellpose":
             _gpu_post_install(exe, env_name)
+
+        if name == "microsam":
+            if profile == "gpu":
+                if not _microsam_gpu_post_install(exe, env_name):
+                    print(f"Failed to configure GPU for {name}")
+                    stats["failed"] += 1
+                    continue
+            if not _microsam_post_install(exe, env_name):
+                stats["failed"] += 1
+                continue
 
         stats["installed"] += 1
 
