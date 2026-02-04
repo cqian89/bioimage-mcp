@@ -60,29 +60,36 @@ bioimage-mcp serve --stdio
 
 Use `pytest` for all tests. Configuration is in `pytest.ini`.
 
+### Common Commands
 ```bash
-# Run all tests
-pytest
-
-# Run a specific category
+# Run all unit tests (fast, no heavy dependencies)
 pytest tests/unit/
-pytest tests/integration/
-pytest tests/smoke/
 
-# Run a single test file
-pytest tests/unit/api/test_artifacts.py
+# Run the PR gate (Standard local verification)
+pytest tests/unit -q
+pytest tests/contract -q
+pytest tests/smoke -m smoke_minimal -q
+pytest tests/smoke -m smoke_pr -q
 
-# Run a single test by name (with verbose output)
-pytest tests/unit/api/test_artifacts.py::test_artifact_creation -v
-
-# Filter by keyword
-pytest -k "segmentation" -v
-
-# Run environment-gated tests (requires specific conda env)
-conda run -n bioimage-mcp-cellpose pytest -m requires_cellpose -v
+# Run extended/nightly tests (Slow, requires many tool environments)
+pytest tests/smoke -m smoke_extended
 ```
 
-**Common Markers:** `slow`, `integration`, `smoke_minimal`, `requires_env`, `mock_execution`.
+### Environment Gating
+Tests that require specific tool environments are gated with markers.
+
+**Preferred Approach:**
+Use `@pytest.mark.requires_env("bioimage-mcp-...")` with the exact conda environment name.
+
+**Legacy Markers (Deprecated aliases):**
+`requires_cellpose`, `requires_stardist`, `requires_base`.
+
+### Smoke Tiers
+- `smoke_minimal`: Extremely fast, uses only the base environment.
+- `smoke_pr`: Core representative tools (cellpose, skimage, etc.); used for PR gating.
+- `smoke_extended`: All tools and configurations; for nightly/release checks.
+
+**Common Markers:** `slow`, `integration`, `smoke_minimal`, `smoke_pr`, `smoke_extended`, `requires_env`, `mock_execution`.
 
 ## Lint & Format (ruff)
 
