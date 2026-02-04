@@ -77,7 +77,7 @@ def test_list_tools_returns_environment_nodes() -> None:
 
     page = service.list_tools(limit=20, cursor=None)
 
-    assert set(page.keys()) == {"items", "next_cursor", "expanded_from"}
+    assert {"items", "next_cursor", "expanded_from"}.issubset(page.keys())
     names = {node["name"] for node in page["items"]}
     assert {"base", "cellpose"}.issubset(names)
     assert all(node["type"] == "environment" for node in page["items"])

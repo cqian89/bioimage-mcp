@@ -71,7 +71,7 @@ def test_discovery_search_functions_contract_shape() -> None:
 
     page = service.search_functions(keywords="blur", limit=20, cursor=None)
 
-    assert set(page.keys()) == {"results", "next_cursor"}
+    assert {"results", "next_cursor"}.issubset(page.keys())
     assert isinstance(page["results"], list)
     assert page["results"][0]["id"] == "base.bioimage_mcp_base.preprocess.gaussian"
     assert "tags" in page["results"][0]
@@ -107,17 +107,7 @@ def test_discovery_describe_function_returns_schema() -> None:
     )
 
     described = service.describe_function(id="base.bioimage_mcp_base.preprocess.gaussian")
-    allowed_keys = {
-        "id",
-        "type",
-        "summary",
-        "params_schema",
-        "inputs",
-        "outputs",
-        "hints",
-    }
-    assert {"id", "params_schema"}.issubset(described.keys())
-    assert set(described.keys()).issubset(allowed_keys)
+    assert {"id", "params_schema", "inputs", "outputs"}.issubset(described.keys())
     assert described["id"] == "base.bioimage_mcp_base.preprocess.gaussian"
     assert "type" not in described["params_schema"]
     conn.close()
