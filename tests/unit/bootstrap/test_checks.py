@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import subprocess
 from dataclasses import dataclass
 
@@ -9,6 +10,7 @@ from bioimage_mcp.bootstrap.checks import (
     check_disk,
     check_env_manager,
     check_gpu,
+    check_microsam_models,
     check_network,
     check_permissions,
     check_python_version,
@@ -198,9 +200,10 @@ def test_run_all_checks_returns_results(monkeypatch) -> None:
     monkeypatch.setattr(
         "bioimage_mcp.bootstrap.checks.check_tool_environments", lambda: check_gpu()
     )
+    monkeypatch.setattr("bioimage_mcp.bootstrap.checks.check_microsam_models", lambda: check_gpu())
 
     results = run_all_checks()
-    assert len(results) == 10
+    assert len(results) == 11
 
 
 def test_check_network_passes_when_socket_connects(monkeypatch) -> None:
@@ -215,3 +218,74 @@ def test_check_network_passes_when_socket_connects(monkeypatch) -> None:
         "bioimage_mcp.bootstrap.checks.socket.create_connection", lambda *_a, **_kw: _Conn()
     )
     assert check_network().ok is True
+
+
+def test_check_microsam_models_passes_when_record_exists(monkeypatch, tmp_path) -> None:
+    # Set CWD to tmp_path
+    monkeypatch.chdir(tmp_path)
+    state_dir = tmp_path / ".bioimage-mcp" / "state"
+    state_dir.mkdir(parents=True)
+    state_file = state_dir / "microsam_models.json"
+
+    # Mock models
+    m1 = tmp_path / "vit_b"
+    m1.touch()
+    m2 = tmp_path / "vit_b_lm"
+    m2.touch()
+    m3 = tmp_path / "vit_b_em"
+    m3.touch()
+
+    state_file.write_text(
+        json.dumps(
+            {
+                "ok": True,
+                "models": {"vit_b": str(m1), "vit_b_lm": str(m2), "vit_b_em": str(m3)},
+            }
+        )
+    )
+
+    monkeypatch.setattr(
+        "bioimage_mcp.bootstrap.checks.get_available_envs", lambda: ["bioimage-mcp-microsam"]
+    )
+
+    result = check_microsam_models()
+    assert result.ok is True
+
+
+def test_check_microsam_models_fails_when_record_missing(monkeypatch, tmp_path) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        "bioimage_mcp.bootstrap.checks.get_available_envs", lambda: ["bioimage-mcp-microsam"]
+    )
+
+    result = check_microsam_models()
+    assert result.ok is False
+    assert "missing" in result.remediation[0].lower()
+
+
+def test_check_microsam_models_fails_when_files_missing(monkeypatch, tmp_path) -> None:
+    monkeypatch.chdir(tmp_path)
+    state_dir = tmp_path / ".bioimage-mcp" / "state"
+    state_dir.mkdir(parents=True)
+    state_file = state_dir / "microsam_models.json"
+
+    state_file.write_text(
+        json.dumps(
+            {
+                "ok": True,
+                "models": {
+                    "vit_b": str(tmp_path / "missing_vit_b"),
+                    "vit_b_lm": str(tmp_path / "missing_vit_b_lm"),
+                    "vit_b_em": str(tmp_path / "missing_vit_b_em"),
+                },
+            }
+        )
+    )
+
+    monkeypatch.setattr(
+        "bioimage_mcp.bootstrap.checks.get_available_envs", lambda: ["bioimage-mcp-microsam"]
+    )
+
+    result = check_microsam_models()
+    assert result.ok is False
+    assert result.details["corrupt"]

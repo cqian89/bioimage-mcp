@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import platform
 import shutil
 import socket
@@ -241,6 +242,95 @@ def check_network(host: str = "pypi.org", port: int = 443, timeout_s: float = 2.
         )
 
 
+def check_microsam_models() -> CheckResult:
+    """Verify that required microsam models are present in the cache."""
+    state_file = Path.cwd() / ".bioimage-mcp" / "state" / "microsam_models.json"
+
+    # We only strictly require models if the microsam env is installed
+    available_envs = get_available_envs()
+    if "bioimage-mcp-microsam" not in available_envs:
+        return CheckResult(
+            name="microsam_models",
+            ok=True,
+            details={"status": "microsam_env_not_installed"},
+        )
+
+    if not state_file.exists():
+        return CheckResult(
+            name="microsam_models",
+            ok=False,
+            remediation=[
+                "Microsam model record missing.",
+                "Run: bioimage-mcp install microsam --profile cpu",
+            ],
+            details={"path": str(state_file)},
+        )
+
+    try:
+        data = json.loads(state_file.read_text())
+        if not data.get("ok"):
+            return CheckResult(
+                name="microsam_models",
+                ok=False,
+                remediation=[
+                    "Microsam model installation record indicates failure.",
+                    "Run: bioimage-mcp install microsam --profile cpu",
+                ],
+                details={"error": data.get("error")},
+            )
+
+        models = data.get("models", {})
+        # We require at minimum these vit_b variants
+        required = ["vit_b", "vit_b_lm", "vit_b_em"]
+        missing = []
+        corrupt = []
+
+        for model_id in required:
+            path_str = models.get(model_id)
+            if not path_str:
+                missing.append(model_id)
+                continue
+
+            path = Path(path_str)
+            if not path.exists():
+                corrupt.append(f"{model_id} (missing at {path_str})")
+
+        if missing or corrupt:
+            remediation = [
+                "Run: bioimage-mcp install microsam --profile cpu",
+                "Ensure network access is available for model downloads.",
+            ]
+            cache_dir = data.get("cache_dir")
+            if cache_dir:
+                remediation.append(f"Expected cache location: {cache_dir}")
+            if corrupt:
+                remediation.append("Delete corrupted/missing files to trigger re-download")
+
+            return CheckResult(
+                name="microsam_models",
+                ok=False,
+                remediation=remediation,
+                details={
+                    "missing": missing,
+                    "corrupt": corrupt,
+                    "cache_dir": data.get("cache_dir"),
+                },
+            )
+
+        return CheckResult(name="microsam_models", ok=True, details={"models": list(models.keys())})
+
+    except Exception as exc:  # noqa: BLE001
+        return CheckResult(
+            name="microsam_models",
+            ok=False,
+            remediation=[
+                "Failed to read microsam model record.",
+                "Run: bioimage-mcp install microsam --profile cpu",
+            ],
+            details={"error": str(exc)},
+        )
+
+
 def check_tool_environments() -> CheckResult:
     config = load_config()
     try:
@@ -282,6 +372,7 @@ def run_all_checks() -> list[CheckResult]:
         check_permissions(),
         check_base_env(),
         check_tool_environments(),
+        check_microsam_models(),
         check_tool_consolidation(),
         check_gpu(),
         check_conda_lock(),
