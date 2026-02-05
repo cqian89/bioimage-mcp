@@ -1,46 +1,49 @@
-# Requirements: v0.5.0 Interactive Annotation
+# Requirements: v0.5.0 micro_sam API + Interactive Annotation
 
 **Milestone:** v0.5.0 Interactive Annotation
-**Goal:** Enable napari-based image annotation workflows for µSAM segmentation
-**Created:** 2026-02-04
+**Goal:** Expose the upstream `micro_sam` Python API via MCP `run()` (headless first) and enable napari-based annotation via `micro_sam.sam_annotator`.
+**Created:** 2026-02-04 (updated 2026-02-05)
 
 ## v0.5.0 Requirements
 
-### Infrastructure
+### Registry & Schemas (API-first)
 
-- [ ] **INFRA-01**: User can launch napari viewer in an isolated subprocess without blocking the MCP server
-- [ ] **INFRA-02**: User can load OME-Zarr artifacts directly into napari image layers
-- [ ] **INFRA-03**: User can save napari Labels layer back to MCP artifact store as OME-Zarr
-- [ ] **INFRA-04**: User receives clear error message when running interactive tools in headless environment
-- [ ] **INFRA-05**: User can run µSAM inference on CUDA, MPS (macOS), or CPU with automatic detection
+- [x] **API-01**: `bioimage-mcp list` exposes `micro_sam.<submodule>.<callable>` IDs for the `micro_sam` library API
+- [x] **API-02**: `bioimage-mcp describe micro_sam.<...>` returns parameter schemas generated via AST + docstring parsing (Introspector)
+- [x] **API-03**: Phase 22 exposure includes all `micro_sam.*` callables EXCEPT `micro_sam.sam_annotator.*`
+- [ ] **API-04**: Phase 23 exposure includes `micro_sam.sam_annotator.*` callables
+- [x] **API-05**: Any callables that are not MCP-safe (non-serializable params/returns) are handled via wrappers or are explicitly denylisted with rationale
 
-### µSAM Tool Pack
+### Headless Execution (Phase 22)
 
-- [ ] **USAM-01**: User can install µSAM tool pack with isolated conda environment (napari, micro-sam, PyTorch)
-- [ ] **USAM-02**: Agent can launch napari with micro-sam plugin via MCP `run()` call, loading an image artifact
-- [ ] **USAM-03**: User can precompute SAM embeddings for an image via `compute_embeddings` tool
-- [ ] **USAM-04**: User can run zero-shot automatic segmentation via `segment_automatic` tool (headless)
-- [ ] **USAM-05**: User can select specialist SAM models (Light Microscopy, Electron Microscopy, Generalist)
-- [ ] **USAM-06**: User has SAM models downloaded during tool pack installation, not first-run
+- [x] **HEAD-01**: User can run prompt-based segmentation headlessly via `micro_sam.prompt_based_segmentation.*` (e.g., points/boxes/masks)
+- [x] **HEAD-02**: User can run automatic/instance segmentation headlessly via `micro_sam.instance_segmentation.*` (e.g., mask generators)
+- [x] **HEAD-03**: Image inputs/outputs preserve artifact boundary: `BioImageRef`/`LabelImageRef` are used for image-like values (no raw arrays in the MCP protocol)
+- [x] **HEAD-04**: Stateful or heavy objects (predictors, decoders, embedding state) are passed via `ObjectRef` and can be reused across `run()` calls
+- [x] **HEAD-05**: Headless tools preserve native axes/dims metadata end-to-end (avoid TCZYX padding)
+- [x] **HEAD-06**: User can precompute and reuse embeddings/state via `micro_sam.precompute_state.*` and/or `micro_sam.util.*` (artifactized where feasible)
 
-### Interactive Annotation (via micro-sam plugin)
+### Interactive Annotation (Phase 23)
 
-*Note: These features are provided by the existing micro-sam napari plugin. Our work is integrating the plugin with the MCP artifact system, not rebuilding UI.*
+*Note: The annotation UI is provided by upstream `micro_sam` napari widgets. Our work is exposing entrypoints and bridging artifacts to/from napari.*
 
-- [ ] **ANNOT-01**: User can add positive/negative point prompts via micro-sam plugin UI
-- [ ] **ANNOT-02**: User can draw bounding boxes via micro-sam plugin UI
-- [ ] **ANNOT-03**: User can see segmentation mask update in real-time (micro-sam plugin feature)
-- [ ] **ANNOT-04**: User can commit annotations and close viewer, returning results to MCP
-- [ ] **ANNOT-05**: User can use scribble/brush refinement via micro-sam plugin
-- [ ] **ANNOT-06**: User can propagate masks across Z-slices via micro-sam plugin
-- [ ] **ANNOT-07**: User can undo/redo prompts via micro-sam plugin
+- [ ] **GUI-01**: Agent can launch `micro_sam.sam_annotator.annotator_2d` via MCP `run()` with an image artifact pre-loaded
+- [ ] **GUI-02**: Agent can launch `micro_sam.sam_annotator.annotator_3d` via MCP `run()` with a volumetric image artifact pre-loaded
+- [ ] **GUI-03**: Agent can launch `micro_sam.sam_annotator.annotator_tracking` via MCP `run()` with a time series artifact pre-loaded
+- [ ] **GUI-04**: User can export committed label results back to MCP artifact store as `LabelImageRef` (or `NativeOutputRef` bundle when multiple layers/metadata are produced)
 
-### Session Management
+### Infrastructure & Robustness (shared)
 
-- [ ] **SESS-01**: User can re-enter annotation session instantly with cached embeddings
-- [ ] **SESS-02**: User's napari process is cleaned up automatically if MCP server terminates
-- [ ] **SESS-03**: User can resume annotation session after closing viewer without losing progress
-- [ ] **SESS-04**: User sees progress indicators during model loading and embedding computation
+- [ ] **INFRA-01**: Interactive napari runs in an isolated subprocess and does not block the MCP server event loop
+- [ ] **INFRA-02**: Clear, stable error is returned when interactive tools are invoked in a headless environment (no display)
+- [ ] **INFRA-03**: Tool pack supports inference on CUDA, MPS (macOS), or CPU with automatic detection (device selection is tool-scoped config)
+
+### Session & Optimization (Phase 24)
+
+- [ ] **SESS-01**: Cached predictors/embeddings reduce latency for repeated calls on the same image (cache hit/miss visible in logs)
+- [ ] **SESS-02**: Napari subprocess cleanup occurs automatically if the MCP server terminates
+- [ ] **SESS-03**: User can resume a session after closing the viewer without losing progress (within the constraints of artifact + state storage)
+- [ ] **SESS-04**: User sees progress indicators during model loading and embedding computation (at minimum via logs; optional richer progress artifacts)
 
 ---
 
@@ -70,29 +73,29 @@ Explicitly excluded from v0.5.0:
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
+| API-01 | Phase 22 | Complete |
+| API-02 | Phase 22 | Complete |
+| API-03 | Phase 22 | Complete |
+| API-04 | Phase 23 | Pending |
+| API-05 | Phase 22 | Complete |
+| HEAD-01 | Phase 22 | Complete |
+| HEAD-02 | Phase 22 | Complete |
+| HEAD-03 | Phase 22 | Complete |
+| HEAD-04 | Phase 22 | Complete |
+| HEAD-05 | Phase 22 | Complete |
+| HEAD-06 | Phase 22 | Complete |
+| GUI-01 | Phase 23 | Pending |
+| GUI-02 | Phase 23 | Pending |
+| GUI-03 | Phase 23 | Pending |
+| GUI-04 | Phase 23 | Pending |
 | INFRA-01 | Phase 23 | Pending |
 | INFRA-02 | Phase 23 | Pending |
-| INFRA-03 | Phase 23 | Pending |
-| INFRA-04 | Phase 22 | Pending |
-| INFRA-05 | Phase 21 | Pending |
-| USAM-01 | Phase 21 | Pending |
-| USAM-02 | Phase 23 | Pending |
-| USAM-03 | Phase 22 | Pending |
-| USAM-04 | Phase 22 | Pending |
-| USAM-05 | Phase 21 | Pending |
-| USAM-06 | Phase 21 | Pending |
-| ANNOT-01 | Phase 23 | Pending |
-| ANNOT-02 | Phase 23 | Pending |
-| ANNOT-03 | Phase 23 | Pending |
-| ANNOT-04 | Phase 23 | Pending |
-| ANNOT-05 | Phase 23 | Pending |
-| ANNOT-06 | Phase 23 | Pending |
-| ANNOT-07 | Phase 23 | Pending |
+| INFRA-03 | Phase 21 | Pending |
 | SESS-01 | Phase 24 | Pending |
 | SESS-02 | Phase 24 | Pending |
 | SESS-03 | Phase 24 | Pending |
-| SESS-04 | Phase 22 | Pending |
+| SESS-04 | Phase 24 | Pending |
 
 ---
-*Requirements defined: 2026-02-04*
-*Total: 22 requirements across 4 categories*
+*Requirements defined: 2026-02-04; updated: 2026-02-05*
+*Total: 22 requirements across 5 categories*
