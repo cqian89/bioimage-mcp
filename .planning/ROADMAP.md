@@ -31,6 +31,12 @@ Plans:
 Enable launching the `micro_sam` napari annotators from MCP.
 
 - **Goal:** Launch GUI annotators with pre-loaded image artifacts and embeddings.
+- **Plans:** 3 plans
+
+Plans:
+- [ ] 23-01-PLAN.md — Expose `micro_sam.sam_annotator.*` discovery with artifact-safe I/O pattern mapping
+- [ ] 23-02-PLAN.md — Implement interactive napari execution bridge, label export, and stable headless error handling
+- [ ] 23-03-PLAN.md — Add live smoke coverage and run blocking human GUI verification checkpoint
 - **Status:** In progress
 - **Progress:** 0%
 
