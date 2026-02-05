@@ -1,6 +1,7 @@
 ---
 phase: 21-usam-tool-pack-foundation
 verified: 2026-02-05T00:00:00Z
+updated: 2026-02-05T00:00:00Z
 status: gaps_found
 score: 4/6 must-haves verified
 gaps:
@@ -16,6 +17,14 @@ gaps:
       - "Runtime device-selection logic honoring auto preference (CUDA > MPS > CPU)."
       - "Tool execution code that reads microsam.device and selects actual device."
       - "Tests asserting device-selection behavior."
+planned_gap_closure:
+  - gap_truth: "Tool execution automatically selects the fastest available device (CUDA > MPS > CPU)."
+    plan: ".planning/phases/21-usam-tool-pack-foundation/21-05-PLAN.md"
+    scope:
+      - "Propagate microsam.device from core config into tool execution request (tool_config payload)."
+      - "Implement auto device resolver inside microsam env (cuda > mps > cpu) with forced-device availability errors."
+      - "Add unit tests for wiring + selection behavior (no torch import in tests)."
+    status: planned_not_executed
 human_verification:
   - test: "Install microsam GPU profile"
     expected: "`bioimage-mcp install microsam --profile gpu` completes successfully on Linux/macOS and prints success summary."
@@ -103,6 +112,15 @@ human_verification:
 ### Gaps Summary
 
 Phase 21 establishes the microsam tool pack, environment specs, installation orchestration, and doctor checks. However, the core success criterion that tool execution automatically selects the fastest available device (CUDA > MPS > CPU) is not implemented. The config schema defines `microsam.device`, but no runtime execution path consumes it, and the microsam entrypoint provides only `meta.describe` (no inference/device logic). This blocks the “ready for local inference” goal.
+
+### Planned Remediation (Not Yet Verified)
+
+The missing device-selection truth now has an explicit gap-closure plan:
+
+- Plan: `.planning/phases/21-usam-tool-pack-foundation/21-05-PLAN.md`
+- Intention: wire `microsam.device` into the microsam execution request and implement runtime device selection (CUDA > MPS > CPU) with unit tests.
+
+This verification report remains **gaps_found** until 21-05 is executed and re-verified.
 
 ---
 
