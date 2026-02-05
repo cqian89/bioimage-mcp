@@ -996,6 +996,21 @@ class DiscoveryEngine:
         elif pattern == IOPattern.ANY_TO_TABLE:
             inputs = [Port(name="input", artifact_type=["TableRef", "BioImageRef", "ObjectRef"])]
             outputs = [Port(name="table", artifact_type="TableRef")]
+        elif pattern == IOPattern.DYNAMIC:
+            inputs = []
+            outputs = []
+        elif pattern == IOPattern.SAM_PROMPT:
+            inputs = [
+                Port(name="predictor", artifact_type="ObjectRef"),
+                Port(name="image", artifact_type="BioImageRef", required=False),
+            ]
+            outputs = [Port(name="labels", artifact_type="LabelImageRef")]
+        elif pattern == IOPattern.SAM_AMG:
+            inputs = [
+                Port(name="predictor", artifact_type="ObjectRef", required=False),
+                Port(name="image", artifact_type="BioImageRef"),
+            ]
+            outputs = [Port(name="labels", artifact_type="LabelImageRef")]
         else:
             inputs = [Port(name="image", artifact_type="BioImageRef")]
             outputs = [Port(name="output", artifact_type="BioImageRef")]

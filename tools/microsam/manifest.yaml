@@ -3,6 +3,7 @@ tool_id: tools.micro_sam
 tool_version: "0.1.0"
 name: MicroSAM
 description: Interactive and automated segmentation for microscopy using Segment Anything Model (SAM)
+tags: [segmentation, sam, bioimage]
 
 env_id: bioimage-mcp-microsam
 entrypoint: bioimage_mcp_microsam/entrypoint.py
@@ -35,15 +36,16 @@ functions:
       required:
         - target_fn
   - id: micro_sam.compute_embedding
+    tool_id: tools.micro_sam
     name: Compute Embedding
     description: Precompute embeddings for an image to be reused in segmentation calls.
     inputs:
       - name: image
-        type: BioImageRef
+        artifact_type: BioImageRef
         description: Input image to compute embeddings for.
     outputs:
       - name: embedding
-        type: ObjectRef
+        artifact_type: ObjectRef
         description: Precomputed embedding or predictor object.
     params_schema:
       type: object
@@ -68,7 +70,31 @@ functions:
           type: boolean
           default: false
           description: If true, returns a predictor object instead of raw embedding.
+  - id: micro_sam.instance_segmentation.automatic_mask_generator
+    tool_id: tools.micro_sam
+    name: Automatic Mask Generator
+    description: Automatically segment all objects in an image using SAM.
+    inputs:
+      - name: image
+        artifact_type: BioImageRef
+        description: Input image to segment.
+      - name: predictor
+        artifact_type: ObjectRef
+        required: false
+        description: Precomputed predictor or embedding.
+    outputs:
+      - name: output
+        artifact_type: LabelImageRef
+        description: Segmented label image.
+    params_schema:
+      type: object
+      properties:
+        model_type:
+          type: string
+          default: "vit_b"
+          description: SAM model type to use (if predictor not provided).
   - id: micro_sam.cache.clear
+    tool_id: tools.micro_sam
     name: Clear Cache
     description: Clear cached ObjectRefs in the worker.
     inputs: []

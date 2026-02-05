@@ -58,6 +58,9 @@ class IOPattern(str, Enum):
     TABLE_TO_FILE = "table_to_file"
     TABLE_PAIR_TO_FILE = "table_pair_to_file"
     GENERIC = "generic"
+    DYNAMIC = "dynamic"
+    SAM_PROMPT = "sam_prompt"
+    SAM_AMG = "sam_amg"
 
 
 class ParameterSchema(BaseModel):

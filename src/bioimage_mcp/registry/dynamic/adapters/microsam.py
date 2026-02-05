@@ -95,11 +95,19 @@ class MicrosamAdapter(BaseAdapter):
                 if not (inspect.isfunction(obj) or inspect.isbuiltin(obj)):
                     continue
 
-                # Check if it's defined in this module to avoid massive duplication
-                # if modules re-export everything from submodules.
-                # However, many libraries intentionally re-export at package level.
-                # For micro_sam, we want to expose the submodules specifically as requested.
-                if getattr(obj, "__module__", None) != mod_name:
+                # For micro_sam, we allow re-exports because many key functions
+                # are imported from submodules or other packages (like torch_em).
+                # But we still want to avoid massive duplication across all modules.
+                # Heuristic: only include if the module name matches our mod_name,
+                # OR if it's an explicit re-export in an __init__.py.
+                is_direct = getattr(obj, "__module__", None) == mod_name
+                is_init_reexport = mod_name.endswith(".__init__") or (
+                    Path(module.__file__).name == "__init__.py"
+                    if hasattr(module, "__file__")
+                    else False
+                )
+
+                if not (is_direct or is_init_reexport):
                     continue
 
                 # Discovery should exclude methods with **kwargs unless overlay exists (T047)
@@ -159,6 +167,9 @@ class MicrosamAdapter(BaseAdapter):
         if fn_id == "micro_sam.compute_embedding":
             return self._execute_compute_embedding(inputs, params)
 
+        if fn_id == "micro_sam.instance_segmentation.automatic_mask_generator":
+            return self._execute_amg(inputs, params, work_dir)
+
         if "sam_annotator" in fn_id:
             raise RuntimeError(f"Function {fn_id} is denylisted for headless execution.")
 
@@ -180,9 +191,21 @@ class MicrosamAdapter(BaseAdapter):
         kwargs = {}
         param_names = set(inspect.signature(func).parameters.keys())
 
+        # Resolve device from hints or params
+        device_pref = params.get("device")
+        if device_pref is None and hints:
+            device_pref = hints.get("device")
+        if device_pref is None:
+            device_pref = "auto"
+
+        if "device" in param_names and "device" not in params:
+            kwargs["device"] = device_pref
+
         # Prompt coercion: convert lists to numpy arrays for specific SAM parameters
         processed_params = params.copy()
         for p_name in [
+            "points",
+            "labels",
             "point_coords",
             "point_labels",
             "box",
@@ -225,14 +248,22 @@ class MicrosamAdapter(BaseAdapter):
                 and not isinstance(val, np.ndarray)
             ):
                 kwargs["embedding"] = val
-            elif not args:
-                args.append(val)
             else:
-                kwargs[name] = val
+                # Fallback: if name doesn't match and we don't have this object yet,
+                # try to guess based on type.
+                if isinstance(val, np.ndarray):
+                    if "image" in param_names and "image" not in kwargs:
+                        kwargs["image"] = val
+                else:
+                    if "predictor" in param_names and "predictor" not in kwargs:
+                        kwargs["predictor"] = val
+                    elif "embedding" in param_names and "embedding" not in kwargs:
+                        kwargs["embedding"] = val
 
         # Execute the function
         try:
-            result = func(*args, **kwargs, **processed_params)
+            # For SAM functions, we prefer all-kwargs call to avoid positional mess
+            result = func(**kwargs, **processed_params)
         except Exception as e:
             logger.error(f"Error executing {fn_id}: {e}")
             raise
@@ -240,6 +271,13 @@ class MicrosamAdapter(BaseAdapter):
         # Handle output: return LabelImageRef for arrays, ObjectRef for others
         if isinstance(result, np.ndarray):
             # Segmentation result (Labels)
+            # Squeeze extra dimensions to match input axes if possible (Native Dims)
+            if result.ndim > len(input_axes):
+                # Try to squeeze to match input_axes length
+                target_ndim = len(input_axes)
+                while result.ndim > target_ndim and 1 in result.shape:
+                    result = result.squeeze(axis=result.shape.index(1))
+
             output_ref = self._save_image(
                 result, work_dir, axes=input_axes, artifact_type="LabelImageRef"
             )
@@ -248,12 +286,14 @@ class MicrosamAdapter(BaseAdapter):
             return []
         else:
             # Stateful object (Predictor, Embedding, etc.)
-            object_id = uuid.uuid4().hex
-            OBJECT_CACHE.set(object_id, result)
+            import os
 
-            # Try to get session info for a cleaner URI if we were in a session context
-            # Fallback to simple obj:// ID
-            obj_uri = f"obj://{object_id}"
+            session_id = os.environ.get("BIOIMAGE_MCP_SESSION_ID", "default_session")
+            env_id = os.environ.get("BIOIMAGE_MCP_ENV_ID", "bioimage-mcp-microsam")
+
+            object_id = uuid.uuid4().hex
+            obj_uri = f"obj://{session_id}/{env_id}/{object_id}"
+            OBJECT_CACHE.set(obj_uri, result)
 
             return [
                 {
@@ -304,6 +344,15 @@ class MicrosamAdapter(BaseAdapter):
         image_artifact = normalized[0][1]
         image_data = self._load_image(image_artifact)
 
+        # Ensure image is RGB-compatible for SAM
+        if image_data.ndim == 2:
+            image_data = np.stack([image_data] * 3, axis=-1)
+        elif image_data.ndim == 3 and image_data.shape[0] in (1, 3):
+            # Convert CYX to YXC
+            image_data = np.transpose(image_data, (1, 2, 0))
+            if image_data.shape[-1] == 1:
+                image_data = np.concatenate([image_data] * 3, axis=-1)
+
         model_type = params.get("model", "vit_b")
 
         # Resolve device
@@ -311,7 +360,7 @@ class MicrosamAdapter(BaseAdapter):
 
         device = select_device(params.get("device", "auto"))
 
-        predictor = util.get_sam_model(model_type=model_type, device=device, return_predictor=True)
+        predictor = util.get_sam_model(model_type=model_type, device=device)
 
         # Compute embedding
         # Use util.get_embeddings if we wanted just the embeddings,
@@ -319,15 +368,21 @@ class MicrosamAdapter(BaseAdapter):
         predictor.set_image(image_data)
 
         # Store in cache
+        import os
+
+        session_id = os.environ.get("BIOIMAGE_MCP_SESSION_ID", "default_session")
+        env_id = os.environ.get("BIOIMAGE_MCP_ENV_ID", "bioimage-mcp-microsam")
+
         object_id = uuid.uuid4().hex
-        OBJECT_CACHE.set(object_id, predictor)
+        obj_uri = f"obj://{session_id}/{env_id}/{object_id}"
+        OBJECT_CACHE.set(obj_uri, predictor)
 
         return [
             {
                 "type": "ObjectRef",
                 "format": "pickle",
                 "ref_id": object_id,
-                "uri": f"obj://{object_id}",
+                "uri": obj_uri,
                 "python_class": "segment_anything.predictor.SamPredictor",
                 "storage_type": "memory",
                 "metadata": {
@@ -336,6 +391,74 @@ class MicrosamAdapter(BaseAdapter):
                 },
             }
         ]
+
+    def _execute_amg(
+        self, inputs: list[Artifact] | dict[str, Any], params: dict[str, Any], work_dir: Path
+    ) -> list[dict]:
+        """Manual implementation for automatic mask generation."""
+        from micro_sam import util
+        from micro_sam.instance_segmentation import (
+            AutomaticMaskGenerator,
+        )
+
+        normalized = self._normalize_inputs(inputs)
+        image_artifact = next(
+            (art for name, art in normalized if "image" in name or name == "0"), None
+        )
+        if image_artifact is None:
+            raise ValueError("No input image provided for automatic_mask_generator.")
+
+        image_data = self._load_image(image_artifact)
+        input_axes = "YX"
+        if isinstance(image_artifact, dict):
+            input_axes = image_artifact.get("metadata", {}).get("axes", "YX")
+
+        # Ensure RGB
+        if image_data.ndim == 2:
+            image_data_rgb = np.stack([image_data] * 3, axis=-1)
+        else:
+            image_data_rgb = image_data
+
+        predictor_artifact = next((art for name, art in normalized if "predictor" in name), None)
+        if predictor_artifact:
+            predictor = self._load_image(predictor_artifact)
+        else:
+            from bioimage_mcp_microsam.device import select_device
+
+            device = select_device(params.get("device", "auto"))
+            predictor = util.get_sam_model(
+                model_type=params.get("model_type", "vit_b"), device=device
+            )
+            predictor.set_image(image_data_rgb)
+
+        points_per_side = params.get("points_per_side", 16)
+        amg = AutomaticMaskGenerator(predictor, points_per_side=points_per_side)
+
+        # If image is 3D but we want 2D AMG, we might need to specify i=0 or similar.
+        # However, for RGB (H, W, 3), ndim is 3.
+        # Micro-sam might need to know if it's RGB or volumetric.
+        # We try to initialize. If it fails with "3D" error, we might need to adjust.
+        try:
+            amg.initialize(image_data_rgb)
+        except (RuntimeError, ValueError) as e:
+            if "3D" in str(e) and image_data_rgb.ndim == 3:
+                # Try with i=0 if it's treated as volumetric
+                amg.initialize(image_data_rgb, i=0)
+            else:
+                raise
+
+        labels = amg.generate()
+
+        # Squeeze extra dimensions to match input axes if possible
+        if labels.ndim > len(input_axes):
+            target_ndim = len(input_axes)
+            while labels.ndim > target_ndim and 1 in labels.shape:
+                labels = labels.squeeze(axis=labels.shape.index(1))
+
+        output_ref = self._save_image(
+            labels, work_dir, axes=input_axes, artifact_type="LabelImageRef"
+        )
+        return [output_ref]
 
     def _load_image(self, artifact: Artifact) -> np.ndarray | Any:
         """Load image data or resolve ObjectRef from cache."""
@@ -445,11 +568,13 @@ class MicrosamAdapter(BaseAdapter):
     def resolve_io_pattern(self, func_name: str, signature: Any) -> IOPattern:
         """Resolve I/O pattern based on function name and module path."""
         if "prompt_based_segmentation" in func_name:
-            return IOPattern.IMAGE_TO_LABELS
+            if "segment" in func_name:
+                return IOPattern.SAM_PROMPT
         if "instance_segmentation" in func_name:
-            return IOPattern.IMAGE_TO_LABELS
+            if "segment" in func_name or "watershed" in func_name or "automatic" in func_name:
+                return IOPattern.SAM_AMG
 
-        return IOPattern.GENERIC
+        return IOPattern.DYNAMIC
 
     def generate_dimension_hints(
         self, module_name: str, func_name: str

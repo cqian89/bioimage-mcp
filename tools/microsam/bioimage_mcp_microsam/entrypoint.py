@@ -19,6 +19,8 @@ if str(REPO_ROOT / "src") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "src"))
 if str(TOOLS_ROOT) not in sys.path:
     sys.path.insert(0, str(TOOLS_ROOT))
+if str(BASE_DIR.parent) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR.parent))
 
 from bioimage_mcp_microsam.device import select_device  # noqa: E402
 
@@ -76,6 +78,11 @@ def handle_meta_list(params: dict[str, Any]) -> dict[str, Any]:
             curr = curr.parent
 
         try:
+            from bioimage_mcp.registry.dynamic.adapters import populate_default_adapters
+
+            populate_default_adapters()
+            print(f"DEBUG: ADAPTER_REGISTRY keys: {list(ADAPTER_REGISTRY.keys())}", file=sys.stderr)
+
             discovered = discover_functions(
                 manifest, ADAPTER_REGISTRY, cache=cache, project_root=project_root
             )
@@ -254,12 +261,16 @@ def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
             inputs = request.get("inputs", {})
             work_dir = Path(request.get("work_dir", "."))
 
-            # Inject device from tool_config if not in params
-            if "device" not in params:
-                params["device"] = tool_config.get("microsam", {}).get("device", "auto")
+            # Only inject device if not already in params and if the target function likely needs it
+            # (Or let the adapter handle it based on param_names)
+            device_pref = tool_config.get("microsam", {}).get("device", "auto")
 
             result_artifacts = adapter.execute(
-                fn_id=req_id, inputs=inputs, params=params, work_dir=work_dir
+                fn_id=req_id,
+                inputs=inputs,
+                params=params,
+                work_dir=work_dir,
+                hints={"device": device_pref},
             )
 
             # Pack results into outputs dict
@@ -319,11 +330,27 @@ def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
 
 def main():
     import os
+    import select
 
     # Initialize worker identity
     session_id = os.environ.get("BIOIMAGE_MCP_SESSION_ID", "default_session")
     env_id = os.environ.get("BIOIMAGE_MCP_ENV_ID", "bioimage-mcp-microsam")
     _initialize_worker(session_id, env_id)
+
+    # If stdin has data, handle it as a single request and exit without ready handshake
+    # (Important for one-shot execution like meta.list)
+    if not sys.stdin.isatty():
+        rlist, _, _ = select.select([sys.stdin], [], [], 0.1)
+        if rlist:
+            line = sys.stdin.readline()
+            if line.strip():
+                try:
+                    request = json.loads(line)
+                    response = process_execute_request(request)
+                    print(json.dumps(response), flush=True)
+                    return
+                except json.JSONDecodeError:
+                    pass
 
     # Persistent NDJSON loop
     ready_message = json.dumps({"command": "ready", "version": TOOL_VERSION})
