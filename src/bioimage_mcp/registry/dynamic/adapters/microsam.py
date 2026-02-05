@@ -7,7 +7,9 @@ from __future__ import annotations
 import importlib
 import inspect
 import logging
+import os
 import pkgutil
+import sys
 import tempfile
 import uuid
 from pathlib import Path
@@ -20,12 +22,20 @@ if TYPE_CHECKING:
     from bioimage_mcp.api.schemas import DimensionRequirement
 
 from bioimage_mcp.artifacts.base import Artifact
+from bioimage_mcp.errors import BioimageMcpError
 from bioimage_mcp.registry.dynamic.adapters import BaseAdapter
 from bioimage_mcp.registry.dynamic.introspection import Introspector
 from bioimage_mcp.registry.dynamic.models import FunctionMetadata, IOPattern
 from bioimage_mcp.registry.dynamic.object_cache import OBJECT_CACHE
 
 logger = logging.getLogger(__name__)
+
+
+class HeadlessDisplayRequiredError(BioimageMcpError):
+    """Raised when an interactive tool is launched without a display."""
+
+    code = "HEADLESS_DISPLAY_REQUIRED"
+
 
 # Parameters that are artifact inputs, not schema params
 ARTIFACT_INPUT_PARAMS = {
@@ -49,6 +59,16 @@ class MicrosamAdapter(BaseAdapter):
 
     def __init__(self) -> None:
         self.introspector = Introspector()
+        self.warnings: list[str] = []
+
+    def _check_gui_available(self) -> None:
+        """Check if a GUI display is available."""
+        if sys.platform == "linux":
+            if os.environ.get("DISPLAY") is None and os.environ.get("WAYLAND_DISPLAY") is None:
+                raise HeadlessDisplayRequiredError(
+                    "Interactive annotators require a display (DISPLAY or WAYLAND_DISPLAY). "
+                    "Run in a desktop session or use remote desktop (VNC/Xvfb)."
+                )
 
     def discover(self, module_config: dict[str, Any]) -> list[FunctionMetadata]:
         """Discover functions from micro_sam submodules.
@@ -157,6 +177,8 @@ class MicrosamAdapter(BaseAdapter):
         Returns:
             List of output artifact references.
         """
+        self.warnings = []
+
         # Handle static/manual functions first
         if fn_id == "micro_sam.cache.clear":
             from bioimage_mcp.registry.dynamic.object_cache import clear
@@ -171,7 +193,19 @@ class MicrosamAdapter(BaseAdapter):
             return self._execute_amg(inputs, params, work_dir)
 
         if "sam_annotator" in fn_id:
-            raise RuntimeError(f"Function {fn_id} is denylisted for headless execution.")
+            entrypoints = {
+                "micro_sam.sam_annotator.annotator_2d",
+                "micro_sam.sam_annotator.annotator_3d",
+                "micro_sam.sam_annotator.annotator_tracking",
+                "micro_sam.sam_annotator.image_series_annotator",
+            }
+            if fn_id in entrypoints:
+                return self._execute_interactive(fn_id, inputs, params, work_dir, hints)
+
+            raise RuntimeError(
+                f"Function {fn_id} is denylisted for headless execution. "
+                "Only main annotator entrypoints are supported for interactive bridge."
+            )
 
         parts = fn_id.split(".")
         module_path = ".".join(parts[:-1])
@@ -458,6 +492,30 @@ class MicrosamAdapter(BaseAdapter):
             labels, work_dir, axes=input_axes, artifact_type="LabelImageRef"
         )
         return [output_ref]
+
+    def _execute_interactive(
+        self,
+        fn_id: str,
+        inputs: list[Artifact] | dict[str, Any],
+        params: dict[str, Any],
+        work_dir: Path,
+        hints: dict[str, Any] | None = None,
+    ) -> list[dict]:
+        """Execute micro_sam interactive annotator."""
+        self._check_gui_available()
+
+        try:
+            import napari
+            from micro_sam import sam_annotator
+        except ImportError as e:
+            raise RuntimeError(
+                f"Interactive dependencies (napari, micro_sam) not found: {e}"
+            ) from e
+
+            return [output_ref]
+
+        self.warnings.append("MICROSAM_NO_CHANGES")
+        return []
 
     def _load_image(self, artifact: Artifact) -> np.ndarray | Any:
         """Load image data or resolve ObjectRef from cache."""
