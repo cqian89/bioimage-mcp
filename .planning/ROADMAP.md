@@ -4,7 +4,7 @@
 
 - ✅ **v0.3.0 Scipy Integration** — Phases 5.1–10 (shipped 2026-01-27). Archive: `.planning/milestones/v0.3.0-ROADMAP.md`
 - ✅ **v0.4.0 Unified Introspection Engine** — Phases 11–20 (shipped 2026-02-04). Archive: `.planning/milestones/v0.4.0-ROADMAP.md`
-- ✅ **v0.5.0 Interactive Annotation** — Phases 21–24 (In Progress)
+- 🚧 **v0.5.0 Interactive Annotation** — Phases 21–24 (In Progress)
 ...
 ### Phase 21: µSAM Tool Pack Foundation
 Establish the isolated environment and prerequisite models for µSAM.
@@ -25,7 +25,7 @@ Establish the isolated environment and prerequisite models for µSAM.
 
 | Phase | Description | Status | Progress |
 |-------|-------------|--------|----------|
-| 21 | µSAM Tool Pack Foundation | Complete | 100% |
+| 21 | µSAM Tool Pack Foundation | ✓ Complete | 100% |
 
 | 22 | Headless Tools | Pending | 0% |
 | 23 | Interactive Bridge | Pending | 0% |
