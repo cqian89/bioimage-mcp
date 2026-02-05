@@ -34,3 +34,45 @@ functions:
           description: "The function id to describe"
       required:
         - target_fn
+  - id: micro_sam.compute_embedding
+    name: Compute Embedding
+    description: Precompute embeddings for an image to be reused in segmentation calls.
+    inputs:
+      - name: image
+        type: BioImageRef
+        description: Input image to compute embeddings for.
+    outputs:
+      - name: embedding
+        type: ObjectRef
+        description: Precomputed embedding or predictor object.
+    params_schema:
+      type: object
+      properties:
+        model:
+          type: string
+          default: "vit_b"
+          description: SAM model type to use.
+        normalize:
+          type: boolean
+          default: true
+          description: Whether to normalize the image.
+        channel:
+          type: integer
+          description: Channel index to use for multi-channel images.
+        z_mode:
+          type: string
+          enum: ["2d", "slice"]
+          default: "2d"
+          description: How to handle 3D data.
+        return_predictor:
+          type: boolean
+          default: false
+          description: If true, returns a predictor object instead of raw embedding.
+  - id: micro_sam.cache.clear
+    name: Clear Cache
+    description: Clear cached ObjectRefs in the worker.
+    inputs: []
+    outputs: []
+    params_schema:
+      type: object
+      properties: {}
