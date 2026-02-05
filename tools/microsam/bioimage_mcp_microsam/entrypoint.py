@@ -254,6 +254,7 @@ def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
     elif req_id == "meta.describe":
         result = handle_meta_describe(params)
     elif req_id.startswith("micro_sam."):
+        from bioimage_mcp.errors import BioimageMcpError
         from bioimage_mcp.registry.dynamic.adapters.microsam import MicrosamAdapter
 
         adapter = MicrosamAdapter()
@@ -279,13 +280,32 @@ def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
             else:
                 outputs = {f"output_{i}": art for i, art in enumerate(result_artifacts)}
 
-            return {
+            response = {
                 "command": "execute_result",
                 "ok": True,
                 "ordinal": ordinal,
                 "id": req_id,
                 "outputs": outputs,
                 "log": "ok",
+            }
+
+            if adapter.warnings:
+                response["warnings"] = adapter.warnings
+
+            return response
+
+        except BioimageMcpError as e:
+            return {
+                "command": "execute_result",
+                "ok": False,
+                "ordinal": ordinal,
+                "id": req_id,
+                "error": {
+                    "code": e.code,
+                    "message": str(e),
+                    "details": getattr(e, "details", None),
+                },
+                "log": f"Error: {e}",
             }
         except Exception as e:
             logger.exception(f"Execution failed for {req_id}")
