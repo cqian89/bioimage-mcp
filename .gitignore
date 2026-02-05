@@ -229,3 +229,6 @@ tmp_artifacts/
 
 # Smoke test logs
 .bioimage-mcp/smoke_logs/
+
+# Local machine state (model paths, cache locations)
+.bioimage-mcp/state/
