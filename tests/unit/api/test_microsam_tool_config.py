@@ -23,14 +23,14 @@ def microsam_manifest(tmp_path):
 
     content = {
         "manifest_version": "0.1",
-        "tool_id": "tools.microsam",
+        "tool_id": "tools.micro_sam",
         "tool_version": "0.1.0",
         "env_id": "bioimage-mcp-microsam",
         "entrypoint": "entrypoint.py",
         "functions": [
             {
                 "fn_id": "meta.describe",
-                "tool_id": "tools.microsam",
+                "tool_id": "tools.micro_sam",
                 "name": "describe",
                 "description": "Describe tools",
                 "params_schema": {"type": "object", "properties": {}},
@@ -59,7 +59,7 @@ def test_microsam_tool_config_wiring(microsam_manifest, tmp_path):
     # Verify manifest is loaded
     manifests, diagnostics = loader.load_manifests(config.tool_manifest_roots)
     assert len(manifests) == 1
-    assert manifests[0].tool_id == "tools.microsam"
+    assert manifests[0].tool_id == "tools.micro_sam"
 
     captured_request = {}
 

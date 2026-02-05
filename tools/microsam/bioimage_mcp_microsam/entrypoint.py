@@ -25,7 +25,7 @@ def handle_describe(params: dict) -> dict:
         "ok": False,
         "error": {
             "code": "NOT_FOUND",
-            "message": f"Function {target_fn} not found in tools.microsam",
+            "message": f"Function {target_fn} not found in tools.micro_sam",
         },
     }
 

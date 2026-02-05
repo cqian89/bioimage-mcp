@@ -233,7 +233,7 @@ def execute_step(
     }
 
     # Task 1: Pass microsam.device into the microsam tool execution request (21-05)
-    if manifest.tool_id == "tools.microsam":
+    if manifest.tool_id == "tools.micro_sam":
         request["tool_config"] = {"microsam": {"device": str(config.microsam.device)}}
 
     if worker_manager:
