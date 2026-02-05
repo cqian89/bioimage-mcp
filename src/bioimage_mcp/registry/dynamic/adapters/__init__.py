@@ -82,6 +82,7 @@ KNOWN_ADAPTERS = {
     "pandas",
     "cellpose",
     "tttrlib",
+    "microsam",
 }
 
 
@@ -119,6 +120,14 @@ def populate_default_adapters() -> None:
         ADAPTER_REGISTRY["tttrlib"] = TttrlibAdapter()
     except ImportError:
         pass  # tttrlib not installed, skip adapter
+
+    # Import microsam adapter
+    try:
+        from bioimage_mcp.registry.dynamic.adapters.microsam import MicrosamAdapter
+
+        ADAPTER_REGISTRY["microsam"] = MicrosamAdapter()
+    except ImportError:
+        pass  # microsam dependencies (or module) not found, skip adapter
 
 
 # No longer populate on module import to enable sub-second meta.list (T13)
