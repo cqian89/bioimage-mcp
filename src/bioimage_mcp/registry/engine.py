@@ -1011,6 +1011,17 @@ class DiscoveryEngine:
                 Port(name="image", artifact_type="BioImageRef"),
             ]
             outputs = [Port(name="labels", artifact_type="LabelImageRef")]
+        elif pattern == IOPattern.SAM_ANNOTATOR:
+            inputs = [
+                Port(name="image", artifact_type="BioImageRef"),
+                Port(
+                    name="embedding_path",
+                    artifact_type=["ObjectRef", "NativeOutputRef"],
+                    required=False,
+                ),
+                Port(name="segmentation_result", artifact_type="LabelImageRef", required=False),
+            ]
+            outputs = [Port(name="labels", artifact_type="LabelImageRef")]
         else:
             inputs = [Port(name="image", artifact_type="BioImageRef")]
             outputs = [Port(name="output", artifact_type="BioImageRef")]

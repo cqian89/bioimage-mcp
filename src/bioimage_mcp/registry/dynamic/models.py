@@ -61,6 +61,7 @@ class IOPattern(str, Enum):
     DYNAMIC = "dynamic"
     SAM_PROMPT = "sam_prompt"
     SAM_AMG = "sam_amg"
+    SAM_ANNOTATOR = "sam_annotator"
 
 
 class ParameterSchema(BaseModel):
