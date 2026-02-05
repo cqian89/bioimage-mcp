@@ -6,6 +6,7 @@ tool_manifest_roots:
 - /mnt/c/Users/meqia/bioimage-mcp/tools/tttrlib
 - /mnt/c/Users/meqia/bioimage-mcp/tools/trackpy
 - /mnt/c/Users/meqia/bioimage-mcp/tools/stardist
+- /mnt/c/Users/meqia/bioimage-mcp/tools/microsam
 fs_allowlist_read:
 - /mnt/c/Users/meqia/bioimage-mcp/datasets
 - /home/qianchen/.bioimage-mcp/artifacts
