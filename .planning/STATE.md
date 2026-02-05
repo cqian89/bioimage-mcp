@@ -9,11 +9,11 @@
 ## Current Position
 
 - **Phase:** 23 of 24 (µSAM Interactive Bridge)
-- **Plan:** 1 of 3 in current phase
+- **Plan:** 2 of 3 in current phase
 - **Status:** In progress
-- **Last activity:** 2026-02-05 - Completed 23-01-PLAN.md
+- **Last activity:** 2026-02-06 - Completed 23-02-PLAN.md
 
-Progress: █████████████████████████░ 99% (of defined plans)
+Progress: ██████████████████████████ 100% (of defined plans)
 
 ## Performance Metrics
 
@@ -35,10 +35,14 @@ Progress: ███████████████████████�
 - **Library-Tool Alignment:** Decided to rename `tools.microsam` to `tools.micro_sam` to better match the upstream library name `micro_sam`.
 - **Hybrid SAM Discovery:** Relaxed re-export restrictions in `MicrosamAdapter` to ensure critical segmentation functions (often re-exported from `torch_em`) are exposed to the API.
 - **SAM-specific I/O Patterns:** Introduced `SAM_PROMPT` and `SAM_AMG` patterns to handle different input requirements for SAM-based tools.
+- **Side-channel Warnings:** Use `adapter.warnings` for propagating interactive warnings (like `MICROSAM_NO_CHANGES`) through the `BaseAdapter.execute` protocol.
+- **Explicit Annotator Denylist:** Only main annotator entrypoints are supported for interactive bridge; others remain denylisted to ensure stable I/O.
 
 ### Decisions Made (History)
 | Phase | Decision | Rationale |
 |-------|----------|-----------|
+| 23 | Side-channel Warnings | Enables propagating interactive metadata through a protocol that only returns artifacts. |
+| 23 | Explicit Annotator Denylist | Avoids ambiguous runtime failures by only supporting known-stable annotator entrypoints in the bridge. |
 | 23 | Artifact-Port Discovery for sam_annotator | Classifying annotator entrypoints as SAM_ANNOTATOR enables specialized interactive execution logic while maintaining artifact boundary contracts. |
 | 22 | Specialized SAM Patterns | SAM functions have specific optionality for predictor/image ports that standard patterns didn't cover. |
 | 22 | Relaxed Re-export Discovery | micro_sam re-exports many core functions from torch_em; strict discovery was excluding them. |
