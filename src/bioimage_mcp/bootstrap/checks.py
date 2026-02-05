@@ -281,7 +281,7 @@ def check_microsam_models() -> CheckResult:
 
         models = data.get("models", {})
         # We require at minimum these vit_b variants
-        required = ["vit_b", "vit_b_lm", "vit_b_em"]
+        required = ["vit_b", "vit_b_lm", "vit_b_em_organelles"]
         missing = []
         corrupt = []
 

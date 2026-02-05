@@ -232,14 +232,14 @@ def test_check_microsam_models_passes_when_record_exists(monkeypatch, tmp_path) 
     m1.touch()
     m2 = tmp_path / "vit_b_lm"
     m2.touch()
-    m3 = tmp_path / "vit_b_em"
+    m3 = tmp_path / "vit_b_em_organelles"
     m3.touch()
 
     state_file.write_text(
         json.dumps(
             {
                 "ok": True,
-                "models": {"vit_b": str(m1), "vit_b_lm": str(m2), "vit_b_em": str(m3)},
+                "models": {"vit_b": str(m1), "vit_b_lm": str(m2), "vit_b_em_organelles": str(m3)},
             }
         )
     )
@@ -276,7 +276,7 @@ def test_check_microsam_models_fails_when_files_missing(monkeypatch, tmp_path) -
                 "models": {
                     "vit_b": str(tmp_path / "missing_vit_b"),
                     "vit_b_lm": str(tmp_path / "missing_vit_b_lm"),
-                    "vit_b_em": str(tmp_path / "missing_vit_b_em"),
+                    "vit_b_em_organelles": str(tmp_path / "missing_vit_b_em_organelles"),
                 },
             }
         )
