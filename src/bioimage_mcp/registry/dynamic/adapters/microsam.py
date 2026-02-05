@@ -187,7 +187,6 @@ class MicrosamAdapter(BaseAdapter):
             work_dir = Path(tempfile.gettempdir()) / "microsam"
         work_dir.mkdir(parents=True, exist_ok=True)
 
-        args = []
         kwargs = {}
         param_names = set(inspect.signature(func).parameters.keys())
 
