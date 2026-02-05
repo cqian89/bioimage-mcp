@@ -39,8 +39,16 @@ def test_microsam_adapter_discovery_filtering(monkeypatch):
     mock_prompt = types.ModuleType("micro_sam.prompt_based_segmentation")
     mock_prompt.segment_from_points = segment_from_points
 
-    mock_annotator = types.ModuleType("micro_sam.sam_annotator")
-    mock_annotator.some_ui_func = some_ui_func
+    # mock_annotator now includes an entrypoint and a non-entrypoint
+    def annotator_2d(image):
+        pass
+
+    annotator_2d.__module__ = "micro_sam.sam_annotator.annotator_2d"
+    annotator_2d.__name__ = "annotator_2d"
+
+    mock_annotator = types.ModuleType("micro_sam.sam_annotator.annotator_2d")
+    mock_annotator.annotator_2d = annotator_2d
+    mock_annotator.__file__ = "/fake/path/__init__.py"
 
     def mock_import(name):
         if name == "micro_sam":
@@ -50,17 +58,16 @@ def test_microsam_adapter_discovery_filtering(monkeypatch):
             return root
         if name == "micro_sam.prompt_based_segmentation":
             return mock_prompt
-        if name == "micro_sam.sam_annotator":
+        if name == "micro_sam.sam_annotator.annotator_2d":
             return mock_annotator
         raise ImportError(f"No module named {name}")
 
     monkeypatch.setattr(importlib, "import_module", mock_import)
 
     # Mock walk_packages
-    # Returns (importer, name, ispkg)
     mock_walk = [
         (None, "micro_sam.prompt_based_segmentation", False),
-        (None, "micro_sam.sam_annotator", True),
+        (None, "micro_sam.sam_annotator.annotator_2d", False),
     ]
     monkeypatch.setattr(pkgutil, "walk_packages", lambda path, prefix: mock_walk)
 
@@ -73,17 +80,18 @@ def test_microsam_adapter_discovery_filtering(monkeypatch):
     # Should include prompt_based_segmentation.segment_from_points
     assert "micro_sam.prompt_based_segmentation.segment_from_points" in fn_ids
 
-    # Should EXCLUDE sam_annotator.*
-    for fid in fn_ids:
-        assert "sam_annotator" not in fid
+    # Should INCLUDE sam_annotator.annotator_2d
+    assert "micro_sam.sam_annotator.annotator_2d.annotator_2d" in fn_ids
 
     # Verify metadata content
     for r in results:
         if r.fn_id == "micro_sam.prompt_based_segmentation.segment_from_points":
-            assert r.io_pattern == IOPattern.IMAGE_TO_LABELS
+            assert r.io_pattern == IOPattern.SAM_PROMPT
             assert r.description == "Segment from points."
             assert "points" in r.parameters
             assert r.fn_id.startswith("micro_sam.")
+        if r.fn_id == "micro_sam.sam_annotator.annotator_2d.annotator_2d":
+            assert r.io_pattern == IOPattern.SAM_ANNOTATOR
 
 
 def test_microsam_io_pattern_resolution():
@@ -91,11 +99,15 @@ def test_microsam_io_pattern_resolution():
     adapter = MicrosamAdapter()
 
     assert (
-        adapter.resolve_io_pattern("micro_sam.prompt_based_segmentation.something", None)
-        == IOPattern.IMAGE_TO_LABELS
+        adapter.resolve_io_pattern("micro_sam.prompt_based_segmentation.segment_something", None)
+        == IOPattern.SAM_PROMPT
     )
     assert (
-        adapter.resolve_io_pattern("micro_sam.instance_segmentation.something", None)
-        == IOPattern.IMAGE_TO_LABELS
+        adapter.resolve_io_pattern("micro_sam.instance_segmentation.automatic_mask_generator", None)
+        == IOPattern.SAM_AMG
     )
-    assert adapter.resolve_io_pattern("micro_sam.util.something", None) == IOPattern.GENERIC
+    assert (
+        adapter.resolve_io_pattern("micro_sam.sam_annotator.annotator_2d", None)
+        == IOPattern.SAM_ANNOTATOR
+    )
+    assert adapter.resolve_io_pattern("micro_sam.util.something", None) == IOPattern.DYNAMIC

@@ -150,13 +150,8 @@ async def test_microsam_instance_segmentation(live_server):
 
 @pytest.mark.smoke_extended
 @pytest.mark.anyio
-async def test_microsam_list_exclusion(live_server):
-    """Verify that sam_annotator is not exposed in list."""
-    list_result = await live_server.call_tool("list", {"path": "micro_sam"})
-    # The list output might be hierarchical or flattened.
-    # If it's hierarchical, we might need to check children recursively or use flatten=True.
-
+async def test_microsam_list_inclusion(live_server):
+    """Verify that sam_annotator entrypoints are exposed in list."""
     flattened_list = await live_server.call_tool("list", {"path": "micro_sam", "flatten": True})
     ids = [item["id"] for item in flattened_list["items"]]
-    for item_id in ids:
-        assert "sam_annotator" not in item_id
+    assert any("sam_annotator.annotator_2d" in item_id for item_id in ids)
