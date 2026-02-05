@@ -1,46 +1,35 @@
-# Research Summary: Interactive Annotation
+# Research Summary: micro_sam Integration (API + Annotators)
 
-**Domain:** napari + µSAM Interactive Annotation
-**Researched:** 2026-02-04
+**Domain:** `micro_sam` Python API exposure + napari annotators
+**Researched:** 2026-02-04 (updated 2026-02-05)
 **Overall confidence:** HIGH
 
 ## Executive Summary
 
-The v0.5.0 milestone aims to transition `bioimage-mcp` from a pure CLI/server tool to a "Human-in-the-loop" platform. Research indicates that `napari` with the **micro-sam plugin** is the current state-of-the-art for this workflow.
+The v0.5.0 milestone integrates upstream `micro_sam` into `bioimage-mcp` in two layers:
 
-**Key architectural decision:** We are **reusing the existing micro-sam napari plugin** rather than building custom annotation UI. The plugin already provides point prompts, box prompts, scribble refinement, undo/redo, and 3D propagation. Our work focuses on:
-1. Launching the plugin via MCP `run()` calls
-2. Bridging MCP artifacts (OME-Zarr) to/from napari layers
-3. Managing the subprocess lifecycle and embedding cache
+1. **API-first exposure (Phase 22):** expose the `micro_sam` Python library API (organized by submodule) to MCP `run()` with stable IDs of the form `micro_sam.<submodule>.<callable>`, excluding only `micro_sam.sam_annotator`.
+2. **Interactive bridge (Phase 23):** reuse the existing `micro_sam` napari annotators instead of building custom UI; bridge MCP artifacts to/from napari layers.
 
-The recommended approach is a **Process-Isolated Interactive Manager**. This architecture spawns napari with the micro-sam plugin in a managed subprocess, preventing server hangs and dependency conflicts.
+Across both phases, parameter schemas should be generated via the unified introspection engine (`Introspector`) using AST + docstring parsing, as done for existing tool packs.
+
+For the interactive layer, the recommended operational approach remains a **process-isolated interactive manager** (napari launched in a managed subprocess) to avoid event-loop coupling and dependency conflicts.
 
 ## Key Findings
 
-**Stack:** `napari` (0.5.5+) + `micro-sam` plugin (1.4.2+) + `PyTorch` (2.5.1+) in isolated conda environment.
-**Architecture:** Parent-Child process model. Agent launches napari+plugin via MCP, plugin handles all annotation UI.
-**Integration scope:** Artifact bridging (OME-Zarr ↔ napari layers), subprocess lifecycle, embedding cache.
-**Not building:** Custom annotation UI, prompt handling, mask preview, undo/redo (all provided by plugin).
-**Critical pitfall:** GPU VRAM exhaustion and event loop blocking in a headless-capable server environment.
+**Stack:** `micro_sam` in isolated conda env (`bioimage-mcp-microsam`) with `napari` available for Phase 23.
+**API exposure:** Prefer library API callables over CLI entrypoints; CLI schemas are harder to derive reliably via AST/docstring parsing.
+**Artifact boundary:** Predictor/state objects should travel via `ObjectRef`; image inputs/outputs should be `BioImageRef`/`LabelImageRef` where feasible.
+**Critical pitfall (interactive):** GPU VRAM exhaustion and event loop blocking if napari runs in-process; prefer subprocess isolation.
 
 ## Implications for Roadmap
 
-Based on research, the suggested phase structure for this milestone is:
+The adjusted phase structure for this milestone is:
 
-1. **Phase 1: µSAM Tool Pack Foundation** - Rationale: Establish isolated environment with all dependencies.
-   - Addresses: Conda environment, model download during install, device detection (CUDA/MPS/CPU).
-   - Avoids: First-run download latency, dependency conflicts.
-
-2. **Phase 2: Headless Tools** - Rationale: Verify SAM inference works before adding GUI complexity.
-   - Addresses: `compute_embeddings`, `segment_automatic` (headless), embedding caching.
-   - Avoids: Debugging inference issues through GUI layer.
-
-3. **Phase 3: Interactive Bridge** - Rationale: Core integration work connecting MCP to micro-sam plugin.
-   - Addresses: Launch napari+plugin via `run()`, artifact bridging (OME-Zarr ↔ layers), subprocess isolation.
-   - Note: All annotation UI (prompts, preview, undo/redo) provided by plugin, not custom code.
-
-4. **Phase 4: Session Management** - Rationale: Production-readiness and robustness.
-   - Addresses: Orphan cleanup, session resume, progress indicators, headless detection.
+1. Phase 21: Tool pack foundation (env + model/device bootstrap)
+2. Phase 22: Headless API exposure (all `micro_sam.*` except `micro_sam.sam_annotator`)
+3. Phase 23: Annotator exposure + artifact bridge (`micro_sam.sam_annotator`)
+4. Phase 24: Caching/state artifacts + end-to-end verification
 
 ## Confidence Assessment
 
