@@ -17,6 +17,13 @@ Expose the `micro_sam` Python library API to MCP `run()` (all submodules except 
 
 - **Goal:** Enable headless SAM segmentation (prompts, auto-mask) via MCP `run()`.
 - **Key Submodules:** All `micro_sam.*` except `micro_sam.sam_annotator`.
+- **Plans:** 4 plans
+
+Plans:
+- [ ] 22-01-PLAN.md — Rename tool_id to tools.micro_sam and add persistent entrypoint + dynamic_sources
+- [ ] 22-02-PLAN.md — Implement MicrosamAdapter discovery (exclude sam_annotator) and register adapter
+- [ ] 22-03-PLAN.md — Implement headless execution + compute_embedding + ObjectRef reuse
+- [ ] 22-04-PLAN.md — Add live smoke tests for prompt and auto-mask segmentation
 - **Status:** Pending
 
 ### Phase 23: µSAM Interactive Bridge
