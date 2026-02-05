@@ -20,11 +20,11 @@ Expose the `micro_sam` Python library API to MCP `run()` (all submodules except 
 - **Plans:** 4 plans
 
 Plans:
-- [ ] 22-01-PLAN.md — Rename tool_id to tools.micro_sam and add persistent entrypoint + dynamic_sources
+- [x] 22-01-PLAN.md — Rename tool_id to tools.micro_sam and add persistent entrypoint + dynamic_sources
 - [ ] 22-02-PLAN.md — Implement MicrosamAdapter discovery (exclude sam_annotator) and register adapter
 - [ ] 22-03-PLAN.md — Implement headless execution + compute_embedding + ObjectRef reuse
 - [ ] 22-04-PLAN.md — Add live smoke tests for prompt and auto-mask segmentation
-- **Status:** Pending
+- **Status:** In progress
 
 ### Phase 23: µSAM Interactive Bridge
 Enable launching the `micro_sam` napari annotators from MCP.
@@ -41,7 +41,7 @@ Optimize lifecycle of heavy model objects and large embeddings.
 | Phase | Description | Status | Progress |
 |-------|-------------|--------|----------|
 | 21 | µSAM Tool Pack Foundation | ✓ Complete | 100% |
-| 22 | Headless API Integration | Pending | 0% |
+| 22 | Headless API Integration | In progress | 25% |
 | 23 | Interactive Bridge (Napari) | Pending | 0% |
 | 24 | Session Management & Opt | Pending | 0% |
 

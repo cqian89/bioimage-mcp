@@ -8,12 +8,12 @@
 
 ## Current Position
 
-- **Phase:** 21 of 24 (µSAM Tool Pack Foundation)
-- **Plan:** Complete
-- **Status:** Phase verified ✓
-- **Last activity:** 2026-02-05 - Human verification passed, ready for Phase 22
+- **Phase:** 22 of 24 (µSAM Headless API)
+- **Plan:** 1 of 4 in current phase
+- **Status:** In progress
+- **Last activity:** 2026-02-05 - Completed 22-01-PLAN.md
 
-Progress: ████████████████████ 100%
+Progress: █████████████████████░░ 87%
 
 ## Performance Metrics
 
@@ -32,10 +32,12 @@ Progress: ████████████████████ 100%
 - **Conda Lock naming:** Used `micro_sam` (underscore) for conda-forge compatibility in foundation environment.
 - **Tool-specific Config Wiring:** Use a dedicated `tool_config` payload in `execute_step` to pass tool-specific preferences (like `microsam.device`) without bloating the generic request schema.
 - **Lazy Torch Imports:** Microsam tools import `torch` lazily during device selection to maintain fast discovery and capability detection in non-torch environments.
+- **Library-Tool Alignment:** Decided to rename `tools.microsam` to `tools.micro_sam` to better match the upstream library name `micro_sam`.
 
 ### Decisions Made (History)
 | Phase | Decision | Rationale |
 |-------|----------|-----------|
+| 22 | Renamed tool_id to tools.micro_sam | Aligns tool ID with upstream library name micro_sam for cleaner mapping. |
 | 21 | Use tool_config for microsam.device | Keeps execution protocol lean while propagating user preferences to the isolated tool environment. |
 | 21 | Strict device availability check | Fails fast with actionable errors if a forced accelerator (CUDA/MPS) is missing, but allows meta.describe to skip check. |
 | 21 | Use StrEnum for MicrosamDevice | Ensures str(enum) returns the value string, satisfying validation and user-facing requirements. |
@@ -49,10 +51,10 @@ Progress: ████████████████████ 100%
 | 15 | Use OME-Zarr as default save format in SkimageAdapter | Aligns with project-wide standardization. |
 
 ### Blockers
-- None. (Phase 21 device-selection gap resolved in 21-05)
+- None.
 
 ## Session Continuity
 
-- **Last Session:** 2026-02-05 - Completed 21-05-PLAN.md
-- **Stopped at:** Completed 21-05-PLAN.md
+- **Last Session:** 2026-02-05 - Completed 22-01-PLAN.md
+- **Stopped at:** Completed 22-01-PLAN.md
 - **Resume file:** None
