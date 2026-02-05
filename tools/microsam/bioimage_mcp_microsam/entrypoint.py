@@ -20,7 +20,7 @@ if str(REPO_ROOT / "src") not in sys.path:
 if str(TOOLS_ROOT) not in sys.path:
     sys.path.insert(0, str(TOOLS_ROOT))
 
-from bioimage_mcp_microsam.device import select_device
+from bioimage_mcp_microsam.device import select_device  # noqa: E402
 
 TOOL_VERSION = "0.1.0"
 TOOL_ENV_NAME = "bioimage-mcp-microsam"
@@ -40,7 +40,9 @@ def _initialize_worker(session_id: str, env_id: str) -> None:
 def handle_meta_list(params: dict[str, Any]) -> dict[str, Any]:
     """Out-of-process function discovery for microsam tool pack."""
     import hashlib
+
     import yaml
+
     from bioimage_mcp.registry.dynamic.adapters import ADAPTER_REGISTRY
     from bioimage_mcp.registry.dynamic.cache import IntrospectionCache
     from bioimage_mcp.registry.dynamic.discovery import discover_functions
@@ -130,7 +132,9 @@ def handle_meta_describe(params: dict[str, Any]) -> dict[str, Any]:
 
     try:
         import hashlib
+
         import yaml
+
         from bioimage_mcp.registry.dynamic.adapters import ADAPTER_REGISTRY
         from bioimage_mcp.registry.dynamic.cache import IntrospectionCache
         from bioimage_mcp.registry.dynamic.discovery import discover_functions
@@ -242,6 +246,49 @@ def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
         result = handle_meta_list(params)
     elif req_id == "meta.describe":
         result = handle_meta_describe(params)
+    elif req_id.startswith("micro_sam."):
+        from bioimage_mcp.registry.dynamic.adapters.microsam import MicrosamAdapter
+
+        adapter = MicrosamAdapter()
+        try:
+            inputs = request.get("inputs", {})
+            work_dir = Path(request.get("work_dir", "."))
+
+            # Inject device from tool_config if not in params
+            if "device" not in params:
+                params["device"] = tool_config.get("microsam", {}).get("device", "auto")
+
+            result_artifacts = adapter.execute(
+                fn_id=req_id, inputs=inputs, params=params, work_dir=work_dir
+            )
+
+            # Pack results into outputs dict
+            if len(result_artifacts) == 1:
+                outputs = {"output": result_artifacts[0]}
+            else:
+                outputs = {f"output_{i}": art for i, art in enumerate(result_artifacts)}
+
+            return {
+                "command": "execute_result",
+                "ok": True,
+                "ordinal": ordinal,
+                "id": req_id,
+                "outputs": outputs,
+                "log": "ok",
+            }
+        except Exception as e:
+            logger.exception(f"Execution failed for {req_id}")
+            return {
+                "command": "execute_result",
+                "ok": False,
+                "ordinal": ordinal,
+                "id": req_id,
+                "error": {
+                    "code": "EXECUTION_ERROR",
+                    "message": str(e),
+                },
+                "log": f"Error: {e}",
+            }
     else:
         return {
             "command": "execute_result",
