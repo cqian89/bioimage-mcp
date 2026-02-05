@@ -39,6 +39,8 @@ ARTIFACT_INPUT_PARAMS = {
     "src",
     "embedding",
     "predictor",
+    "embedding_path",
+    "segmentation_result",
 }
 
 
@@ -72,9 +74,7 @@ class MicrosamAdapter(BaseAdapter):
         for _, mod_name, _ in pkgutil.walk_packages(
             root_module.__path__, root_module.__name__ + "."
         ):
-            # Exclude micro_sam.sam_annotator and private/test modules
-            if "sam_annotator" in mod_name:
-                continue
+            # Exclude private/test modules
             if ".test" in mod_name or mod_name.split(".")[-1].startswith("_"):
                 continue
 
@@ -573,6 +573,16 @@ class MicrosamAdapter(BaseAdapter):
         if "instance_segmentation" in func_name:
             if "segment" in func_name or "watershed" in func_name or "automatic" in func_name:
                 return IOPattern.SAM_AMG
+        if "sam_annotator" in func_name:
+            # Entrypoints for interactive annotators
+            entrypoints = {
+                "annotator_2d",
+                "annotator_3d",
+                "annotator_tracking",
+                "image_series_annotator",
+            }
+            if any(ep in func_name for ep in entrypoints):
+                return IOPattern.SAM_ANNOTATOR
 
         return IOPattern.DYNAMIC
 
