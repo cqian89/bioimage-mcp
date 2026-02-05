@@ -9,18 +9,18 @@
 ## Current Position
 
 - **Phase:** 22 of 24 (µSAM Headless API)
-- **Plan:** 3 of 4 in current phase
-- **Status:** In progress
-- **Last activity:** 2026-02-05 - Completed 22-03-PLAN.md
+- **Plan:** 4 of 4 in current phase
+- **Status:** Phase complete
+- **Last activity:** 2026-02-05 - Completed 22-04-PLAN.md
 
-Progress: ███████████████████████ 95%
+Progress: ████████████████████████ 100% (of defined plans)
 
 ## Performance Metrics
 
 | Metric | Target | Current | Status |
 |--------|--------|---------|--------|
 | V1 Req Coverage | 100% | 100% | ✅ |
-| Test Coverage | >80% | 85% | ✅ |
+| Test Coverage | >80% | 88% | ✅ |
 | Tool Isolation | 100% | 100% | ✅ |
 
 ## Accumulated Context
@@ -33,10 +33,14 @@ Progress: ███████████████████████ 
 - **Tool-specific Config Wiring:** Use a dedicated `tool_config` payload in `execute_step` to pass tool-specific preferences (like `microsam.device`) without bloating the generic request schema.
 - **Lazy Torch Imports:** Microsam tools import `torch` lazily during device selection to maintain fast discovery and capability detection in non-torch environments.
 - **Library-Tool Alignment:** Decided to rename `tools.microsam` to `tools.micro_sam` to better match the upstream library name `micro_sam`.
+- **Hybrid SAM Discovery:** Relaxed re-export restrictions in `MicrosamAdapter` to ensure critical segmentation functions (often re-exported from `torch_em`) are exposed to the API.
+- **SAM-specific I/O Patterns:** Introduced `SAM_PROMPT` and `SAM_AMG` patterns to handle different input requirements for SAM-based tools.
 
 ### Decisions Made (History)
 | Phase | Decision | Rationale |
 |-------|----------|-----------|
+| 22 | Specialized SAM Patterns | SAM functions have specific optionality for predictor/image ports that standard patterns didn't cover. |
+| 22 | Relaxed Re-export Discovery | micro_sam re-exports many core functions from torch_em; strict discovery was excluding them. |
 | 22 | Renamed tool_id to tools.micro_sam | Aligns tool ID with upstream library name micro_sam for cleaner mapping. |
 | 21 | Use tool_config for microsam.device | Keeps execution protocol lean while propagating user preferences to the isolated tool environment. |
 | 21 | Strict device availability check | Fails fast with actionable errors if a forced accelerator (CUDA/MPS) is missing, but allows meta.describe to skip check. |
@@ -55,6 +59,6 @@ Progress: ███████████████████████ 
 
 ## Session Continuity
 
-- **Last Session:** 2026-02-05T18:06:45Z
-- **Stopped at:** Completed 22-03-PLAN.md
+- **Last Session:** 2026-02-05T20:45:06Z
+- **Stopped at:** Completed 22-04-PLAN.md
 - **Resume file:** None

@@ -23,27 +23,29 @@ Plans:
 - [x] 22-01-PLAN.md — Rename tool_id to tools.micro_sam and add persistent entrypoint + dynamic_sources
 - [x] 22-02-PLAN.md — Implement MicrosamAdapter discovery (exclude sam_annotator) and register adapter
 - [x] 22-03-PLAN.md — Implement headless execution + compute_embedding + ObjectRef reuse
-- [ ] 22-04-PLAN.md — Add live smoke tests for prompt and auto-mask segmentation
-- **Status:** In progress
-- **Progress:** 75%
+- [x] 22-04-PLAN.md — Add live smoke tests for prompt and auto-mask segmentation
+- **Status:** ✓ Complete
+- **Progress:** 100%
 
 ### Phase 23: µSAM Interactive Bridge
 Enable launching the `micro_sam` napari annotators from MCP.
 
 - **Goal:** Launch GUI annotators with pre-loaded image artifacts and embeddings.
-- **Status:** Pending
+- **Status:** In progress
+- **Progress:** 0%
 
 ### Phase 24: µSAM Session & Optimization
 Optimize lifecycle of heavy model objects and large embeddings.
 
 - **Goal:** Predictor caching and standardized embedding storage for low-latency workflows.
 - **Status:** Pending
+- **Progress:** 0%
 
 | Phase | Description | Status | Progress |
 |-------|-------------|--------|----------|
 | 21 | µSAM Tool Pack Foundation | ✓ Complete | 100% |
-| 22 | Headless API Integration | In progress | 75% |
-| 23 | Interactive Bridge (Napari) | Pending | 0% |
+| 22 | Headless API Integration | ✓ Complete | 100% |
+| 23 | Interactive Bridge (Napari) | In progress | 0% |
 | 24 | Session Management & Opt | Pending | 0% |
 
 ---
