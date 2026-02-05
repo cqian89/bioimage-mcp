@@ -16,6 +16,7 @@ dependencies:
   - napari
   # Standard image I/O
   - bioio
+  - bioio-tifffile
   - bioio-ome-tiff
   - bioio-ome-zarr
   # Use conda pytorch-cpu to avoid CUDA dependency resolution issues in the base lockfile
