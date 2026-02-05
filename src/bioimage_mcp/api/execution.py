@@ -232,6 +232,10 @@ def execute_step(
         "fs_allowlist_write": [str(path) for path in config.fs_allowlist_write],
     }
 
+    # Task 1: Pass microsam.device into the microsam tool execution request (21-05)
+    if manifest.tool_id == "tools.microsam":
+        request["tool_config"] = {"microsam": {"device": str(config.microsam.device)}}
+
     if worker_manager:
         # Use persistent worker for execution (T016, spec 012)
         worker = worker_manager.get_worker(session_id, manifest.env_id)
