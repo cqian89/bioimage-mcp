@@ -34,11 +34,11 @@ Enable launching the `micro_sam` napari annotators from MCP.
 - **Plans:** 3 plans
 
 Plans:
-- [ ] 23-01-PLAN.md — Expose `micro_sam.sam_annotator.*` discovery with artifact-safe I/O pattern mapping
+- [x] 23-01-PLAN.md — Expose `micro_sam.sam_annotator.*` discovery with artifact-safe I/O pattern mapping
 - [ ] 23-02-PLAN.md — Implement interactive napari execution bridge, label export, and stable headless error handling
 - [ ] 23-03-PLAN.md — Add live smoke coverage and run blocking human GUI verification checkpoint
 - **Status:** In progress
-- **Progress:** 0%
+- **Progress:** 33%
 
 ### Phase 24: µSAM Session & Optimization
 Optimize lifecycle of heavy model objects and large embeddings.
@@ -51,7 +51,7 @@ Optimize lifecycle of heavy model objects and large embeddings.
 |-------|-------------|--------|----------|
 | 21 | µSAM Tool Pack Foundation | ✓ Complete | 100% |
 | 22 | Headless API Integration | ✓ Complete | 100% |
-| 23 | Interactive Bridge (Napari) | In progress | 0% |
+| 23 | Interactive Bridge (Napari) | In progress | 33% |
 | 24 | Session Management & Opt | Pending | 0% |
 
 ---
