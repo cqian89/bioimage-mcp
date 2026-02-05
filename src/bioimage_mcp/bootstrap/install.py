@@ -326,12 +326,13 @@ def _microsam_post_install(exe: str, env_name: str) -> bool:
         print(f"Model bootstrap script not found at {script_path}", file=sys.stderr)
         return False
 
-    cmd = [exe, "run", "-n", env_name, "python", str(script_path)]
-    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    cmd = [exe, "run", "-n", env_name, "python", "-u", str(script_path)]
+    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=None, text=True, check=False)
     if result.returncode != 0:
-        print(f"Model bootstrap failed for {env_name}: {result.stderr}", file=sys.stderr)
+        print(f"Model bootstrap failed for {env_name} (see output above)", file=sys.stderr)
         print(
-            f"Remediation: Ensure network access and run: {exe} run -n {env_name} python {script_path}",
+            f"Remediation: Ensure network access and run: "
+            f"{exe} run -n {env_name} python {script_path}",
             file=sys.stderr,
         )
         return False
