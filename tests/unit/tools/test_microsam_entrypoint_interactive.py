@@ -77,3 +77,53 @@ def test_entrypoint_device_hint_propagation():
         # Verify hints passed to adapter.execute
         kwargs = mock_exec.call_args[1]
         assert kwargs["hints"]["device"] == "cuda"
+
+
+def test_entrypoint_cache_hit_warning():
+    request = {
+        "command": "execute",
+        "id": "micro_sam.sam_annotator.annotator_2d",
+        "inputs": {"image": {"type": "BioImageRef", "uri": "file:///tmp/test.tif"}},
+        "params": {},
+        "tool_config": {"microsam": {"device": "cpu"}},
+    }
+
+    with (
+        patch("tools.microsam.bioimage_mcp_microsam.entrypoint.select_device"),
+        patch(
+            "bioimage_mcp.registry.dynamic.adapters.microsam.MicrosamAdapter"
+        ) as mock_adapter_class,
+    ):
+        mock_adapter = mock_adapter_class.return_value
+        mock_adapter.execute.return_value = []
+        mock_adapter.warnings = ["MICROSAM_CACHE_HIT"]
+
+        response = process_execute_request(request)
+
+        assert response["ok"] is True
+        assert "MICROSAM_CACHE_HIT" in response["warnings"]
+
+
+def test_entrypoint_cache_reset_warning():
+    request = {
+        "command": "execute",
+        "id": "micro_sam.sam_annotator.annotator_2d",
+        "inputs": {"image": {"type": "BioImageRef", "uri": "file:///tmp/test.tif"}},
+        "params": {"force_fresh": True},
+        "tool_config": {"microsam": {"device": "cpu"}},
+    }
+
+    with (
+        patch("tools.microsam.bioimage_mcp_microsam.entrypoint.select_device"),
+        patch(
+            "bioimage_mcp.registry.dynamic.adapters.microsam.MicrosamAdapter"
+        ) as mock_adapter_class,
+    ):
+        mock_adapter = mock_adapter_class.return_value
+        mock_adapter.execute.return_value = []
+        mock_adapter.warnings = ["MICROSAM_CACHE_RESET"]
+
+        response = process_execute_request(request)
+
+        assert response["ok"] is True
+        assert "MICROSAM_CACHE_RESET" in response["warnings"]
