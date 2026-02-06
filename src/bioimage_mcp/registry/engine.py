@@ -336,10 +336,18 @@ class DiscoveryEngine:
                 "id": "meta.list",
                 "params": {},
             }
+
+            # Resolve entrypoint relative to manifest file if it's a relative path (Rule 1)
+            entrypoint = manifest.entrypoint
+            if entrypoint and not Path(entrypoint).is_absolute():
+                candidate = manifest.manifest_path.parent / entrypoint
+                if candidate.exists():
+                    entrypoint = str(candidate)
+
             # execute_tool handles spawning the worker
             # Note: execute_tool returns (result_dict, log_text, exit_code)
             result, _log, code = execute_tool(
-                entrypoint=manifest.entrypoint,
+                entrypoint=entrypoint,
                 request=request,
                 env_id=manifest.env_id,
             )
@@ -667,9 +675,17 @@ class DiscoveryEngine:
             "params": {"target_fn": fn_id},
             "inputs": {},
         }
+
+        # Resolve entrypoint relative to manifest file if it's a relative path (Rule 1)
+        entrypoint = manifest.entrypoint
+        if entrypoint and not Path(entrypoint).is_absolute():
+            candidate = manifest.manifest_path.parent / entrypoint
+            if candidate.exists():
+                entrypoint = str(candidate)
+
         try:
             response, _, _ = execute_tool(
-                entrypoint=manifest.entrypoint,
+                entrypoint=entrypoint,
                 request=request,
                 env_id=manifest.env_id,
                 timeout_seconds=30,
