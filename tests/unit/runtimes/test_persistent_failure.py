@@ -38,3 +38,28 @@ def test_worker_kills_process_on_read_error():
             # Assert kill was called
             mock_proc.kill.assert_called()
             assert worker.state == WorkerState.TERMINATED
+
+
+def test_worker_shutdown_force_kills_on_busy_timeout():
+    """Verify worker is force-killed if it remains BUSY during shutdown."""
+    mock_proc = MagicMock()
+    mock_proc.poll.return_value = None  # Running
+
+    with patch("subprocess.Popen", return_value=mock_proc):
+        mock_proc.stdout.readline.return_value = '{"command": "ready", "version": "1.0"}\n'
+        with patch(
+            "bioimage_mcp.runtimes.persistent.decode_message",
+            return_value={"command": "ready", "version": "1.0"},
+        ):
+            worker = WorkerProcess("session-1", "test-env")
+            assert worker.state == WorkerState.READY
+
+            # Manually set to BUSY
+            worker.state = WorkerState.BUSY
+
+            # Shutdown with a very small timeout
+            worker.shutdown(graceful=True, wait_timeout=0.1)
+
+            # Assert kill was called because it timed out waiting for non-BUSY
+            mock_proc.kill.assert_called()
+            assert worker.state == WorkerState.TERMINATED
