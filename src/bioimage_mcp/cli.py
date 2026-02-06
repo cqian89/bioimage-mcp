@@ -66,6 +66,14 @@ def _build_parser() -> argparse.ArgumentParser:
     remove.add_argument("--yes", "-y", action="store_true", help="Skip confirmation")
     remove.set_defaults(_handler=_handle_remove)
 
+    run_parser = subparsers.add_parser("run", help="Run a tool via the ExecutionService")
+    run_parser.add_argument("tool_id", help="Tool ID to run")
+    run_parser.add_argument("--param", "-p", action="append", help="Parameter in key=value format")
+    run_parser.add_argument("--input", "-i", action="append", help="Input in key=path format")
+    run_parser.add_argument("--session", help="Session ID (defaults to cli-session)")
+    run_parser.add_argument("--json", action="store_true", help="Output machine-readable JSON")
+    run_parser.set_defaults(_handler=_handle_run)
+
     return parser
 
 
@@ -145,6 +153,36 @@ def _handle_remove(args: argparse.Namespace) -> int:
     from bioimage_mcp.bootstrap.remove import remove_tool
 
     return remove_tool(args.tool, yes=args.yes)
+
+
+def _handle_run(args: argparse.Namespace) -> int:
+    from bioimage_mcp.bootstrap.run import run
+
+    params = {}
+    if args.param:
+        for p in args.param:
+            if "=" in p:
+                k, v = p.split("=", 1)
+                params[k] = v
+            else:
+                print(f"Warning: ignoring malformed param {p}", file=sys.stderr)
+
+    inputs = {}
+    if args.input:
+        for i in args.input:
+            if "=" in i:
+                k, v = i.split("=", 1)
+                inputs[k] = v
+            else:
+                print(f"Warning: ignoring malformed input {i}", file=sys.stderr)
+
+    return run(
+        tool_id=args.tool_id,
+        params=params,
+        inputs=inputs,
+        session_id=args.session or "cli-session",
+        json_output=args.json,
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
