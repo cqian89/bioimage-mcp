@@ -54,7 +54,23 @@ async def test_microsam_prompt_based_segmentation(live_server):
         assert embed_result.get("status") == "success", (
             f"Embedding failed: {embed_result.get('error')}"
         )
+        assert "MICROSAM_MODEL_LOAD_START" in embed_result.get("warnings", [])
+        assert "MICROSAM_EMBEDDING_COMPUTE_DONE" in embed_result.get("warnings", [])
         predictor_ref = embed_result["outputs"]["output"]
+
+        # 3b. Call micro_sam.compute_embedding AGAIN (should hit cache)
+        embed_result_2 = await live_server.call_tool(
+            "run",
+            {
+                "id": "micro_sam.compute_embedding",
+                "inputs": {"image": img_ref},
+                "params": {"model": "vit_b"},
+            },
+        )
+        assert embed_result_2.get("status") == "success"
+        assert "MICROSAM_CACHE_HIT" in embed_result_2.get("warnings", [])
+        # Markers should NOT be present on cache hit because we skip model load/set_image
+        assert "MICROSAM_MODEL_LOAD_START" not in embed_result_2.get("warnings", [])
 
         # 4. Call micro_sam.prompt_based_segmentation.segment_from_points
         # Positive prompt at the center of the disk
@@ -152,6 +168,8 @@ async def test_microsam_instance_segmentation(live_server):
 @pytest.mark.anyio
 async def test_microsam_list_inclusion(live_server):
     """Verify that sam_annotator entrypoints are exposed in list."""
-    flattened_list = await live_server.call_tool("list", {"path": "micro_sam", "flatten": True})
+    flattened_list = await live_server.call_tool(
+        "list", {"path": "micro_sam", "flatten": True, "limit": 200}
+    )
     ids = [item["id"] for item in flattened_list["items"]]
     assert any("sam_annotator.annotator_2d" in item_id for item_id in ids)

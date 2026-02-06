@@ -211,6 +211,7 @@ class InteractiveExecutionService:
             "run_id": result["run_id"],
             "status": status,
             "outputs": response_outputs,
+            "warnings": result.get("warnings", []),
         }
 
         if hints:

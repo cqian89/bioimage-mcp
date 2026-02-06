@@ -886,7 +886,8 @@ class WorkerProcess:
 
                     if ack_thread.is_alive():
                         logger.warning(
-                            "Worker failed to ACK shutdown within 2s, force-killing: session=%s env=%s",
+                            "Worker failed to ACK shutdown within 2s, force-killing: "
+                            "session=%s env=%s",
                             self.session_id,
                             self.env_id,
                         )

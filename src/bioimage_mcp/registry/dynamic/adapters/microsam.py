@@ -53,6 +53,9 @@ ARTIFACT_INPUT_PARAMS = {
     "segmentation_result",
 }
 
+# Persistent cache index for predictors across adapter instances
+_CACHE_INDEX: dict[str, dict[str, Any]] = {}
+
 
 class MicrosamAdapter(BaseAdapter):
     """Adapter for exposing micro_sam functions dynamically."""
@@ -60,7 +63,6 @@ class MicrosamAdapter(BaseAdapter):
     def __init__(self) -> None:
         self.introspector = Introspector()
         self.warnings: list[str] = []
-        self._cache_index: dict[str, dict[str, Any]] = {}
 
     def _get_cache_key(self, artifact: Artifact, model_type: str) -> str | None:
         """Build deterministic cache key for image + model."""
@@ -85,7 +87,7 @@ class MicrosamAdapter(BaseAdapter):
         if force_fresh:
             self.warnings.append("MICROSAM_CACHE_RESET")
             OBJECT_CACHE.evict(key)
-            self._cache_index.pop(key, None)
+            _CACHE_INDEX.pop(key, None)
             return None
 
         predictor = OBJECT_CACHE.get(key)
@@ -96,7 +98,7 @@ class MicrosamAdapter(BaseAdapter):
         if not hasattr(predictor, "set_image"):
             self.warnings.append("MICROSAM_CACHE_CORRUPT")
             OBJECT_CACHE.evict(key)
-            self._cache_index.pop(key, None)
+            _CACHE_INDEX.pop(key, None)
             return None
 
         if "MICROSAM_CACHE_HIT" not in self.warnings:
@@ -245,7 +247,8 @@ class MicrosamAdapter(BaseAdapter):
             from bioimage_mcp.registry.dynamic.object_cache import clear
 
             clear()
-            self._cache_index = {}
+            global _CACHE_INDEX
+            _CACHE_INDEX = {}
             self.warnings.append("MICROSAM_CACHE_RESET")
             return []
 
@@ -383,7 +386,9 @@ class MicrosamAdapter(BaseAdapter):
                 from micro_sam import util
 
                 device = select_device(device_pref)
+                self.warnings.append("MICROSAM_MODEL_LOAD_START")
                 predictor = util.get_sam_model(model_type=model_type, device=device)
+                self.warnings.append("MICROSAM_MODEL_LOAD_DONE")
 
                 # Ensure image is RGB for SAM
                 image_data = kwargs.get("image")
@@ -395,7 +400,9 @@ class MicrosamAdapter(BaseAdapter):
                 else:
                     image_data_rgb = image_data
 
+                self.warnings.append("MICROSAM_EMBEDDING_COMPUTE_START")
                 predictor.set_image(image_data_rgb)
+                self.warnings.append("MICROSAM_EMBEDDING_COMPUTE_DONE")
                 kwargs["predictor"] = predictor
 
                 # Cache it
@@ -427,7 +434,7 @@ class MicrosamAdapter(BaseAdapter):
                             "device": device,
                         },
                     }
-                    self._cache_index[key] = ref
+                    _CACHE_INDEX[key] = ref
 
         # Execute the function
         try:
@@ -521,9 +528,9 @@ class MicrosamAdapter(BaseAdapter):
             # Actually, _get_cached_predictor returns the object.
             # We need to return an ObjectRef that points to it.
             # Since we want to return the EXACT same ObjectRef if possible,
-            # we should look it up in _cache_index.
+            # we should look it up in _CACHE_INDEX.
             key = self._get_cache_key(image_artifact, model_type)
-            cached_meta = self._cache_index.get(key)
+            cached_meta = _CACHE_INDEX.get(key)
             if cached_meta:
                 return [cached_meta]
 
@@ -543,10 +550,14 @@ class MicrosamAdapter(BaseAdapter):
 
         device = select_device(params.get("device", "auto"))
 
+        self.warnings.append("MICROSAM_MODEL_LOAD_START")
         predictor = util.get_sam_model(model_type=model_type, device=device)
+        self.warnings.append("MICROSAM_MODEL_LOAD_DONE")
 
         # Compute embedding
+        self.warnings.append("MICROSAM_EMBEDDING_COMPUTE_START")
         predictor.set_image(image_data)
+        self.warnings.append("MICROSAM_EMBEDDING_COMPUTE_DONE")
 
         # Store in cache
         import os
@@ -579,7 +590,7 @@ class MicrosamAdapter(BaseAdapter):
                     "device": device,
                 },
             }
-            self._cache_index[key] = ref
+            _CACHE_INDEX[key] = ref
             return [ref]
 
         return [
@@ -638,8 +649,13 @@ class MicrosamAdapter(BaseAdapter):
             from bioimage_mcp_microsam.device import select_device
 
             device = select_device(params.get("device", "auto"))
+            self.warnings.append("MICROSAM_MODEL_LOAD_START")
             predictor = util.get_sam_model(model_type=model_type, device=device)
+            self.warnings.append("MICROSAM_MODEL_LOAD_DONE")
+
+            self.warnings.append("MICROSAM_EMBEDDING_COMPUTE_START")
             predictor.set_image(image_data_rgb)
+            self.warnings.append("MICROSAM_EMBEDDING_COMPUTE_DONE")
 
             # Update cache if possible
             key = self._get_cache_key(image_artifact, model_type)
@@ -670,7 +686,7 @@ class MicrosamAdapter(BaseAdapter):
                         "device": device,
                     },
                 }
-                self._cache_index[key] = ref
+            _CACHE_INDEX[key] = ref
 
         image_data = self._load_image(image_artifact)
         input_axes = "YX"
