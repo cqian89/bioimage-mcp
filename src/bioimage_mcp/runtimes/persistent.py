@@ -8,7 +8,7 @@ import time
 from collections import deque
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 from pydantic import BaseModel, Field
 
@@ -44,6 +44,7 @@ class WorkerProcess:
     """
 
     HANDSHAKE_TIMEOUT = 30.0
+    KEEPALIVE_INTERVAL = 20.0  # Send keepalive every 20s if no data (FR-017)
 
     def __init__(
         self,
@@ -283,6 +284,7 @@ class WorkerProcess:
         request: dict[str, Any],
         memory_store: MemoryArtifactStore | None = None,
         timeout_seconds: int | None = None,
+        progress_callback: Callable[[str], None] | None = None,
     ) -> dict[str, Any]:
         """Send execute request and wait for response.
 
@@ -290,6 +292,7 @@ class WorkerProcess:
             request: ExecuteRequest dict (without 'command' field, will be added)
             memory_store: Optional memory artifact store for registering mem:// artifacts
             timeout_seconds: Optional timeout in seconds for this operation
+            progress_callback: Optional callback for progress/keepalive notifications
 
         Returns:
             ExecuteResponse dict
@@ -407,22 +410,52 @@ class WorkerProcess:
                             self.state = WorkerState.TERMINATED
                         raise RuntimeError("Worker closed stdout without response")
                 else:
-                    try:
-                        response_line = self._process.stdout.readline()
-                    except Exception as e:
+                    # No timeout specified (likely interactive), but we need keepalives to prevent client-side timeout (FR-017)
+                    import threading
+
+                    response_line = None
+                    error = None
+
+                    def read_response():
+                        nonlocal response_line, error
+                        try:
+                            response_line = self._process.stdout.readline()
+                        except Exception as e:
+                            error = e
+
+                    reader_thread = threading.Thread(target=read_response, daemon=True)
+                    reader_thread.start()
+
+                    while reader_thread.is_alive():
+                        reader_thread.join(timeout=self.KEEPALIVE_INTERVAL)
+                        if reader_thread.is_alive():
+                            # Still waiting... send keepalive progress notification
+                            if progress_callback:
+                                progress_callback(
+                                    f"Interactive tool '{exec_req.id}' is active. Waiting for user input..."
+                                )
+                            else:
+                                logger.debug(
+                                    "Waiting for interactive response from %s/%s (pid %s)",
+                                    self.session_id,
+                                    self.env_id,
+                                    self.process_id,
+                                )
+
+                    if error:
                         # Communication error - kill worker
                         logger.error(
                             "Worker read error (session=%s env=%s ordinal=%s): %s",
                             self.session_id,
                             self.env_id,
                             ordinal,
-                            e,
+                            error,
                         )
                         self._process.kill()
                         self._process.wait()
                         with self._lock:
                             self.state = WorkerState.TERMINATED
-                        raise
+                        raise error
 
                     if not response_line:
                         # Unexpected EOF - kill worker

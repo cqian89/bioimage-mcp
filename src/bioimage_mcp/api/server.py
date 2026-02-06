@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import anyio
+
 from bioimage_mcp.api.artifacts import ArtifactsService
 from bioimage_mcp.api.discovery import DiscoveryService
 from bioimage_mcp.api.execution import ExecutionService
@@ -163,7 +165,7 @@ def create_server(
         return execution.get_run_status(run_id)
 
     @mcp.tool()
-    def run(
+    async def run(
         id: str,
         inputs: dict[str, Any],
         params: dict[str, Any] | None = None,
@@ -193,14 +195,21 @@ def create_server(
 
         session_manager.ensure_session(session_id)
 
-        result = interactive.call_tool(
-            session_id=session_id,
-            fn_id=id,
-            inputs=inputs,
-            params=params,
-            ordinal=ordinal,
-            dry_run=dry_run,
-            timeout_seconds=timeout_seconds,
+        def progress_callback(message: str) -> None:
+            if ctx:
+                ctx.info(message)
+
+        result = await anyio.to_thread.run_sync(
+            interactive.call_tool,
+            session_id,
+            id,
+            inputs,
+            params,
+            ordinal,
+            None,
+            timeout_seconds,
+            dry_run,
+            progress_callback,
         )
 
         # Build base result dict (includes all data from interactive service)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Callable
 
 from bioimage_mcp.api.discovery import DiscoveryService
 from bioimage_mcp.api.errors import execution_error
@@ -41,6 +41,7 @@ class InteractiveExecutionService:
         connection_hint: str | None = None,
         timeout_seconds: int | None = None,
         dry_run: bool = False,
+        progress_callback: Callable[[str], None] | None = None,
     ) -> dict[str, Any]:
         """Execute a tool call within a session step.
 
@@ -51,7 +52,9 @@ class InteractiveExecutionService:
             params: Function parameters.
             ordinal: Optional step ordinal. If None, appends to end.
             connection_hint: Optional client connection hint (e.g. 'stdio', 'sse').
+            timeout_seconds: Optional timeout in seconds.
             dry_run: If True, validate inputs only without execution.
+            progress_callback: Optional callback for progress notifications.
 
         Returns:
             A dictionary containing the execution result, including:
@@ -100,7 +103,12 @@ class InteractiveExecutionService:
         # Run workflow
         # ExecutionService.run_workflow returns dict with run_id, status, etc.
         # It handles DB entries for RunStore and ArtifactStore.
-        result = self.execution.run_workflow(spec, session_id=session_id, dry_run=dry_run)
+        result = self.execution.run_workflow(
+            spec,
+            session_id=session_id,
+            dry_run=dry_run,
+            progress_callback=progress_callback,
+        )
 
         if dry_run and result["status"] == "success":
             return {

@@ -5,8 +5,7 @@ import platform
 import sys
 import uuid
 from pathlib import Path
-from typing import Any
-from urllib.parse import unquote, urlparse
+from typing import Any, Callable
 
 from bioimage_mcp.api.errors import execution_error, not_found_error, validation_error
 from bioimage_mcp.api.schemas import ErrorDetail
@@ -202,6 +201,7 @@ def execute_step(
     worker_manager: PersistentWorkerManager | None = None,
     session_id: str = "default-session",
     class_context: dict | None = None,
+    progress_callback: Callable[[str], None] | None = None,
 ) -> tuple[dict, str, int]:
     manifest, fn_def = _get_function_metadata(config, fn_id)
     if not manifest:
@@ -253,6 +253,7 @@ def execute_step(
                 request=request,
                 memory_store=worker_manager._memory_store,
                 timeout_seconds=effective_timeout,
+                progress_callback=progress_callback,
             )
 
             # Parse worker response to match expected format
@@ -515,6 +516,7 @@ class ExecutionService:
         init_params: dict[str, Any],
         session_id: str,
         ref_id: str | None = None,
+        progress_callback: Callable[[str], None] | None = None,
     ) -> ArtifactRef:
         """Reconstruct an object from its class and init_params (T046).
 
@@ -545,6 +547,7 @@ class ExecutionService:
                 "python_class": python_class,
                 "init_params": init_params,
             },
+            progress_callback=progress_callback,
         )
 
         if not response.get("ok"):
@@ -586,6 +589,7 @@ class ExecutionService:
         skip_validation: bool = False,
         session_id: str = "default-session",
         dry_run: bool = False,
+        progress_callback: Callable[[str], None] | None = None,
     ) -> dict:
         # Apply redirects (SC-001)
         spec, core_warnings = _apply_legacy_redirects(spec)
@@ -785,6 +789,7 @@ class ExecutionService:
                             init_params=init_params,
                             session_id=session_id,
                             ref_id=ref_id,
+                            progress_callback=progress_callback,
                         )
                         # Refresh mem_ref after reconstruction
                         mem_ref = self._memory_store.get(ref_id)
@@ -977,6 +982,7 @@ class ExecutionService:
                 timeout_seconds=timeout_seconds,
                 worker_manager=self._worker_manager,
                 session_id=session_id,
+                progress_callback=progress_callback,
             )
         except KeyError as exc:
             error_payload = not_found_error(
