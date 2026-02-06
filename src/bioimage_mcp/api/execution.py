@@ -221,6 +221,13 @@ def execute_step(
     if fn_def and hasattr(fn_def, "hints") and fn_def.hints:
         hints = fn_def.hints.model_dump(mode="json")
 
+    # Disable timeout for interactive functions (FR-017)
+    # This prevents GUI sessions from being killed while awaiting user input.
+    effective_timeout = timeout_seconds
+    if fn_def and getattr(fn_def, "io_pattern", None) == "sam_annotator":
+        logger.info("Disabling timeout for interactive function: %s", fn_id)
+        effective_timeout = None
+
     request = {
         "id": fn_id,
         "params": params,
@@ -245,7 +252,7 @@ def execute_step(
             response = worker.execute(
                 request=request,
                 memory_store=worker_manager._memory_store,
-                timeout_seconds=timeout_seconds,
+                timeout_seconds=effective_timeout,
             )
 
             # Parse worker response to match expected format
@@ -283,7 +290,7 @@ def execute_step(
         entrypoint=entrypoint,
         request=request,
         env_id=manifest.env_id,
-        timeout_seconds=timeout_seconds,
+        timeout_seconds=effective_timeout,
     )
 
     raise KeyError(fn_id)
