@@ -823,6 +823,8 @@ class WorkerProcess:
     def shutdown(self, graceful: bool = True, wait_timeout: float = 30.0) -> None:
         """Terminate the worker process.
 
+        Ensures deterministic convergence to TERMINATED state even if worker is BUSY (SESS-02).
+
         Args:
             graceful: If True, send shutdown request and wait for completion;
                 otherwise kill immediately
@@ -832,8 +834,11 @@ class WorkerProcess:
             logger.debug(
                 "Worker already terminated: session=%s env=%s", self.session_id, self.env_id
             )
+            with self._lock:
+                self.state = WorkerState.TERMINATED
             return
 
+        shutdown_method = "graceful"
         if graceful:
             # T072: Wait for in-flight operations to complete
             import time
@@ -844,42 +849,70 @@ class WorkerProcess:
 
             if self.state == WorkerState.BUSY:
                 logger.warning(
-                    "Worker still busy after %s seconds, forcing shutdown: session=%s env=%s",
+                    "Worker still BUSY after %.1fs, escalating to force-kill: session=%s env=%s",
                     wait_timeout,
                     self.session_id,
                     self.env_id,
                 )
-
-            try:
-                ordinal = self._get_next_ordinal()
-                shutdown_req = ShutdownRequest(command="shutdown", graceful=True, ordinal=ordinal)
-                req_line = encode_message(shutdown_req)
-
-                assert self._process.stdin is not None
-                self._process.stdin.write(req_line)
-                self._process.stdin.flush()
-
-                # Wait for shutdown ack (with timeout)
-                assert self._process.stdout is not None
-                self._process.stdout.readline()  # Read shutdown_ack
-
-                self._process.wait(timeout=5)
-                logger.info(
-                    "Worker shutdown gracefully: session=%s env=%s pid=%s",
-                    self.session_id,
-                    self.env_id,
-                    self.process_id,
-                )
-            except Exception as e:  # noqa: BLE001
-                logger.warning(
-                    "Graceful shutdown failed for %s/%s, forcing: %s",
-                    self.session_id,
-                    self.env_id,
-                    e,
-                )
+                shutdown_method = "force-kill (busy timeout)"
                 self._process.kill()
                 self._process.wait()
+            else:
+                try:
+                    ordinal = self._get_next_ordinal()
+                    shutdown_req = ShutdownRequest(
+                        command="shutdown", graceful=True, ordinal=ordinal
+                    )
+                    req_line = encode_message(shutdown_req)
+
+                    assert self._process.stdin is not None
+                    self._process.stdin.write(req_line)
+                    self._process.stdin.flush()
+
+                    # Wait for shutdown ack (with timeout to avoid deadlocks on blocked pipes)
+                    assert self._process.stdout is not None
+
+                    # Use a small timeout for the ACK since state is already not BUSY
+                    def _read_ack():
+                        try:
+                            # We use a short read here because the worker should be exiting
+                            self._process.stdout.readline()
+                        except Exception:
+                            pass
+
+                    ack_thread = threading.Thread(target=_read_ack, daemon=True)
+                    ack_thread.start()
+                    ack_thread.join(timeout=2.0)
+
+                    if ack_thread.is_alive():
+                        logger.warning(
+                            "Worker failed to ACK shutdown within 2s, force-killing: session=%s env=%s",
+                            self.session_id,
+                            self.env_id,
+                        )
+                        shutdown_method = "force-kill (no ACK)"
+                        self._process.kill()
+                        self._process.wait()
+                    else:
+                        self._process.wait(timeout=5)
+                        logger.info(
+                            "Worker shutdown gracefully: session=%s env=%s pid=%s",
+                            self.session_id,
+                            self.env_id,
+                            self.process_id,
+                        )
+                except Exception as e:  # noqa: BLE001
+                    logger.warning(
+                        "Graceful shutdown IPC failed for %s/%s, forcing: %s",
+                        self.session_id,
+                        self.env_id,
+                        e,
+                    )
+                    shutdown_method = f"force-kill (IPC error: {e})"
+                    self._process.kill()
+                    self._process.wait()
         else:
+            shutdown_method = "immediate-kill"
             self._process.kill()
             self._process.wait()
             logger.info(
@@ -889,7 +922,14 @@ class WorkerProcess:
                 self.process_id,
             )
 
-        self.state = WorkerState.TERMINATED
+        with self._lock:
+            self.state = WorkerState.TERMINATED
+        logger.debug(
+            "Worker shutdown complete (%s): session=%s env=%s",
+            shutdown_method,
+            self.session_id,
+            self.env_id,
+        )
 
 
 class WorkerSession(BaseModel):
