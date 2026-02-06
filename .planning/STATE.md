@@ -9,9 +9,9 @@
 ## Current Position
 
 - **Phase:** 23 of 24 (µSAM Interactive Bridge)
-- **Plan:** 2 of 3 in current phase
-- **Status:** In progress
-- **Last activity:** 2026-02-06 - Completed 23-02-PLAN.md
+- **Plan:** 3 of 3 in current phase
+- **Status:** Phase complete
+- **Last activity:** 2026-02-06 - Completed 23-03-PLAN.md
 
 Progress: ██████████████████████████ 100% (of defined plans)
 
@@ -41,6 +41,8 @@ Progress: ███████████████████████�
 ### Decisions Made (History)
 | Phase | Decision | Rationale |
 |-------|----------|-----------|
+| 23 | Preserved stable error codes in tool entrypoint | Enables deterministic headless testing and better UX across conda boundary. |
+| 23 | Forced headless mode support | Added BIOIMAGE_MCP_FORCE_HEADLESS env var to enable reliable simulation of headless Linux in desktop sessions (WSLg). |
 | 23 | Side-channel Warnings | Enables propagating interactive metadata through a protocol that only returns artifacts. |
 | 23 | Explicit Annotator Denylist | Avoids ambiguous runtime failures by only supporting known-stable annotator entrypoints in the bridge. |
 | 23 | Artifact-Port Discovery for sam_annotator | Classifying annotator entrypoints as SAM_ANNOTATOR enables specialized interactive execution logic while maintaining artifact boundary contracts. |
@@ -64,6 +66,6 @@ Progress: ███████████████████████�
 
 ## Session Continuity
 
-- **Last Session:** 2026-02-05T23:26:27Z
-- **Stopped at:** Completed 23-01-PLAN.md
+- **Last Session:** 2026-02-06T15:30:00Z
+- **Stopped at:** Completed 23-03-PLAN.md
 - **Resume file:** None
