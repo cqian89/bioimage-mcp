@@ -84,25 +84,23 @@ class MicrosamAdapter(BaseAdapter):
 
         if force_fresh:
             self.warnings.append("MICROSAM_CACHE_RESET")
-            OBJECT_CACHE.clear(key)
+            OBJECT_CACHE.evict(key)
             self._cache_index.pop(key, None)
             return None
 
         predictor = OBJECT_CACHE.get(key)
         if predictor is None:
-            # We don't append MISS here yet because we might compute it and then SET it.
-            # Actually, the task says "Emit minimal, machine-readable cache status warnings ... for every relevant call"
-            # So I should probably decide where to emit them.
             return None
 
         # Basic compatibility check
         if not hasattr(predictor, "set_image"):
             self.warnings.append("MICROSAM_CACHE_CORRUPT")
-            OBJECT_CACHE.clear(key)
+            OBJECT_CACHE.evict(key)
             self._cache_index.pop(key, None)
             return None
 
-        self.warnings.append("MICROSAM_CACHE_HIT")
+        if "MICROSAM_CACHE_HIT" not in self.warnings:
+            self.warnings.append("MICROSAM_CACHE_HIT")
         return predictor
 
     def _check_gui_available(self) -> None:
@@ -378,11 +376,11 @@ class MicrosamAdapter(BaseAdapter):
                 kwargs["predictor"] = predictor
             else:
                 # Need to load/set it
-                # Many SAM functions might not know how to handle just 'image' if they expect 'predictor'.
+                # Many SAM functions might not know how to handle just 'image'
+                # if they expect 'predictor'.
                 # We reuse the logic from AMG/compute_embedding if needed.
-                from micro_sam import util
-
                 from bioimage_mcp_microsam.device import select_device
+                from micro_sam import util
 
                 device = select_device(device_pref)
                 predictor = util.get_sam_model(model_type=model_type, device=device)
@@ -403,6 +401,9 @@ class MicrosamAdapter(BaseAdapter):
                 # Cache it
                 key = self._get_cache_key(primary_image_artifact, model_type)
                 if key:
+                    # We also store it under the deterministic key for image+model lookup
+                    OBJECT_CACHE.set(key, predictor)
+
                     if "MICROSAM_CACHE_HIT" not in self.warnings:
                         self.warnings.append("MICROSAM_CACHE_MISS")
 
@@ -560,6 +561,9 @@ class MicrosamAdapter(BaseAdapter):
         # Record in adapter-owned cache index for reuse
         key = self._get_cache_key(image_artifact, model_type)
         if key:
+            # We also store it under the deterministic key for image+model lookup
+            OBJECT_CACHE.set(key, predictor)
+
             if "MICROSAM_CACHE_HIT" not in self.warnings:
                 self.warnings.append("MICROSAM_CACHE_MISS")
 
@@ -640,6 +644,9 @@ class MicrosamAdapter(BaseAdapter):
             # Update cache if possible
             key = self._get_cache_key(image_artifact, model_type)
             if key:
+                # We also store it under the deterministic key for image+model lookup
+                OBJECT_CACHE.set(key, predictor)
+
                 if "MICROSAM_CACHE_HIT" not in self.warnings:
                     self.warnings.append("MICROSAM_CACHE_MISS")
 
