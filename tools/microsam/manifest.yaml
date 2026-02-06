@@ -70,6 +70,10 @@ functions:
           type: boolean
           default: false
           description: If true, returns a predictor object instead of raw embedding.
+        force_fresh:
+          type: boolean
+          default: false
+          description: If true, bypasses session cache and recomputes embeddings.
   - id: micro_sam.instance_segmentation.automatic_mask_generator
     tool_id: tools.micro_sam
     name: Automatic Mask Generator
@@ -93,6 +97,10 @@ functions:
           type: string
           default: "vit_b"
           description: SAM model type to use (if predictor not provided).
+        force_fresh:
+          type: boolean
+          default: false
+          description: If true, bypasses session cache and recomputes embeddings.
   - id: micro_sam.cache.clear
     tool_id: tools.micro_sam
     name: Clear Cache

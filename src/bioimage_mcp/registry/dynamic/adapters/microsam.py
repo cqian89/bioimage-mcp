@@ -247,6 +247,8 @@ class MicrosamAdapter(BaseAdapter):
             from bioimage_mcp.registry.dynamic.object_cache import clear
 
             clear()
+            self._cache_index = {}
+            self.warnings.append("MICROSAM_CACHE_RESET")
             return []
 
         if fn_id == "micro_sam.compute_embedding":
@@ -297,6 +299,9 @@ class MicrosamAdapter(BaseAdapter):
         if "device" in param_names and "device" not in params:
             kwargs["device"] = device_pref
 
+        force_fresh = params.get("force_fresh", False)
+        model_type = params.get("model_type", params.get("model", "vit_b"))
+
         # Prompt coercion: convert lists to numpy arrays for specific SAM parameters
         processed_params = params.copy()
         for p_name in [
@@ -316,6 +321,7 @@ class MicrosamAdapter(BaseAdapter):
 
         # Load input images and objects
         input_axes = "YX"
+        primary_image_artifact = None
         for name, artifact in self._normalize_inputs(inputs):
             val = self._load_image(artifact)
 
@@ -326,6 +332,9 @@ class MicrosamAdapter(BaseAdapter):
                 else:
                     input_axes = getattr(artifact, "metadata", {}) or {}
                     input_axes = input_axes.get("axes", "YX")
+
+                if primary_image_artifact is None:
+                    primary_image_artifact = artifact
 
             # Match artifact to parameter name if possible
             if name in param_names:
@@ -355,6 +364,69 @@ class MicrosamAdapter(BaseAdapter):
                         kwargs["predictor"] = val
                     elif "embedding" in param_names and "embedding" not in kwargs:
                         kwargs["embedding"] = val
+
+        # Handle implicit predictor cache if function needs one and none provided
+        if (
+            "predictor" in param_names
+            and kwargs.get("predictor") is None
+            and primary_image_artifact is not None
+        ):
+            predictor = self._get_cached_predictor(
+                primary_image_artifact, model_type, force_fresh=force_fresh
+            )
+            if predictor is not None:
+                kwargs["predictor"] = predictor
+            else:
+                # Need to load/set it
+                # Many SAM functions might not know how to handle just 'image' if they expect 'predictor'.
+                # We reuse the logic from AMG/compute_embedding if needed.
+                from micro_sam import util
+
+                from bioimage_mcp_microsam.device import select_device
+
+                device = select_device(device_pref)
+                predictor = util.get_sam_model(model_type=model_type, device=device)
+
+                # Ensure image is RGB for SAM
+                image_data = kwargs.get("image")
+                if image_data is None:
+                    image_data = self._load_image(primary_image_artifact)
+
+                if image_data.ndim == 2:
+                    image_data_rgb = np.stack([image_data] * 3, axis=-1)
+                else:
+                    image_data_rgb = image_data
+
+                predictor.set_image(image_data_rgb)
+                kwargs["predictor"] = predictor
+
+                # Cache it
+                key = self._get_cache_key(primary_image_artifact, model_type)
+                if key:
+                    if "MICROSAM_CACHE_HIT" not in self.warnings:
+                        self.warnings.append("MICROSAM_CACHE_MISS")
+
+                    import os
+
+                    session_id = os.environ.get("BIOIMAGE_MCP_SESSION_ID", "default_session")
+                    env_id = os.environ.get("BIOIMAGE_MCP_ENV_ID", "bioimage-mcp-microsam")
+                    object_id = uuid.uuid4().hex
+                    obj_uri = f"obj://{session_id}/{env_id}/{object_id}"
+                    OBJECT_CACHE.set(obj_uri, predictor)
+
+                    ref = {
+                        "type": "ObjectRef",
+                        "format": "pickle",
+                        "ref_id": object_id,
+                        "uri": obj_uri,
+                        "python_class": "segment_anything.predictor.SamPredictor",
+                        "storage_type": "memory",
+                        "metadata": {
+                            "model": model_type,
+                            "device": device,
+                        },
+                    }
+                    self._cache_index[key] = ref
 
         # Execute the function
         try:
@@ -438,6 +510,22 @@ class MicrosamAdapter(BaseAdapter):
             raise ValueError("No input image provided for compute_embedding.")
 
         image_artifact = normalized[0][1]
+        model_type = params.get("model", "vit_b")
+        force_fresh = params.get("force_fresh", False)
+
+        # Check cache
+        predictor = self._get_cached_predictor(image_artifact, model_type, force_fresh=force_fresh)
+        if predictor is not None:
+            # We already have it in OBJECT_CACHE, but we need to find its URI/ID
+            # Actually, _get_cached_predictor returns the object.
+            # We need to return an ObjectRef that points to it.
+            # Since we want to return the EXACT same ObjectRef if possible,
+            # we should look it up in _cache_index.
+            key = self._get_cache_key(image_artifact, model_type)
+            cached_meta = self._cache_index.get(key)
+            if cached_meta:
+                return [cached_meta]
+
         image_data = self._load_image(image_artifact)
 
         # Ensure image is RGB-compatible for SAM
@@ -449,8 +537,6 @@ class MicrosamAdapter(BaseAdapter):
             if image_data.shape[-1] == 1:
                 image_data = np.concatenate([image_data] * 3, axis=-1)
 
-        model_type = params.get("model", "vit_b")
-
         # Resolve device
         from bioimage_mcp_microsam.device import select_device
 
@@ -459,8 +545,6 @@ class MicrosamAdapter(BaseAdapter):
         predictor = util.get_sam_model(model_type=model_type, device=device)
 
         # Compute embedding
-        # Use util.get_embeddings if we wanted just the embeddings,
-        # but the plan suggests return_predictor=true stores the predictor.
         predictor.set_image(image_data)
 
         # Store in cache
@@ -472,6 +556,27 @@ class MicrosamAdapter(BaseAdapter):
         object_id = uuid.uuid4().hex
         obj_uri = f"obj://{session_id}/{env_id}/{object_id}"
         OBJECT_CACHE.set(obj_uri, predictor)
+
+        # Record in adapter-owned cache index for reuse
+        key = self._get_cache_key(image_artifact, model_type)
+        if key:
+            if "MICROSAM_CACHE_HIT" not in self.warnings:
+                self.warnings.append("MICROSAM_CACHE_MISS")
+
+            ref = {
+                "type": "ObjectRef",
+                "format": "pickle",
+                "ref_id": object_id,
+                "uri": obj_uri,
+                "python_class": "segment_anything.predictor.SamPredictor",
+                "storage_type": "memory",
+                "metadata": {
+                    "model": model_type,
+                    "device": device,
+                },
+            }
+            self._cache_index[key] = ref
+            return [ref]
 
         return [
             {
@@ -504,6 +609,62 @@ class MicrosamAdapter(BaseAdapter):
         if image_artifact is None:
             raise ValueError("No input image provided for automatic_mask_generator.")
 
+        model_type = params.get("model_type", "vit_b")
+        force_fresh = params.get("force_fresh", False)
+
+        predictor_artifact = next((art for name, art in normalized if "predictor" in name), None)
+        predictor = None
+
+        if predictor_artifact:
+            predictor = self._load_image(predictor_artifact)
+        else:
+            # Consult cache if no explicit predictor provided
+            predictor = self._get_cached_predictor(
+                image_artifact, model_type, force_fresh=force_fresh
+            )
+
+        if predictor is None:
+            image_data = self._load_image(image_artifact)
+            # Ensure RGB
+            if image_data.ndim == 2:
+                image_data_rgb = np.stack([image_data] * 3, axis=-1)
+            else:
+                image_data_rgb = image_data
+
+            from bioimage_mcp_microsam.device import select_device
+
+            device = select_device(params.get("device", "auto"))
+            predictor = util.get_sam_model(model_type=model_type, device=device)
+            predictor.set_image(image_data_rgb)
+
+            # Update cache if possible
+            key = self._get_cache_key(image_artifact, model_type)
+            if key:
+                if "MICROSAM_CACHE_HIT" not in self.warnings:
+                    self.warnings.append("MICROSAM_CACHE_MISS")
+
+                import os
+
+                session_id = os.environ.get("BIOIMAGE_MCP_SESSION_ID", "default_session")
+                env_id = os.environ.get("BIOIMAGE_MCP_ENV_ID", "bioimage-mcp-microsam")
+                object_id = uuid.uuid4().hex
+                obj_uri = f"obj://{session_id}/{env_id}/{object_id}"
+                OBJECT_CACHE.set(obj_uri, predictor)
+
+                ref = {
+                    "type": "ObjectRef",
+                    "format": "pickle",
+                    "ref_id": object_id,
+                    "uri": obj_uri,
+                    "python_class": "segment_anything.predictor.SamPredictor",
+                    "storage_type": "memory",
+                    "metadata": {
+                        "model": model_type,
+                        "device": device,
+                    },
+                }
+                self._cache_index[key] = ref
+
         image_data = self._load_image(image_artifact)
         input_axes = "YX"
         if isinstance(image_artifact, dict):
@@ -514,18 +675,6 @@ class MicrosamAdapter(BaseAdapter):
             image_data_rgb = np.stack([image_data] * 3, axis=-1)
         else:
             image_data_rgb = image_data
-
-        predictor_artifact = next((art for name, art in normalized if "predictor" in name), None)
-        if predictor_artifact:
-            predictor = self._load_image(predictor_artifact)
-        else:
-            from bioimage_mcp_microsam.device import select_device
-
-            device = select_device(params.get("device", "auto"))
-            predictor = util.get_sam_model(
-                model_type=params.get("model_type", "vit_b"), device=device
-            )
-            predictor.set_image(image_data_rgb)
 
         points_per_side = params.get("points_per_side", 16)
         amg = AutomaticMaskGenerator(predictor, points_per_side=points_per_side)
@@ -585,7 +734,20 @@ class MicrosamAdapter(BaseAdapter):
         embedding_value: Any = None
         segmentation_value: Any = None
 
+        force_fresh = params.get("force_fresh", False)
+        model_type = params.get("model_type", params.get("model", "vit_b"))
+
         for name, artifact in normalized:
+            # Consult cache for embedding/predictor if not explicitly provided
+            if (
+                name in {"embedding_path", "predictor", "embedding"}
+                and embedding_value is None
+                and image_artifact is not None
+            ):
+                embedding_value = self._get_cached_predictor(
+                    image_artifact, model_type, force_fresh=force_fresh
+                )
+
             value = self._load_image(artifact)
             if name == "image" or (image_data is None and isinstance(value, np.ndarray)):
                 image_data = np.asarray(value)
@@ -604,6 +766,21 @@ class MicrosamAdapter(BaseAdapter):
 
         if image_data is None:
             raise ValueError("Interactive annotator requires an image input.")
+
+        # If embedding still None, check cache again now that we definitely have image_artifact
+        if embedding_value is None and image_artifact is not None:
+            embedding_value = self._get_cached_predictor(
+                image_artifact, model_type, force_fresh=force_fresh
+            )
+            # If still None, we don't automatically compute it for interactive yet,
+            # as napari widget handles it or compute_embedding should have been called.
+            # But the requirement says "warm-start from existing state when compatible".
+            if embedding_value is None:
+                if "MICROSAM_CACHE_HIT" not in self.warnings:
+                    self.warnings.append("MICROSAM_CACHE_MISS")
+        elif embedding_value is not None:
+            # If we got it from cache, _get_cached_predictor already appended HIT
+            pass
 
         input_axes = "YX"
         if isinstance(image_artifact, dict):
