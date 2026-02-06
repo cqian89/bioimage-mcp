@@ -63,6 +63,11 @@ class MicrosamAdapter(BaseAdapter):
 
     def _check_gui_available(self) -> None:
         """Check if a GUI display is available."""
+        if os.environ.get("BIOIMAGE_MCP_FORCE_HEADLESS") == "1":
+            raise HeadlessDisplayRequiredError(
+                "Interactive annotators require a display. Forced headless mode enabled."
+            )
+
         if sys.platform != "linux":
             return
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 
-@pytest.mark.smoke_minimal
+@pytest.mark.smoke_extended
 @pytest.mark.requires_env("bioimage-mcp-microsam")
 @pytest.mark.anyio
 async def test_microsam_annotator_discovery(live_server):
@@ -35,37 +35,47 @@ async def test_microsam_annotator_discovery(live_server):
     assert inputs["image"]["type"] == "BioImageRef"
 
 
-@pytest.mark.smoke_minimal
+@pytest.mark.smoke_extended
 @pytest.mark.requires_env("bioimage-mcp-microsam")
 @pytest.mark.anyio
-async def test_microsam_headless_failure(live_server, monkeypatch):
+async def test_microsam_headless_failure(monkeypatch):
     """Confirm annotators fail deterministically in headless environments on Linux."""
-    # Unset DISPLAY to simulate headless Linux
-    monkeypatch.delenv("DISPLAY", raising=False)
-    monkeypatch.delenv("WAYLAND_DISPLAY", raising=False)
+    from tests.smoke.utils.mcp_client import TestMCPClient
 
-    # Attempt to run annotator_2d (with dummy inputs to get past validation)
-    # We expect HEADLESS_DISPLAY_REQUIRED error
-    result = await live_server.call_tool(
-        "run",
-        {
-            "id": "micro_sam.sam_annotator.annotator_2d",
-            "inputs": {"image": {"type": "BioImageRef", "uri": "file:///tmp/dummy.tif"}},
-            "params": {},
-        },
-    )
+    # Unset DISPLAY and set force headless to simulate headless Linux
+    server_env = {
+        "DISPLAY": "",
+        "WAYLAND_DISPLAY": "",
+        "BIOIMAGE_MCP_FORCE_HEADLESS": "1",
+    }
 
-    import sys
+    client = TestMCPClient(server_env=server_env)
+    await client.start_with_timeout(30)
+    try:
+        # Attempt to run annotator_2d (with dummy inputs to get past validation)
+        # We expect HEADLESS_DISPLAY_REQUIRED error
+        result = await client.call_tool(
+            "run",
+            {
+                "id": "micro_sam.sam_annotator.annotator_2d",
+                "inputs": {"image": {"type": "BioImageRef", "uri": "file:///tmp/dummy.tif"}},
+                "params": {},
+            },
+        )
 
-    if sys.platform == "linux":
-        assert result["status"] == "failed"
-        assert result["error"]["code"] == "HEADLESS_DISPLAY_REQUIRED"
-    else:
-        # On other platforms it might try to open napari and fail later or succeed if display exists
-        pytest.skip("Headless failure test is Linux-specific in current implementation")
+        import sys
+
+        if sys.platform == "linux":
+            assert result["status"] == "failed"
+            assert result["error"]["code"] == "HEADLESS_DISPLAY_REQUIRED"
+        else:
+            # On other platforms it might try to open napari and fail later or succeed if display exists
+            pytest.skip("Headless failure test is Linux-specific in current implementation")
+    finally:
+        await client.stop()
 
 
-@pytest.mark.smoke_minimal
+@pytest.mark.smoke_extended
 @pytest.mark.requires_env("bioimage-mcp-microsam")
 @pytest.mark.anyio
 async def test_microsam_responsive_during_concurrent_calls(live_server):

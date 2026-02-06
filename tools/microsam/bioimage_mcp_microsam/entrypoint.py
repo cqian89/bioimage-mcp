@@ -294,29 +294,20 @@ def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
 
             return response
 
-        except BioimageMcpError as e:
-            return {
-                "command": "execute_result",
-                "ok": False,
-                "ordinal": ordinal,
-                "id": req_id,
-                "error": {
-                    "code": e.code,
-                    "message": str(e),
-                    "details": getattr(e, "details", None),
-                },
-                "log": f"Error: {e}",
-            }
         except Exception as e:
             logger.exception(f"Execution failed for {req_id}")
+            # Map BioimageMcpError or anything with a .code to a structured response (T048)
+            code = getattr(e, "code", "EXECUTION_ERROR")
+            details = getattr(e, "details", None)
             return {
                 "command": "execute_result",
                 "ok": False,
                 "ordinal": ordinal,
                 "id": req_id,
                 "error": {
-                    "code": "EXECUTION_ERROR",
+                    "code": code,
                     "message": str(e),
+                    "details": details,
                 },
                 "log": f"Error: {e}",
             }
