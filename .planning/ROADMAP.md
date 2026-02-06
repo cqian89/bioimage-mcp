@@ -56,4 +56,4 @@ Optimize lifecycle of heavy model objects and large embeddings.
 
 ---
 
-*Roadmap updated: 2026-02-05*
+*Roadmap updated: 2026-02-06*
