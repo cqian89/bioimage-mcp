@@ -63,12 +63,26 @@ class MicrosamAdapter(BaseAdapter):
 
     def _check_gui_available(self) -> None:
         """Check if a GUI display is available."""
-        if sys.platform == "linux":
-            if os.environ.get("DISPLAY") is None and os.environ.get("WAYLAND_DISPLAY") is None:
-                raise HeadlessDisplayRequiredError(
-                    "Interactive annotators require a display (DISPLAY or WAYLAND_DISPLAY). "
-                    "Run in a desktop session or use remote desktop (VNC/Xvfb)."
-                )
+        if sys.platform != "linux":
+            return
+
+        if os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"):
+            return
+
+        if os.environ.get("WSL_DISTRO_NAME") or os.environ.get("WSL_INTEROP"):
+            wsl_runtime = Path("/mnt/wslg/runtime-dir")
+            if (wsl_runtime / "wayland-0").exists():
+                os.environ.setdefault("XDG_RUNTIME_DIR", str(wsl_runtime))
+                os.environ.setdefault("WAYLAND_DISPLAY", "wayland-0")
+                return
+            if Path("/tmp/.X11-unix/X0").exists():
+                os.environ.setdefault("DISPLAY", ":0")
+                return
+
+        raise HeadlessDisplayRequiredError(
+            "Interactive annotators require a display (DISPLAY or WAYLAND_DISPLAY). "
+            "Run in a desktop session or use remote desktop (VNC/Xvfb)."
+        )
 
     def discover(self, module_config: dict[str, Any]) -> list[FunctionMetadata]:
         """Discover functions from micro_sam submodules.
@@ -498,7 +512,7 @@ class MicrosamAdapter(BaseAdapter):
         fn_id: str,
         inputs: list[Artifact] | dict[str, Any],
         params: dict[str, Any],
-        work_dir: Path,
+        work_dir: Path | None,
         hints: dict[str, Any] | None = None,
     ) -> list[dict]:
         """Execute micro_sam interactive annotator."""
@@ -512,10 +526,189 @@ class MicrosamAdapter(BaseAdapter):
                 f"Interactive dependencies (napari, micro_sam) not found: {e}"
             ) from e
 
-            return [output_ref]
+        if work_dir is None:
+            work_dir = Path(tempfile.gettempdir()) / "microsam"
+        work_dir.mkdir(parents=True, exist_ok=True)
 
-        self.warnings.append("MICROSAM_NO_CHANGES")
-        return []
+        normalized = self._normalize_inputs(inputs)
+        image_data: np.ndarray | None = None
+        image_artifact: Artifact | None = None
+        embedding_value: Any = None
+        segmentation_value: Any = None
+
+        for name, artifact in normalized:
+            value = self._load_image(artifact)
+            if name == "image" or (image_data is None and isinstance(value, np.ndarray)):
+                image_data = np.asarray(value)
+                image_artifact = artifact
+                continue
+
+            if name in {"embedding_path", "predictor", "embedding"} and embedding_value is None:
+                embedding_value = value
+                continue
+
+            if (
+                name in {"segmentation_result", "labels", "label_image"}
+                and segmentation_value is None
+            ):
+                segmentation_value = value
+
+        if image_data is None:
+            raise ValueError("Interactive annotator requires an image input.")
+
+        input_axes = "YX"
+        if isinstance(image_artifact, dict):
+            input_axes = image_artifact.get("metadata", {}).get("axes", "YX")
+        elif image_artifact is not None:
+            metadata = getattr(image_artifact, "metadata", {}) or {}
+            if isinstance(metadata, dict):
+                input_axes = metadata.get("axes", "YX")
+
+        func_name = fn_id.split(".")[-1]
+        try:
+            annotator_fn = getattr(sam_annotator, func_name)
+        except AttributeError as e:
+            raise RuntimeError(f"Annotator function not found: {fn_id}") from e
+
+        signature = inspect.signature(annotator_fn)
+        accepts_var_kwargs = any(
+            p.kind == inspect.Parameter.VAR_KEYWORD for p in signature.parameters.values()
+        )
+
+        def accepts(name: str) -> bool:
+            return accepts_var_kwargs or name in signature.parameters
+
+        device_pref = params.get("device")
+        if device_pref is None and hints:
+            device_pref = hints.get("device")
+        if device_pref is None:
+            device_pref = "auto"
+
+        call_kwargs: dict[str, Any] = {}
+
+        if accepts("image"):
+            call_kwargs["image"] = image_data
+        elif accepts("raw"):
+            call_kwargs["raw"] = image_data
+        else:
+            call_kwargs["image"] = image_data
+
+        if embedding_value is not None:
+            if accepts("embedding_path"):
+                call_kwargs["embedding_path"] = embedding_value
+            elif accepts("predictor"):
+                call_kwargs["predictor"] = embedding_value
+            elif accepts("embedding"):
+                call_kwargs["embedding"] = embedding_value
+
+        if segmentation_value is not None:
+            if accepts("segmentation_result"):
+                call_kwargs["segmentation_result"] = segmentation_value
+            elif accepts("labels"):
+                call_kwargs["labels"] = segmentation_value
+            elif accepts("label_image"):
+                call_kwargs["label_image"] = segmentation_value
+
+        if accepts("device"):
+            call_kwargs["device"] = device_pref
+
+        if accepts("return_viewer"):
+            call_kwargs["return_viewer"] = True
+
+        for key, value in params.items():
+            if key in ARTIFACT_INPUT_PARAMS:
+                continue
+            if accepts(key) and key not in call_kwargs:
+                call_kwargs[key] = value
+
+        viewer = annotator_fn(**call_kwargs)
+        if viewer is None:
+            self.warnings.append("MICROSAM_NO_CHANGES")
+            return []
+
+        captured_labels: np.ndarray | None = None
+
+        def capture_layer_data(layer: Any) -> None:
+            nonlocal captured_labels
+            try:
+                data = np.asarray(getattr(layer, "data", None))
+            except RuntimeError:
+                return
+            if data.size == 0 or not np.any(data):
+                return
+            captured_labels = np.array(data)
+
+        def on_layer_removed(event: Any) -> None:
+            layer = getattr(event, "value", None)
+            if getattr(layer, "name", None) == "committed_objects":
+                capture_layer_data(layer)
+
+        layers = None
+        try:
+            layers = getattr(viewer, "layers", None)
+        except RuntimeError:
+            layers = None
+
+        if layers is not None:
+            if hasattr(layers, "events") and hasattr(layers.events, "removed"):
+                layers.events.removed.connect(on_layer_removed)
+            if hasattr(layers, "get"):
+                existing = layers.get("committed_objects")
+                if existing is not None:
+                    capture_layer_data(existing)
+
+        napari.run()
+
+        try:
+            layers = getattr(viewer, "layers", None)
+        except RuntimeError as e:
+            if "has been deleted" in str(e):
+                logger.warning("Napari viewer was deleted before layer extraction: %s", e)
+                self.warnings.append("MICROSAM_NO_CHANGES")
+                return []
+            raise
+
+        committed_layer = None
+        if layers is not None and hasattr(layers, "get"):
+            committed_layer = layers.get("committed_objects")
+        if committed_layer is None and isinstance(layers, dict):
+            committed_layer = layers.get("committed_objects")
+        if committed_layer is None and layers is not None:
+            for layer in layers:
+                if getattr(layer, "name", None) == "committed_objects":
+                    committed_layer = layer
+                    break
+
+        labels: np.ndarray | None = None
+        if committed_layer is not None:
+            labels = np.asarray(getattr(committed_layer, "data", None))
+        elif captured_labels is not None:
+            labels = captured_labels
+
+        if labels is None:
+            self.warnings.append("MICROSAM_NO_CHANGES")
+            return []
+
+        if labels.size == 0 or not np.any(labels):
+            self.warnings.append("MICROSAM_NO_CHANGES")
+            return []
+
+        if segmentation_value is not None:
+            try:
+                existing = np.asarray(segmentation_value)
+                if existing.shape == labels.shape and np.array_equal(existing, labels):
+                    self.warnings.append("MICROSAM_NO_CHANGES")
+                    return []
+            except Exception:
+                pass
+
+        output_ref = self._save_image(
+            labels,
+            work_dir,
+            axes=input_axes,
+            artifact_type="LabelImageRef",
+        )
+        return [output_ref]
 
     def _load_image(self, artifact: Artifact) -> np.ndarray | Any:
         """Load image data or resolve ObjectRef from cache."""

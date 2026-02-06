@@ -1,84 +1,142 @@
+from __future__ import annotations
+
 import asyncio
+import json
 import os
-import subprocess
 from pathlib import Path
 
+import numpy as np
+import tifffile
 
-def create_sample_data():
-    """Ensure sample data exists for verification."""
-    # 2D image
-    img_2d = Path("datasets/synthetic/test_2d.tif")
+from tests.smoke.utils.mcp_client import TestMCPClient
+
+
+def _ensure_sample_data() -> tuple[Path, Path, Path]:
+    root = Path("datasets/synthetic")
+    root.mkdir(parents=True, exist_ok=True)
+
+    img_2d = root / "test_2d.tif"
     if not img_2d.exists():
-        img_2d.parent.mkdir(parents=True, exist_ok=True)
-        import numpy as np
-        import tifffile
+        tifffile.imwrite(img_2d, np.random.randint(0, 255, (128, 128), dtype=np.uint8))
 
-        img = np.random.randint(0, 255, (128, 128), dtype=np.uint8)
-        tifffile.imwrite(img_2d, img)
-
-    # 3D image
-    img_3d = Path("datasets/synthetic/test_3d.tif")
+    img_3d = root / "test_3d.tif"
     if not img_3d.exists():
-        import numpy as np
-        import tifffile
+        tifffile.imwrite(img_3d, np.random.randint(0, 255, (16, 128, 128), dtype=np.uint8))
 
-        img = np.random.randint(0, 255, (16, 128, 128), dtype=np.uint8)
-        tifffile.imwrite(img_3d, img)
-
-    # Tracking (Time-series)
-    img_tracking = Path("datasets/synthetic/test_tracking.tif")
+    img_tracking = root / "test_tracking.tif"
     if not img_tracking.exists():
-        import numpy as np
-        import tifffile
-
-        img = np.random.randint(0, 255, (10, 128, 128), dtype=np.uint8)
-        tifffile.imwrite(img_tracking, img)
+        tifffile.imwrite(img_tracking, np.random.randint(0, 255, (10, 128, 128), dtype=np.uint8))
 
     return img_2d, img_3d, img_tracking
 
 
-async def verify_phase_23():
-    print("=== Phase 23: Interactive Bridge Verification ===")
-    img_2d, img_3d, img_tracking = create_sample_data()
+def _bioimage_ref(path: Path) -> dict[str, str]:
+    return {"type": "BioImageRef", "uri": path.resolve().as_uri()}
 
-    print("\nInstructions:")
-    print("1. We will launch 3 annotators sequentially.")
-    print("2. For each, verify napari opens with the image.")
-    print("3. For the first one, keep it open and check responsiveness in another terminal:")
-    print("   'bioimage-mcp list --tool micro_sam'")
-    print("4. Add labels, close napari, and verify run success.")
 
-    tools = [
-        ("2D Annotator", "micro_sam.sam_annotator.annotator_2d", img_2d),
-        ("3D Annotator", "micro_sam.sam_annotator.annotator_3d", img_3d),
-        ("Tracking Annotator", "micro_sam.sam_annotator.annotator_tracking", img_tracking),
-    ]
-
-    for label, tool_id, img_path in tools:
-        print(f"\n--- Testing {label} ---")
-        cmd = [
-            "python",
-            "-m",
-            "bioimage_mcp",
+async def _run_interactive(
+    client: TestMCPClient,
+    *,
+    label: str,
+    tool_id: str,
+    image_path: Path,
+    check_responsive: bool,
+    expect_commit: bool,
+) -> dict:
+    print(f"\n--- {label} ---")
+    print(f"Launching {tool_id} with image: {image_path}")
+    run_task = asyncio.create_task(
+        client.call_tool(
             "run",
-            tool_id,
-            "--input",
-            f"image={img_path.absolute()}",
-        ]
-        print(f"Running: {' '.join(cmd)}")
+            {
+                "id": tool_id,
+                "inputs": {"image": _bioimage_ref(image_path)},
+            },
+        )
+    )
 
-        # Start the process
-        proc = subprocess.Popen(cmd)
-        print("Waiting for you to finish with the GUI...")
-        proc.wait()
+    await asyncio.sleep(4)
+    if run_task.done():
+        result = await run_task
+        print("run() returned before GUI interaction:")
+        print(json.dumps(result, indent=2))
+        return result
 
-        if proc.returncode == 0:
-            print(f"✓ {label} completed successfully.")
-        else:
-            print(f"✗ {label} failed with exit code {proc.returncode}.")
-            break
+    if check_responsive:
+        print("Running concurrent MCP checks while viewer is open...")
+        listed, described = await asyncio.gather(
+            client.call_tool("list", {"path": "micro_sam", "flatten": True, "limit": 200}),
+            client.call_tool("describe", {"id": tool_id}),
+        )
+        listed_ids = [item.get("id") for item in listed.get("items", [])]
+        print(f"list() contains {tool_id}: {tool_id in listed_ids}")
+        print(f"describe() returned id: {described.get('id')}")
 
-    print("\nVerification session finished.")
+    if expect_commit:
+        print("Create a mask and click 'Commit [C]' before closing the viewer.")
+    else:
+        print("Close the viewer without committing changes.")
+
+    print("Then close the viewer to continue.")
+    result = await run_task
+    print("run() result:")
+    print(json.dumps(result, indent=2))
+    return result
+
+
+async def verify_phase_23() -> None:
+    print("=== Phase 23: Interactive Bridge Verification ===")
+    print(
+        "Display env: "
+        f"DISPLAY={os.environ.get('DISPLAY')!r} "
+        f"WAYLAND_DISPLAY={os.environ.get('WAYLAND_DISPLAY')!r} "
+        f"WSL_DISTRO_NAME={os.environ.get('WSL_DISTRO_NAME')!r}"
+    )
+    img_2d, img_3d, img_tracking = _ensure_sample_data()
+
+    client = TestMCPClient(call_timeout_s=None)
+    await client.start_with_timeout(30)
+    try:
+        await _run_interactive(
+            client,
+            label="2D Annotator",
+            tool_id="micro_sam.sam_annotator.annotator_2d",
+            image_path=img_2d,
+            check_responsive=True,
+            expect_commit=True,
+        )
+        await _run_interactive(
+            client,
+            label="3D Annotator",
+            tool_id="micro_sam.sam_annotator.annotator_3d",
+            image_path=img_3d,
+            check_responsive=False,
+            expect_commit=True,
+        )
+        await _run_interactive(
+            client,
+            label="Tracking Annotator",
+            tool_id="micro_sam.sam_annotator.annotator_tracking",
+            image_path=img_tracking,
+            check_responsive=False,
+            expect_commit=True,
+        )
+
+        print("\nNo-edits check: close the next 2D session without committing changes.")
+        result = await _run_interactive(
+            client,
+            label="2D Annotator (No edits)",
+            tool_id="micro_sam.sam_annotator.annotator_2d",
+            image_path=img_2d,
+            check_responsive=False,
+            expect_commit=False,
+        )
+        warnings = result.get("warnings", [])
+        print(f"Warnings: {warnings}")
+
+        print("\nVerification session finished.")
+    finally:
+        await client.stop()
 
 
 if __name__ == "__main__":

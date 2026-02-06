@@ -1,5 +1,6 @@
 import asyncio
 import json
+import os
 import tempfile
 import time
 from contextlib import AsyncExitStack
@@ -24,13 +25,26 @@ class TestMCPClient:
         logger: InteractionLogger | None = None,
         *,
         call_timeout_s: float | None = 60.0,
+        server_env: dict[str, str] | None = None,
     ):
         self._exit_stack = AsyncExitStack()
         self.session: ClientSession | None = None
         self._logger = logger
         self._call_timeout_s = call_timeout_s
+        self._server_env = server_env if server_env is not None else self._display_env_overrides()
         self._stderr_file = tempfile.TemporaryFile(mode="w+", encoding="utf-8")
         self._exit_stack.callback(self._stderr_file.close)
+
+    @staticmethod
+    def _display_env_overrides() -> dict[str, str]:
+        keys = {
+            "DISPLAY",
+            "WAYLAND_DISPLAY",
+            "XDG_RUNTIME_DIR",
+            "WSL_DISTRO_NAME",
+            "WSL_INTEROP",
+        }
+        return {key: value for key in keys if (value := os.environ.get(key))}
 
     def get_stderr(self) -> str:
         """Return captured server stderr."""
@@ -48,6 +62,7 @@ class TestMCPClient:
         server = StdioServerParameters(
             command="python",
             args=["-m", "bioimage_mcp", "serve", "--stdio"],
+            env=self._server_env or None,
         )
 
         read_stream, write_stream = await self._exit_stack.enter_async_context(

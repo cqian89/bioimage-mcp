@@ -77,7 +77,6 @@ def test_microsam_adapter_interactive_2d_success(tmp_path):
         assert call_args["return_viewer"] is True
 
         assert mock_napari.run.called
-        assert mock_viewer.close.called
 
 
 def test_microsam_adapter_interactive_no_changes(tmp_path):
