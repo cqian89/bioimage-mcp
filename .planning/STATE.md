@@ -9,11 +9,11 @@
 ## Current Position
 
 - **Phase:** 24 of 24 (µSAM Session & Optimization)
-- **Plan:** 1 of 3 in current phase
+- **Plan:** 2 of 3 in current phase
 - **Status:** In progress
-- **Last activity:** 2026-02-06 - Completed 24-01-PLAN.md
+- **Last activity:** 2026-02-06 - Completed 24-02-PLAN.md
 
-Progress: █████████████████████░░░░░ 81%
+Progress: █████████████████████████░ 99%
 
 ## Performance Metrics
 
@@ -39,10 +39,14 @@ Progress: █████████████████████░░�
 - **Explicit Annotator Denylist:** Only main annotator entrypoints are supported for interactive bridge; others remain denylisted to ensure stable I/O.
 - **Deterministic Cache Keying:** Use a composite key of `image_uri + model_type` for session-scoped predictor reuse.
 - **Cache Status Visibility:** Emit machine-readable cache status warnings (HIT/MISS/RESET) for transparent performance monitoring.
+- **Progressive Shutdown Escalation:** Ensure worker shutdown always converges using progressive escalation (graceful -> timeout -> force-kill).
+- **Deadlock-safe IPC ACK:** Use timeouts for NDJSON IPC ACKs during shutdown to prevent deadlocks on blocked stdout/stderr pipes.
 
 ### Decisions Made (History)
 | Phase | Decision | Rationale |
 |-------|----------|-----------|
+| 24 | Progressive Shutdown Escalation | Guarantees deterministic cleanup of interactive subprocesses even when GUI runtimes block IPC. |
+| 24 | Deadlock-safe IPC ACK | Prevents the MCP server from hanging indefinitely during shutdown when worker pipes are saturated. |
 | 24 | Deterministic Cache Keying | Prevents incorrect predictor reuse when model types differ for the same image. |
 | 24 | Cache Status Visibility | Enables agents to monitor and optimize workflow latency via structured feedback. |
 | 23 | Preserved stable error codes in tool entrypoint | Enables deterministic headless testing and better UX across conda boundary. |
@@ -70,7 +74,7 @@ Progress: █████████████████████░░�
 
 ## Session Continuity
 
-- **Last Session:** 2026-02-06T15:07:05Z
-- **Stopped at:** Completed 24-01-PLAN.md
+- **Last Session:** 2026-02-06T15:13:00Z
+- **Stopped at:** Completed 24-02-PLAN.md
 - **Resume file:** None
 

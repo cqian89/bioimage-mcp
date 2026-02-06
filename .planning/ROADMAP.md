@@ -48,17 +48,17 @@ Optimize lifecycle of heavy model objects and large embeddings.
 
 Plans:
 - [x] 24-01-PLAN.md — Implement session-scoped predictor/embedding cache contract with force-fresh and clear controls
-- [ ] 24-02-PLAN.md — Harden worker shutdown to guarantee interactive subprocess cleanup on server termination
+- [x] 24-02-PLAN.md — Harden worker shutdown to guarantee interactive subprocess cleanup on server termination
 - [ ] 24-03-PLAN.md — Add interactive resume and progress visibility with smoke + human verification
 - **Status:** In progress
-- **Progress:** 33%
+- **Progress:** 66%
 
 | Phase | Description | Status | Progress |
 |-------|-------------|--------|----------|
 | 21 | µSAM Tool Pack Foundation | ✓ Complete | 100% |
 | 22 | Headless API Integration | ✓ Complete | 100% |
 | 23 | Interactive Bridge (Napari) | ✓ Complete | 100% |
-| 24 | Session Management & Opt | In progress | 33% |
+| 24 | Session Management & Opt | In progress | 66% |
 
 
 ---
