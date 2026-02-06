@@ -60,6 +60,50 @@ class MicrosamAdapter(BaseAdapter):
     def __init__(self) -> None:
         self.introspector = Introspector()
         self.warnings: list[str] = []
+        self._cache_index: dict[str, dict[str, Any]] = {}
+
+    def _get_cache_key(self, artifact: Artifact, model_type: str) -> str | None:
+        """Build deterministic cache key for image + model."""
+        if isinstance(artifact, dict):
+            uri = artifact.get("uri")
+        else:
+            uri = getattr(artifact, "uri", None)
+
+        if not uri:
+            return None
+
+        return f"microsam_predictor:{uri}:{model_type}"
+
+    def _get_cached_predictor(
+        self, artifact: Artifact, model_type: str, force_fresh: bool = False
+    ) -> Any | None:
+        """Retrieve compatible predictor from cache or return None."""
+        key = self._get_cache_key(artifact, model_type)
+        if not key:
+            return None
+
+        if force_fresh:
+            self.warnings.append("MICROSAM_CACHE_RESET")
+            OBJECT_CACHE.clear(key)
+            self._cache_index.pop(key, None)
+            return None
+
+        predictor = OBJECT_CACHE.get(key)
+        if predictor is None:
+            # We don't append MISS here yet because we might compute it and then SET it.
+            # Actually, the task says "Emit minimal, machine-readable cache status warnings ... for every relevant call"
+            # So I should probably decide where to emit them.
+            return None
+
+        # Basic compatibility check
+        if not hasattr(predictor, "set_image"):
+            self.warnings.append("MICROSAM_CACHE_CORRUPT")
+            OBJECT_CACHE.clear(key)
+            self._cache_index.pop(key, None)
+            return None
+
+        self.warnings.append("MICROSAM_CACHE_HIT")
+        return predictor
 
     def _check_gui_available(self) -> None:
         """Check if a GUI display is available."""
