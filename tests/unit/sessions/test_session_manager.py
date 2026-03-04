@@ -1,3 +1,4 @@
+import sqlite3
 from datetime import UTC, datetime, timedelta
 from unittest.mock import Mock
 
@@ -57,6 +58,28 @@ class TestSessionManager:
         store.get_session.assert_called_with("sess-1")
         store.update_activity.assert_called_once_with("sess-1")
         assert result == updated_session
+
+    def test_ensure_session_recovers_from_duplicate_create_race(self, mock_config):
+        """Test ensure_session retries when concurrent create hits unique constraint."""
+        store = Mock(spec=SessionStore)
+        existing_session = Session(
+            session_id="sess-1", last_activity_at=datetime.now(UTC).isoformat()
+        )
+        updated_session = Session(
+            session_id="sess-1", last_activity_at=datetime.now(UTC).isoformat()
+        )
+
+        store.get_session.side_effect = [KeyError("Not found"), existing_session]
+        store.create_session.side_effect = sqlite3.IntegrityError("UNIQUE constraint failed")
+        store.update_activity.return_value = updated_session
+
+        manager = SessionManager(store, mock_config)
+        result = manager.ensure_session("sess-1", connection_hint="hint")
+
+        assert result == updated_session
+        assert store.get_session.call_count == 2
+        store.create_session.assert_called_once_with("sess-1", connection_hint="hint")
+        store.update_activity.assert_called_once_with("sess-1")
 
     def test_update_activity(self, mock_config):
         """Test update_activity delegates to store."""

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pytest
 from types import SimpleNamespace
 from typing import Any
 
@@ -45,14 +46,15 @@ class _CapturingInteractive:
 
     def call_tool(
         self,
-        *,
         session_id: str,
         fn_id: str,
         inputs: dict[str, Any],
         params: dict[str, Any],
         ordinal: int | None = None,
-        dry_run: bool = False,
+        connection_hint: str | None = None,
         timeout_seconds: int | None = None,
+        dry_run: bool = False,
+        progress_callback: Any = None,
     ) -> dict[str, Any]:
         self.calls.append(
             {
@@ -61,15 +63,18 @@ class _CapturingInteractive:
                 "inputs": inputs,
                 "params": params,
                 "ordinal": ordinal,
+                "connection_hint": connection_hint,
                 "dry_run": dry_run,
                 "timeout_seconds": timeout_seconds,
+                "progress_callback": progress_callback,
             }
         )
         return {"status": "success", "session_id": session_id}
 
 
-def test_run_params_optional(monkeypatch, tmp_path) -> None:
-    """Verify run works without explicit params field."""
+@pytest.mark.anyio
+async def test_run_inputs_and_params_optional(monkeypatch, tmp_path) -> None:
+    """Verify run works when both inputs and params are omitted."""
     monkeypatch.setattr(server_module, "FastMCP", _FakeMCP)
     server_module.FastMCP.__module__ = "fake_mcp"
 
@@ -87,7 +92,7 @@ def test_run_params_optional(monkeypatch, tmp_path) -> None:
         _DummyDiscovery(),
         execution=_DummyExecution(),
         interactive=interactive,
-        artifacts=_DummyArtifacts(),
+        artifacts=_CapturingArtifacts(),
         session_manager=session_manager,
     )
 
@@ -96,15 +101,15 @@ def test_run_params_optional(monkeypatch, tmp_path) -> None:
 
     ctx = SimpleNamespace(session=SimpleNamespace(id="session-1"))
 
-    result = mcp.tools["run"](
+    result = await mcp.tools["run"](
         id="fn.test",
-        inputs={},
         session_id="session-1",
         ctx=ctx,
     )
 
     assert result["status"] == "success"
     assert interactive.calls
+    assert interactive.calls[0]["inputs"] == {}
     assert interactive.calls[0]["params"] == {}
 
 

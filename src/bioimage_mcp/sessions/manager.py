@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -50,7 +51,12 @@ class SessionManager:
             return self.store.update_activity(session_id)
         except KeyError:
             # If not found, create new
-            return self.store.create_session(session_id, connection_hint=connection_hint)
+            try:
+                return self.store.create_session(session_id, connection_hint=connection_hint)
+            except sqlite3.IntegrityError:
+                session = self.store.get_session(session_id)
+                self._validate_session_expiry(session)
+                return self.store.update_activity(session_id)
 
     def update_activity(self, session_id: str) -> None:
         """Update the last activity timestamp for a session."""

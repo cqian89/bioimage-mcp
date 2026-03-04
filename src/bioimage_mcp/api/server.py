@@ -167,7 +167,7 @@ def create_server(
     @mcp.tool()
     async def run(
         id: str,
-        inputs: dict[str, Any],
+        inputs: dict[str, Any] | None = None,
         params: dict[str, Any] | None = None,
         session_id: str | None = None,
         ordinal: int | None = None,
@@ -192,12 +192,29 @@ def create_server(
 
         if params is None:
             params = {}
+        if inputs is None:
+            inputs = {}
 
         session_manager.ensure_session(session_id)
 
+        progress_counter = {"value": 0.0}
+
         def progress_callback(message: str) -> None:
-            if ctx:
-                ctx.info(message)
+            if not ctx:
+                return
+
+            progress_counter["value"] += 1.0
+            try:
+                anyio.from_thread.run(ctx.info, message)
+                anyio.from_thread.run(
+                    ctx.report_progress,
+                    progress_counter["value"],
+                    None,
+                    message,
+                )
+            except RuntimeError:
+                # Ignore if callback fires outside AnyIO thread context.
+                return
 
         result = await anyio.to_thread.run_sync(
             interactive.call_tool,
