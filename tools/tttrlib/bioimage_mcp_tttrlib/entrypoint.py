@@ -26,6 +26,52 @@ _ENV_ID: str | None = None
 
 TOOL_VERSION = "0.1.0"
 TOOL_ENV_NAME = "bioimage-mcp-tttrlib"
+UNSUPPORTED_STATUSES = {"denied", "deferred"}
+
+_COVERAGE_CACHE: dict[str, Any] | None = None
+
+
+def _load_coverage_registry() -> dict[str, dict[str, Any]]:
+    """Load coverage registry keyed by strict upstream function IDs."""
+    global _COVERAGE_CACHE
+    if _COVERAGE_CACHE is not None:
+        return _COVERAGE_CACHE
+
+    coverage_path = Path(__file__).resolve().parent.parent / "schema" / "tttrlib_coverage.json"
+    try:
+        with open(coverage_path, encoding="utf-8") as f:
+            payload = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        _COVERAGE_CACHE = {}
+        return _COVERAGE_CACHE
+
+    coverage = payload.get("coverage")
+    if not isinstance(coverage, dict):
+        _COVERAGE_CACHE = {}
+        return _COVERAGE_CACHE
+
+    _COVERAGE_CACHE = coverage
+    return _COVERAGE_CACHE
+
+
+def _get_coverage_entry(fn_id: str) -> dict[str, Any] | None:
+    """Return coverage entry for a function id if available."""
+    registry = _load_coverage_registry()
+    entry = registry.get(fn_id)
+    return entry if isinstance(entry, dict) else None
+
+
+def _unsupported_method_error(fn_id: str, entry: dict[str, Any]) -> dict[str, Any]:
+    """Build stable unsupported-method error payload."""
+    status = str(entry.get("status") or "deferred")
+    remediation = str(entry.get("revisit_trigger") or "Use a supported tttrlib method.").strip()
+    return {
+        "code": "TTTRLIB_UNSUPPORTED_METHOD",
+        "message": f"Unsupported tttrlib method: {fn_id} ({status})",
+        "status": status,
+        "method_id": fn_id,
+        "remediation": remediation,
+    }
 
 
 def _initialize_worker(session_id: str, env_id: str) -> None:
@@ -42,26 +88,61 @@ def _store_tttr(tttr_obj: Any, uri: str) -> tuple[str, str]:
     return ref_id, uri
 
 
-def _load_tttr(ref_id_or_uri: str) -> Any:
-    """Load TTTR object from cache."""
-    # Try direct ref_id lookup
+def _load_tttr_cached(ref_id_or_uri: str) -> Any:
+    """Load TTTR object from in-worker cache only."""
     if ref_id_or_uri in _TTTR_CACHE:
         return _TTTR_CACHE[ref_id_or_uri]["obj"]
-    # Try URI lookup
-    for _ref_id, data in _TTTR_CACHE.items():
+
+    for data in _TTTR_CACHE.values():
         if data["uri"] == ref_id_or_uri:
             return data["obj"]
 
+    raise KeyError(f"TTTR object not found: {ref_id_or_uri}")
+
+
+def _load_tttr(ref_id_or_uri: str) -> Any:
+    """Load TTTR object from cache."""
+    try:
+        return _load_tttr_cached(ref_id_or_uri)
+    except KeyError:
+        pass
+
     # If it's a file URI but not in cache, try opening it
     if ref_id_or_uri.startswith("file://"):
+        path = Path(ref_id_or_uri[7:])
+        if not path.exists():
+            raise KeyError(f"TTTR file not found: {path}")
+
         import tttrlib
 
-        path = ref_id_or_uri[7:]
-        tttr = tttrlib.TTTR(path)
+        tttr = tttrlib.TTTR(str(path))
         _store_tttr(tttr, ref_id_or_uri)
         return tttr
 
     raise KeyError(f"TTTR object not found: {ref_id_or_uri}")
+
+
+def _load_tttr_from_input(tttr_ref: dict[str, Any]) -> Any:
+    """Load TTTR from input payload, preferring in-worker ref cache."""
+    ref_id = tttr_ref.get("ref_id")
+    uri = tttr_ref.get("uri")
+
+    load_errors: list[str] = []
+    if ref_id:
+        try:
+            return _load_tttr_cached(ref_id)
+        except KeyError as exc:
+            load_errors.append(str(exc))
+
+    if uri:
+        try:
+            return _load_tttr(uri)
+        except KeyError as exc:
+            load_errors.append(str(exc))
+
+    if load_errors:
+        raise KeyError(load_errors[-1])
+    raise KeyError("TTTR object not found: missing ref_id and uri")
 
 
 def _store_object(obj: Any, class_name: str) -> dict[str, Any]:
@@ -214,24 +295,19 @@ def handle_clsm_image(
     import tttrlib
 
     tttr_ref = inputs.get("tttr", {})
-    tttr_key = tttr_ref.get("uri") or tttr_ref.get("ref_id") or ""
 
     try:
-        tttr = _load_tttr(tttr_key)
+        tttr = _load_tttr_from_input(tttr_ref)
 
-        # Reconstruct image from TTTR data
-        clsm_kwargs = {
-            "tttr_data": tttr,
-            "reading_routine": params.get("reading_routine", "SP5"),
-            "marker_frame_start": params.get("marker_frame_start", [4]),
-            "marker_line_start": params.get("marker_line_start", 2),
-            "marker_line_stop": params.get("marker_line_stop", 3),
-            "channels": params.get("channels", [0]),
-            "fill": params.get("fill", True),
-        }
-
-        # Add optional parameters if present
+        # Forward only explicitly supplied parameters to preserve native tttrlib defaults.
+        clsm_kwargs: dict[str, Any] = {}
         for key in [
+            "reading_routine",
+            "marker_frame_start",
+            "marker_line_start",
+            "marker_line_stop",
+            "channels",
+            "fill",
             "n_pixel_per_line",
             "n_lines",
             "n_frames",
@@ -240,7 +316,8 @@ def handle_clsm_image(
             if key in params:
                 clsm_kwargs[key] = params[key]
 
-        clsm = tttrlib.CLSMImage(**clsm_kwargs)
+        # Use direct-style constructor call for better parity with native usage.
+        clsm = tttrlib.CLSMImage(tttr, **clsm_kwargs)
 
         output = _store_object(clsm, "tttrlib.CLSMImage")
 
@@ -901,7 +978,17 @@ def process_execute_request(request: dict[str, Any]) -> dict[str, Any]:
     ordinal = request.get("ordinal")
 
     try:
-        if fn_id in FUNCTION_HANDLERS:
+        coverage_entry = _get_coverage_entry(fn_id)
+        coverage_status = str(coverage_entry.get("status")) if coverage_entry else ""
+
+        if coverage_status in UNSUPPORTED_STATUSES:
+            response = {
+                "command": "execute_result",
+                "ok": False,
+                "ordinal": ordinal,
+                "error": _unsupported_method_error(fn_id, coverage_entry),
+            }
+        elif fn_id in FUNCTION_HANDLERS:
             handler = FUNCTION_HANDLERS[fn_id]
             result = handler(inputs, params, work_dir)
 
