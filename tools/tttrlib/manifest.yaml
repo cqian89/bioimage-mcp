@@ -255,6 +255,129 @@ functions:
       required:
         - channels
 
+  - id: tttrlib.Correlator.get_curve
+    tool_id: tools.tttrlib
+    name: Get Correlation Curve
+    description: Supported subset that returns tau/correlation curve as a table.
+    tags: [correlation, fcs, tttr, supported-subset]
+    inputs:
+      - name: tttr
+        artifact_type: TTTRRef
+        required: true
+    outputs:
+      - name: curve
+        artifact_type: TableRef
+        format: csv
+        required: true
+    params_schema:
+      type: object
+      properties:
+        channels:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items:
+            type: array
+            items:
+              type: integer
+        n_bins:
+          type: integer
+          default: 17
+        n_casc:
+          type: integer
+          default: 25
+        make_fine:
+          type: boolean
+          default: false
+        method:
+          type: string
+          default: "wahl"
+          enum: ["wahl", "felekyan", "laurence"]
+      required:
+        - channels
+
+  - id: tttrlib.Correlator.get_x_axis
+    tool_id: tools.tttrlib
+    name: Get Correlation Lag Axis
+    description: Supported subset that returns correlation lag axis (tau) as a table.
+    tags: [correlation, fcs, tttr, supported-subset]
+    inputs:
+      - name: tttr
+        artifact_type: TTTRRef
+        required: true
+    outputs:
+      - name: tau
+        artifact_type: TableRef
+        format: csv
+        required: true
+    params_schema:
+      type: object
+      properties:
+        channels:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items:
+            type: array
+            items:
+              type: integer
+        n_bins:
+          type: integer
+          default: 17
+        n_casc:
+          type: integer
+          default: 25
+        make_fine:
+          type: boolean
+          default: false
+        method:
+          type: string
+          default: "wahl"
+          enum: ["wahl", "felekyan", "laurence"]
+      required:
+        - channels
+
+  - id: tttrlib.Correlator.get_corr
+    tool_id: tools.tttrlib
+    name: Get Correlation Values
+    description: Supported subset that returns raw correlation values as a table.
+    tags: [correlation, fcs, tttr, supported-subset]
+    inputs:
+      - name: tttr
+        artifact_type: TTTRRef
+        required: true
+    outputs:
+      - name: correlation
+        artifact_type: TableRef
+        format: csv
+        required: true
+    params_schema:
+      type: object
+      properties:
+        channels:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items:
+            type: array
+            items:
+              type: integer
+        n_bins:
+          type: integer
+          default: 17
+        n_casc:
+          type: integer
+          default: 25
+        make_fine:
+          type: boolean
+          default: false
+        method:
+          type: string
+          default: "wahl"
+          enum: ["wahl", "felekyan", "laurence"]
+      required:
+        - channels
+
   - id: tttrlib.CLSMImage
     tool_id: tools.tttrlib
     name: Construct CLSM Image
@@ -480,6 +603,42 @@ functions:
           type: boolean
           default: false
           description: "Combine frames before calculation"
+
+  - id: tttrlib.CLSMImage.get_image_info
+    tool_id: tools.tttrlib
+    name: Get CLSM Image Info
+    description: Returns structural CLSM metadata as JSON.
+    tags: [metadata, clsm, tttr, supported-subset]
+    inputs:
+      - name: clsm
+        artifact_type: ObjectRef
+        required: true
+    outputs:
+      - name: image_info
+        artifact_type: NativeOutputRef
+        format: json
+        required: true
+    params_schema:
+      type: object
+      properties: {}
+
+  - id: tttrlib.CLSMImage.get_settings
+    tool_id: tools.tttrlib
+    name: Get CLSM Settings
+    description: Returns CLSM acquisition settings as JSON.
+    tags: [metadata, clsm, tttr, supported-subset]
+    inputs:
+      - name: clsm
+        artifact_type: ObjectRef
+        required: true
+    outputs:
+      - name: settings
+        artifact_type: NativeOutputRef
+        format: json
+        required: true
+    params_schema:
+      type: object
+      properties: {}
 
   - id: tttrlib.TTTR.write
     tool_id: tools.tttrlib

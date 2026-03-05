@@ -125,6 +125,23 @@ def _validate_export_extension(
     return None
 
 
+def _write_native_output(payload: Any, stem: str, work_dir: Path) -> dict[str, Any]:
+    """Persist JSON payload and return a NativeOutputRef."""
+    output_path = work_dir / f"{stem}_{uuid.uuid4().hex[:8]}.json"
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, default=str)
+
+    return {
+        "ref_id": uuid.uuid4().hex,
+        "type": "NativeOutputRef",
+        "uri": f"file://{output_path.absolute()}",
+        "path": str(output_path.absolute()),
+        "format": "json",
+        "mime_type": "application/json",
+        "created_at": datetime.now(UTC).isoformat(),
+    }
+
+
 def _initialize_worker(session_id: str, env_id: str) -> None:
     """Initialize worker identity."""
     global _SESSION_ID, _ENV_ID
@@ -439,6 +456,201 @@ def handle_correlator(
             "log": "Correlation computed",
         }
 
+    except Exception as e:
+        return {"ok": False, "error": {"message": str(e)}}
+
+
+def _build_correlator(
+    inputs: dict[str, Any], params: dict[str, Any], method_id: str
+) -> tuple[Any, dict[str, Any] | None]:
+    """Construct a correlator from a strict supported subset."""
+    tttr_ref = inputs.get("tttr", {})
+    tttr_key = tttr_ref.get("uri") or tttr_ref.get("ref_id") or ""
+
+    required = {"channels"}
+    allowed = required | {"n_bins", "n_casc", "make_fine", "method"}
+    extra = sorted(set(params) - allowed)
+    if extra:
+        return None, _unsupported_argument_pattern_error(
+            method_id,
+            f"unsupported params: {', '.join(extra)}",
+        )
+
+    missing = sorted(required - set(params))
+    if missing:
+        return None, _unsupported_argument_pattern_error(
+            method_id,
+            f"missing params: {', '.join(missing)}",
+        )
+
+    channels = params.get("channels")
+    if not isinstance(channels, list) or len(channels) != 2:
+        return None, _unsupported_argument_pattern_error(
+            method_id,
+            "channels must be [[...], [...]]",
+        )
+
+    try:
+        import tttrlib
+
+        tttr = _load_tttr(tttr_key)
+        correlator = tttrlib.Correlator(
+            tttr=tttr,
+            channels=channels,
+            n_bins=params.get("n_bins", 17),
+            n_casc=params.get("n_casc", 25),
+            make_fine=params.get("make_fine", False),
+            method=params.get("method", "wahl"),
+        )
+        return correlator, None
+    except Exception as exc:
+        return None, {"message": str(exc)}
+
+
+def handle_clsm_get_image_info(
+    inputs: dict[str, Any], params: dict[str, Any], work_dir: Path
+) -> dict[str, Any]:
+    """Handle tttrlib.CLSMImage.get_image_info metadata export."""
+    clsm_ref = inputs.get("clsm", {})
+    clsm_key = clsm_ref.get("uri") or clsm_ref.get("ref_id") or ""
+
+    if params:
+        return {
+            "ok": False,
+            "error": _unsupported_argument_pattern_error(
+                "tttrlib.CLSMImage.get_image_info", "no params"
+            ),
+        }
+
+    try:
+        clsm = _load_object(clsm_key)
+        output = _write_native_output(clsm.get_image_info(), "clsm_image_info", work_dir)
+        return {"ok": True, "outputs": {"image_info": output}, "log": "CLSM image info extracted"}
+    except Exception as e:
+        return {"ok": False, "error": {"message": str(e)}}
+
+
+def handle_clsm_get_settings(
+    inputs: dict[str, Any], params: dict[str, Any], work_dir: Path
+) -> dict[str, Any]:
+    """Handle tttrlib.CLSMImage.get_settings metadata export."""
+    clsm_ref = inputs.get("clsm", {})
+    clsm_key = clsm_ref.get("uri") or clsm_ref.get("ref_id") or ""
+
+    if params:
+        return {
+            "ok": False,
+            "error": _unsupported_argument_pattern_error(
+                "tttrlib.CLSMImage.get_settings", "no params"
+            ),
+        }
+
+    try:
+        clsm = _load_object(clsm_key)
+        output = _write_native_output(clsm.get_settings(), "clsm_settings", work_dir)
+        return {"ok": True, "outputs": {"settings": output}, "log": "CLSM settings extracted"}
+    except Exception as e:
+        return {"ok": False, "error": {"message": str(e)}}
+
+
+def handle_correlator_get_curve(
+    inputs: dict[str, Any], params: dict[str, Any], work_dir: Path
+) -> dict[str, Any]:
+    """Handle tttrlib.Correlator.get_curve as tabular output."""
+    import numpy as np
+
+    correlator, error = _build_correlator(inputs, params, "tttrlib.Correlator.get_curve")
+    if error:
+        return {"ok": False, "error": error}
+
+    try:
+        curve = correlator.get_curve()
+        tau, corr = curve
+        data = np.column_stack((np.asarray(tau, dtype=float), np.asarray(corr, dtype=float)))
+        csv_path = work_dir / f"correlator_curve_{uuid.uuid4().hex[:8]}.csv"
+        np.savetxt(csv_path, data, delimiter=",", header="tau,correlation", comments="")
+
+        output = {
+            "ref_id": uuid.uuid4().hex,
+            "type": "TableRef",
+            "uri": f"file://{csv_path.absolute()}",
+            "path": str(csv_path.absolute()),
+            "format": "csv",
+            "created_at": datetime.now(UTC).isoformat(),
+            "columns": ["tau", "correlation"],
+            "row_count": int(data.shape[0]),
+        }
+        return {"ok": True, "outputs": {"curve": output}, "log": "Correlator curve extracted"}
+    except Exception as e:
+        return {"ok": False, "error": {"message": str(e)}}
+
+
+def handle_correlator_get_x_axis(
+    inputs: dict[str, Any], params: dict[str, Any], work_dir: Path
+) -> dict[str, Any]:
+    """Handle tttrlib.Correlator.get_x_axis as tabular output."""
+    import numpy as np
+
+    correlator, error = _build_correlator(inputs, params, "tttrlib.Correlator.get_x_axis")
+    if error:
+        return {"ok": False, "error": error}
+
+    try:
+        tau = np.asarray(correlator.get_x_axis(), dtype=float)
+        csv_path = work_dir / f"correlator_x_axis_{uuid.uuid4().hex[:8]}.csv"
+        np.savetxt(csv_path, tau.reshape(-1, 1), delimiter=",", header="tau", comments="")
+
+        output = {
+            "ref_id": uuid.uuid4().hex,
+            "type": "TableRef",
+            "uri": f"file://{csv_path.absolute()}",
+            "path": str(csv_path.absolute()),
+            "format": "csv",
+            "created_at": datetime.now(UTC).isoformat(),
+            "columns": ["tau"],
+            "row_count": int(tau.size),
+        }
+        return {"ok": True, "outputs": {"tau": output}, "log": "Correlator x-axis extracted"}
+    except Exception as e:
+        return {"ok": False, "error": {"message": str(e)}}
+
+
+def handle_correlator_get_corr(
+    inputs: dict[str, Any], params: dict[str, Any], work_dir: Path
+) -> dict[str, Any]:
+    """Handle tttrlib.Correlator.get_corr as tabular output."""
+    import numpy as np
+
+    correlator, error = _build_correlator(inputs, params, "tttrlib.Correlator.get_corr")
+    if error:
+        return {"ok": False, "error": error}
+
+    try:
+        corr = np.asarray(correlator.get_corr(), dtype=float)
+        csv_path = work_dir / f"correlator_corr_{uuid.uuid4().hex[:8]}.csv"
+        np.savetxt(
+            csv_path,
+            corr.reshape(-1, 1),
+            delimiter=",",
+            header="correlation",
+            comments="",
+        )
+
+        output = {
+            "ref_id": uuid.uuid4().hex,
+            "type": "TableRef",
+            "uri": f"file://{csv_path.absolute()}",
+            "path": str(csv_path.absolute()),
+            "format": "csv",
+            "created_at": datetime.now(UTC).isoformat(),
+            "columns": ["correlation"],
+            "row_count": int(corr.size),
+        }
+        return {
+            "ok": True,
+            "outputs": {"correlation": output},
+            "log": "Correlator values extracted",
+        }
     except Exception as e:
         return {"ok": False, "error": {"message": str(e)}}
 
@@ -1387,11 +1599,16 @@ FUNCTION_HANDLERS = {
     "tttrlib.TTTR.write_spc132_events": handle_tttr_write_spc132_events,
     "tttrlib.CLSMImage": handle_clsm_image,
     "tttrlib.CLSMImage.compute_ics": handle_compute_ics,
+    "tttrlib.CLSMImage.get_image_info": handle_clsm_get_image_info,
     "tttrlib.CLSMImage.get_intensity": handle_get_intensity,
+    "tttrlib.CLSMImage.get_settings": handle_clsm_get_settings,
     "tttrlib.CLSMImage.get_phasor": handle_get_phasor,
     "tttrlib.CLSMImage.get_fluorescence_decay": handle_get_fluorescence_decay,
     "tttrlib.CLSMImage.get_mean_lifetime": handle_get_mean_lifetime,
     "tttrlib.Correlator": handle_correlator,
+    "tttrlib.Correlator.get_curve": handle_correlator_get_curve,
+    "tttrlib.Correlator.get_x_axis": handle_correlator_get_x_axis,
+    "tttrlib.Correlator.get_corr": handle_correlator_get_corr,
 }
 
 

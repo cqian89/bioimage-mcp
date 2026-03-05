@@ -147,10 +147,10 @@
       "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
     },
     "tttrlib.CLSMImage.get_image_info": {
-      "status": "deferred",
+      "status": "supported_subset",
       "owner": "phase-25",
-      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
-      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+      "rationale": "Supported subset exposing CLSM structural metadata as NativeOutputRef JSON.",
+      "revisit_trigger": "Promote to supported after validating metadata stability across microscope variants."
     },
     "tttrlib.CLSMImage.get_intensity": {
       "status": "supported",
@@ -225,10 +225,10 @@
       "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
     },
     "tttrlib.CLSMImage.get_settings": {
-      "status": "deferred",
+      "status": "supported_subset",
       "owner": "phase-25",
-      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
-      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+      "rationale": "Supported subset exposing CLSM settings metadata as NativeOutputRef JSON.",
+      "revisit_trigger": "Promote to supported after validating settings schema compatibility across scanner routines."
     },
     "tttrlib.CLSMImage.get_tttr": {
       "status": "deferred",
@@ -315,10 +315,10 @@
       "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
     },
     "tttrlib.Correlator.get_corr": {
-      "status": "deferred",
+      "status": "supported_subset",
       "owner": "phase-25",
-      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
-      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+      "rationale": "Supported subset returns raw correlation values using constrained correlator arguments.",
+      "revisit_trigger": "Promote to supported once additional overload signatures are validated."
     },
     "tttrlib.Correlator.get_corr_normalized": {
       "status": "deferred",
@@ -327,10 +327,10 @@
       "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
     },
     "tttrlib.Correlator.get_curve": {
-      "status": "deferred",
+      "status": "supported_subset",
       "owner": "phase-25",
-      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
-      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+      "rationale": "Supported subset returns tau/correlation curve with constrained constructor arguments.",
+      "revisit_trigger": "Promote to supported once additional overload signatures are validated."
     },
     "tttrlib.Correlator.get_macrotimes": {
       "status": "deferred",
@@ -351,10 +351,10 @@
       "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
     },
     "tttrlib.Correlator.get_x_axis": {
-      "status": "deferred",
+      "status": "supported_subset",
       "owner": "phase-25",
-      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
-      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+      "rationale": "Supported subset returns lag-time axis using constrained correlator arguments.",
+      "revisit_trigger": "Promote to supported once additional overload signatures are validated."
     },
     "tttrlib.Correlator.run": {
       "status": "denied",

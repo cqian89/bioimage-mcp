@@ -619,6 +619,193 @@
           "artifact_type": "TTTRRef"
         }
       }
+    },
+    "tttrlib.Correlator.get_curve": {
+      "summary": "Supported subset returning tau/correlation curve table",
+      "inputs": {
+        "tttr": {
+          "artifact_type": "TTTRRef",
+          "required": true
+        }
+      },
+      "params": {
+        "channels": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "required": true,
+          "description": "[[ch1_list], [ch2_list]] for cross-correlation"
+        },
+        "n_bins": {
+          "type": "integer",
+          "default": 17
+        },
+        "n_casc": {
+          "type": "integer",
+          "default": 25
+        },
+        "make_fine": {
+          "type": "boolean",
+          "default": false
+        },
+        "method": {
+          "type": "string",
+          "enum": [
+            "wahl",
+            "felekyan",
+            "laurence"
+          ],
+          "default": "wahl"
+        }
+      },
+      "outputs": {
+        "curve": {
+          "artifact_type": "TableRef",
+          "format": "csv",
+          "columns": [
+            "tau",
+            "correlation"
+          ]
+        }
+      }
+    },
+    "tttrlib.Correlator.get_x_axis": {
+      "summary": "Supported subset returning correlation lag axis",
+      "inputs": {
+        "tttr": {
+          "artifact_type": "TTTRRef",
+          "required": true
+        }
+      },
+      "params": {
+        "channels": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "required": true,
+          "description": "[[ch1_list], [ch2_list]] for cross-correlation"
+        },
+        "n_bins": {
+          "type": "integer",
+          "default": 17
+        },
+        "n_casc": {
+          "type": "integer",
+          "default": 25
+        },
+        "make_fine": {
+          "type": "boolean",
+          "default": false
+        },
+        "method": {
+          "type": "string",
+          "enum": [
+            "wahl",
+            "felekyan",
+            "laurence"
+          ],
+          "default": "wahl"
+        }
+      },
+      "outputs": {
+        "tau": {
+          "artifact_type": "TableRef",
+          "format": "csv",
+          "columns": [
+            "tau"
+          ]
+        }
+      }
+    },
+    "tttrlib.Correlator.get_corr": {
+      "summary": "Supported subset returning raw correlation values",
+      "inputs": {
+        "tttr": {
+          "artifact_type": "TTTRRef",
+          "required": true
+        }
+      },
+      "params": {
+        "channels": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "required": true,
+          "description": "[[ch1_list], [ch2_list]] for cross-correlation"
+        },
+        "n_bins": {
+          "type": "integer",
+          "default": 17
+        },
+        "n_casc": {
+          "type": "integer",
+          "default": 25
+        },
+        "make_fine": {
+          "type": "boolean",
+          "default": false
+        },
+        "method": {
+          "type": "string",
+          "enum": [
+            "wahl",
+            "felekyan",
+            "laurence"
+          ],
+          "default": "wahl"
+        }
+      },
+      "outputs": {
+        "correlation": {
+          "artifact_type": "TableRef",
+          "format": "csv",
+          "columns": [
+            "correlation"
+          ]
+        }
+      }
+    },
+    "tttrlib.CLSMImage.get_image_info": {
+      "summary": "Supported subset returning CLSM structural metadata",
+      "inputs": {
+        "clsm": {
+          "artifact_type": "ObjectRef",
+          "required": true
+        }
+      },
+      "outputs": {
+        "image_info": {
+          "artifact_type": "NativeOutputRef",
+          "format": "json"
+        }
+      }
+    },
+    "tttrlib.CLSMImage.get_settings": {
+      "summary": "Supported subset returning CLSM acquisition settings",
+      "inputs": {
+        "clsm": {
+          "artifact_type": "ObjectRef",
+          "required": true
+        }
+      },
+      "outputs": {
+        "settings": {
+          "artifact_type": "NativeOutputRef",
+          "format": "json"
+        }
+      }
     }
   }
 }
