@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v0.3
 milestone_name: milestone
 status: in_progress
-stopped_at: Completed 25-01-PLAN.md
-last_updated: "2026-03-05T14:15:11.362Z"
-last_activity: 2026-03-05 - Completed 25-01-PLAN.md
+stopped_at: Completed 25-02-PLAN.md
+last_updated: "2026-03-05T14:38:37.135Z"
+last_activity: 2026-03-05 - Completed 25-02-PLAN.md
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 18
-  completed_plans: 16
-  percent: 98
+  completed_plans: 17
+  percent: 99
 ---
 
 # Project State: Bioimage-MCP
@@ -25,11 +25,11 @@ progress:
 ## Current Position
 
 - **Phase:** 25 of 25 (Add missing TTTR methods)
-- **Plan:** 2 of 3 in current phase
+- **Plan:** 3 of 3 in current phase
 - **Status:** In progress
-- **Last activity:** 2026-03-05 - Completed 25-01-PLAN.md
+- **Last activity:** 2026-03-05 - Completed 25-02-PLAN.md
 
-Progress: [██████████] 98%
+Progress: [██████████] 99%
 
 ## Performance Metrics
 
@@ -39,6 +39,7 @@ Progress: [██████████] 98%
 | Test Coverage | >80% | 89% | ✅ |
 | Tool Isolation | 100% | 100% | ✅ |
 | Phase 25 P01 | 4 min | 2 tasks | 5 files |
+| Phase 25 P02 | 15 min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -60,6 +61,9 @@ Progress: [██████████] 98%
 - **Deadlock-safe IPC ACK:** Use timeouts for NDJSON IPC ACKs during shutdown to prevent deadlocks on blocked stdout/stderr pipes.
 - [Phase 25]: Use strict upstream IDs (tttrlib.Class.method) in the coverage registry to prevent alias drift.
 - [Phase 25]: Run unsupported-method checks before handler dispatch so denied/deferred IDs are deterministic and explicit.
+- [Phase 25]: Mapped scalar TTTR statistics to NativeOutputRef and tabular traces/selections to TableRef outputs.
+- [Phase 25]: Selection APIs remain supported_subset with explicit allowlists and TTTRLIB_UNSUPPORTED_ARGUMENT_PATTERN failures for unsupported patterns.
+- [Phase 25]: TTTR write-family handlers now enforce work_dir path boundaries with format-specific extension checks for specialized exports.
 
 ### Roadmap Evolution
 - Phase 25 added: Add missing TTTR methods
@@ -98,6 +102,6 @@ Progress: [██████████] 98%
 
 ## Session Continuity
 
-- **Last Session:** 2026-03-05T14:15:11.341Z
-- **Stopped at:** Completed 25-01-PLAN.md
+- **Last Session:** 2026-03-05T14:38:37.107Z
+- **Stopped at:** Completed 25-02-PLAN.md
 - **Resume file:** None
