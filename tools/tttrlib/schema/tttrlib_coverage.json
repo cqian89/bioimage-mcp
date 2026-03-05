@@ -869,26 +869,26 @@
     "tttrlib.TTTR.write": {
       "status": "supported",
       "owner": "phase-25",
-      "rationale": "Available in current manifest/entrypoint with MCP-safe I/O mapping.",
-      "revisit_trigger": "Expand smoke coverage as additional families are added."
+      "rationale": "Export path is validated against work_dir and output remains artifactized as TTTRRef.",
+      "revisit_trigger": "Expand format-specific smoke validation for supported TTTR container targets."
     },
     "tttrlib.TTTR.write_header": {
       "status": "supported_subset",
       "owner": "phase-25",
-      "rationale": "Exposed with explicit filename path contract and TTTRRef output metadata.",
-      "revisit_trigger": "Harden path safety and format-specific checks in the export guardrail task."
+      "rationale": "Exposed with explicit filename path contract and work_dir traversal guardrails.",
+      "revisit_trigger": "Expand to additional header-output variants once extension rules are validated in live smoke tests."
     },
     "tttrlib.TTTR.write_hht3v2_events": {
       "status": "supported_subset",
       "owner": "phase-25",
-      "rationale": "Exposed with explicit filename path contract and TTTRRef output metadata.",
-      "revisit_trigger": "Harden path safety and export-format guardrails in the next plan task."
+      "rationale": "Exposed with work_dir path guardrails and strict .ht3 extension validation.",
+      "revisit_trigger": "Promote if upstream safely supports additional target extensions."
     },
     "tttrlib.TTTR.write_spc132_events": {
       "status": "supported_subset",
       "owner": "phase-25",
-      "rationale": "Exposed with explicit filename path contract and TTTRRef output metadata.",
-      "revisit_trigger": "Harden path safety and export-format guardrails in the next plan task."
+      "rationale": "Exposed with work_dir path guardrails and strict .spc extension validation.",
+      "revisit_trigger": "Promote if upstream safely supports additional target extensions."
     }
   }
 }

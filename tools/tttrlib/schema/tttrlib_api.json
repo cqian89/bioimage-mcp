@@ -537,7 +537,7 @@
       }
     },
     "tttrlib.TTTR.write": {
-      "summary": "Export TTTR data to file",
+      "summary": "Export TTTR data to file under work_dir",
       "inputs": {
         "tttr": {
           "artifact_type": "TTTRRef",
@@ -558,7 +558,7 @@
       }
     },
     "tttrlib.TTTR.write_header": {
-      "summary": "Write TTTR header to file",
+      "summary": "Write TTTR header to file under work_dir",
       "inputs": {
         "tttr": {
           "artifact_type": "TTTRRef",
@@ -579,7 +579,7 @@
       }
     },
     "tttrlib.TTTR.write_hht3v2_events": {
-      "summary": "Write HHT3v2 events to file",
+      "summary": "Write HHT3v2 events to .ht3 file under work_dir",
       "inputs": {
         "tttr": {
           "artifact_type": "TTTRRef",
@@ -600,7 +600,7 @@
       }
     },
     "tttrlib.TTTR.write_spc132_events": {
-      "summary": "Write SPC132 events to file",
+      "summary": "Write SPC132 events to .spc file under work_dir",
       "inputs": {
         "tttr": {
           "artifact_type": "TTTRRef",

@@ -484,7 +484,7 @@ functions:
   - id: tttrlib.TTTR.write
     tool_id: tools.tttrlib
     name: Write TTTR File
-    description: Export TTTR data to a file.
+    description: Export TTTR data to a file under work_dir.
     tags: [io, export, tttr]
     inputs:
       - name: tttr
@@ -506,7 +506,7 @@ functions:
   - id: tttrlib.TTTR.write_header
     tool_id: tools.tttrlib
     name: Write TTTR Header
-    description: Write TTTR header to output file.
+    description: Write TTTR header to output file under work_dir.
     tags: [io, export, tttr, supported-subset]
     inputs:
       - name: tttr
@@ -528,7 +528,7 @@ functions:
   - id: tttrlib.TTTR.write_hht3v2_events
     tool_id: tools.tttrlib
     name: Write HHT3v2 Events
-    description: Write events using HHT3v2 export routine.
+    description: Write events using HHT3v2 export routine (.ht3 only).
     tags: [io, export, tttr, supported-subset]
     inputs:
       - name: tttr
@@ -550,7 +550,7 @@ functions:
   - id: tttrlib.TTTR.write_spc132_events
     tool_id: tools.tttrlib
     name: Write SPC132 Events
-    description: Write events using SPC132 export routine.
+    description: Write events using SPC132 export routine (.spc only).
     tags: [io, export, tttr, supported-subset]
     inputs:
       - name: tttr

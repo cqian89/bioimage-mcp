@@ -85,14 +85,44 @@ def _unsupported_argument_pattern_error(method_id: str, detail: str) -> dict[str
 
 
 def _resolve_output_path(filename: str, work_dir: Path) -> Path:
-    """Resolve output path relative to work_dir."""
+    """Resolve output path relative to work_dir with traversal guardrails."""
+    root = work_dir.resolve()
     output_path = Path(filename)
     if not output_path.is_absolute():
-        output_path = (work_dir / output_path).resolve()
+        output_path = (root / output_path).resolve()
     else:
         output_path = output_path.resolve()
+
+    if output_path != root and root not in output_path.parents:
+        raise ValueError("TTTRLIB_UNSAFE_OUTPUT_PATH")
+
     output_path.parent.mkdir(parents=True, exist_ok=True)
     return output_path
+
+
+def _export_path_error(filename: str) -> dict[str, Any]:
+    """Build stable unsafe output path error payload."""
+    return {
+        "code": "TTTRLIB_UNSAFE_OUTPUT_PATH",
+        "message": f"Output path escapes work_dir: {filename}",
+        "remediation": "Use a relative path under work_dir or an absolute child of work_dir.",
+    }
+
+
+def _validate_export_extension(
+    method_id: str,
+    filepath: Path,
+    allowed_extensions: set[str],
+) -> dict[str, Any] | None:
+    """Validate extension whitelist for export variants."""
+    suffix = filepath.suffix.lower()
+    if suffix not in allowed_extensions:
+        allowed = ", ".join(sorted(allowed_extensions))
+        return _unsupported_argument_pattern_error(
+            method_id,
+            f"expected extension in {{{allowed}}}, got '{suffix or '<none>'}'",
+        )
+    return None
 
 
 def _initialize_worker(session_id: str, env_id: str) -> None:
@@ -726,9 +756,10 @@ def handle_tttr_write(
     try:
         tttr = _load_tttr(tttr_key)
 
-        filepath = Path(filename)
-        if not filepath.is_absolute():
-            filepath = work_dir / filepath
+        try:
+            filepath = _resolve_output_path(filename, work_dir)
+        except ValueError:
+            return {"ok": False, "error": _export_path_error(filename)}
 
         tttr.write(str(filepath))
 
@@ -766,7 +797,11 @@ def handle_tttr_write_header(
 
     try:
         tttr = _load_tttr(tttr_key)
-        filepath = _resolve_output_path(filename, work_dir)
+        try:
+            filepath = _resolve_output_path(filename, work_dir)
+        except ValueError:
+            return {"ok": False, "error": _export_path_error(filename)}
+
         tttr.write_header(str(filepath))
         output = {
             "ref_id": uuid.uuid4().hex,
@@ -794,7 +829,17 @@ def handle_tttr_write_hht3v2_events(
 
     try:
         tttr = _load_tttr(tttr_key)
-        filepath = _resolve_output_path(filename, work_dir)
+        try:
+            filepath = _resolve_output_path(filename, work_dir)
+        except ValueError:
+            return {"ok": False, "error": _export_path_error(filename)}
+
+        extension_error = _validate_export_extension(
+            "tttrlib.TTTR.write_hht3v2_events", filepath, {".ht3"}
+        )
+        if extension_error:
+            return {"ok": False, "error": extension_error}
+
         tttr.write_hht3v2_events(str(filepath))
         output = {
             "ref_id": uuid.uuid4().hex,
@@ -826,7 +871,17 @@ def handle_tttr_write_spc132_events(
 
     try:
         tttr = _load_tttr(tttr_key)
-        filepath = _resolve_output_path(filename, work_dir)
+        try:
+            filepath = _resolve_output_path(filename, work_dir)
+        except ValueError:
+            return {"ok": False, "error": _export_path_error(filename)}
+
+        extension_error = _validate_export_extension(
+            "tttrlib.TTTR.write_spc132_events", filepath, {".spc"}
+        )
+        if extension_error:
+            return {"ok": False, "error": extension_error}
+
         tttr.write_spc132_events(str(filepath))
         output = {
             "ref_id": uuid.uuid4().hex,
