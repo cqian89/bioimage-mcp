@@ -8,11 +8,12 @@ from pathlib import Path
 
 import pytest
 
-pytestmark = pytest.mark.requires_env("bioimage-mcp-tttrlib")
+pytestmark = pytest.mark.smoke_extended
 
 TTTRLIB_COVERAGE_PATH = (
     Path(__file__).parents[2] / "tools" / "tttrlib" / "schema" / "tttrlib_coverage.json"
 )
+TTTRLIB_SMOKE_PATH = Path(__file__).parents[1] / "smoke" / "test_tttrlib_live.py"
 
 TARGET_CLASSES = ("TTTR", "CLSMImage", "Correlator")
 VALID_STATUSES = {"supported", "supported_subset", "deferred", "denied"}
@@ -61,6 +62,27 @@ def test_parity_inventory_file_exists() -> None:
     )
 
 
+def test_phase25_representative_methods_have_explicit_smoke_coverage() -> None:
+    coverage = _load_coverage()
+    smoke_content = TTTRLIB_SMOKE_PATH.read_text(encoding="utf-8")
+
+    representative_ids = (
+        "tttrlib.Correlator.get_curve",
+        "tttrlib.Correlator.get_x_axis",
+        "tttrlib.CLSMImage.get_image_info",
+        "tttrlib.CLSMImage.get_settings",
+    )
+
+    missing_coverage = [method_id for method_id in representative_ids if method_id not in coverage]
+    assert not missing_coverage, f"Missing coverage entries: {missing_coverage}"
+
+    missing_smoke = [
+        method_id for method_id in representative_ids if method_id not in smoke_content
+    ]
+    assert not missing_smoke, f"Representative methods missing smoke scenarios: {missing_smoke}"
+
+
+@pytest.mark.requires_env("bioimage-mcp-tttrlib")
 def test_runtime_methods_all_have_coverage_classification() -> None:
     runtime_ids = _runtime_callable_ids()
     coverage = _load_coverage()
@@ -73,6 +95,7 @@ def test_runtime_methods_all_have_coverage_classification() -> None:
     )
 
 
+@pytest.mark.requires_env("bioimage-mcp-tttrlib")
 def test_coverage_status_values_and_required_fields_are_valid() -> None:
     coverage = _load_coverage()
 
