@@ -1,0 +1,75 @@
+from __future__ import annotations
+
+import csv
+import json
+import sys
+from pathlib import Path
+from types import SimpleNamespace
+
+REPO_ROOT = Path(__file__).parent.parent.parent
+TOOLS_TTTRLIB = REPO_ROOT / "tools" / "tttrlib"
+if str(TOOLS_TTTRLIB) not in sys.path:
+    sys.path.insert(0, str(TOOLS_TTTRLIB))
+
+import bioimage_mcp_tttrlib.entrypoint as entrypoint
+
+
+class _FakeCLSMImage:
+    def get_image_info(self) -> dict[str, int]:
+        return {"n_frames": 2, "n_lines": 4, "n_pixel_per_line": 8}
+
+
+class _FakeCorrelator:
+    def get_curve(self):
+        return ([1.0, 2.0, 4.0], [0.5, 0.25, 0.125])
+
+
+def test_handle_clsm_get_image_info_returns_native_output(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(entrypoint, "_load_object", lambda _key: _FakeCLSMImage())
+
+    result = entrypoint.handle_clsm_get_image_info(
+        inputs={"clsm": {"ref_id": "clsm-1"}},
+        params={},
+        work_dir=tmp_path,
+    )
+
+    assert result["ok"] is True
+    output = result["outputs"]["image_info"]
+    assert output["type"] == "NativeOutputRef"
+    with open(output["path"], encoding="utf-8") as f:
+        payload = json.load(f)
+    assert payload["n_frames"] == 2
+
+
+def test_handle_correlator_get_curve_returns_table_ref(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(entrypoint, "_load_tttr", lambda _key: object())
+    monkeypatch.setitem(
+        sys.modules, "tttrlib", SimpleNamespace(Correlator=lambda **_kwargs: _FakeCorrelator())
+    )
+
+    result = entrypoint.handle_correlator_get_curve(
+        inputs={"tttr": {"ref_id": "tttr-1"}},
+        params={"channels": [[0], [8]], "n_bins": 7, "n_casc": 12},
+        work_dir=tmp_path,
+    )
+
+    assert result["ok"] is True
+    output = result["outputs"]["curve"]
+    assert output["type"] == "TableRef"
+    with open(output["path"], newline="", encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+    assert len(rows) == 3
+    assert set(rows[0].keys()) == {"tau", "correlation"}
+
+
+def test_correlator_get_curve_rejects_unsupported_params(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(entrypoint, "_load_tttr", lambda _key: object())
+
+    result = entrypoint.handle_correlator_get_curve(
+        inputs={"tttr": {"ref_id": "tttr-1"}},
+        params={"channels": [[0], [8]], "normalize": True},
+        work_dir=tmp_path,
+    )
+
+    assert result["ok"] is False
+    assert result["error"]["code"] == "TTTRLIB_UNSUPPORTED_ARGUMENT_PATTERN"
