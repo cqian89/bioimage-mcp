@@ -61,6 +61,23 @@ class TestTTTRLibSchemaAlignment:
 
         assert set(schema_params.keys()) == set(manifest_props.keys())
 
+    def test_clsmimage_reading_routine_enum_matches_manifest(self) -> None:
+        manifest_raw = _load_manifest_raw()
+        schema_raw = _load_schema_raw()
+
+        manifest_fn = _get_manifest_fn(manifest_raw, "tttrlib.CLSMImage")
+        manifest_enum = (
+            manifest_fn["params_schema"]["properties"]["reading_routine"].get("enum") or []
+        )
+
+        schema_enum = (
+            schema_raw["functions"]["tttrlib.CLSMImage"]["params"]["reading_routine"].get("enum")
+            or []
+        )
+
+        assert set(schema_enum) == set(manifest_enum)
+        assert "BH_SPC130" in schema_enum
+
     def test_tttr_write_output_key_matches_manifest(self) -> None:
         manifest_raw = _load_manifest_raw()
         schema_raw = _load_schema_raw()
@@ -71,3 +88,24 @@ class TestTTTRLibSchemaAlignment:
         schema_outputs = list(schema_raw["functions"]["tttrlib.TTTR.write"]["outputs"].keys())
 
         assert set(schema_outputs) == set(manifest_outputs)
+
+    def test_expanded_tttr_methods_present_in_manifest_and_schema(self) -> None:
+        manifest_raw = _load_manifest_raw()
+        schema_raw = _load_schema_raw()
+
+        required = {
+            "tttrlib.TTTR.get_count_rate",
+            "tttrlib.TTTR.get_intensity_trace",
+            "tttrlib.TTTR.get_selection_by_channel",
+            "tttrlib.TTTR.get_selection_by_count_rate",
+            "tttrlib.TTTR.get_tttr_by_selection",
+            "tttrlib.TTTR.write_header",
+            "tttrlib.TTTR.write_hht3v2_events",
+            "tttrlib.TTTR.write_spc132_events",
+        }
+
+        manifest_ids = {fn["id"] for fn in manifest_raw.get("functions", [])}
+        schema_ids = set(schema_raw.get("functions", {}).keys())
+
+        assert required.issubset(manifest_ids)
+        assert required.issubset(schema_ids)

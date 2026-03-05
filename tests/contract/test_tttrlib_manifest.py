@@ -52,6 +52,11 @@ class TestTTTRLibManifestContract:
         expected_functions = [
             "tttrlib.TTTR",
             "tttrlib.TTTR.header",
+            "tttrlib.TTTR.get_count_rate",
+            "tttrlib.TTTR.get_intensity_trace",
+            "tttrlib.TTTR.get_selection_by_channel",
+            "tttrlib.TTTR.get_selection_by_count_rate",
+            "tttrlib.TTTR.get_tttr_by_selection",
             "tttrlib.TTTR.get_time_window_ranges",
             "tttrlib.Correlator",
             "tttrlib.CLSMImage",
@@ -61,6 +66,9 @@ class TestTTTRLibManifestContract:
             "tttrlib.CLSMImage.get_fluorescence_decay",
             "tttrlib.CLSMImage.get_mean_lifetime",
             "tttrlib.TTTR.write",
+            "tttrlib.TTTR.write_header",
+            "tttrlib.TTTR.write_hht3v2_events",
+            "tttrlib.TTTR.write_spc132_events",
         ]
 
         for fn_id in expected_functions:
@@ -97,6 +105,19 @@ class TestTTTRLibManifestContract:
 
         assert "TTTRRef" in input_types
         assert "ObjectRef" in output_types
+
+    def test_clsm_image_reading_routine_supports_bh_spc130(self) -> None:
+        """Test that BH_SPC130 is advertised for CLSMImage reading_routine."""
+        if not TTTRLIB_MANIFEST_PATH.exists():
+            pytest.skip("tttrlib manifest not yet created")
+
+        with open(TTTRLIB_MANIFEST_PATH) as f:
+            raw = yaml.safe_load(f)
+
+        clsm_fn = next(f for f in raw["functions"] if f["id"] == "tttrlib.CLSMImage")
+        enum_values = clsm_fn["params_schema"]["properties"]["reading_routine"].get("enum") or []
+
+        assert "BH_SPC130" in enum_values
 
     def test_decay_output_format_is_ome_zarr(self) -> None:
         """Test that get_fluorescence_decay output declares OME-Zarr format (spec 026)."""
