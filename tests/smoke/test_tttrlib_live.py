@@ -116,6 +116,121 @@ class TestTTTRLibSmoke:
                 assert len(rows) > 0
 
     @pytest.mark.anyio
+    @pytest.mark.skipif(not is_valid_dataset(SPC_FILE), reason="SPC dataset not available or empty")
+    async def test_correlator_method_family(self, live_server) -> None:
+        """Smoke test: representative Correlator method-family IDs."""
+        open_result = await live_server.call_tool(
+            "run",
+            {
+                "id": "tttrlib.TTTR",
+                "inputs": {},
+                "params": {
+                    "filename": str(SPC_FILE.absolute()),
+                    "container_type": "SPC-130",
+                },
+            },
+        )
+        assert open_result.get("status") == "success"
+        tttr_ref = open_result["outputs"]["tttr"]
+
+        curve_result = await live_server.call_tool(
+            "run",
+            {
+                "id": "tttrlib.Correlator.get_curve",
+                "inputs": {"tttr": tttr_ref},
+                "params": {
+                    "channels": [[0], [8]],
+                    "n_bins": 7,
+                    "n_casc": 27,
+                },
+            },
+        )
+        assert curve_result.get("status") == "success", (
+            f"Correlator.get_curve failed: {curve_result}"
+        )
+        curve_ref = curve_result["outputs"]["curve"]
+        assert_valid_artifact_ref(curve_ref, "TableRef")
+
+        x_axis_result = await live_server.call_tool(
+            "run",
+            {
+                "id": "tttrlib.Correlator.get_x_axis",
+                "inputs": {"tttr": tttr_ref},
+                "params": {
+                    "channels": [[0], [8]],
+                    "n_bins": 7,
+                    "n_casc": 27,
+                },
+            },
+        )
+        assert x_axis_result.get("status") == "success", (
+            f"Correlator.get_x_axis failed: {x_axis_result}"
+        )
+        tau_ref = x_axis_result["outputs"]["tau"]
+        assert_valid_artifact_ref(tau_ref, "TableRef")
+
+    @pytest.mark.anyio
+    @pytest.mark.skipif(not is_valid_dataset(PTU_FILE), reason="PTU dataset not available or empty")
+    async def test_clsm_metadata_methods(self, live_server) -> None:
+        """Smoke test: representative CLSMImage metadata method-family IDs."""
+        open_result = await live_server.call_tool(
+            "run",
+            {
+                "id": "tttrlib.TTTR",
+                "inputs": {},
+                "params": {
+                    "filename": str(PTU_FILE.absolute()),
+                    "container_type": "PTU",
+                },
+            },
+        )
+        assert open_result.get("status") == "success"
+        tttr_ref = open_result["outputs"]["tttr"]
+
+        clsm_result = await live_server.call_tool(
+            "run",
+            {
+                "id": "tttrlib.CLSMImage",
+                "inputs": {"tttr": tttr_ref},
+                "params": {
+                    "reading_routine": "SP5",
+                    "channels": [0],
+                    "marker_frame_start": [4],
+                    "marker_line_start": 2,
+                    "marker_line_stop": 3,
+                },
+            },
+        )
+        assert clsm_result.get("status") == "success"
+        clsm_ref = clsm_result["outputs"]["clsm"]
+
+        image_info_result = await live_server.call_tool(
+            "run",
+            {
+                "id": "tttrlib.CLSMImage.get_image_info",
+                "inputs": {"clsm": clsm_ref},
+            },
+        )
+        assert image_info_result.get("status") == "success", (
+            f"CLSMImage.get_image_info failed: {image_info_result}"
+        )
+        image_info_ref = image_info_result["outputs"]["image_info"]
+        assert_valid_artifact_ref(image_info_ref, "NativeOutputRef")
+
+        settings_result = await live_server.call_tool(
+            "run",
+            {
+                "id": "tttrlib.CLSMImage.get_settings",
+                "inputs": {"clsm": clsm_ref},
+            },
+        )
+        assert settings_result.get("status") == "success", (
+            f"CLSMImage.get_settings failed: {settings_result}"
+        )
+        settings_ref = settings_result["outputs"]["settings"]
+        assert_valid_artifact_ref(settings_ref, "NativeOutputRef")
+
+    @pytest.mark.anyio
     @pytest.mark.skipif(not is_valid_dataset(PTU_FILE), reason="PTU dataset not available or empty")
     async def test_ics_workflow(self, live_server) -> None:
         """Smoke test 8.2: ICS workflow."""

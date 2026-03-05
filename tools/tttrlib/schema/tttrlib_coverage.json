@@ -150,7 +150,7 @@
       "status": "supported_subset",
       "owner": "phase-25",
       "rationale": "Supported subset exposing CLSM structural metadata as NativeOutputRef JSON.",
-      "revisit_trigger": "Promote to supported after validating metadata stability across microscope variants."
+      "revisit_trigger": "Expand smoke from representative PTU fixtures to additional CLSM reading routines."
     },
     "tttrlib.CLSMImage.get_intensity": {
       "status": "supported",
@@ -228,7 +228,7 @@
       "status": "supported_subset",
       "owner": "phase-25",
       "rationale": "Supported subset exposing CLSM settings metadata as NativeOutputRef JSON.",
-      "revisit_trigger": "Promote to supported after validating settings schema compatibility across scanner routines."
+      "revisit_trigger": "Expand smoke from representative PTU fixtures to additional CLSM reading routines."
     },
     "tttrlib.CLSMImage.get_tttr": {
       "status": "deferred",
@@ -318,7 +318,7 @@
       "status": "supported_subset",
       "owner": "phase-25",
       "rationale": "Supported subset returns raw correlation values using constrained correlator arguments.",
-      "revisit_trigger": "Promote to supported once additional overload signatures are validated."
+      "revisit_trigger": "Extend representative smoke beyond SPC baseline and validate additional method variants."
     },
     "tttrlib.Correlator.get_corr_normalized": {
       "status": "deferred",
@@ -330,7 +330,7 @@
       "status": "supported_subset",
       "owner": "phase-25",
       "rationale": "Supported subset returns tau/correlation curve with constrained constructor arguments.",
-      "revisit_trigger": "Promote to supported once additional overload signatures are validated."
+      "revisit_trigger": "Extend representative smoke beyond SPC baseline and validate additional method variants."
     },
     "tttrlib.Correlator.get_macrotimes": {
       "status": "deferred",
@@ -354,7 +354,7 @@
       "status": "supported_subset",
       "owner": "phase-25",
       "rationale": "Supported subset returns lag-time axis using constrained correlator arguments.",
-      "revisit_trigger": "Promote to supported once additional overload signatures are validated."
+      "revisit_trigger": "Extend representative smoke beyond SPC baseline and validate additional method variants."
     },
     "tttrlib.Correlator.run": {
       "status": "denied",
