@@ -1,3 +1,19 @@
+---
+gsd_state_version: 1.0
+milestone: v0.3
+milestone_name: milestone
+status: in_progress
+stopped_at: Completed 25-01-PLAN.md
+last_updated: "2026-03-05T14:15:11.362Z"
+last_activity: 2026-03-05 - Completed 25-01-PLAN.md
+progress:
+  total_phases: 6
+  completed_phases: 4
+  total_plans: 18
+  completed_plans: 16
+  percent: 98
+---
+
 # Project State: Bioimage-MCP
 
 ## Project Reference
@@ -8,12 +24,12 @@
 
 ## Current Position
 
-- **Phase:** 24 of 24 (µSAM Session & Optimization)
-- **Plan:** 3 of 3 in current phase
-- **Status:** Phase complete
-- **Last activity:** 2026-02-06 - Completed 24-03-PLAN.md
+- **Phase:** 25 of 25 (Add missing TTTR methods)
+- **Plan:** 2 of 3 in current phase
+- **Status:** In progress
+- **Last activity:** 2026-03-05 - Completed 25-01-PLAN.md
 
-Progress: ██████████████████████████ 100%
+Progress: [██████████] 98%
 
 ## Performance Metrics
 
@@ -22,6 +38,7 @@ Progress: ███████████████████████�
 | V1 Req Coverage | 100% | 100% | ✅ |
 | Test Coverage | >80% | 89% | ✅ |
 | Tool Isolation | 100% | 100% | ✅ |
+| Phase 25 P01 | 4 min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -41,6 +58,11 @@ Progress: ███████████████████████�
 - **Cache Status Visibility:** Emit machine-readable cache status warnings (HIT/MISS/RESET) for transparent performance monitoring.
 - **Progressive Shutdown Escalation:** Ensure worker shutdown always converges using progressive escalation (graceful -> timeout -> force-kill).
 - **Deadlock-safe IPC ACK:** Use timeouts for NDJSON IPC ACKs during shutdown to prevent deadlocks on blocked stdout/stderr pipes.
+- [Phase 25]: Use strict upstream IDs (tttrlib.Class.method) in the coverage registry to prevent alias drift.
+- [Phase 25]: Run unsupported-method checks before handler dispatch so denied/deferred IDs are deterministic and explicit.
+
+### Roadmap Evolution
+- Phase 25 added: Add missing TTTR methods
 
 ### Decisions Made (History)
 | Phase | Decision | Rationale |
@@ -76,7 +98,6 @@ Progress: ███████████████████████�
 
 ## Session Continuity
 
-- **Last Session:** 2026-02-06T15:13:00Z
-- **Stopped at:** Completed 24-02-PLAN.md
+- **Last Session:** 2026-03-05T14:15:11.341Z
+- **Stopped at:** Completed 25-01-PLAN.md
 - **Resume file:** None
-
