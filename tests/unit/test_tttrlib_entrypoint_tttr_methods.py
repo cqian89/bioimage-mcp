@@ -73,3 +73,64 @@ def test_supported_subset_rejects_selection_argument_patterns(monkeypatch, tmp_p
 
     assert result["ok"] is False
     assert result["error"]["code"] == "TTTRLIB_UNSUPPORTED_ARGUMENT_PATTERN"
+
+
+class _FakeTTTRWriter:
+    def __init__(self) -> None:
+        self.paths: list[str] = []
+
+    def write(self, path: str) -> None:
+        self.paths.append(path)
+
+    def write_header(self, path: str) -> None:
+        self.paths.append(path)
+
+    def write_hht3v2_events(self, path: str) -> None:
+        self.paths.append(path)
+
+    def write_spc132_events(self, path: str) -> None:
+        self.paths.append(path)
+
+
+def test_write_variants_resolve_relative_paths_under_work_dir(monkeypatch, tmp_path: Path) -> None:
+    fake = _FakeTTTRWriter()
+    monkeypatch.setattr(entrypoint, "_load_tttr", lambda _key: fake)
+
+    result = entrypoint.handle_tttr_write_hht3v2_events(
+        inputs={"tttr": {"ref_id": "tttr-1"}},
+        params={"filename": "exports/result.ht3"},
+        work_dir=tmp_path,
+    )
+
+    assert result["ok"] is True
+    assert fake.paths
+    assert Path(fake.paths[0]).is_absolute()
+    assert str(tmp_path.resolve()) in fake.paths[0]
+
+
+def test_write_rejects_unsafe_output_path(monkeypatch, tmp_path: Path) -> None:
+    fake = _FakeTTTRWriter()
+    monkeypatch.setattr(entrypoint, "_load_tttr", lambda _key: fake)
+
+    result = entrypoint.handle_tttr_write(
+        inputs={"tttr": {"ref_id": "tttr-1"}},
+        params={"filename": "../escape.ptu"},
+        work_dir=tmp_path,
+    )
+
+    assert result["ok"] is False
+    assert result["error"]["code"] == "TTTRLIB_UNSAFE_OUTPUT_PATH"
+
+
+def test_write_variants_reject_unsupported_format_combinations(monkeypatch, tmp_path: Path) -> None:
+    fake = _FakeTTTRWriter()
+    monkeypatch.setattr(entrypoint, "_load_tttr", lambda _key: fake)
+
+    result = entrypoint.handle_tttr_write_hht3v2_events(
+        inputs={"tttr": {"ref_id": "tttr-1"}},
+        params={"filename": "exports/result.spc"},
+        work_dir=tmp_path,
+    )
+
+    assert result["ok"] is False
+    assert result["error"]["code"] == "TTTRLIB_UNSUPPORTED_ARGUMENT_PATTERN"
