@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v0.3
 milestone_name: milestone
-status: in_progress
-stopped_at: Completed 25-02-PLAN.md
-last_updated: "2026-03-05T14:38:37.135Z"
-last_activity: 2026-03-05 - Completed 25-02-PLAN.md
+status: complete
+stopped_at: Completed 25-03-PLAN.md
+last_updated: "2026-03-05T14:58:29.973Z"
+last_activity: 2026-03-05 - Completed 25-03-PLAN.md
 progress:
   total_phases: 6
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 18
-  completed_plans: 17
-  percent: 99
+  completed_plans: 18
+  percent: 100
 ---
 
 # Project State: Bioimage-MCP
@@ -26,10 +26,10 @@ progress:
 
 - **Phase:** 25 of 25 (Add missing TTTR methods)
 - **Plan:** 3 of 3 in current phase
-- **Status:** In progress
-- **Last activity:** 2026-03-05 - Completed 25-02-PLAN.md
+- **Status:** Complete
+- **Last activity:** 2026-03-05 - Completed 25-03-PLAN.md
 
-Progress: [██████████] 99%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -40,6 +40,7 @@ Progress: [██████████] 99%
 | Tool Isolation | 100% | 100% | ✅ |
 | Phase 25 P01 | 4 min | 2 tasks | 5 files |
 | Phase 25 P02 | 15 min | 2 tasks | 7 files |
+| Phase 25 P03 | 11 min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -64,6 +65,9 @@ Progress: [██████████] 99%
 - [Phase 25]: Mapped scalar TTTR statistics to NativeOutputRef and tabular traces/selections to TableRef outputs.
 - [Phase 25]: Selection APIs remain supported_subset with explicit allowlists and TTTRLIB_UNSUPPORTED_ARGUMENT_PATTERN failures for unsupported patterns.
 - [Phase 25]: TTTR write-family handlers now enforce work_dir path boundaries with format-specific extension checks for specialized exports.
+- [Phase 25]: Classified Correlator getter-family methods as supported_subset with constrained constructor arguments.
+- [Phase 25]: Exposed CLSMImage metadata accessors via NativeOutputRef JSON artifacts to preserve artifact boundaries.
+- [Phase 25]: Linked parity closure to smoke_extended representative method IDs in contract tests.
 
 ### Roadmap Evolution
 - Phase 25 added: Add missing TTTR methods
@@ -102,6 +106,6 @@ Progress: [██████████] 99%
 
 ## Session Continuity
 
-- **Last Session:** 2026-03-05T14:38:37.107Z
-- **Stopped at:** Completed 25-02-PLAN.md
+- **Last Session:** 2026-03-05T14:58:29.950Z
+- **Stopped at:** Completed 25-03-PLAN.md
 - **Resume file:** None
