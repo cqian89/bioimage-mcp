@@ -41,8 +41,8 @@ def test_handle_get_intensity_trace_returns_table_ref(monkeypatch, tmp_path: Pat
     csv_path = Path(table["path"])
     with open(csv_path, newline="") as f:
         rows = list(csv.DictReader(f))
-    assert rows[0]["time"] == "0.0"
-    assert rows[0]["count_rate"] == "10.0"
+    assert float(rows[0]["time"]) == 0.0
+    assert float(rows[0]["count_rate"]) == 10.0
 
 
 def test_handle_get_count_rate_returns_native_output(monkeypatch, tmp_path: Path) -> None:

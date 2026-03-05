@@ -543,10 +543,10 @@
       "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
     },
     "tttrlib.TTTR.get_count_rate": {
-      "status": "deferred",
+      "status": "supported",
       "owner": "phase-25",
-      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
-      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+      "rationale": "Mapped with NativeOutputRef JSON output for scalar rate statistics.",
+      "revisit_trigger": "Expand live smoke checks for numeric parity against upstream tttrlib."
     },
     "tttrlib.TTTR.get_event_type": {
       "status": "deferred",
@@ -573,10 +573,10 @@
       "revisit_trigger": "Promote to full support once strict upstream ID is exposed in manifest and dispatch."
     },
     "tttrlib.TTTR.get_intensity_trace": {
-      "status": "deferred",
+      "status": "supported",
       "owner": "phase-25",
-      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
-      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+      "rationale": "Mapped to TableRef CSV with explicit time/count_rate columns.",
+      "revisit_trigger": "Expand subset coverage if additional upstream overloads are needed."
     },
     "tttrlib.TTTR.get_macro_time_at": {
       "status": "deferred",
@@ -675,16 +675,16 @@
       "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
     },
     "tttrlib.TTTR.get_selection_by_channel": {
-      "status": "deferred",
+      "status": "supported_subset",
       "owner": "phase-25",
-      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
-      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+      "rationale": "Supported for explicit channels list only; unsupported argument patterns fail deterministically.",
+      "revisit_trigger": "Promote to full support after validating broader argument combinations."
     },
     "tttrlib.TTTR.get_selection_by_count_rate": {
-      "status": "deferred",
+      "status": "supported_subset",
       "owner": "phase-25",
-      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
-      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+      "rationale": "Supported for documented count-rate window arguments only; unsupported patterns are rejected.",
+      "revisit_trigger": "Promote to full support after validating additional overload signatures."
     },
     "tttrlib.TTTR.get_supported_container_names": {
       "status": "deferred",
@@ -711,10 +711,10 @@
       "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
     },
     "tttrlib.TTTR.get_tttr_by_selection": {
-      "status": "deferred",
+      "status": "supported_subset",
       "owner": "phase-25",
-      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
-      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+      "rationale": "Supported for explicit boolean selection list and returns TTTRRef subset artifact.",
+      "revisit_trigger": "Expand support once selection artifact input contracts are standardized."
     },
     "tttrlib.TTTR.get_tttr_container_type": {
       "status": "deferred",
@@ -873,22 +873,22 @@
       "revisit_trigger": "Expand smoke coverage as additional families are added."
     },
     "tttrlib.TTTR.write_header": {
-      "status": "deferred",
+      "status": "supported_subset",
       "owner": "phase-25",
-      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
-      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+      "rationale": "Exposed with explicit filename path contract and TTTRRef output metadata.",
+      "revisit_trigger": "Harden path safety and format-specific checks in the export guardrail task."
     },
     "tttrlib.TTTR.write_hht3v2_events": {
-      "status": "deferred",
+      "status": "supported_subset",
       "owner": "phase-25",
-      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
-      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+      "rationale": "Exposed with explicit filename path contract and TTTRRef output metadata.",
+      "revisit_trigger": "Harden path safety and export-format guardrails in the next plan task."
     },
     "tttrlib.TTTR.write_spc132_events": {
-      "status": "deferred",
+      "status": "supported_subset",
       "owner": "phase-25",
-      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
-      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+      "rationale": "Exposed with explicit filename path contract and TTTRRef output metadata.",
+      "revisit_trigger": "Harden path safety and export-format guardrails in the next plan task."
     }
   }
 }

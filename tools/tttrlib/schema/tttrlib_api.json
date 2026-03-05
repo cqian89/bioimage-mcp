@@ -96,6 +96,136 @@
         }
       }
     },
+    "tttrlib.TTTR.get_count_rate": {
+      "summary": "Compute scalar count rate from TTTR data",
+      "inputs": {
+        "tttr": {
+          "artifact_type": "TTTRRef",
+          "required": true
+        }
+      },
+      "outputs": {
+        "count_rate": {
+          "artifact_type": "NativeOutputRef",
+          "format": "json"
+        }
+      }
+    },
+    "tttrlib.TTTR.get_intensity_trace": {
+      "summary": "Compute intensity trace from TTTR events",
+      "inputs": {
+        "tttr": {
+          "artifact_type": "TTTRRef",
+          "required": true
+        }
+      },
+      "params": {
+        "time_window": {
+          "type": "number",
+          "required": false,
+          "description": "Bin width for trace generation"
+        }
+      },
+      "outputs": {
+        "trace": {
+          "artifact_type": "TableRef",
+          "format": "csv",
+          "columns": [
+            "time",
+            "count_rate"
+          ]
+        }
+      }
+    },
+    "tttrlib.TTTR.get_selection_by_channel": {
+      "summary": "Supported subset for channel-based event selection",
+      "inputs": {
+        "tttr": {
+          "artifact_type": "TTTRRef",
+          "required": true
+        }
+      },
+      "params": {
+        "channels": {
+          "type": "array",
+          "required": true,
+          "items": {
+            "type": "integer"
+          },
+          "description": "Routing channels to include"
+        }
+      },
+      "outputs": {
+        "selection": {
+          "artifact_type": "TableRef",
+          "format": "csv",
+          "columns": [
+            "index",
+            "selected"
+          ]
+        }
+      }
+    },
+    "tttrlib.TTTR.get_selection_by_count_rate": {
+      "summary": "Supported subset for count-rate-based event selection",
+      "inputs": {
+        "tttr": {
+          "artifact_type": "TTTRRef",
+          "required": true
+        }
+      },
+      "params": {
+        "minimum_window_length": {
+          "type": "number",
+          "required": true
+        },
+        "maximum_window_length": {
+          "type": "number",
+          "required": false
+        },
+        "minimum_number_of_photons_in_time_window": {
+          "type": "integer",
+          "required": true
+        },
+        "maximum_number_of_photons_in_time_window": {
+          "type": "integer",
+          "required": false
+        }
+      },
+      "outputs": {
+        "selection": {
+          "artifact_type": "TableRef",
+          "format": "csv",
+          "columns": [
+            "index",
+            "selected"
+          ]
+        }
+      }
+    },
+    "tttrlib.TTTR.get_tttr_by_selection": {
+      "summary": "Supported subset that creates TTTR subset from boolean selection list",
+      "inputs": {
+        "tttr": {
+          "artifact_type": "TTTRRef",
+          "required": true
+        }
+      },
+      "params": {
+        "selection": {
+          "type": "array",
+          "required": true,
+          "items": {
+            "type": "boolean"
+          }
+        }
+      },
+      "outputs": {
+        "tttr": {
+          "artifact_type": "TTTRRef"
+        }
+      }
+    },
     "tttrlib.Correlator": {
       "summary": "Multi-tau correlation analysis",
       "inputs": {
@@ -408,6 +538,69 @@
     },
     "tttrlib.TTTR.write": {
       "summary": "Export TTTR data to file",
+      "inputs": {
+        "tttr": {
+          "artifact_type": "TTTRRef",
+          "required": true
+        }
+      },
+      "params": {
+        "filename": {
+          "type": "string",
+          "required": true,
+          "description": "Output path"
+        }
+      },
+      "outputs": {
+        "tttr_out": {
+          "artifact_type": "TTTRRef"
+        }
+      }
+    },
+    "tttrlib.TTTR.write_header": {
+      "summary": "Write TTTR header to file",
+      "inputs": {
+        "tttr": {
+          "artifact_type": "TTTRRef",
+          "required": true
+        }
+      },
+      "params": {
+        "filename": {
+          "type": "string",
+          "required": true,
+          "description": "Output path"
+        }
+      },
+      "outputs": {
+        "tttr_out": {
+          "artifact_type": "TTTRRef"
+        }
+      }
+    },
+    "tttrlib.TTTR.write_hht3v2_events": {
+      "summary": "Write HHT3v2 events to file",
+      "inputs": {
+        "tttr": {
+          "artifact_type": "TTTRRef",
+          "required": true
+        }
+      },
+      "params": {
+        "filename": {
+          "type": "string",
+          "required": true,
+          "description": "Output path"
+        }
+      },
+      "outputs": {
+        "tttr_out": {
+          "artifact_type": "TTTRRef"
+        }
+      }
+    },
+    "tttrlib.TTTR.write_spc132_events": {
+      "summary": "Write SPC132 events to file",
       "inputs": {
         "tttr": {
           "artifact_type": "TTTRRef",

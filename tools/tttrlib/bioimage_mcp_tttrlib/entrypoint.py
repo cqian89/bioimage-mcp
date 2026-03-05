@@ -74,6 +74,27 @@ def _unsupported_method_error(fn_id: str, entry: dict[str, Any]) -> dict[str, An
     }
 
 
+def _unsupported_argument_pattern_error(method_id: str, detail: str) -> dict[str, Any]:
+    """Build deterministic unsupported-argument error payload."""
+    return {
+        "code": "TTTRLIB_UNSUPPORTED_ARGUMENT_PATTERN",
+        "message": f"Unsupported argument pattern for {method_id}: {detail}",
+        "method_id": method_id,
+        "remediation": "Use only the documented supported subset for this method.",
+    }
+
+
+def _resolve_output_path(filename: str, work_dir: Path) -> Path:
+    """Resolve output path relative to work_dir."""
+    output_path = Path(filename)
+    if not output_path.is_absolute():
+        output_path = (work_dir / output_path).resolve()
+    else:
+        output_path = output_path.resolve()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    return output_path
+
+
 def _initialize_worker(session_id: str, env_id: str) -> None:
     """Initialize worker identity."""
     global _SESSION_ID, _ENV_ID
@@ -440,6 +461,257 @@ def handle_get_time_window_ranges(
         return {"ok": False, "error": {"message": str(e)}}
 
 
+def handle_get_count_rate(
+    inputs: dict[str, Any], params: dict[str, Any], work_dir: Path
+) -> dict[str, Any]:
+    """Handle tttrlib.TTTR.get_count_rate - return scalar count rate."""
+    tttr_ref = inputs.get("tttr", {})
+    tttr_key = tttr_ref.get("uri") or tttr_ref.get("ref_id") or ""
+
+    if params:
+        return {
+            "ok": False,
+            "error": _unsupported_argument_pattern_error(
+                "tttrlib.TTTR.get_count_rate", "no params"
+            ),
+        }
+
+    try:
+        tttr = _load_tttr(tttr_key)
+        count_rate = float(tttr.get_count_rate())
+
+        output_path = work_dir / f"count_rate_{uuid.uuid4().hex[:8]}.json"
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump({"count_rate": count_rate}, f)
+
+        output = {
+            "ref_id": uuid.uuid4().hex,
+            "type": "NativeOutputRef",
+            "uri": f"file://{output_path.absolute()}",
+            "path": str(output_path.absolute()),
+            "format": "json",
+            "mime_type": "application/json",
+            "created_at": datetime.now(UTC).isoformat(),
+        }
+        return {"ok": True, "outputs": {"count_rate": output}, "log": "Count rate computed"}
+    except Exception as e:
+        return {"ok": False, "error": {"message": str(e)}}
+
+
+def handle_get_intensity_trace(
+    inputs: dict[str, Any], params: dict[str, Any], work_dir: Path
+) -> dict[str, Any]:
+    """Handle tttrlib.TTTR.get_intensity_trace - return trace table."""
+    import numpy as np
+
+    tttr_ref = inputs.get("tttr", {})
+    tttr_key = tttr_ref.get("uri") or tttr_ref.get("ref_id") or ""
+
+    allowed_params = {"time_window"}
+    extra = sorted(set(params) - allowed_params)
+    if extra:
+        return {
+            "ok": False,
+            "error": _unsupported_argument_pattern_error(
+                "tttrlib.TTTR.get_intensity_trace", f"unsupported params: {', '.join(extra)}"
+            ),
+        }
+
+    try:
+        tttr = _load_tttr(tttr_key)
+        trace = np.asarray(tttr.get_intensity_trace(**params), dtype=float)
+        if trace.ndim == 1:
+            trace = np.column_stack((np.arange(trace.size, dtype=float), trace))
+        if trace.ndim != 2 or trace.shape[1] < 2:
+            return {
+                "ok": False,
+                "error": _unsupported_argument_pattern_error(
+                    "tttrlib.TTTR.get_intensity_trace", "expected tabular two-column output"
+                ),
+            }
+
+        csv_path = work_dir / f"intensity_trace_{uuid.uuid4().hex[:8]}.csv"
+        np.savetxt(
+            csv_path,
+            trace[:, :2],
+            delimiter=",",
+            header="time,count_rate",
+            comments="",
+        )
+
+        output = {
+            "ref_id": uuid.uuid4().hex,
+            "type": "TableRef",
+            "uri": f"file://{csv_path.absolute()}",
+            "path": str(csv_path.absolute()),
+            "format": "csv",
+            "created_at": datetime.now(UTC).isoformat(),
+            "columns": ["time", "count_rate"],
+            "row_count": int(trace.shape[0]),
+        }
+        return {"ok": True, "outputs": {"trace": output}, "log": "Intensity trace extracted"}
+    except Exception as e:
+        return {"ok": False, "error": {"message": str(e)}}
+
+
+def handle_get_selection_by_channel(
+    inputs: dict[str, Any], params: dict[str, Any], work_dir: Path
+) -> dict[str, Any]:
+    """Handle tttrlib.TTTR.get_selection_by_channel with a strict supported subset."""
+    import numpy as np
+
+    tttr_ref = inputs.get("tttr", {})
+    tttr_key = tttr_ref.get("uri") or tttr_ref.get("ref_id") or ""
+
+    allowed_params = {"channels"}
+    extra = sorted(set(params) - allowed_params)
+    if extra:
+        return {
+            "ok": False,
+            "error": _unsupported_argument_pattern_error(
+                "tttrlib.TTTR.get_selection_by_channel", f"unsupported params: {', '.join(extra)}"
+            ),
+        }
+
+    channels = params.get("channels")
+    if not isinstance(channels, list) or not channels:
+        return {
+            "ok": False,
+            "error": _unsupported_argument_pattern_error(
+                "tttrlib.TTTR.get_selection_by_channel", "channels must be a non-empty integer list"
+            ),
+        }
+
+    try:
+        tttr = _load_tttr(tttr_key)
+        selection = np.asarray(tttr.get_selection_by_channel(channels=channels), dtype=bool)
+
+        csv_path = work_dir / f"selection_channel_{uuid.uuid4().hex[:8]}.csv"
+        rows = np.column_stack((np.arange(selection.size, dtype=int), selection.astype(int)))
+        np.savetxt(csv_path, rows, delimiter=",", header="index,selected", comments="", fmt="%d")
+
+        output = {
+            "ref_id": uuid.uuid4().hex,
+            "type": "TableRef",
+            "uri": f"file://{csv_path.absolute()}",
+            "path": str(csv_path.absolute()),
+            "format": "csv",
+            "created_at": datetime.now(UTC).isoformat(),
+            "columns": ["index", "selected"],
+            "row_count": int(selection.size),
+        }
+        return {"ok": True, "outputs": {"selection": output}, "log": "Channel selection extracted"}
+    except Exception as e:
+        return {"ok": False, "error": {"message": str(e)}}
+
+
+def handle_get_selection_by_count_rate(
+    inputs: dict[str, Any], params: dict[str, Any], work_dir: Path
+) -> dict[str, Any]:
+    """Handle tttrlib.TTTR.get_selection_by_count_rate with a strict supported subset."""
+    import numpy as np
+
+    tttr_ref = inputs.get("tttr", {})
+    tttr_key = tttr_ref.get("uri") or tttr_ref.get("ref_id") or ""
+
+    required = {
+        "minimum_window_length",
+        "minimum_number_of_photons_in_time_window",
+    }
+    allowed = required | {
+        "maximum_window_length",
+        "maximum_number_of_photons_in_time_window",
+    }
+    extra = sorted(set(params) - allowed)
+    if extra:
+        return {
+            "ok": False,
+            "error": _unsupported_argument_pattern_error(
+                "tttrlib.TTTR.get_selection_by_count_rate",
+                f"unsupported params: {', '.join(extra)}",
+            ),
+        }
+    missing = sorted(required - set(params))
+    if missing:
+        return {
+            "ok": False,
+            "error": _unsupported_argument_pattern_error(
+                "tttrlib.TTTR.get_selection_by_count_rate", f"missing params: {', '.join(missing)}"
+            ),
+        }
+
+    try:
+        tttr = _load_tttr(tttr_key)
+        selection = np.asarray(tttr.get_selection_by_count_rate(**params), dtype=bool)
+
+        csv_path = work_dir / f"selection_rate_{uuid.uuid4().hex[:8]}.csv"
+        rows = np.column_stack((np.arange(selection.size, dtype=int), selection.astype(int)))
+        np.savetxt(csv_path, rows, delimiter=",", header="index,selected", comments="", fmt="%d")
+
+        output = {
+            "ref_id": uuid.uuid4().hex,
+            "type": "TableRef",
+            "uri": f"file://{csv_path.absolute()}",
+            "path": str(csv_path.absolute()),
+            "format": "csv",
+            "created_at": datetime.now(UTC).isoformat(),
+            "columns": ["index", "selected"],
+            "row_count": int(selection.size),
+        }
+        return {
+            "ok": True,
+            "outputs": {"selection": output},
+            "log": "Count-rate selection extracted",
+        }
+    except Exception as e:
+        return {"ok": False, "error": {"message": str(e)}}
+
+
+def handle_get_tttr_by_selection(
+    inputs: dict[str, Any], params: dict[str, Any], work_dir: Path
+) -> dict[str, Any]:
+    """Handle tttrlib.TTTR.get_tttr_by_selection with a list-based subset."""
+    tttr_ref = inputs.get("tttr", {})
+    tttr_key = tttr_ref.get("uri") or tttr_ref.get("ref_id") or ""
+
+    allowed_params = {"selection"}
+    extra = sorted(set(params) - allowed_params)
+    if extra:
+        return {
+            "ok": False,
+            "error": _unsupported_argument_pattern_error(
+                "tttrlib.TTTR.get_tttr_by_selection", f"unsupported params: {', '.join(extra)}"
+            ),
+        }
+
+    selection = params.get("selection")
+    if not isinstance(selection, list) or not selection:
+        return {
+            "ok": False,
+            "error": _unsupported_argument_pattern_error(
+                "tttrlib.TTTR.get_tttr_by_selection", "selection must be a non-empty list"
+            ),
+        }
+
+    try:
+        tttr = _load_tttr(tttr_key)
+        tttr_subset = tttr.get_tttr_by_selection(selection)
+        source_uri = tttr_ref.get("uri") or f"file://{work_dir / 'tttr_subset.ptu'}"
+        subset_ref_id, uri = _store_tttr(tttr_subset, source_uri)
+
+        output = {
+            "ref_id": subset_ref_id,
+            "type": "TTTRRef",
+            "uri": uri,
+            "format": "subset",
+            "storage_type": "memory",
+            "created_at": datetime.now(UTC).isoformat(),
+        }
+        return {"ok": True, "outputs": {"tttr": output}, "log": "TTTR subset selected"}
+    except Exception as e:
+        return {"ok": False, "error": {"message": str(e)}}
+
+
 def handle_tttr_write(
     inputs: dict[str, Any], params: dict[str, Any], work_dir: Path
 ) -> dict[str, Any]:
@@ -478,6 +750,98 @@ def handle_tttr_write(
 
         return {"ok": True, "outputs": {"tttr_out": output}, "log": f"TTTR written to {filename}"}
 
+    except Exception as e:
+        return {"ok": False, "error": {"message": str(e)}}
+
+
+def handle_tttr_write_header(
+    inputs: dict[str, Any], params: dict[str, Any], work_dir: Path
+) -> dict[str, Any]:
+    """Handle tttrlib.TTTR.write_header - write header to output path."""
+    tttr_ref = inputs.get("tttr", {})
+    tttr_key = tttr_ref.get("uri") or tttr_ref.get("ref_id") or ""
+    filename = params.get("filename")
+    if not filename:
+        return {"ok": False, "error": {"message": "filename is required"}}
+
+    try:
+        tttr = _load_tttr(tttr_key)
+        filepath = _resolve_output_path(filename, work_dir)
+        tttr.write_header(str(filepath))
+        output = {
+            "ref_id": uuid.uuid4().hex,
+            "type": "TTTRRef",
+            "uri": f"file://{filepath.absolute()}",
+            "path": str(filepath.absolute()),
+            "format": filepath.suffix[1:].upper() if filepath.suffix else "auto",
+            "storage_type": "file",
+            "created_at": datetime.now(UTC).isoformat(),
+        }
+        return {"ok": True, "outputs": {"tttr_out": output}, "log": "TTTR header written"}
+    except Exception as e:
+        return {"ok": False, "error": {"message": str(e)}}
+
+
+def handle_tttr_write_hht3v2_events(
+    inputs: dict[str, Any], params: dict[str, Any], work_dir: Path
+) -> dict[str, Any]:
+    """Handle tttrlib.TTTR.write_hht3v2_events export."""
+    tttr_ref = inputs.get("tttr", {})
+    tttr_key = tttr_ref.get("uri") or tttr_ref.get("ref_id") or ""
+    filename = params.get("filename")
+    if not filename:
+        return {"ok": False, "error": {"message": "filename is required"}}
+
+    try:
+        tttr = _load_tttr(tttr_key)
+        filepath = _resolve_output_path(filename, work_dir)
+        tttr.write_hht3v2_events(str(filepath))
+        output = {
+            "ref_id": uuid.uuid4().hex,
+            "type": "TTTRRef",
+            "uri": f"file://{filepath.absolute()}",
+            "path": str(filepath.absolute()),
+            "format": filepath.suffix[1:].upper() if filepath.suffix else "auto",
+            "storage_type": "file",
+            "created_at": datetime.now(UTC).isoformat(),
+        }
+        return {
+            "ok": True,
+            "outputs": {"tttr_out": output},
+            "log": "HHT3v2 events written",
+        }
+    except Exception as e:
+        return {"ok": False, "error": {"message": str(e)}}
+
+
+def handle_tttr_write_spc132_events(
+    inputs: dict[str, Any], params: dict[str, Any], work_dir: Path
+) -> dict[str, Any]:
+    """Handle tttrlib.TTTR.write_spc132_events export."""
+    tttr_ref = inputs.get("tttr", {})
+    tttr_key = tttr_ref.get("uri") or tttr_ref.get("ref_id") or ""
+    filename = params.get("filename")
+    if not filename:
+        return {"ok": False, "error": {"message": "filename is required"}}
+
+    try:
+        tttr = _load_tttr(tttr_key)
+        filepath = _resolve_output_path(filename, work_dir)
+        tttr.write_spc132_events(str(filepath))
+        output = {
+            "ref_id": uuid.uuid4().hex,
+            "type": "TTTRRef",
+            "uri": f"file://{filepath.absolute()}",
+            "path": str(filepath.absolute()),
+            "format": filepath.suffix[1:].upper() if filepath.suffix else "auto",
+            "storage_type": "file",
+            "created_at": datetime.now(UTC).isoformat(),
+        }
+        return {
+            "ok": True,
+            "outputs": {"tttr_out": output},
+            "log": "SPC132 events written",
+        }
     except Exception as e:
         return {"ok": False, "error": {"message": str(e)}}
 
@@ -956,8 +1320,16 @@ def handle_get_mean_lifetime(
 FUNCTION_HANDLERS = {
     "tttrlib.TTTR": handle_tttr_open,
     "tttrlib.TTTR.header": handle_tttr_header,
+    "tttrlib.TTTR.get_count_rate": handle_get_count_rate,
+    "tttrlib.TTTR.get_intensity_trace": handle_get_intensity_trace,
+    "tttrlib.TTTR.get_selection_by_channel": handle_get_selection_by_channel,
+    "tttrlib.TTTR.get_selection_by_count_rate": handle_get_selection_by_count_rate,
+    "tttrlib.TTTR.get_tttr_by_selection": handle_get_tttr_by_selection,
     "tttrlib.TTTR.get_time_window_ranges": handle_get_time_window_ranges,
     "tttrlib.TTTR.write": handle_tttr_write,
+    "tttrlib.TTTR.write_header": handle_tttr_write_header,
+    "tttrlib.TTTR.write_hht3v2_events": handle_tttr_write_hht3v2_events,
+    "tttrlib.TTTR.write_spc132_events": handle_tttr_write_spc132_events,
     "tttrlib.CLSMImage": handle_clsm_image,
     "tttrlib.CLSMImage.compute_ics": handle_compute_ics,
     "tttrlib.CLSMImage.get_intensity": handle_get_intensity,

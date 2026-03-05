@@ -90,6 +90,125 @@ functions:
         - minimum_window_length
         - minimum_number_of_photons_in_time_window
 
+  - id: tttrlib.TTTR.get_count_rate
+    tool_id: tools.tttrlib
+    name: Get Count Rate
+    description: Compute scalar count rate for TTTR data.
+    tags: [statistics, tttr]
+    inputs:
+      - name: tttr
+        artifact_type: TTTRRef
+        required: true
+    outputs:
+      - name: count_rate
+        artifact_type: NativeOutputRef
+        format: json
+        required: true
+    params_schema:
+      type: object
+      properties: {}
+
+  - id: tttrlib.TTTR.get_intensity_trace
+    tool_id: tools.tttrlib
+    name: Get Intensity Trace
+    description: Compute intensity trace table from TTTR events.
+    tags: [statistics, trace, tttr]
+    inputs:
+      - name: tttr
+        artifact_type: TTTRRef
+        required: true
+    outputs:
+      - name: trace
+        artifact_type: TableRef
+        format: csv
+        required: true
+    params_schema:
+      type: object
+      properties:
+        time_window:
+          type: number
+          description: "Bin width for trace generation"
+
+  - id: tttrlib.TTTR.get_selection_by_channel
+    tool_id: tools.tttrlib
+    name: Get Selection by Channel
+    description: Supported subset that returns event selection mask for channels.
+    tags: [selection, tttr, supported-subset]
+    inputs:
+      - name: tttr
+        artifact_type: TTTRRef
+        required: true
+    outputs:
+      - name: selection
+        artifact_type: TableRef
+        format: csv
+        required: true
+    params_schema:
+      type: object
+      properties:
+        channels:
+          type: array
+          items:
+            type: integer
+          minItems: 1
+          description: "Routing channels to include in the selection"
+      required:
+        - channels
+
+  - id: tttrlib.TTTR.get_selection_by_count_rate
+    tool_id: tools.tttrlib
+    name: Get Selection by Count Rate
+    description: Supported subset that returns event selection mask from count-rate constraints.
+    tags: [selection, tttr, supported-subset]
+    inputs:
+      - name: tttr
+        artifact_type: TTTRRef
+        required: true
+    outputs:
+      - name: selection
+        artifact_type: TableRef
+        format: csv
+        required: true
+    params_schema:
+      type: object
+      properties:
+        minimum_window_length:
+          type: number
+        maximum_window_length:
+          type: number
+        minimum_number_of_photons_in_time_window:
+          type: integer
+        maximum_number_of_photons_in_time_window:
+          type: integer
+      required:
+        - minimum_window_length
+        - minimum_number_of_photons_in_time_window
+
+  - id: tttrlib.TTTR.get_tttr_by_selection
+    tool_id: tools.tttrlib
+    name: Get TTTR by Selection
+    description: Supported subset that builds a TTTR subset from a provided boolean selection list.
+    tags: [selection, tttr, supported-subset]
+    inputs:
+      - name: tttr
+        artifact_type: TTTRRef
+        required: true
+    outputs:
+      - name: tttr
+        artifact_type: TTTRRef
+        required: true
+    params_schema:
+      type: object
+      properties:
+        selection:
+          type: array
+          items:
+            type: boolean
+          minItems: 1
+          description: "Boolean selection list"
+      required:
+        - selection
+
   - id: tttrlib.Correlator
     tool_id: tools.tttrlib
     name: Multi-tau Correlation
@@ -154,7 +273,7 @@ functions:
       properties:
         reading_routine:
           type: string
-          enum: ["default", "SP5", "SP8"]
+          enum: ["default", "SP5", "SP8", "BH_SPC130"]
           default: "default"
           description: "Marker decoding routine (microscope-specific)"
         channels:
@@ -381,5 +500,71 @@ functions:
         filename:
           type: string
           description: "Path to the output TTTR file"
+      required:
+        - filename
+
+  - id: tttrlib.TTTR.write_header
+    tool_id: tools.tttrlib
+    name: Write TTTR Header
+    description: Write TTTR header to output file.
+    tags: [io, export, tttr, supported-subset]
+    inputs:
+      - name: tttr
+        artifact_type: TTTRRef
+        required: true
+    outputs:
+      - name: tttr_out
+        artifact_type: TTTRRef
+        required: true
+    params_schema:
+      type: object
+      properties:
+        filename:
+          type: string
+          description: "Path to the output header file"
+      required:
+        - filename
+
+  - id: tttrlib.TTTR.write_hht3v2_events
+    tool_id: tools.tttrlib
+    name: Write HHT3v2 Events
+    description: Write events using HHT3v2 export routine.
+    tags: [io, export, tttr, supported-subset]
+    inputs:
+      - name: tttr
+        artifact_type: TTTRRef
+        required: true
+    outputs:
+      - name: tttr_out
+        artifact_type: TTTRRef
+        required: true
+    params_schema:
+      type: object
+      properties:
+        filename:
+          type: string
+          description: "Path to the output HHT3v2 file"
+      required:
+        - filename
+
+  - id: tttrlib.TTTR.write_spc132_events
+    tool_id: tools.tttrlib
+    name: Write SPC132 Events
+    description: Write events using SPC132 export routine.
+    tags: [io, export, tttr, supported-subset]
+    inputs:
+      - name: tttr
+        artifact_type: TTTRRef
+        required: true
+    outputs:
+      - name: tttr_out
+        artifact_type: TTTRRef
+        required: true
+    params_schema:
+      type: object
+      properties:
+        filename:
+          type: string
+          description: "Path to the output SPC132 file"
       required:
         - filename
