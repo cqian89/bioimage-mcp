@@ -1,0 +1,894 @@
+{
+  "version": "0.1.0",
+  "upstream_version": "0.25.0",
+  "parity_source": "runtime-introspection",
+  "classes": [
+    "TTTR",
+    "CLSMImage",
+    "Correlator"
+  ],
+  "valid_statuses": [
+    "supported",
+    "supported_subset",
+    "deferred",
+    "denied"
+  ],
+  "coverage": {
+    "tttrlib.CLSMImage": {
+      "status": "supported",
+      "owner": "phase-25",
+      "rationale": "Available in current manifest/entrypoint with MCP-safe I/O mapping.",
+      "revisit_trigger": "Expand smoke coverage as additional families are added."
+    },
+    "tttrlib.CLSMImage.append": {
+      "status": "denied",
+      "owner": "phase-25",
+      "rationale": "Unsafe state mutation or low-level memory/file operations are not MCP-safe in current runtime contract.",
+      "revisit_trigger": "Revisit only with explicit sandboxing and artifact-safe mutation design."
+    },
+    "tttrlib.CLSMImage.clear": {
+      "status": "denied",
+      "owner": "phase-25",
+      "rationale": "Unsafe state mutation or low-level memory/file operations are not MCP-safe in current runtime contract.",
+      "revisit_trigger": "Revisit only with explicit sandboxing and artifact-safe mutation design."
+    },
+    "tttrlib.CLSMImage.clear_pixels": {
+      "status": "denied",
+      "owner": "phase-25",
+      "rationale": "Unsafe state mutation or low-level memory/file operations are not MCP-safe in current runtime contract.",
+      "revisit_trigger": "Revisit only with explicit sandboxing and artifact-safe mutation design."
+    },
+    "tttrlib.CLSMImage.compute_frc": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.CLSMImage.compute_ics": {
+      "status": "supported",
+      "owner": "phase-25",
+      "rationale": "Available in current manifest/entrypoint with MCP-safe I/O mapping.",
+      "revisit_trigger": "Expand smoke coverage as additional families are added."
+    },
+    "tttrlib.CLSMImage.copy": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.CLSMImage.crop": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.CLSMImage.detect_bh_frame1_extra_line": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.CLSMImage.distribute": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.CLSMImage.fill": {
+      "status": "denied",
+      "owner": "phase-25",
+      "rationale": "Unsafe state mutation or low-level memory/file operations are not MCP-safe in current runtime contract.",
+      "revisit_trigger": "Revisit only with explicit sandboxing and artifact-safe mutation design."
+    },
+    "tttrlib.CLSMImage.fill_pixels": {
+      "status": "denied",
+      "owner": "phase-25",
+      "rationale": "Unsafe state mutation or low-level memory/file operations are not MCP-safe in current runtime contract.",
+      "revisit_trigger": "Revisit only with explicit sandboxing and artifact-safe mutation design."
+    },
+    "tttrlib.CLSMImage.frame_at": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.CLSMImage.getPixel": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.CLSMImage.get_channel_frame_count": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.CLSMImage.get_decay_of_pixels": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.CLSMImage.get_fcs_image": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.CLSMImage.get_fluorescence_decay": {
+      "status": "supported",
+      "owner": "phase-25",
+      "rationale": "Available in current manifest/entrypoint with MCP-safe I/O mapping.",
+      "revisit_trigger": "Expand smoke coverage as additional families are added."
+    },
+    "tttrlib.CLSMImage.get_frame_edges": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.CLSMImage.get_frame_for_channel": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.CLSMImage.get_frames": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.CLSMImage.get_frc": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.CLSMImage.get_image_info": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.CLSMImage.get_intensity": {
+      "status": "supported",
+      "owner": "phase-25",
+      "rationale": "Available in current manifest/entrypoint with MCP-safe I/O mapping.",
+      "revisit_trigger": "Expand smoke coverage as additional families are added."
+    },
+    "tttrlib.CLSMImage.get_line_duration": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.CLSMImage.get_line_edges": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.CLSMImage.get_line_edges_by_duration": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.CLSMImage.get_mean_lifetime": {
+      "status": "supported",
+      "owner": "phase-25",
+      "rationale": "Available in current manifest/entrypoint with MCP-safe I/O mapping.",
+      "revisit_trigger": "Expand smoke coverage as additional families are added."
+    },
+    "tttrlib.CLSMImage.get_mean_micro_time": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.CLSMImage.get_memory_usage_bytes": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.CLSMImage.get_memory_usage_detailed": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.CLSMImage.get_metadata": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.CLSMImage.get_phasor": {
+      "status": "supported",
+      "owner": "phase-25",
+      "rationale": "Available in current manifest/entrypoint with MCP-safe I/O mapping.",
+      "revisit_trigger": "Expand smoke coverage as additional families are added."
+    },
+    "tttrlib.CLSMImage.get_pixel_duration": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.CLSMImage.get_roi": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.CLSMImage.get_settings": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.CLSMImage.get_tttr": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.CLSMImage.read_clsm_settings": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.CLSMImage.rebin": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.CLSMImage.reshape": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.CLSMImage.set_tttr": {
+      "status": "denied",
+      "owner": "phase-25",
+      "rationale": "Unsafe state mutation or low-level memory/file operations are not MCP-safe in current runtime contract.",
+      "revisit_trigger": "Revisit only with explicit sandboxing and artifact-safe mutation design."
+    },
+    "tttrlib.CLSMImage.size": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.CLSMImage.split_frames_by_channel": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.CLSMImage.stack_frames": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.CLSMImage.strip": {
+      "status": "denied",
+      "owner": "phase-25",
+      "rationale": "Unsafe state mutation or low-level memory/file operations are not MCP-safe in current runtime contract.",
+      "revisit_trigger": "Revisit only with explicit sandboxing and artifact-safe mutation design."
+    },
+    "tttrlib.CLSMImage.to1D": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.CLSMImage.to3D": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.CLSMImage.transform": {
+      "status": "denied",
+      "owner": "phase-25",
+      "rationale": "Unsafe state mutation or low-level memory/file operations are not MCP-safe in current runtime contract.",
+      "revisit_trigger": "Revisit only with explicit sandboxing and artifact-safe mutation design."
+    },
+    "tttrlib.Correlator": {
+      "status": "supported",
+      "owner": "phase-25",
+      "rationale": "Available in current manifest/entrypoint with MCP-safe I/O mapping.",
+      "revisit_trigger": "Expand smoke coverage as additional families are added."
+    },
+    "tttrlib.Correlator.dt": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.Correlator.get_corr": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.Correlator.get_corr_normalized": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.Correlator.get_curve": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.Correlator.get_macrotimes": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.Correlator.get_tttr": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.Correlator.get_weights": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.Correlator.get_x_axis": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.Correlator.run": {
+      "status": "denied",
+      "owner": "phase-25",
+      "rationale": "Unsafe state mutation or low-level memory/file operations are not MCP-safe in current runtime contract.",
+      "revisit_trigger": "Revisit only with explicit sandboxing and artifact-safe mutation design."
+    },
+    "tttrlib.Correlator.set_events": {
+      "status": "denied",
+      "owner": "phase-25",
+      "rationale": "Unsafe state mutation or low-level memory/file operations are not MCP-safe in current runtime contract.",
+      "revisit_trigger": "Revisit only with explicit sandboxing and artifact-safe mutation design."
+    },
+    "tttrlib.Correlator.set_filter": {
+      "status": "denied",
+      "owner": "phase-25",
+      "rationale": "Unsafe state mutation or low-level memory/file operations are not MCP-safe in current runtime contract.",
+      "revisit_trigger": "Revisit only with explicit sandboxing and artifact-safe mutation design."
+    },
+    "tttrlib.Correlator.set_macrotimes": {
+      "status": "denied",
+      "owner": "phase-25",
+      "rationale": "Unsafe state mutation or low-level memory/file operations are not MCP-safe in current runtime contract.",
+      "revisit_trigger": "Revisit only with explicit sandboxing and artifact-safe mutation design."
+    },
+    "tttrlib.Correlator.set_microtimes": {
+      "status": "denied",
+      "owner": "phase-25",
+      "rationale": "Unsafe state mutation or low-level memory/file operations are not MCP-safe in current runtime contract.",
+      "revisit_trigger": "Revisit only with explicit sandboxing and artifact-safe mutation design."
+    },
+    "tttrlib.Correlator.set_tttr": {
+      "status": "denied",
+      "owner": "phase-25",
+      "rationale": "Unsafe state mutation or low-level memory/file operations are not MCP-safe in current runtime contract.",
+      "revisit_trigger": "Revisit only with explicit sandboxing and artifact-safe mutation design."
+    },
+    "tttrlib.Correlator.set_weights": {
+      "status": "denied",
+      "owner": "phase-25",
+      "rationale": "Unsafe state mutation or low-level memory/file operations are not MCP-safe in current runtime contract.",
+      "revisit_trigger": "Revisit only with explicit sandboxing and artifact-safe mutation design."
+    },
+    "tttrlib.TTTR": {
+      "status": "supported",
+      "owner": "phase-25",
+      "rationale": "Available in current manifest/entrypoint with MCP-safe I/O mapping.",
+      "revisit_trigger": "Expand smoke coverage as additional families are added."
+    },
+    "tttrlib.TTTR.Get": {
+      "status": "denied",
+      "owner": "phase-25",
+      "rationale": "Unsafe state mutation or low-level memory/file operations are not MCP-safe in current runtime contract.",
+      "revisit_trigger": "Revisit only with explicit sandboxing and artifact-safe mutation design."
+    },
+    "tttrlib.TTTR.alex_to_microtime": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.allocate_memory_for_records": {
+      "status": "denied",
+      "owner": "phase-25",
+      "rationale": "Unsafe state mutation or low-level memory/file operations are not MCP-safe in current runtime contract.",
+      "revisit_trigger": "Revisit only with explicit sandboxing and artifact-safe mutation design."
+    },
+    "tttrlib.TTTR.append": {
+      "status": "denied",
+      "owner": "phase-25",
+      "rationale": "Unsafe state mutation or low-level memory/file operations are not MCP-safe in current runtime contract.",
+      "revisit_trigger": "Revisit only with explicit sandboxing and artifact-safe mutation design."
+    },
+    "tttrlib.TTTR.append_event": {
+      "status": "denied",
+      "owner": "phase-25",
+      "rationale": "Unsafe state mutation or low-level memory/file operations are not MCP-safe in current runtime contract.",
+      "revisit_trigger": "Revisit only with explicit sandboxing and artifact-safe mutation design."
+    },
+    "tttrlib.TTTR.append_events": {
+      "status": "denied",
+      "owner": "phase-25",
+      "rationale": "Unsafe state mutation or low-level memory/file operations are not MCP-safe in current runtime contract.",
+      "revisit_trigger": "Revisit only with explicit sandboxing and artifact-safe mutation design."
+    },
+    "tttrlib.TTTR.apply_channel_luts": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.apply_luts_and_shifts": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.burst_search": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.compress_macro_times": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.compute_count_rate": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.compute_mean_lifetime": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.compute_mean_microtime": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.compute_microtime_histogram": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.copy_from": {
+      "status": "denied",
+      "owner": "phase-25",
+      "rationale": "Unsafe state mutation or low-level memory/file operations are not MCP-safe in current runtime contract.",
+      "revisit_trigger": "Revisit only with explicit sandboxing and artifact-safe mutation design."
+    },
+    "tttrlib.TTTR.deallocate_memory_of_records": {
+      "status": "denied",
+      "owner": "phase-25",
+      "rationale": "Unsafe state mutation or low-level memory/file operations are not MCP-safe in current runtime contract.",
+      "revisit_trigger": "Revisit only with explicit sandboxing and artifact-safe mutation design."
+    },
+    "tttrlib.TTTR.decompress_macro_times": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.disable_macro_time_compression": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.enable_macro_time_compression": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.get_auto_compress_on_read": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.get_capacity": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.get_channel_luts": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.get_channel_shifts": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.get_count_rate": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.get_event_type": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.get_event_type_at": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.get_filename": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.get_header": {
+      "status": "supported_subset",
+      "owner": "phase-25",
+      "rationale": "Behavior is partially available via a curated alias with constrained output mapping.",
+      "revisit_trigger": "Promote to full support once strict upstream ID is exposed in manifest and dispatch."
+    },
+    "tttrlib.TTTR.get_intensity_trace": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.get_macro_time_at": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.get_macro_time_compression_ratio": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.get_macro_times": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.get_mean_microtime": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.get_memory_usage_bytes": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.get_micro_time_at": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.get_micro_times": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.get_microtime_histogram": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.get_mt_linearizer": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.get_n_events": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.get_n_valid_events": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.get_number_of_micro_time_channels": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.get_number_of_records_by_file_size": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.get_ranges_by_time_window": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.get_routing_channel": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.get_routing_channel_at": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.get_selection_by_channel": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.get_selection_by_count_rate": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.get_supported_container_names": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.get_time_window_ranges": {
+      "status": "supported",
+      "owner": "phase-25",
+      "rationale": "Available in current manifest/entrypoint with MCP-safe I/O mapping.",
+      "revisit_trigger": "Expand smoke coverage as additional families are added."
+    },
+    "tttrlib.TTTR.get_tttr_by_channel": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.get_tttr_by_count_rate": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.get_tttr_by_selection": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.get_tttr_container_type": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.get_used_routing_channels": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.is_macro_time_compression_enabled": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.mean_lifetime": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.read_file": {
+      "status": "denied",
+      "owner": "phase-25",
+      "rationale": "Unsafe state mutation or low-level memory/file operations are not MCP-safe in current runtime contract.",
+      "revisit_trigger": "Revisit only with explicit sandboxing and artifact-safe mutation design."
+    },
+    "tttrlib.TTTR.read_hdf_file": {
+      "status": "denied",
+      "owner": "phase-25",
+      "rationale": "Unsafe state mutation or low-level memory/file operations are not MCP-safe in current runtime contract.",
+      "revisit_trigger": "Revisit only with explicit sandboxing and artifact-safe mutation design."
+    },
+    "tttrlib.TTTR.read_records": {
+      "status": "denied",
+      "owner": "phase-25",
+      "rationale": "Unsafe state mutation or low-level memory/file operations are not MCP-safe in current runtime contract.",
+      "revisit_trigger": "Revisit only with explicit sandboxing and artifact-safe mutation design."
+    },
+    "tttrlib.TTTR.read_sm_file": {
+      "status": "denied",
+      "owner": "phase-25",
+      "rationale": "Unsafe state mutation or low-level memory/file operations are not MCP-safe in current runtime contract.",
+      "revisit_trigger": "Revisit only with explicit sandboxing and artifact-safe mutation design."
+    },
+    "tttrlib.TTTR.reallocate_memory_for_records": {
+      "status": "denied",
+      "owner": "phase-25",
+      "rationale": "Unsafe state mutation or low-level memory/file operations are not MCP-safe in current runtime contract.",
+      "revisit_trigger": "Revisit only with explicit sandboxing and artifact-safe mutation design."
+    },
+    "tttrlib.TTTR.reserve": {
+      "status": "denied",
+      "owner": "phase-25",
+      "rationale": "Unsafe state mutation or low-level memory/file operations are not MCP-safe in current runtime contract.",
+      "revisit_trigger": "Revisit only with explicit sandboxing and artifact-safe mutation design."
+    },
+    "tttrlib.TTTR.select": {
+      "status": "denied",
+      "owner": "phase-25",
+      "rationale": "Unsafe state mutation or low-level memory/file operations are not MCP-safe in current runtime contract.",
+      "revisit_trigger": "Revisit only with explicit sandboxing and artifact-safe mutation design."
+    },
+    "tttrlib.TTTR.set_auto_compress_on_read": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.set_channel_luts": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.set_channel_shifts": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.set_event_type_at": {
+      "status": "denied",
+      "owner": "phase-25",
+      "rationale": "Unsafe state mutation or low-level memory/file operations are not MCP-safe in current runtime contract.",
+      "revisit_trigger": "Revisit only with explicit sandboxing and artifact-safe mutation design."
+    },
+    "tttrlib.TTTR.set_header": {
+      "status": "denied",
+      "owner": "phase-25",
+      "rationale": "Unsafe state mutation or low-level memory/file operations are not MCP-safe in current runtime contract.",
+      "revisit_trigger": "Revisit only with explicit sandboxing and artifact-safe mutation design."
+    },
+    "tttrlib.TTTR.set_macro_time_at": {
+      "status": "denied",
+      "owner": "phase-25",
+      "rationale": "Unsafe state mutation or low-level memory/file operations are not MCP-safe in current runtime contract.",
+      "revisit_trigger": "Revisit only with explicit sandboxing and artifact-safe mutation design."
+    },
+    "tttrlib.TTTR.set_micro_time_at": {
+      "status": "denied",
+      "owner": "phase-25",
+      "rationale": "Unsafe state mutation or low-level memory/file operations are not MCP-safe in current runtime contract.",
+      "revisit_trigger": "Revisit only with explicit sandboxing and artifact-safe mutation design."
+    },
+    "tttrlib.TTTR.set_mt_linearizer": {
+      "status": "denied",
+      "owner": "phase-25",
+      "rationale": "Unsafe state mutation or low-level memory/file operations are not MCP-safe in current runtime contract.",
+      "revisit_trigger": "Revisit only with explicit sandboxing and artifact-safe mutation design."
+    },
+    "tttrlib.TTTR.set_routing_channel_at": {
+      "status": "denied",
+      "owner": "phase-25",
+      "rationale": "Unsafe state mutation or low-level memory/file operations are not MCP-safe in current runtime contract.",
+      "revisit_trigger": "Revisit only with explicit sandboxing and artifact-safe mutation design."
+    },
+    "tttrlib.TTTR.shift_macro_time": {
+      "status": "denied",
+      "owner": "phase-25",
+      "rationale": "Unsafe state mutation or low-level memory/file operations are not MCP-safe in current runtime contract.",
+      "revisit_trigger": "Revisit only with explicit sandboxing and artifact-safe mutation design."
+    },
+    "tttrlib.TTTR.shift_micro_time_by_channel": {
+      "status": "denied",
+      "owner": "phase-25",
+      "rationale": "Unsafe state mutation or low-level memory/file operations are not MCP-safe in current runtime contract.",
+      "revisit_trigger": "Revisit only with explicit sandboxing and artifact-safe mutation design."
+    },
+    "tttrlib.TTTR.shrink_to_fit": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.size": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.update_microtime_resolution_after_lut": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.write": {
+      "status": "supported",
+      "owner": "phase-25",
+      "rationale": "Available in current manifest/entrypoint with MCP-safe I/O mapping.",
+      "revisit_trigger": "Expand smoke coverage as additional families are added."
+    },
+    "tttrlib.TTTR.write_header": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.write_hht3v2_events": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    },
+    "tttrlib.TTTR.write_spc132_events": {
+      "status": "deferred",
+      "owner": "phase-25",
+      "rationale": "Method is not yet mapped to MCP-safe inputs/outputs in this plan wave.",
+      "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
+    }
+  }
+}

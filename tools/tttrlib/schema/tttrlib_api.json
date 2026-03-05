@@ -4,6 +4,8 @@
   "description": "Curated API surface for tttrlib integration with bioimage-mcp",
   "version": "0.1.0",
   "upstream_version": "0.25.0",
+  "parity_inventory": "tools/tttrlib/schema/tttrlib_coverage.json",
+  "parity_source": "tttrlib_coverage.json",
   "generated_from": "tttrlib documentation and source introspection",
   "functions": {
     "tttrlib.TTTR": {
@@ -160,7 +162,8 @@
           "enum": [
             "default",
             "SP5",
-            "SP8"
+            "SP8",
+            "BH_SPC130"
           ],
           "default": "default"
         },
