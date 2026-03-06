@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v0.3
 milestone_name: milestone
 status: in_progress
-stopped_at: Completed 25-06-PLAN.md
-last_updated: "2026-03-06T14:15:26.648Z"
-last_activity: 2026-03-06 - Completed 25-06-PLAN.md
+stopped_at: Completed 25-07-PLAN.md
+last_updated: "2026-03-06T14:41:36.715Z"
+last_activity: 2026-03-06 - Completed 25-07-PLAN.md
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 23
-  completed_plans: 21
+  completed_plans: 22
   percent: 98
 ---
 
@@ -25,11 +25,11 @@ progress:
 ## Current Position
 
 - **Phase:** 25 of 25 (Add missing TTTR methods)
-- **Plan:** 6 of 8 in current phase
+- **Plan:** 7 of 8 in current phase
 - **Status:** In Progress
-- **Last activity:** 2026-03-06 - Completed 25-06-PLAN.md
+- **Last activity:** 2026-03-06 - Completed 25-07-PLAN.md
 
-Progress: [██████████] 98%
+Progress: [██████████] 99%
 
 ## Performance Metrics
 
@@ -44,6 +44,7 @@ Progress: [██████████] 98%
 | Phase 25 P04 | 17 min | 2 tasks | 8 files |
 | Phase 25 P05 | 12 min | 2 tasks | 3 files |
 | Phase 25 P06 | 10 min | 2 tasks | 5 files |
+| Phase 25 P07 | 12 min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -79,6 +80,9 @@ Progress: [██████████] 98%
 - [Phase 25]: Route deferred and denied tttrlib IDs through the tttrlib manifest only for run() lookups by consulting coverage metadata in core.
 - [Phase 25]: Preserve selection-table metadata by emitting metadata.columns/row_count from the worker and merging top-level table fields into execution import overrides.
 - [Phase 25]: Handle one-column and header-only CSVs with deterministic header parsing instead of relying solely on csv.Sniffer().
+- [Phase 25]: Remove write_header, write_hht3v2_events, and write_spc132_events from discovery because the live Python bindings are not filename-safe.
+- [Phase 25]: Keep tttrlib.TTTR.write as a supported subset that must prove file creation before returning a TTTRRef.
+- [Phase 25]: Use coverage metadata to preserve TTTRLIB_UNSUPPORTED_METHOD failures for removed export IDs without re-exposing them in the public surface.
 
 ### Roadmap Evolution
 - Phase 25 added: Add missing TTTR methods
@@ -117,6 +121,6 @@ Progress: [██████████] 98%
 
 ## Session Continuity
 
-- **Last Session:** 2026-03-06T14:15:26.614Z
-- **Stopped at:** Completed 25-06-PLAN.md
+- **Last Session:** 2026-03-06T14:41:36.692Z
+- **Stopped at:** Completed 25-07-PLAN.md
 - **Resume file:** None
