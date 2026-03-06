@@ -18,6 +18,25 @@ class _FakeCLSMImage:
     def get_image_info(self) -> dict[str, int]:
         return {"n_frames": 2, "n_lines": 4, "n_pixel_per_line": 8}
 
+    def get_settings(self):
+        return _FakeCLSMSettings()
+
+
+class _FakeVector:
+    def __init__(self, values: list[int]) -> None:
+        self._values = values
+
+    def __iter__(self):
+        return iter(self._values)
+
+
+class _FakeCLSMSettings:
+    def __init__(self) -> None:
+        self.n_lines = 4
+        self.n_pixel_per_line = 8
+        self.marker_line_start = 2
+        self.marker_frame_start = _FakeVector([4, 6])
+
 
 class _FakeCorrelator:
     def get_curve(self):
@@ -39,6 +58,29 @@ def test_handle_clsm_get_image_info_returns_native_output(monkeypatch, tmp_path:
     with open(output["path"], encoding="utf-8") as f:
         payload = json.load(f)
     assert payload["n_frames"] == 2
+
+
+def test_handle_clsm_get_settings_serializes_json_object(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(entrypoint, "_load_object", lambda _key: _FakeCLSMImage())
+
+    result = entrypoint.handle_clsm_get_settings(
+        inputs={"clsm": {"ref_id": "clsm-1"}},
+        params={},
+        work_dir=tmp_path,
+    )
+
+    assert result["ok"] is True
+    output = result["outputs"]["settings"]
+    assert output["type"] == "NativeOutputRef"
+    with open(output["path"], encoding="utf-8") as f:
+        payload = json.load(f)
+
+    assert payload == {
+        "marker_frame_start": [4, 6],
+        "marker_line_start": 2,
+        "n_lines": 4,
+        "n_pixel_per_line": 8,
+    }
 
 
 def test_handle_correlator_get_curve_returns_table_ref(monkeypatch, tmp_path: Path) -> None:

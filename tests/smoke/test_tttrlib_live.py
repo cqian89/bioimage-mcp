@@ -5,6 +5,7 @@ These tests run against a live MCP server with the tttrlib tool pack.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -216,6 +217,11 @@ class TestTTTRLibSmoke:
         )
         image_info_ref = image_info_result["outputs"]["image_info"]
         assert_valid_artifact_ref(image_info_ref, "NativeOutputRef")
+        image_info_path = Path(image_info_ref["uri"][7:])
+        with open(image_info_path, encoding="utf-8") as f:
+            image_info_payload = json.load(f)
+        assert isinstance(image_info_payload, dict)
+        assert image_info_payload
 
         settings_result = await live_server.call_tool(
             "run",
@@ -229,6 +235,11 @@ class TestTTTRLibSmoke:
         )
         settings_ref = settings_result["outputs"]["settings"]
         assert_valid_artifact_ref(settings_ref, "NativeOutputRef")
+        settings_path = Path(settings_ref["uri"][7:])
+        with open(settings_path, encoding="utf-8") as f:
+            settings_payload = json.load(f)
+        assert isinstance(settings_payload, dict)
+        assert settings_payload
 
     @pytest.mark.anyio
     @pytest.mark.skipif(not is_valid_dataset(PTU_FILE), reason="PTU dataset not available or empty")
