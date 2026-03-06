@@ -6,6 +6,7 @@ These tests run against a live MCP server with the tttrlib tool pack.
 from __future__ import annotations
 
 import json
+import csv
 from pathlib import Path
 
 import pytest
@@ -151,6 +152,15 @@ class TestTTTRLibSmoke:
         )
         curve_ref = curve_result["outputs"]["curve"]
         assert_valid_artifact_ref(curve_ref, "TableRef")
+        curve_path = Path(curve_ref["uri"][7:])
+        with open(curve_path, newline="", encoding="utf-8") as f:
+            curve_rows = list(csv.DictReader(f))
+        assert curve_rows
+        assert list(curve_rows[0].keys()) == ["tau", "correlation"]
+        assert curve_ref["metadata"]["columns"] == [
+            {"name": "tau", "dtype": "float64"},
+            {"name": "correlation", "dtype": "float64"},
+        ]
 
         x_axis_result = await live_server.call_tool(
             "run",
@@ -169,6 +179,34 @@ class TestTTTRLibSmoke:
         )
         tau_ref = x_axis_result["outputs"]["tau"]
         assert_valid_artifact_ref(tau_ref, "TableRef")
+        tau_path = Path(tau_ref["uri"][7:])
+        with open(tau_path, newline="", encoding="utf-8") as f:
+            tau_rows = list(csv.DictReader(f))
+        assert tau_rows
+        assert list(tau_rows[0].keys()) == ["tau"]
+        assert tau_ref["metadata"]["columns"] == [{"name": "tau", "dtype": "float64"}]
+
+        corr_result = await live_server.call_tool(
+            "run",
+            {
+                "id": "tttrlib.Correlator.get_corr",
+                "inputs": {"tttr": tttr_ref},
+                "params": {
+                    "channels": [[0], [8]],
+                    "n_bins": 7,
+                    "n_casc": 27,
+                },
+            },
+        )
+        assert corr_result.get("status") == "success", f"Correlator.get_corr failed: {corr_result}"
+        corr_ref = corr_result["outputs"]["correlation"]
+        assert_valid_artifact_ref(corr_ref, "TableRef")
+        corr_path = Path(corr_ref["uri"][7:])
+        with open(corr_path, newline="", encoding="utf-8") as f:
+            corr_rows = list(csv.DictReader(f))
+        assert corr_rows
+        assert list(corr_rows[0].keys()) == ["correlation"]
+        assert corr_ref["metadata"]["columns"] == [{"name": "correlation", "dtype": "float64"}]
 
     @pytest.mark.anyio
     @pytest.mark.skipif(not is_valid_dataset(PTU_FILE), reason="PTU dataset not available or empty")

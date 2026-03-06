@@ -39,8 +39,23 @@ class _FakeCLSMSettings:
 
 
 class _FakeCorrelator:
+    x = [1.0, 2.0, 4.0]
+    y = [0.5, 0.25, 0.125]
+
     def get_curve(self):
-        return ([1.0, 2.0, 4.0], [0.5, 0.25, 0.125])
+        return _FakeCorrelatorCurve(self.x, self.y)
+
+    def get_x_axis(self):
+        return self.x
+
+    def get_corr(self):
+        return self.y
+
+
+class _FakeCorrelatorCurve:
+    def __init__(self, x: list[float], y: list[float]) -> None:
+        self.x = x
+        self.y = y
 
 
 def test_handle_clsm_get_image_info_returns_native_output(monkeypatch, tmp_path: Path) -> None:
@@ -102,6 +117,62 @@ def test_handle_correlator_get_curve_returns_table_ref(monkeypatch, tmp_path: Pa
         rows = list(csv.DictReader(f))
     assert len(rows) == 3
     assert set(rows[0].keys()) == {"tau", "correlation"}
+    assert output["metadata"]["columns"] == [
+        {"name": "tau", "dtype": "float64"},
+        {"name": "correlation", "dtype": "float64"},
+    ]
+
+
+def test_handle_correlator_get_x_axis_returns_consistent_table_metadata(
+    monkeypatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(entrypoint, "_load_tttr", lambda _key: object())
+    monkeypatch.setitem(
+        sys.modules, "tttrlib", SimpleNamespace(Correlator=lambda **_kwargs: _FakeCorrelator())
+    )
+
+    result = entrypoint.handle_correlator_get_x_axis(
+        inputs={"tttr": {"ref_id": "tttr-1"}},
+        params={"channels": [[0], [8]], "n_bins": 7, "n_casc": 12},
+        work_dir=tmp_path,
+    )
+
+    assert result["ok"] is True
+    output = result["outputs"]["tau"]
+    with open(output["path"], newline="", encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+    assert [row["tau"] for row in rows] == [
+        "1.000000000000000000e+00",
+        "2.000000000000000000e+00",
+        "4.000000000000000000e+00",
+    ]
+    assert output["metadata"]["columns"] == [{"name": "tau", "dtype": "float64"}]
+
+
+def test_handle_correlator_get_corr_returns_consistent_table_metadata(
+    monkeypatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(entrypoint, "_load_tttr", lambda _key: object())
+    monkeypatch.setitem(
+        sys.modules, "tttrlib", SimpleNamespace(Correlator=lambda **_kwargs: _FakeCorrelator())
+    )
+
+    result = entrypoint.handle_correlator_get_corr(
+        inputs={"tttr": {"ref_id": "tttr-1"}},
+        params={"channels": [[0], [8]], "n_bins": 7, "n_casc": 12},
+        work_dir=tmp_path,
+    )
+
+    assert result["ok"] is True
+    output = result["outputs"]["correlation"]
+    with open(output["path"], newline="", encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+    assert [row["correlation"] for row in rows] == [
+        "5.000000000000000000e-01",
+        "2.500000000000000000e-01",
+        "1.250000000000000000e-01",
+    ]
+    assert output["metadata"]["columns"] == [{"name": "correlation", "dtype": "float64"}]
 
 
 def test_correlator_get_curve_rejects_unsupported_params(monkeypatch, tmp_path: Path) -> None:
