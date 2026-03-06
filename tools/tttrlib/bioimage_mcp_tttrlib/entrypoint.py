@@ -28,6 +28,7 @@ _ENV_ID: str | None = None
 TOOL_VERSION = "0.1.0"
 TOOL_ENV_NAME = "bioimage-mcp-tttrlib"
 UNSUPPORTED_STATUSES = {"denied", "deferred"}
+SWIG_TRANSPORT_ATTRS = {"this", "thisown"}
 
 _COVERAGE_CACHE: dict[str, Any] | None = None
 
@@ -197,6 +198,8 @@ def _normalize_json_safe_value(
 
     public_attrs: dict[str, Any] = {}
     for attr_name in sorted(name for name in dir(value) if not name.startswith("_")):
+        if attr_name in SWIG_TRANSPORT_ATTRS:
+            continue
         try:
             attr_value = getattr(value, attr_name)
         except Exception:
