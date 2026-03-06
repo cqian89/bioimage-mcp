@@ -85,6 +85,19 @@ def _unsupported_argument_pattern_error(method_id: str, detail: str) -> dict[str
     }
 
 
+def _tttr_write_subset_error(detail: str) -> dict[str, Any]:
+    """Build deterministic generic-write subset failure payload."""
+    return {
+        "code": "TTTRLIB_UNSUPPORTED_ARGUMENT_PATTERN",
+        "message": f"Unsupported argument pattern for tttrlib.TTTR.write: {detail}",
+        "method_id": "tttrlib.TTTR.write",
+        "remediation": (
+            "The requested TTTR/container combination is unsupported for file export by the "
+            "installed tttrlib runtime."
+        ),
+    }
+
+
 def _resolve_output_path(filename: str, work_dir: Path) -> Path:
     """Resolve output path relative to work_dir with traversal guardrails."""
     root = work_dir.resolve()
@@ -1083,9 +1096,8 @@ def handle_tttr_write(
         if write_result is False or not filepath.exists():
             return {
                 "ok": False,
-                "error": _unsupported_argument_pattern_error(
-                    "tttrlib.TTTR.write",
-                    "source TTTR/container combination did not produce an export file",
+                "error": _tttr_write_subset_error(
+                    "source TTTR/container combination did not produce an export file"
                 ),
             }
 
