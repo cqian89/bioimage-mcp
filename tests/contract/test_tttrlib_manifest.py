@@ -66,13 +66,19 @@ class TestTTTRLibManifestContract:
             "tttrlib.CLSMImage.get_fluorescence_decay",
             "tttrlib.CLSMImage.get_mean_lifetime",
             "tttrlib.TTTR.write",
-            "tttrlib.TTTR.write_header",
-            "tttrlib.TTTR.write_hht3v2_events",
-            "tttrlib.TTTR.write_spc132_events",
         ]
 
         for fn_id in expected_functions:
             assert fn_id in fn_ids, f"Manifest must define {fn_id} function"
+
+        for removed_fn_id in [
+            "tttrlib.TTTR.write_header",
+            "tttrlib.TTTR.write_hht3v2_events",
+            "tttrlib.TTTR.write_spc132_events",
+        ]:
+            assert removed_fn_id not in fn_ids, (
+                f"Manifest must not advertise unsupported export method {removed_fn_id}"
+            )
 
     def test_tttr_constructor_schema(self) -> None:
         """Test that tttrlib.TTTR has correct input/output schema."""

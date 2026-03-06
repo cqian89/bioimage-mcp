@@ -219,6 +219,43 @@ def test_run_workflow_routes_known_unsupported_tttrlib_ids_to_worker(tmp_path: P
     assert worker_manager.env_requests == [("default-session", "bioimage-mcp-tttrlib")]
 
 
+@pytest.mark.parametrize(
+    "method_id",
+    [
+        "tttrlib.TTTR.write_header",
+        "tttrlib.TTTR.write_hht3v2_events",
+        "tttrlib.TTTR.write_spc132_events",
+    ],
+)
+def test_run_workflow_routes_removed_tttr_exports_to_unsupported_method(
+    tmp_path: Path, method_id: str
+) -> None:
+    config = _build_tttrlib_config(tmp_path)
+    worker = _FakeWorker(
+        {
+            "ok": False,
+            "error": {
+                "code": "TTTRLIB_UNSUPPORTED_METHOD",
+                "message": f"Unsupported tttrlib method: {method_id} (deferred)",
+                "status": "deferred",
+                "method_id": method_id,
+            },
+        }
+    )
+    worker_manager = _FakeWorkerManager(worker)
+
+    with ExecutionService(config, worker_manager=worker_manager) as svc:
+        response = svc.run_workflow(
+            {"steps": [{"id": method_id, "inputs": {}, "params": {}}]},
+            skip_validation=True,
+        )
+
+    assert response["status"] == "failed"
+    assert response["error"]["code"] == "TTTRLIB_UNSUPPORTED_METHOD"
+    assert response["error"]["method_id"] == method_id
+    assert worker.requests[0]["id"] == method_id
+
+
 def test_run_workflow_keeps_unknown_tttrlib_ids_on_core_not_found(tmp_path: Path) -> None:
     config = _build_tttrlib_config(tmp_path)
 

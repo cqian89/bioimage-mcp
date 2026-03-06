@@ -99,9 +99,6 @@ class TestTTTRLibSchemaAlignment:
             "tttrlib.TTTR.get_selection_by_channel",
             "tttrlib.TTTR.get_selection_by_count_rate",
             "tttrlib.TTTR.get_tttr_by_selection",
-            "tttrlib.TTTR.write_header",
-            "tttrlib.TTTR.write_hht3v2_events",
-            "tttrlib.TTTR.write_spc132_events",
         }
 
         manifest_ids = {fn["id"] for fn in manifest_raw.get("functions", [])}
@@ -109,6 +106,14 @@ class TestTTTRLibSchemaAlignment:
 
         assert required.issubset(manifest_ids)
         assert required.issubset(schema_ids)
+
+        removed = {
+            "tttrlib.TTTR.write_header",
+            "tttrlib.TTTR.write_hht3v2_events",
+            "tttrlib.TTTR.write_spc132_events",
+        }
+        assert manifest_ids.isdisjoint(removed)
+        assert schema_ids.isdisjoint(removed)
 
     def test_live_tttr_param_names_match_between_manifest_and_schema(self) -> None:
         manifest_raw = _load_manifest_raw()
