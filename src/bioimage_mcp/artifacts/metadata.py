@@ -345,43 +345,56 @@ def extract_table_metadata(path: Path) -> dict | None:
     """
     import csv
 
+    def infer_dtype(value: str | None) -> str:
+        if value is None or value == "":
+            return "string"
+        try:
+            int(value)
+            return "int64"
+        except ValueError:
+            try:
+                float(value)
+                return "float64"
+            except ValueError:
+                return "string"
+
     if not path.exists():
         return None
 
     try:
-        with open(path, encoding="utf-8") as f:
-            # Detect delimiter (CSV or TSV)
-            sample = f.read(4096)
-            f.seek(0)
-            dialect = csv.Sniffer().sniff(sample) if sample else None
+        text = path.read_text(encoding="utf-8")
+        if not text:
+            return None
+
+        lines = text.splitlines()
+        if not lines:
+            return None
+
+        header_line = lines[0]
+        row_lines = lines[1:]
+
+        single_column = "," not in header_line and "\t" not in header_line
+        if single_column:
+            column_name = header_line.strip()
+            if not column_name:
+                return None
+            first_value = next((line.strip() for line in row_lines if line.strip() != ""), None)
+            return {
+                "columns": [{"name": column_name, "dtype": infer_dtype(first_value)}],
+                "row_count": sum(1 for line in row_lines if line.strip() != ""),
+            }
+
+        sample = text[:4096]
+        dialect = csv.Sniffer().sniff(sample) if sample else None
+        with open(path, encoding="utf-8", newline="") as f:
             reader = csv.DictReader(f, dialect=dialect) if dialect else csv.DictReader(f)
-
-            columns = []
             fieldnames = reader.fieldnames or []
-
-            # Try to get first row for type inference
             first_row = next(reader, None)
 
-            for name in fieldnames:
-                dtype = "string"  # Default
-                if first_row and name in first_row:
-                    val = first_row[name]
-                    if val is not None and val != "":
-                        # Try int
-                        try:
-                            int(val)
-                            dtype = "int64"
-                        except ValueError:
-                            # Try float
-                            try:
-                                float(val)
-                                dtype = "float64"
-                            except ValueError:
-                                dtype = "string"
-
-                columns.append({"name": name, "dtype": dtype})
-
-            # Count remaining rows
+            columns = [
+                {"name": name, "dtype": infer_dtype(first_row.get(name) if first_row else None)}
+                for name in fieldnames
+            ]
             row_count = (1 if first_row else 0) + sum(1 for _ in reader)
 
         return {"columns": columns, "row_count": row_count}

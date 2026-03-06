@@ -234,3 +234,116 @@ def test_run_workflow_keeps_unknown_tttrlib_ids_on_core_not_found(tmp_path: Path
 
     assert response["status"] == "failed"
     assert response["error"]["code"] == "NOT_FOUND"
+
+
+def test_run_workflow_imports_one_column_tttr_selection_table_with_metadata(tmp_path: Path) -> None:
+    config = _build_tttrlib_config(tmp_path)
+    selection_csv = tmp_path / "selection.csv"
+    selection_csv.write_text("index\n1\n3\n", encoding="utf-8")
+    worker = _FakeWorker(
+        {
+            "ok": True,
+            "outputs": {
+                "selection": {
+                    "ref_id": "selection-ref",
+                    "type": "TableRef",
+                    "path": str(selection_csv),
+                    "format": "csv",
+                    "columns": ["index"],
+                    "row_count": 2,
+                    "metadata": {
+                        "columns": [{"name": "index", "dtype": "int64"}],
+                        "row_count": 2,
+                    },
+                }
+            },
+        }
+    )
+    worker_manager = _FakeWorkerManager(worker)
+
+    with ExecutionService(config, worker_manager=worker_manager) as svc:
+        response = svc.run_workflow(
+            {
+                "steps": [
+                    {
+                        "id": "tttrlib.TTTR.get_selection_by_channel",
+                        "inputs": {"tttr": {"ref_id": "tttr-1", "uri": "file:///tmp/mock.spc"}},
+                        "params": {"input": [1]},
+                    }
+                ]
+            },
+            skip_validation=True,
+        )
+
+    assert response["status"] == "success"
+    selection = response["outputs"]["selection"]
+    assert selection["type"] == "TableRef"
+    assert selection["columns"] == ["index"]
+    assert selection["row_count"] == 2
+    assert selection["metadata"]["columns"] == [{"name": "index", "dtype": "int64"}]
+    assert selection["metadata"]["row_count"] == 2
+
+
+def test_run_workflow_imports_empty_tttr_selection_table_with_metadata(tmp_path: Path) -> None:
+    config = _build_tttrlib_config(tmp_path)
+    selection_csv = tmp_path / "empty_selection.csv"
+    selection_csv.write_text("index\n", encoding="utf-8")
+    worker = _FakeWorker(
+        {
+            "ok": True,
+            "outputs": {
+                "selection": {
+                    "ref_id": "selection-empty-ref",
+                    "type": "TableRef",
+                    "path": str(selection_csv),
+                    "format": "csv",
+                    "columns": ["index"],
+                    "row_count": 0,
+                    "metadata": {
+                        "columns": [{"name": "index", "dtype": "int64"}],
+                        "row_count": 0,
+                    },
+                }
+            },
+        }
+    )
+    worker_manager = _FakeWorkerManager(worker)
+
+    with ExecutionService(config, worker_manager=worker_manager) as svc:
+        response = svc.run_workflow(
+            {
+                "steps": [
+                    {
+                        "id": "tttrlib.TTTR.get_selection_by_count_rate",
+                        "inputs": {"tttr": {"ref_id": "tttr-1", "uri": "file:///tmp/mock.spc"}},
+                        "params": {"time_window": 0.5, "n_ph_max": 3},
+                    }
+                ]
+            },
+            skip_validation=True,
+        )
+
+    assert response["status"] == "success"
+    selection = response["outputs"]["selection"]
+    assert selection["type"] == "TableRef"
+    assert selection["columns"] == ["index"]
+    assert selection["row_count"] == 0
+    assert selection["metadata"]["columns"] == [{"name": "index", "dtype": "int64"}]
+    assert selection["metadata"]["row_count"] == 0
+
+
+def test_extract_table_metadata_keeps_multi_column_behavior(tmp_path: Path) -> None:
+    from bioimage_mcp.artifacts.metadata import extract_table_metadata
+
+    table_path = tmp_path / "multi.csv"
+    table_path.write_text("time,count_rate\n0.0,1.5\n1.0,2.5\n", encoding="utf-8")
+
+    metadata = extract_table_metadata(table_path)
+
+    assert metadata == {
+        "columns": [
+            {"name": "time", "dtype": "float64"},
+            {"name": "count_rate", "dtype": "float64"},
+        ],
+        "row_count": 2,
+    }

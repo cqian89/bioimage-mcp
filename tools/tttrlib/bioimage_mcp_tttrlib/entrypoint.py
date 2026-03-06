@@ -290,6 +290,10 @@ def _write_selection_table(indices: Any, stem: str, work_dir: Path) -> dict[str,
         "created_at": datetime.now(UTC).isoformat(),
         "columns": ["index"],
         "row_count": int(selection_indices.size),
+        "metadata": {
+            "columns": [{"name": "index", "dtype": "int64"}],
+            "row_count": int(selection_indices.size),
+        },
     }
 
 

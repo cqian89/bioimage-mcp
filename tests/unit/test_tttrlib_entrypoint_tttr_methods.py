@@ -130,6 +130,38 @@ def test_handle_get_selection_by_channel_accepts_live_input_shape(
     table = result["outputs"]["selection"]
     assert table["type"] == "TableRef"
     assert table["columns"] == ["index"]
+    assert table["metadata"]["columns"] == [{"name": "index", "dtype": "int64"}]
+    assert table["metadata"]["row_count"] == 2
+
+
+def test_handle_get_selection_by_count_rate_preserves_empty_table_metadata(
+    monkeypatch, tmp_path: Path
+) -> None:
+    class _EmptySelectionTTTR(_FakeTTTR):
+        def get_selection_by_count_rate(
+            self,
+            time_window: float,
+            n_ph_max: int,
+            invert: bool = False,
+            make_mask: bool = False,
+        ):
+            return []
+
+    monkeypatch.setattr(entrypoint, "_load_tttr", lambda _key: _EmptySelectionTTTR())
+
+    result = entrypoint.handle_get_selection_by_count_rate(
+        inputs={"tttr": {"ref_id": "tttr-1"}},
+        params={"time_window": 0.5, "n_ph_max": 3},
+        work_dir=tmp_path,
+    )
+
+    assert result["ok"] is True
+    table = result["outputs"]["selection"]
+    assert table["metadata"]["columns"] == [{"name": "index", "dtype": "int64"}]
+    assert table["metadata"]["row_count"] == 0
+    with open(table["path"], newline="") as f:
+        rows = list(csv.DictReader(f))
+    assert rows == []
 
 
 def test_handle_get_selection_by_count_rate_accepts_live_subset_and_returns_table(

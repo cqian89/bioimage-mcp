@@ -1263,6 +1263,21 @@ class ExecutionService:
                 fmt = out.get("format", "OME-TIFF")
                 tool_metadata = out.get("metadata") or {}
 
+                if out_type == "TableRef":
+                    table_metadata = dict(tool_metadata)
+                    if "columns" not in table_metadata and out.get("columns") is not None:
+                        raw_columns = out.get("columns")
+                        if isinstance(raw_columns, list):
+                            table_metadata["columns"] = [
+                                {"name": column, "dtype": "string"}
+                                if isinstance(column, str)
+                                else column
+                                for column in raw_columns
+                            ]
+                    if "row_count" not in table_metadata and out.get("row_count") is not None:
+                        table_metadata["row_count"] = out.get("row_count")
+                    tool_metadata = table_metadata
+
                 if content is not None:
                     p.write_text(str(content))
 
