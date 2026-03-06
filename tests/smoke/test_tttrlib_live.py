@@ -623,6 +623,43 @@ class TestTTTRLibSmoke:
             assert len(rows) > 0
 
     @pytest.mark.anyio
+    @pytest.mark.skipif(not is_valid_dataset(SPC_FILE), reason="SPC dataset not available or empty")
+    async def test_specialized_spc_export(self, live_server) -> None:
+        """Smoke test: specialized SPC export succeeds inside the run sandbox."""
+        open_result = await live_server.call_tool(
+            "run",
+            {
+                "id": "tttrlib.TTTR",
+                "inputs": {},
+                "params": {
+                    "filename": str(SPC_FILE.absolute()),
+                    "container_type": "SPC-130",
+                },
+            },
+        )
+        assert open_result.get("status") == "success", f"Failed to open TTTR: {open_result}"
+        tttr_ref = open_result["outputs"]["tttr"]
+
+        export_result = await live_server.call_tool(
+            "run",
+            {
+                "id": "tttrlib.TTTR.write_spc132_events",
+                "inputs": {"tttr": tttr_ref},
+                "params": {"filename": "exports/m1_copy.spc"},
+            },
+        )
+        assert export_result.get("status") == "success", f"SPC export failed: {export_result}"
+
+        exported_ref = export_result["outputs"]["tttr_out"]
+        assert_valid_artifact_ref(exported_ref, "TTTRRef")
+        assert exported_ref.get("format") == "SPC"
+        uri = exported_ref["uri"]
+        assert uri.startswith("file://")
+        path = Path(uri[7:])
+        assert path.exists(), f"Exported SPC file missing: {path}"
+        assert path.suffix.lower() == ".spc"
+
+    @pytest.mark.anyio
     @pytest.mark.skipif(not is_valid_dataset(HDF_FILE), reason="HDF dataset not available or empty")
     async def test_photon_hdf5(self, live_server) -> None:
         """Smoke test 8.4: Photon-HDF5 opening and header extraction."""

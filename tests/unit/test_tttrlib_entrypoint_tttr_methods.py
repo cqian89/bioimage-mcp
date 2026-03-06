@@ -227,6 +227,13 @@ def test_write_variants_resolve_relative_paths_under_work_dir(monkeypatch, tmp_p
     assert fake.paths
     assert Path(fake.paths[0]).is_absolute()
     assert str(tmp_path.resolve()) in fake.paths[0]
+    assert fake.writer_calls == [
+        (str((tmp_path / "exports" / "result.ht3").resolve()), "_FakeTTTRWriter")
+    ]
+    tttr_ref = result["outputs"]["tttr_out"]
+    assert tttr_ref["type"] == "TTTRRef"
+    assert tttr_ref["path"].endswith(".ht3")
+    assert Path(tttr_ref["path"]).exists()
 
 
 def test_write_rejects_unsafe_output_path(monkeypatch, tmp_path: Path) -> None:
