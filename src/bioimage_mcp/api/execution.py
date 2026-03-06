@@ -1,11 +1,14 @@
 import copy
 import hashlib
+import json
 import logging
 import platform
 import sys
 import uuid
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
+from urllib.parse import unquote, urlparse
 
 from bioimage_mcp.api.errors import execution_error, not_found_error, validation_error
 from bioimage_mcp.api.schemas import ErrorDetail
@@ -26,6 +29,8 @@ logger = logging.getLogger(__name__)
 
 
 CORE_LEGACY_REDIRECTS = {}
+TTTRLIB_UNSUPPORTED_STATUSES = {"denied", "deferred"}
+_TTTRLIB_COVERAGE_CACHE: dict[str, Any] | None = None
 
 
 def _apply_legacy_redirects(spec: dict) -> tuple[dict, list[str]]:
@@ -163,6 +168,58 @@ def _matches_fn_id(fn_id: str, candidate: str, env_prefix: str | None) -> bool:
     return False
 
 
+def _load_tttrlib_coverage_registry(config: Config) -> dict[str, Any]:
+    global _TTTRLIB_COVERAGE_CACHE
+    if _TTTRLIB_COVERAGE_CACHE is not None:
+        return _TTTRLIB_COVERAGE_CACHE
+
+    coverage_path: Path | None = None
+    for root in config.tool_manifest_roots:
+        root_path = Path(root)
+        if root_path.name == "tttrlib":
+            candidate = root_path / "schema" / "tttrlib_coverage.json"
+            if candidate.exists():
+                coverage_path = candidate
+                break
+
+    if coverage_path is None:
+        _TTTRLIB_COVERAGE_CACHE = {}
+        return _TTTRLIB_COVERAGE_CACHE
+
+    try:
+        payload = json.loads(coverage_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        _TTTRLIB_COVERAGE_CACHE = {}
+        return _TTTRLIB_COVERAGE_CACHE
+
+    coverage = payload.get("coverage")
+    _TTTRLIB_COVERAGE_CACHE = coverage if isinstance(coverage, dict) else {}
+    return _TTTRLIB_COVERAGE_CACHE
+
+
+def _get_known_unsupported_tttrlib_entry(config: Config, fn_id: str) -> dict[str, Any] | None:
+    if not fn_id.startswith("tttrlib."):
+        return None
+
+    entry = _load_tttrlib_coverage_registry(config).get(fn_id)
+    if not isinstance(entry, dict):
+        return None
+
+    status = str(entry.get("status") or "")
+    if status not in TTTRLIB_UNSUPPORTED_STATUSES:
+        return None
+
+    return entry
+
+
+def _get_tttrlib_manifest(config: Config) -> Any | None:
+    manifests, _ = load_manifests(config.tool_manifest_roots)
+    for manifest in manifests:
+        if manifest.tool_id == "tools.tttrlib":
+            return manifest
+    return None
+
+
 def _get_function_metadata(config: Config, fn_id: str) -> tuple[Any, Any] | tuple[None, None]:
     """Find manifest and function definition (or overlay) for a given fn_id."""
     manifests, _ = load_manifests(config.tool_manifest_roots)
@@ -186,6 +243,11 @@ def _get_function_metadata(config: Config, fn_id: str) -> tuple[Any, Any] | tupl
             fn_id.startswith(f"{manifest.tool_id.replace('tools.', '')}.{ds.prefix}.")
             for ds in manifest.dynamic_sources
         ) or (fn_id.startswith("base.") and manifest.tool_id == "tools.base"):
+            return manifest, None
+
+    if _get_known_unsupported_tttrlib_entry(config, fn_id):
+        manifest = _get_tttrlib_manifest(config)
+        if manifest is not None:
             return manifest, None
     return None, None
 
@@ -224,7 +286,14 @@ def execute_step(
     # Disable timeout for interactive functions (FR-017)
     # This prevents GUI sessions from being killed while awaiting user input.
     effective_timeout = timeout_seconds
+    is_sam_annotator = False
     if fn_def and getattr(fn_def, "io_pattern", None) == "sam_annotator":
+        is_sam_annotator = True
+    elif fn_id.startswith("micro_sam.sam_annotator."):
+        # Fallback when dynamic metadata is unavailable in local cache/manifest.
+        is_sam_annotator = True
+
+    if is_sam_annotator:
         logger.info("Disabling timeout for interactive function: %s", fn_id)
         effective_timeout = None
 
@@ -590,6 +659,7 @@ class ExecutionService:
         session_id: str = "default-session",
         dry_run: bool = False,
         progress_callback: Callable[[str], None] | None = None,
+        on_run_created: Callable[[str], None] | None = None,
     ) -> dict:
         # Apply redirects (SC-001)
         spec, core_warnings = _apply_legacy_redirects(spec)
@@ -700,6 +770,11 @@ class ExecutionService:
             provenance={"id": fn_id},
             log_ref_id=log_ref.ref_id,
         )
+        if on_run_created is not None:
+            try:
+                on_run_created(run.run_id)
+            except Exception:  # noqa: BLE001
+                logger.exception("run_workflow on_run_created callback failed")
 
         # Record input dimensions in provenance (T028a)
         def _record_input_dims(name: str, val: Any, idx: int | None = None):
@@ -830,6 +905,17 @@ class ExecutionService:
 
         for input_name, input_ref in inputs.items():
             inputs[input_name] = _resolve_and_reconstruct(input_ref)
+
+        def _resolve_param_refs(val: Any) -> Any:
+            if isinstance(val, list):
+                return [_resolve_param_refs(item) for item in val]
+            if isinstance(val, dict):
+                if "ref_id" in val:
+                    return _resolve_and_reconstruct(val)
+                return {k: _resolve_param_refs(v) for k, v in val.items()}
+            return val
+
+        params = _resolve_param_refs(params)
 
         storage_requirements = _get_input_storage_requirements(self._config, fn_id)
         materialized_inputs: dict[str, str] = {}
