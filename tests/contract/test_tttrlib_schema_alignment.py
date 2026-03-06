@@ -135,8 +135,7 @@ class TestTTTRLibSchemaAlignment:
             "time_window",
             "n_ph_max",
             "invert",
-            "make_mask",
         }
         assert set(
             schema_raw["functions"]["tttrlib.TTTR.get_selection_by_count_rate"]["params"].keys()
-        ) == {"time_window", "n_ph_max", "invert", "make_mask"}
+        ) == {"time_window", "n_ph_max", "invert"}

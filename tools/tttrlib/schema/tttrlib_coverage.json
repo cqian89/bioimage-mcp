@@ -575,7 +575,7 @@
     "tttrlib.TTTR.get_intensity_trace": {
       "status": "supported",
       "owner": "phase-25",
-      "rationale": "Mapped to TableRef CSV with explicit time/count_rate columns.",
+      "rationale": "Mapped to TableRef CSV using the live time_window_length signature and explicit time/count_rate columns.",
       "revisit_trigger": "Expand subset coverage if additional upstream overloads are needed."
     },
     "tttrlib.TTTR.get_macro_time_at": {
@@ -677,13 +677,13 @@
     "tttrlib.TTTR.get_selection_by_channel": {
       "status": "supported_subset",
       "owner": "phase-25",
-      "rationale": "Supported for explicit channels list only; unsupported argument patterns fail deterministically.",
+      "rationale": "Supported for the live input channel-list signature only; unsupported argument patterns fail deterministically.",
       "revisit_trigger": "Promote to full support after validating broader argument combinations."
     },
     "tttrlib.TTTR.get_selection_by_count_rate": {
       "status": "supported_subset",
       "owner": "phase-25",
-      "rationale": "Supported for documented count-rate window arguments only; unsupported patterns are rejected.",
+      "rationale": "Supported for live time_window/n_ph_max plus invert only; make_mask and other unsupported patterns are rejected.",
       "revisit_trigger": "Promote to full support after validating additional overload signatures."
     },
     "tttrlib.TTTR.get_supported_container_names": {
@@ -713,7 +713,7 @@
     "tttrlib.TTTR.get_tttr_by_selection": {
       "status": "supported_subset",
       "owner": "phase-25",
-      "rationale": "Supported for explicit boolean selection list and returns TTTRRef subset artifact.",
+      "rationale": "Supported for explicit event-index selection lists and returns a file-backed TTTRRef subset artifact.",
       "revisit_trigger": "Expand support once selection artifact input contracts are standardized."
     },
     "tttrlib.TTTR.get_tttr_container_type": {

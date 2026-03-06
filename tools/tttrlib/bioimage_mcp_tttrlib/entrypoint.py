@@ -142,6 +142,83 @@ def _write_native_output(payload: Any, stem: str, work_dir: Path) -> dict[str, A
     }
 
 
+def _selection_to_indices(selection: Any) -> Any:
+    """Normalize tttrlib selection outputs to integer event indices."""
+    import numpy as np
+
+    indices = np.asarray(selection)
+    if indices.dtype == bool:
+        indices = np.flatnonzero(indices)
+    return indices.astype(int).reshape(-1)
+
+
+def _write_selection_table(indices: Any, stem: str, work_dir: Path) -> dict[str, Any]:
+    """Persist a selection index list as a one-column TableRef CSV."""
+    import numpy as np
+
+    selection_indices = np.asarray(indices, dtype=int).reshape(-1)
+    csv_path = work_dir / f"{stem}_{uuid.uuid4().hex[:8]}.csv"
+    np.savetxt(
+        csv_path,
+        selection_indices.reshape(-1, 1),
+        delimiter=",",
+        header="index",
+        comments="",
+        fmt="%d",
+    )
+    return {
+        "ref_id": uuid.uuid4().hex,
+        "type": "TableRef",
+        "uri": f"file://{csv_path.absolute()}",
+        "path": str(csv_path.absolute()),
+        "format": "csv",
+        "created_at": datetime.now(UTC).isoformat(),
+        "columns": ["index"],
+        "row_count": int(selection_indices.size),
+    }
+
+
+def _infer_tttr_format_and_suffix(tttr_ref: dict[str, Any]) -> tuple[str, str]:
+    """Infer a concrete TTTR file format and suffix for exported subsets."""
+    format_to_suffix = {
+        "PTU": ".ptu",
+        "HT3": ".ht3",
+        "SPC-130": ".spc",
+        "SPC-630_256": ".spc",
+        "SPC-630_4096": ".spc",
+        "PHOTON-HDF5": ".h5",
+        "HDF": ".h5",
+        "CZ-RAW": ".raw",
+        "SM": ".sm",
+    }
+    suffix_to_format = {suffix: fmt for fmt, suffix in format_to_suffix.items()}
+
+    fmt = tttr_ref.get("format")
+    if fmt in format_to_suffix:
+        return fmt, format_to_suffix[fmt]
+
+    uri = str(tttr_ref.get("uri") or "")
+    suffix = Path(uri[7:] if uri.startswith("file://") else uri).suffix.lower()
+    if suffix in suffix_to_format:
+        resolved = suffix_to_format[suffix]
+        return resolved, suffix
+
+    return "PTU", ".ptu"
+
+
+def _build_tttr_file_output(filepath: Path, fmt: str, ref_id: str | None = None) -> dict[str, Any]:
+    """Build a file-backed TTTRRef payload."""
+    return {
+        "ref_id": ref_id or uuid.uuid4().hex,
+        "type": "TTTRRef",
+        "uri": f"file://{filepath.absolute()}",
+        "path": str(filepath.absolute()),
+        "format": fmt,
+        "storage_type": "file",
+        "created_at": datetime.now(UTC).isoformat(),
+    }
+
+
 def _initialize_worker(session_id: str, env_id: str) -> None:
     """Initialize worker identity."""
     global _SESSION_ID, _ENV_ID
@@ -749,7 +826,7 @@ def handle_get_intensity_trace(
     tttr_ref = inputs.get("tttr", {})
     tttr_key = tttr_ref.get("uri") or tttr_ref.get("ref_id") or ""
 
-    allowed_params = {"time_window"}
+    allowed_params = {"time_window_length"}
     extra = sorted(set(params) - allowed_params)
     if extra:
         return {
@@ -805,7 +882,7 @@ def handle_get_selection_by_channel(
     tttr_ref = inputs.get("tttr", {})
     tttr_key = tttr_ref.get("uri") or tttr_ref.get("ref_id") or ""
 
-    allowed_params = {"channels"}
+    allowed_params = {"input"}
     extra = sorted(set(params) - allowed_params)
     if extra:
         return {
@@ -815,33 +892,19 @@ def handle_get_selection_by_channel(
             ),
         }
 
-    channels = params.get("channels")
-    if not isinstance(channels, list) or not channels:
+    selection_input = params.get("input")
+    if not isinstance(selection_input, list) or not selection_input:
         return {
             "ok": False,
             "error": _unsupported_argument_pattern_error(
-                "tttrlib.TTTR.get_selection_by_channel", "channels must be a non-empty integer list"
+                "tttrlib.TTTR.get_selection_by_channel", "input must be a non-empty integer list"
             ),
         }
 
     try:
         tttr = _load_tttr(tttr_key)
-        selection = np.asarray(tttr.get_selection_by_channel(channels=channels), dtype=bool)
-
-        csv_path = work_dir / f"selection_channel_{uuid.uuid4().hex[:8]}.csv"
-        rows = np.column_stack((np.arange(selection.size, dtype=int), selection.astype(int)))
-        np.savetxt(csv_path, rows, delimiter=",", header="index,selected", comments="", fmt="%d")
-
-        output = {
-            "ref_id": uuid.uuid4().hex,
-            "type": "TableRef",
-            "uri": f"file://{csv_path.absolute()}",
-            "path": str(csv_path.absolute()),
-            "format": "csv",
-            "created_at": datetime.now(UTC).isoformat(),
-            "columns": ["index", "selected"],
-            "row_count": int(selection.size),
-        }
+        selection = _selection_to_indices(tttr.get_selection_by_channel(selection_input))
+        output = _write_selection_table(selection, "selection_channel", work_dir)
         return {"ok": True, "outputs": {"selection": output}, "log": "Channel selection extracted"}
     except Exception as e:
         return {"ok": False, "error": {"message": str(e)}}
@@ -856,14 +919,8 @@ def handle_get_selection_by_count_rate(
     tttr_ref = inputs.get("tttr", {})
     tttr_key = tttr_ref.get("uri") or tttr_ref.get("ref_id") or ""
 
-    required = {
-        "minimum_window_length",
-        "minimum_number_of_photons_in_time_window",
-    }
-    allowed = required | {
-        "maximum_window_length",
-        "maximum_number_of_photons_in_time_window",
-    }
+    required = {"time_window", "n_ph_max"}
+    allowed = required | {"invert"}
     extra = sorted(set(params) - allowed)
     if extra:
         return {
@@ -884,22 +941,15 @@ def handle_get_selection_by_count_rate(
 
     try:
         tttr = _load_tttr(tttr_key)
-        selection = np.asarray(tttr.get_selection_by_count_rate(**params), dtype=bool)
+        selection = _selection_to_indices(
+            tttr.get_selection_by_count_rate(
+                params["time_window"],
+                params["n_ph_max"],
+                invert=params.get("invert", False),
+            )
+        )
 
-        csv_path = work_dir / f"selection_rate_{uuid.uuid4().hex[:8]}.csv"
-        rows = np.column_stack((np.arange(selection.size, dtype=int), selection.astype(int)))
-        np.savetxt(csv_path, rows, delimiter=",", header="index,selected", comments="", fmt="%d")
-
-        output = {
-            "ref_id": uuid.uuid4().hex,
-            "type": "TableRef",
-            "uri": f"file://{csv_path.absolute()}",
-            "path": str(csv_path.absolute()),
-            "format": "csv",
-            "created_at": datetime.now(UTC).isoformat(),
-            "columns": ["index", "selected"],
-            "row_count": int(selection.size),
-        }
+        output = _write_selection_table(selection, "selection_rate", work_dir)
         return {
             "ok": True,
             "outputs": {"selection": output},
@@ -938,17 +988,12 @@ def handle_get_tttr_by_selection(
     try:
         tttr = _load_tttr(tttr_key)
         tttr_subset = tttr.get_tttr_by_selection(selection)
-        source_uri = tttr_ref.get("uri") or f"file://{work_dir / 'tttr_subset.ptu'}"
-        subset_ref_id, uri = _store_tttr(tttr_subset, source_uri)
+        fmt, suffix = _infer_tttr_format_and_suffix(tttr_ref)
+        subset_path = work_dir / f"tttr_subset_{uuid.uuid4().hex[:8]}{suffix}"
+        tttr_subset.write(str(subset_path))
+        subset_ref_id, _uri = _store_tttr(tttr_subset, f"file://{subset_path.absolute()}")
 
-        output = {
-            "ref_id": subset_ref_id,
-            "type": "TTTRRef",
-            "uri": uri,
-            "format": "subset",
-            "storage_type": "memory",
-            "created_at": datetime.now(UTC).isoformat(),
-        }
+        output = _build_tttr_file_output(subset_path, fmt, ref_id=subset_ref_id)
         return {"ok": True, "outputs": {"tttr": output}, "log": "TTTR subset selected"}
     except Exception as e:
         return {"ok": False, "error": {"message": str(e)}}
@@ -981,15 +1026,7 @@ def handle_tttr_write(
         else:
             fmt = filepath.suffix[1:].upper() if filepath.suffix else "auto"
 
-        output = {
-            "ref_id": uuid.uuid4().hex,
-            "type": "TTTRRef",
-            "uri": f"file://{filepath.absolute()}",
-            "path": str(filepath.absolute()),
-            "format": fmt,
-            "storage_type": "file",
-            "created_at": datetime.now(UTC).isoformat(),
-        }
+        output = _build_tttr_file_output(filepath, fmt)
 
         return {"ok": True, "outputs": {"tttr_out": output}, "log": f"TTTR written to {filename}"}
 
@@ -1015,15 +1052,9 @@ def handle_tttr_write_header(
             return {"ok": False, "error": _export_path_error(filename)}
 
         tttr.write_header(str(filepath))
-        output = {
-            "ref_id": uuid.uuid4().hex,
-            "type": "TTTRRef",
-            "uri": f"file://{filepath.absolute()}",
-            "path": str(filepath.absolute()),
-            "format": filepath.suffix[1:].upper() if filepath.suffix else "auto",
-            "storage_type": "file",
-            "created_at": datetime.now(UTC).isoformat(),
-        }
+        output = _build_tttr_file_output(
+            filepath, filepath.suffix[1:].upper() if filepath.suffix else "auto"
+        )
         return {"ok": True, "outputs": {"tttr_out": output}, "log": "TTTR header written"}
     except Exception as e:
         return {"ok": False, "error": {"message": str(e)}}
@@ -1052,16 +1083,10 @@ def handle_tttr_write_hht3v2_events(
         if extension_error:
             return {"ok": False, "error": extension_error}
 
-        tttr.write_hht3v2_events(str(filepath))
-        output = {
-            "ref_id": uuid.uuid4().hex,
-            "type": "TTTRRef",
-            "uri": f"file://{filepath.absolute()}",
-            "path": str(filepath.absolute()),
-            "format": filepath.suffix[1:].upper() if filepath.suffix else "auto",
-            "storage_type": "file",
-            "created_at": datetime.now(UTC).isoformat(),
-        }
+        tttr.write_hht3v2_events(str(filepath), tttr)
+        output = _build_tttr_file_output(
+            filepath, filepath.suffix[1:].upper() if filepath.suffix else "auto"
+        )
         return {
             "ok": True,
             "outputs": {"tttr_out": output},
@@ -1094,16 +1119,10 @@ def handle_tttr_write_spc132_events(
         if extension_error:
             return {"ok": False, "error": extension_error}
 
-        tttr.write_spc132_events(str(filepath))
-        output = {
-            "ref_id": uuid.uuid4().hex,
-            "type": "TTTRRef",
-            "uri": f"file://{filepath.absolute()}",
-            "path": str(filepath.absolute()),
-            "format": filepath.suffix[1:].upper() if filepath.suffix else "auto",
-            "storage_type": "file",
-            "created_at": datetime.now(UTC).isoformat(),
-        }
+        tttr.write_spc132_events(str(filepath), tttr)
+        output = _build_tttr_file_output(
+            filepath, filepath.suffix[1:].upper() if filepath.suffix else "auto"
+        )
         return {
             "ok": True,
             "outputs": {"tttr_out": output},

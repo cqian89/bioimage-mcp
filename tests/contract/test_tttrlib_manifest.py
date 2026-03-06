@@ -162,5 +162,7 @@ class TestTTTRLibManifestContract:
         count_rate_props = count_rate_fn["params_schema"]["properties"]
         assert "time_window" in count_rate_props
         assert "n_ph_max" in count_rate_props
+        assert "invert" in count_rate_props
         assert "minimum_window_length" not in count_rate_props
         assert "minimum_number_of_photons_in_time_window" not in count_rate_props
+        assert "make_mask" not in count_rate_props

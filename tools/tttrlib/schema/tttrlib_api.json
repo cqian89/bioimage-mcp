@@ -120,7 +120,7 @@
         }
       },
       "params": {
-        "time_window": {
+        "time_window_length": {
           "type": "number",
           "required": false,
           "description": "Bin width for trace generation"
@@ -146,7 +146,7 @@
         }
       },
       "params": {
-        "channels": {
+        "input": {
           "type": "array",
           "required": true,
           "items": {
@@ -160,8 +160,7 @@
           "artifact_type": "TableRef",
           "format": "csv",
           "columns": [
-            "index",
-            "selected"
+            "index"
           ]
         }
       }
@@ -175,21 +174,18 @@
         }
       },
       "params": {
-        "minimum_window_length": {
+        "time_window": {
           "type": "number",
           "required": true
         },
-        "maximum_window_length": {
-          "type": "number",
-          "required": false
-        },
-        "minimum_number_of_photons_in_time_window": {
+        "n_ph_max": {
           "type": "integer",
           "required": true
         },
-        "maximum_number_of_photons_in_time_window": {
-          "type": "integer",
-          "required": false
+        "invert": {
+          "type": "boolean",
+          "required": false,
+          "default": false
         }
       },
       "outputs": {
@@ -197,8 +193,7 @@
           "artifact_type": "TableRef",
           "format": "csv",
           "columns": [
-            "index",
-            "selected"
+            "index"
           ]
         }
       }
@@ -216,7 +211,7 @@
           "type": "array",
           "required": true,
           "items": {
-            "type": "boolean"
+            "type": "integer"
           }
         }
       },

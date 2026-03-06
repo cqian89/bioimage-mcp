@@ -98,17 +98,21 @@ class _FakeTTTRWriter:
 
     def write(self, path: str) -> None:
         self.paths.append(path)
+        Path(path).write_text("tttr")
 
     def write_header(self, path: str) -> None:
         self.paths.append(path)
+        Path(path).write_text("header")
 
     def write_hht3v2_events(self, path: str, tttr: object) -> None:
         self.paths.append(path)
         self.writer_calls.append((path, getattr(tttr, "__class__", type(tttr)).__name__))
+        Path(path).write_text("hht3")
 
     def write_spc132_events(self, path: str, tttr: object) -> None:
         self.paths.append(path)
         self.writer_calls.append((path, getattr(tttr, "__class__", type(tttr)).__name__))
+        Path(path).write_text("spc")
 
 
 def test_handle_get_selection_by_channel_accepts_live_input_shape(
@@ -125,7 +129,7 @@ def test_handle_get_selection_by_channel_accepts_live_input_shape(
     assert result["ok"] is True
     table = result["outputs"]["selection"]
     assert table["type"] == "TableRef"
-    assert table["columns"] == ["index", "selected"]
+    assert table["columns"] == ["index"]
 
 
 def test_handle_get_selection_by_count_rate_accepts_live_subset_and_returns_table(
@@ -142,7 +146,7 @@ def test_handle_get_selection_by_count_rate_accepts_live_subset_and_returns_tabl
     assert result["ok"] is True
     table = result["outputs"]["selection"]
     assert table["type"] == "TableRef"
-    assert table["columns"] == ["index", "selected"]
+    assert table["columns"] == ["index"]
 
 
 def test_handle_get_tttr_by_selection_returns_file_backed_tttr_ref(
@@ -160,8 +164,22 @@ def test_handle_get_tttr_by_selection_returns_file_backed_tttr_ref(
     tttr_ref = result["outputs"]["tttr"]
     assert tttr_ref["type"] == "TTTRRef"
     assert tttr_ref["storage_type"] == "file"
-    assert tttr_ref["format"] == "SPC-130"
     assert Path(tttr_ref["path"]).exists()
+
+
+def test_handle_get_tttr_by_selection_preserves_source_format(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(entrypoint, "_load_tttr", lambda _key: _FakeTTTR())
+
+    result = entrypoint.handle_get_tttr_by_selection(
+        inputs={"tttr": {"ref_id": "tttr-1", "format": "SPC-130"}},
+        params={"selection": [1, 3]},
+        work_dir=tmp_path,
+    )
+
+    assert result["ok"] is True
+    tttr_ref = result["outputs"]["tttr"]
+    assert tttr_ref["format"] == "SPC-130"
+    assert tttr_ref["path"].endswith(".spc")
 
 
 def test_handle_get_selection_by_count_rate_rejects_unsupported_flags(
