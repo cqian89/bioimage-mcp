@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v0.3
 milestone_name: milestone
-status: completed
-stopped_at: Completed 25-05-PLAN.md
-last_updated: "2026-03-06T09:47:28.682Z"
-last_activity: 2026-03-06 - Completed 25-05-PLAN.md
+status: in_progress
+stopped_at: Completed 25-06-PLAN.md
+last_updated: "2026-03-06T14:15:26.648Z"
+last_activity: 2026-03-06 - Completed 25-06-PLAN.md
 progress:
   total_phases: 6
-  completed_phases: 5
-  total_plans: 20
-  completed_plans: 20
-  percent: 100
+  completed_phases: 4
+  total_plans: 23
+  completed_plans: 21
+  percent: 98
 ---
 
 # Project State: Bioimage-MCP
@@ -25,11 +25,11 @@ progress:
 ## Current Position
 
 - **Phase:** 25 of 25 (Add missing TTTR methods)
-- **Plan:** 5 of 5 in current phase
-- **Status:** Completed
-- **Last activity:** 2026-03-06 - Completed 25-05-PLAN.md
+- **Plan:** 6 of 8 in current phase
+- **Status:** In Progress
+- **Last activity:** 2026-03-06 - Completed 25-06-PLAN.md
 
-Progress: [██████████] 100%
+Progress: [██████████] 98%
 
 ## Performance Metrics
 
@@ -43,6 +43,7 @@ Progress: [██████████] 100%
 | Phase 25 P03 | 11 min | 2 tasks | 7 files |
 | Phase 25 P04 | 17 min | 2 tasks | 8 files |
 | Phase 25 P05 | 12 min | 2 tasks | 3 files |
+| Phase 25 P06 | 10 min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -75,6 +76,9 @@ Progress: [██████████] 100%
 - [Phase 25]: Call specialized write_spc132_events/write_hht3v2_events with the explicit tttr object and keep positive SPC export coverage in smoke to guard the SWIG-specific signature.
 - [Phase 25]: Serialize CLSMImage.get_settings by walking public CLSMSettings attributes and converting nested SWIG containers to JSON-safe values instead of relying on json default=str.
 - [Phase 25]: Treat CorrelatorCurve as an object with x/y accessors and reuse a shared TableRef writer so constructor and getter outputs keep the same metadata contract.
+- [Phase 25]: Route deferred and denied tttrlib IDs through the tttrlib manifest only for run() lookups by consulting coverage metadata in core.
+- [Phase 25]: Preserve selection-table metadata by emitting metadata.columns/row_count from the worker and merging top-level table fields into execution import overrides.
+- [Phase 25]: Handle one-column and header-only CSVs with deterministic header parsing instead of relying solely on csv.Sniffer().
 
 ### Roadmap Evolution
 - Phase 25 added: Add missing TTTR methods
@@ -113,6 +117,6 @@ Progress: [██████████] 100%
 
 ## Session Continuity
 
-- **Last Session:** 2026-03-06T09:47:28.643Z
-- **Stopped at:** Completed 25-05-PLAN.md
+- **Last Session:** 2026-03-06T14:15:26.614Z
+- **Stopped at:** Completed 25-06-PLAN.md
 - **Resume file:** None
