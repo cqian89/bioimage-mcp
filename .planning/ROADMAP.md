@@ -66,17 +66,17 @@ Plans:
 **Goal:** Reach near-full MCP-safe parity with the installed `tttrlib` runtime by expanding TTTR/CLSMImage/Correlator callable coverage and explicitly classifying unsupported methods.
 **Requirements**: [TTTR-01, TTTR-02, TTTR-03, TTTR-04, TTTR-05]
 **Depends on:** Phase 24
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans complete
 
 Plans:
 - [x] 25-01-PLAN.md — Build runtime parity inventory and stable unsupported-method policy
 - [x] 25-02-PLAN.md — Expand TTTR method families with guarded output and export mappings
 - [x] 25-03-PLAN.md — Expand CLSMImage/Correlator method families and finalize live parity verification
 - [x] 25-04-PLAN.md — Close TTTR getter/signature and specialized export UAT gaps
-- [ ] 25-05-PLAN.md — Close remaining CLSM settings and Correlator UAT gaps
+- [x] 25-05-PLAN.md — Close remaining CLSM settings and Correlator UAT gaps
 
-- **Status:** In progress
-- **Progress:** 80%
+- **Status:** ✓ Complete
+- **Progress:** 100%
 
 ---
 
