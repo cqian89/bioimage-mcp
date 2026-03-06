@@ -109,3 +109,34 @@ class TestTTTRLibSchemaAlignment:
 
         assert required.issubset(manifest_ids)
         assert required.issubset(schema_ids)
+
+    def test_live_tttr_param_names_match_between_manifest_and_schema(self) -> None:
+        manifest_raw = _load_manifest_raw()
+        schema_raw = _load_schema_raw()
+
+        manifest_intensity = _get_manifest_fn(manifest_raw, "tttrlib.TTTR.get_intensity_trace")
+        assert set(manifest_intensity["params_schema"]["properties"].keys()) == {
+            "time_window_length"
+        }
+        assert set(
+            schema_raw["functions"]["tttrlib.TTTR.get_intensity_trace"]["params"].keys()
+        ) == {"time_window_length"}
+
+        manifest_channel = _get_manifest_fn(manifest_raw, "tttrlib.TTTR.get_selection_by_channel")
+        assert set(manifest_channel["params_schema"]["properties"].keys()) == {"input"}
+        assert set(
+            schema_raw["functions"]["tttrlib.TTTR.get_selection_by_channel"]["params"].keys()
+        ) == {"input"}
+
+        manifest_count_rate = _get_manifest_fn(
+            manifest_raw, "tttrlib.TTTR.get_selection_by_count_rate"
+        )
+        assert set(manifest_count_rate["params_schema"]["properties"].keys()) == {
+            "time_window",
+            "n_ph_max",
+            "invert",
+            "make_mask",
+        }
+        assert set(
+            schema_raw["functions"]["tttrlib.TTTR.get_selection_by_count_rate"]["params"].keys()
+        ) == {"time_window", "n_ph_max", "invert", "make_mask"}

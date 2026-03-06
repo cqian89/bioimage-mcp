@@ -137,3 +137,30 @@ class TestTTTRLibManifestContract:
         assert decay_output["format"] == "OME-Zarr", (
             f"Decay output must be OME-Zarr per spec 026, got {decay_output.get('format')}"
         )
+
+    def test_tttr_live_signature_params_are_advertised(self) -> None:
+        """TTTR getter/selection manifest params should match live tttrlib shapes."""
+        with open(TTTRLIB_MANIFEST_PATH) as f:
+            raw = yaml.safe_load(f)
+
+        intensity_fn = next(
+            f for f in raw["functions"] if f["id"] == "tttrlib.TTTR.get_intensity_trace"
+        )
+        intensity_props = intensity_fn["params_schema"]["properties"]
+        assert "time_window_length" in intensity_props
+        assert "time_window" not in intensity_props
+
+        channel_fn = next(
+            f for f in raw["functions"] if f["id"] == "tttrlib.TTTR.get_selection_by_channel"
+        )
+        channel_props = channel_fn["params_schema"]["properties"]
+        assert set(channel_props) == {"input"}
+
+        count_rate_fn = next(
+            f for f in raw["functions"] if f["id"] == "tttrlib.TTTR.get_selection_by_count_rate"
+        )
+        count_rate_props = count_rate_fn["params_schema"]["properties"]
+        assert "time_window" in count_rate_props
+        assert "n_ph_max" in count_rate_props
+        assert "minimum_window_length" not in count_rate_props
+        assert "minimum_number_of_photons_in_time_window" not in count_rate_props

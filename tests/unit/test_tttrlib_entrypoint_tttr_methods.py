@@ -14,14 +14,30 @@ import bioimage_mcp_tttrlib.entrypoint as entrypoint
 
 
 class _FakeTTTR:
-    def get_intensity_trace(self, time_window: float):
-        return [[0.0, 10.0], [time_window, 12.5]]
+    def get_intensity_trace(self, time_window_length: float = 0.001):
+        return [[0.0, 10.0], [time_window_length, 12.5]]
 
     def get_count_rate(self) -> float:
         return 42.5
 
-    def get_selection_by_channel(self, channels: list[int]):
-        return [True, False, True] if channels else []
+    def get_selection_by_channel(self, input: list[int]):
+        return [True, False, True] if input else []
+
+    def get_selection_by_count_rate(
+        self,
+        time_window: float,
+        n_ph_max: int,
+        invert: bool = False,
+        make_mask: bool = False,
+    ):
+        if make_mask:
+            return [True, False, False, True]
+        return [1, 3] if not invert else [0, 2]
+
+    def get_tttr_by_selection(self, selection: list[int]):
+        subset = _FakeTTTRWriter()
+        subset.selection = selection
+        return subset
 
 
 def test_handle_get_intensity_trace_returns_table_ref(monkeypatch, tmp_path: Path) -> None:
@@ -29,7 +45,7 @@ def test_handle_get_intensity_trace_returns_table_ref(monkeypatch, tmp_path: Pat
 
     result = entrypoint.handle_get_intensity_trace(
         inputs={"tttr": {"ref_id": "tttr-1"}},
-        params={"time_window": 0.25},
+        params={"time_window_length": 0.25},
         work_dir=tmp_path,
     )
 
@@ -67,7 +83,7 @@ def test_supported_subset_rejects_selection_argument_patterns(monkeypatch, tmp_p
 
     result = entrypoint.handle_get_selection_by_channel(
         inputs={"tttr": {"ref_id": "tttr-1"}},
-        params={"channels": [0], "invert": True},
+        params={"input": [0], "invert": True},
         work_dir=tmp_path,
     )
 
@@ -78,6 +94,7 @@ def test_supported_subset_rejects_selection_argument_patterns(monkeypatch, tmp_p
 class _FakeTTTRWriter:
     def __init__(self) -> None:
         self.paths: list[str] = []
+        self.writer_calls: list[tuple[str, str]] = []
 
     def write(self, path: str) -> None:
         self.paths.append(path)
@@ -85,11 +102,97 @@ class _FakeTTTRWriter:
     def write_header(self, path: str) -> None:
         self.paths.append(path)
 
-    def write_hht3v2_events(self, path: str) -> None:
+    def write_hht3v2_events(self, path: str, tttr: object) -> None:
         self.paths.append(path)
+        self.writer_calls.append((path, getattr(tttr, "__class__", type(tttr)).__name__))
 
-    def write_spc132_events(self, path: str) -> None:
+    def write_spc132_events(self, path: str, tttr: object) -> None:
         self.paths.append(path)
+        self.writer_calls.append((path, getattr(tttr, "__class__", type(tttr)).__name__))
+
+
+def test_handle_get_selection_by_channel_accepts_live_input_shape(
+    monkeypatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(entrypoint, "_load_tttr", lambda _key: _FakeTTTR())
+
+    result = entrypoint.handle_get_selection_by_channel(
+        inputs={"tttr": {"ref_id": "tttr-1"}},
+        params={"input": [0, 8]},
+        work_dir=tmp_path,
+    )
+
+    assert result["ok"] is True
+    table = result["outputs"]["selection"]
+    assert table["type"] == "TableRef"
+    assert table["columns"] == ["index", "selected"]
+
+
+def test_handle_get_selection_by_count_rate_accepts_live_subset_and_returns_table(
+    monkeypatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(entrypoint, "_load_tttr", lambda _key: _FakeTTTR())
+
+    result = entrypoint.handle_get_selection_by_count_rate(
+        inputs={"tttr": {"ref_id": "tttr-1"}},
+        params={"time_window": 0.5, "n_ph_max": 3, "invert": True},
+        work_dir=tmp_path,
+    )
+
+    assert result["ok"] is True
+    table = result["outputs"]["selection"]
+    assert table["type"] == "TableRef"
+    assert table["columns"] == ["index", "selected"]
+
+
+def test_handle_get_tttr_by_selection_returns_file_backed_tttr_ref(
+    monkeypatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(entrypoint, "_load_tttr", lambda _key: _FakeTTTR())
+
+    result = entrypoint.handle_get_tttr_by_selection(
+        inputs={"tttr": {"ref_id": "tttr-1"}},
+        params={"selection": [1, 3]},
+        work_dir=tmp_path,
+    )
+
+    assert result["ok"] is True
+    tttr_ref = result["outputs"]["tttr"]
+    assert tttr_ref["type"] == "TTTRRef"
+    assert tttr_ref["storage_type"] == "file"
+    assert tttr_ref["format"] == "SPC-130"
+    assert Path(tttr_ref["path"]).exists()
+
+
+def test_handle_get_selection_by_count_rate_rejects_unsupported_flags(
+    monkeypatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(entrypoint, "_load_tttr", lambda _key: _FakeTTTR())
+
+    result = entrypoint.handle_get_selection_by_count_rate(
+        inputs={"tttr": {"ref_id": "tttr-1"}},
+        params={"time_window": 0.5, "n_ph_max": 3, "unexpected": True},
+        work_dir=tmp_path,
+    )
+
+    assert result["ok"] is False
+    assert result["error"]["code"] == "TTTRLIB_UNSUPPORTED_ARGUMENT_PATTERN"
+
+
+def test_write_spc132_events_passes_tttr_explicitly(monkeypatch, tmp_path: Path) -> None:
+    fake = _FakeTTTRWriter()
+    monkeypatch.setattr(entrypoint, "_load_tttr", lambda _key: fake)
+
+    result = entrypoint.handle_tttr_write_spc132_events(
+        inputs={"tttr": {"ref_id": "tttr-1"}},
+        params={"filename": "exports/result.spc"},
+        work_dir=tmp_path,
+    )
+
+    assert result["ok"] is True
+    assert fake.writer_calls == [
+        (str((tmp_path / "exports" / "result.spc").resolve()), "_FakeTTTRWriter")
+    ]
 
 
 def test_write_variants_resolve_relative_paths_under_work_dir(monkeypatch, tmp_path: Path) -> None:
