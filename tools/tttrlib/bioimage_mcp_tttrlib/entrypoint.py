@@ -12,6 +12,7 @@ import os
 import sys
 import traceback
 import uuid
+from collections.abc import Iterable, Mapping
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -140,6 +141,69 @@ def _write_native_output(payload: Any, stem: str, work_dir: Path) -> dict[str, A
         "mime_type": "application/json",
         "created_at": datetime.now(UTC).isoformat(),
     }
+
+
+def _normalize_json_safe_value(
+    value: Any,
+    *,
+    _seen: set[int] | None = None,
+) -> Any:
+    """Normalize nested SWIG-like values into JSON-safe Python data."""
+    if _seen is None:
+        _seen = set()
+
+    if value is None or isinstance(value, str | int | float | bool):
+        return value
+
+    obj_id = id(value)
+    if obj_id in _seen:
+        return str(value)
+
+    if hasattr(value, "item") and callable(value.item):
+        try:
+            return _normalize_json_safe_value(value.item(), _seen=_seen)
+        except (TypeError, ValueError):
+            pass
+
+    if isinstance(value, Mapping):
+        _seen.add(obj_id)
+        return {
+            str(key): _normalize_json_safe_value(item, _seen=_seen) for key, item in value.items()
+        }
+
+    if isinstance(value, tuple | list | set):
+        _seen.add(obj_id)
+        return [_normalize_json_safe_value(item, _seen=_seen) for item in value]
+
+    if isinstance(value, Iterable):
+        _seen.add(obj_id)
+        try:
+            return [_normalize_json_safe_value(item, _seen=_seen) for item in value]
+        except TypeError:
+            pass
+
+    public_attrs: dict[str, Any] = {}
+    for attr_name in sorted(name for name in dir(value) if not name.startswith("_")):
+        try:
+            attr_value = getattr(value, attr_name)
+        except Exception:
+            continue
+        if callable(attr_value):
+            continue
+        public_attrs[attr_name] = _normalize_json_safe_value(attr_value, _seen=_seen | {obj_id})
+
+    if public_attrs:
+        return public_attrs
+
+    return str(value)
+
+
+def _serialize_clsm_settings(settings: Any) -> dict[str, Any]:
+    """Serialize tttrlib CLSMSettings objects to JSON-safe metadata."""
+    payload = _normalize_json_safe_value(settings)
+    if not isinstance(payload, dict):
+        raise TypeError("CLSM settings payload is not JSON-object serializable")
+    return payload
 
 
 def _selection_to_indices(selection: Any) -> Any:
@@ -503,7 +567,6 @@ def handle_correlator(
 
         x = correlator.x
         y = correlator.y
-
         # Save to CSV
         csv_path = work_dir / f"correlation_{uuid.uuid4().hex[:8]}.csv"
         data = np.column_stack((x, y))
@@ -624,7 +687,11 @@ def handle_clsm_get_settings(
 
     try:
         clsm = _load_object(clsm_key)
-        output = _write_native_output(clsm.get_settings(), "clsm_settings", work_dir)
+        output = _write_native_output(
+            _serialize_clsm_settings(clsm.get_settings()),
+            "clsm_settings",
+            work_dir,
+        )
         return {"ok": True, "outputs": {"settings": output}, "log": "CLSM settings extracted"}
     except Exception as e:
         return {"ok": False, "error": {"message": str(e)}}
