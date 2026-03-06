@@ -1078,7 +1078,16 @@ def handle_tttr_write(
         except ValueError:
             return {"ok": False, "error": _export_path_error(filename)}
 
-        tttr.write(str(filepath))
+        write_result = tttr.write(str(filepath))
+
+        if write_result is False or not filepath.exists():
+            return {
+                "ok": False,
+                "error": _unsupported_argument_pattern_error(
+                    "tttrlib.TTTR.write",
+                    "source TTTR/container combination did not produce an export file",
+                ),
+            }
 
         ext = filepath.suffix.lower()
         if ext in {".h5", ".hdf5"}:
@@ -1090,104 +1099,6 @@ def handle_tttr_write(
 
         return {"ok": True, "outputs": {"tttr_out": output}, "log": f"TTTR written to {filename}"}
 
-    except Exception as e:
-        return {"ok": False, "error": {"message": str(e)}}
-
-
-def handle_tttr_write_header(
-    inputs: dict[str, Any], params: dict[str, Any], work_dir: Path
-) -> dict[str, Any]:
-    """Handle tttrlib.TTTR.write_header - write header to output path."""
-    tttr_ref = inputs.get("tttr", {})
-    tttr_key = tttr_ref.get("uri") or tttr_ref.get("ref_id") or ""
-    filename = params.get("filename")
-    if not filename:
-        return {"ok": False, "error": {"message": "filename is required"}}
-
-    try:
-        tttr = _load_tttr(tttr_key)
-        try:
-            filepath = _resolve_output_path(filename, work_dir)
-        except ValueError:
-            return {"ok": False, "error": _export_path_error(filename)}
-
-        tttr.write_header(str(filepath))
-        output = _build_tttr_file_output(
-            filepath, filepath.suffix[1:].upper() if filepath.suffix else "auto"
-        )
-        return {"ok": True, "outputs": {"tttr_out": output}, "log": "TTTR header written"}
-    except Exception as e:
-        return {"ok": False, "error": {"message": str(e)}}
-
-
-def handle_tttr_write_hht3v2_events(
-    inputs: dict[str, Any], params: dict[str, Any], work_dir: Path
-) -> dict[str, Any]:
-    """Handle tttrlib.TTTR.write_hht3v2_events export."""
-    tttr_ref = inputs.get("tttr", {})
-    tttr_key = tttr_ref.get("uri") or tttr_ref.get("ref_id") or ""
-    filename = params.get("filename")
-    if not filename:
-        return {"ok": False, "error": {"message": "filename is required"}}
-
-    try:
-        tttr = _load_tttr(tttr_key)
-        try:
-            filepath = _resolve_output_path(filename, work_dir)
-        except ValueError:
-            return {"ok": False, "error": _export_path_error(filename)}
-
-        extension_error = _validate_export_extension(
-            "tttrlib.TTTR.write_hht3v2_events", filepath, {".ht3"}
-        )
-        if extension_error:
-            return {"ok": False, "error": extension_error}
-
-        tttr.write_hht3v2_events(str(filepath), tttr)
-        output = _build_tttr_file_output(
-            filepath, filepath.suffix[1:].upper() if filepath.suffix else "auto"
-        )
-        return {
-            "ok": True,
-            "outputs": {"tttr_out": output},
-            "log": "HHT3v2 events written",
-        }
-    except Exception as e:
-        return {"ok": False, "error": {"message": str(e)}}
-
-
-def handle_tttr_write_spc132_events(
-    inputs: dict[str, Any], params: dict[str, Any], work_dir: Path
-) -> dict[str, Any]:
-    """Handle tttrlib.TTTR.write_spc132_events export."""
-    tttr_ref = inputs.get("tttr", {})
-    tttr_key = tttr_ref.get("uri") or tttr_ref.get("ref_id") or ""
-    filename = params.get("filename")
-    if not filename:
-        return {"ok": False, "error": {"message": "filename is required"}}
-
-    try:
-        tttr = _load_tttr(tttr_key)
-        try:
-            filepath = _resolve_output_path(filename, work_dir)
-        except ValueError:
-            return {"ok": False, "error": _export_path_error(filename)}
-
-        extension_error = _validate_export_extension(
-            "tttrlib.TTTR.write_spc132_events", filepath, {".spc"}
-        )
-        if extension_error:
-            return {"ok": False, "error": extension_error}
-
-        tttr.write_spc132_events(str(filepath), tttr)
-        output = _build_tttr_file_output(
-            filepath, filepath.suffix[1:].upper() if filepath.suffix else "auto"
-        )
-        return {
-            "ok": True,
-            "outputs": {"tttr_out": output},
-            "log": "SPC132 events written",
-        }
     except Exception as e:
         return {"ok": False, "error": {"message": str(e)}}
 
@@ -1673,9 +1584,6 @@ FUNCTION_HANDLERS = {
     "tttrlib.TTTR.get_tttr_by_selection": handle_get_tttr_by_selection,
     "tttrlib.TTTR.get_time_window_ranges": handle_get_time_window_ranges,
     "tttrlib.TTTR.write": handle_tttr_write,
-    "tttrlib.TTTR.write_header": handle_tttr_write_header,
-    "tttrlib.TTTR.write_hht3v2_events": handle_tttr_write_hht3v2_events,
-    "tttrlib.TTTR.write_spc132_events": handle_tttr_write_spc132_events,
     "tttrlib.CLSMImage": handle_clsm_image,
     "tttrlib.CLSMImage.compute_ics": handle_compute_ics,
     "tttrlib.CLSMImage.get_image_info": handle_clsm_get_image_info,
