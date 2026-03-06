@@ -95,24 +95,14 @@ class _FakeTTTRWriter:
     def __init__(self) -> None:
         self.paths: list[str] = []
         self.writer_calls: list[tuple[str, str]] = []
+        self.write_return_value: object = None
+        self.create_file_on_write = True
 
-    def write(self, path: str) -> None:
+    def write(self, path: str) -> object:
         self.paths.append(path)
-        Path(path).write_text("tttr")
-
-    def write_header(self, path: str) -> None:
-        self.paths.append(path)
-        Path(path).write_text("header")
-
-    def write_hht3v2_events(self, path: str, tttr: object) -> None:
-        self.paths.append(path)
-        self.writer_calls.append((path, getattr(tttr, "__class__", type(tttr)).__name__))
-        Path(path).write_text("hht3")
-
-    def write_spc132_events(self, path: str, tttr: object) -> None:
-        self.paths.append(path)
-        self.writer_calls.append((path, getattr(tttr, "__class__", type(tttr)).__name__))
-        Path(path).write_text("spc")
+        if self.create_file_on_write:
+            Path(path).write_text("tttr")
+        return self.write_return_value
 
 
 def test_handle_get_selection_by_channel_accepts_live_input_shape(
@@ -229,43 +219,54 @@ def test_handle_get_selection_by_count_rate_rejects_unsupported_flags(
     assert result["error"]["code"] == "TTTRLIB_UNSUPPORTED_ARGUMENT_PATTERN"
 
 
-def test_write_spc132_events_passes_tttr_explicitly(monkeypatch, tmp_path: Path) -> None:
+def test_write_succeeds_only_when_file_is_created(monkeypatch, tmp_path: Path) -> None:
     fake = _FakeTTTRWriter()
     monkeypatch.setattr(entrypoint, "_load_tttr", lambda _key: fake)
 
-    result = entrypoint.handle_tttr_write_spc132_events(
+    result = entrypoint.handle_tttr_write(
         inputs={"tttr": {"ref_id": "tttr-1"}},
-        params={"filename": "exports/result.spc"},
+        params={"filename": "exports/result.ptu"},
         work_dir=tmp_path,
     )
 
     assert result["ok"] is True
-    assert fake.writer_calls == [
-        (str((tmp_path / "exports" / "result.spc").resolve()), "_FakeTTTRWriter")
-    ]
-
-
-def test_write_variants_resolve_relative_paths_under_work_dir(monkeypatch, tmp_path: Path) -> None:
-    fake = _FakeTTTRWriter()
-    monkeypatch.setattr(entrypoint, "_load_tttr", lambda _key: fake)
-
-    result = entrypoint.handle_tttr_write_hht3v2_events(
-        inputs={"tttr": {"ref_id": "tttr-1"}},
-        params={"filename": "exports/result.ht3"},
-        work_dir=tmp_path,
-    )
-
-    assert result["ok"] is True
-    assert fake.paths
-    assert Path(fake.paths[0]).is_absolute()
-    assert str(tmp_path.resolve()) in fake.paths[0]
-    assert fake.writer_calls == [
-        (str((tmp_path / "exports" / "result.ht3").resolve()), "_FakeTTTRWriter")
-    ]
     tttr_ref = result["outputs"]["tttr_out"]
     assert tttr_ref["type"] == "TTTRRef"
-    assert tttr_ref["path"].endswith(".ht3")
     assert Path(tttr_ref["path"]).exists()
+
+
+def test_write_fails_when_upstream_returns_false(monkeypatch, tmp_path: Path) -> None:
+    fake = _FakeTTTRWriter()
+    fake.write_return_value = False
+    monkeypatch.setattr(entrypoint, "_load_tttr", lambda _key: fake)
+
+    result = entrypoint.handle_tttr_write(
+        inputs={"tttr": {"ref_id": "tttr-1"}},
+        params={"filename": "exports/result.ptu"},
+        work_dir=tmp_path,
+    )
+
+    assert result["ok"] is False
+    assert result["error"]["code"] == "TTTRLIB_UNSUPPORTED_ARGUMENT_PATTERN"
+    assert "did not produce an export file" in result["error"]["message"]
+    assert "unsupported for file export" in result["error"]["remediation"]
+
+
+def test_write_fails_when_upstream_leaves_no_file(monkeypatch, tmp_path: Path) -> None:
+    fake = _FakeTTTRWriter()
+    fake.create_file_on_write = False
+    monkeypatch.setattr(entrypoint, "_load_tttr", lambda _key: fake)
+
+    result = entrypoint.handle_tttr_write(
+        inputs={"tttr": {"ref_id": "tttr-1"}},
+        params={"filename": "exports/result.ptu"},
+        work_dir=tmp_path,
+    )
+
+    assert result["ok"] is False
+    assert result["error"]["code"] == "TTTRLIB_UNSUPPORTED_ARGUMENT_PATTERN"
+    assert "unsupported for file export" in result["error"]["remediation"]
+    assert not (tmp_path / "exports" / "result.ptu").exists()
 
 
 def test_write_rejects_unsafe_output_path(monkeypatch, tmp_path: Path) -> None:
@@ -282,15 +283,18 @@ def test_write_rejects_unsafe_output_path(monkeypatch, tmp_path: Path) -> None:
     assert result["error"]["code"] == "TTTRLIB_UNSAFE_OUTPUT_PATH"
 
 
-def test_write_variants_reject_unsupported_format_combinations(monkeypatch, tmp_path: Path) -> None:
+def test_write_resolves_relative_paths_under_work_dir(monkeypatch, tmp_path: Path) -> None:
     fake = _FakeTTTRWriter()
     monkeypatch.setattr(entrypoint, "_load_tttr", lambda _key: fake)
 
-    result = entrypoint.handle_tttr_write_hht3v2_events(
+    result = entrypoint.handle_tttr_write(
         inputs={"tttr": {"ref_id": "tttr-1"}},
-        params={"filename": "exports/result.spc"},
+        params={"filename": "exports/result.h5"},
         work_dir=tmp_path,
     )
 
-    assert result["ok"] is False
-    assert result["error"]["code"] == "TTTRLIB_UNSUPPORTED_ARGUMENT_PATTERN"
+    assert result["ok"] is True
+    assert fake.paths
+    assert Path(fake.paths[0]).is_absolute()
+    assert str(tmp_path.resolve()) in fake.paths[0]
+    assert result["outputs"]["tttr_out"]["format"] == "PHOTON-HDF5"

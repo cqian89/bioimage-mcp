@@ -674,7 +674,7 @@ class TestTTTRLibSmoke:
     @pytest.mark.anyio
     @pytest.mark.skipif(not is_valid_dataset(SPC_FILE), reason="SPC dataset not available or empty")
     async def test_specialized_spc_export(self, live_server) -> None:
-        """Smoke test: specialized SPC export succeeds inside the run sandbox."""
+        """Smoke test: removed specialized SPC export now fails with stable guidance."""
         open_result = await live_server.call_tool(
             "run",
             {
@@ -697,16 +697,12 @@ class TestTTTRLibSmoke:
                 "params": {"filename": "exports/m1_copy.spc"},
             },
         )
-        assert export_result.get("status") == "success", f"SPC export failed: {export_result}"
-
-        exported_ref = export_result["outputs"]["tttr_out"]
-        assert_valid_artifact_ref(exported_ref, "TTTRRef")
-        assert exported_ref.get("format") == "SPC"
-        uri = exported_ref["uri"]
-        assert uri.startswith("file://")
-        path = Path(uri[7:])
-        assert path.exists(), f"Exported SPC file missing: {path}"
-        assert path.suffix.lower() == ".spc"
+        assert export_result.get("status") == "failed", (
+            f"Removed SPC export should fail cleanly: {export_result}"
+        )
+        error = export_result["error"]
+        assert error["code"] == "TTTRLIB_UNSUPPORTED_METHOD"
+        assert error["method_id"] == "tttrlib.TTTR.write_spc132_events"
 
     @pytest.mark.anyio
     @pytest.mark.skipif(not is_valid_dataset(HDF_FILE), reason="HDF dataset not available or empty")
