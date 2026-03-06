@@ -206,6 +206,57 @@ def _serialize_clsm_settings(settings: Any) -> dict[str, Any]:
     return payload
 
 
+def _write_table_output(
+    columns: list[str],
+    rows: Any,
+    stem: str,
+    work_dir: Path,
+) -> dict[str, Any]:
+    """Persist tabular data with consistent TableRef metadata."""
+    import numpy as np
+
+    table = np.asarray(rows, dtype=float)
+    if table.ndim == 1:
+        table = table.reshape(-1, 1)
+
+    csv_path = work_dir / f"{stem}_{uuid.uuid4().hex[:8]}.csv"
+    np.savetxt(csv_path, table, delimiter=",", header=",".join(columns), comments="")
+
+    return {
+        "ref_id": uuid.uuid4().hex,
+        "type": "TableRef",
+        "uri": f"file://{csv_path.absolute()}",
+        "path": str(csv_path.absolute()),
+        "format": "csv",
+        "created_at": datetime.now(UTC).isoformat(),
+        "columns": columns,
+        "row_count": int(table.shape[0]),
+        "metadata": {
+            "columns": [{"name": name, "dtype": "float64"} for name in columns],
+            "row_count": int(table.shape[0]),
+        },
+    }
+
+
+def _extract_correlator_curve_columns(curve: Any) -> tuple[Any, Any]:
+    """Extract tau/correlation arrays from a live CorrelatorCurve-like object."""
+    tau = getattr(curve, "x", None)
+    corr = getattr(curve, "y", None)
+
+    if tau is None and hasattr(curve, "get_x_axis"):
+        tau = curve.get_x_axis()
+    if corr is None and hasattr(curve, "get_corr"):
+        corr = curve.get_corr()
+
+    if (tau is None or corr is None) and isinstance(curve, tuple | list) and len(curve) == 2:
+        tau, corr = curve
+
+    if tau is None or corr is None:
+        raise TypeError("CorrelatorCurve does not expose x/y or getter data")
+
+    return tau, corr
+
+
 def _selection_to_indices(selection: Any) -> Any:
     """Normalize tttrlib selection outputs to integer event indices."""
     import numpy as np
@@ -567,28 +618,8 @@ def handle_correlator(
 
         x = correlator.x
         y = correlator.y
-        # Save to CSV
-        csv_path = work_dir / f"correlation_{uuid.uuid4().hex[:8]}.csv"
         data = np.column_stack((x, y))
-        np.savetxt(csv_path, data, delimiter=",", header="tau,correlation", comments="")
-
-        curve = {
-            "ref_id": uuid.uuid4().hex,
-            "type": "TableRef",
-            "uri": f"file://{csv_path.absolute()}",
-            "path": str(csv_path.absolute()),
-            "format": "csv",
-            "created_at": datetime.now(UTC).isoformat(),
-            "columns": ["tau", "correlation"],
-            "row_count": len(x),
-            "metadata": {
-                "columns": [
-                    {"name": "tau", "dtype": "float64"},
-                    {"name": "correlation", "dtype": "float64"},
-                ],
-                "row_count": len(x),
-            },
-        }
+        curve = _write_table_output(["tau", "correlation"], data, "correlation", work_dir)
 
         return {
             "ok": True,
@@ -709,21 +740,9 @@ def handle_correlator_get_curve(
 
     try:
         curve = correlator.get_curve()
-        tau, corr = curve
+        tau, corr = _extract_correlator_curve_columns(curve)
         data = np.column_stack((np.asarray(tau, dtype=float), np.asarray(corr, dtype=float)))
-        csv_path = work_dir / f"correlator_curve_{uuid.uuid4().hex[:8]}.csv"
-        np.savetxt(csv_path, data, delimiter=",", header="tau,correlation", comments="")
-
-        output = {
-            "ref_id": uuid.uuid4().hex,
-            "type": "TableRef",
-            "uri": f"file://{csv_path.absolute()}",
-            "path": str(csv_path.absolute()),
-            "format": "csv",
-            "created_at": datetime.now(UTC).isoformat(),
-            "columns": ["tau", "correlation"],
-            "row_count": int(data.shape[0]),
-        }
+        output = _write_table_output(["tau", "correlation"], data, "correlator_curve", work_dir)
         return {"ok": True, "outputs": {"curve": output}, "log": "Correlator curve extracted"}
     except Exception as e:
         return {"ok": False, "error": {"message": str(e)}}
@@ -741,19 +760,7 @@ def handle_correlator_get_x_axis(
 
     try:
         tau = np.asarray(correlator.get_x_axis(), dtype=float)
-        csv_path = work_dir / f"correlator_x_axis_{uuid.uuid4().hex[:8]}.csv"
-        np.savetxt(csv_path, tau.reshape(-1, 1), delimiter=",", header="tau", comments="")
-
-        output = {
-            "ref_id": uuid.uuid4().hex,
-            "type": "TableRef",
-            "uri": f"file://{csv_path.absolute()}",
-            "path": str(csv_path.absolute()),
-            "format": "csv",
-            "created_at": datetime.now(UTC).isoformat(),
-            "columns": ["tau"],
-            "row_count": int(tau.size),
-        }
+        output = _write_table_output(["tau"], tau, "correlator_x_axis", work_dir)
         return {"ok": True, "outputs": {"tau": output}, "log": "Correlator x-axis extracted"}
     except Exception as e:
         return {"ok": False, "error": {"message": str(e)}}
@@ -771,25 +778,7 @@ def handle_correlator_get_corr(
 
     try:
         corr = np.asarray(correlator.get_corr(), dtype=float)
-        csv_path = work_dir / f"correlator_corr_{uuid.uuid4().hex[:8]}.csv"
-        np.savetxt(
-            csv_path,
-            corr.reshape(-1, 1),
-            delimiter=",",
-            header="correlation",
-            comments="",
-        )
-
-        output = {
-            "ref_id": uuid.uuid4().hex,
-            "type": "TableRef",
-            "uri": f"file://{csv_path.absolute()}",
-            "path": str(csv_path.absolute()),
-            "format": "csv",
-            "created_at": datetime.now(UTC).isoformat(),
-            "columns": ["correlation"],
-            "row_count": int(corr.size),
-        }
+        output = _write_table_output(["correlation"], corr, "correlator_corr", work_dir)
         return {
             "ok": True,
             "outputs": {"correlation": output},
