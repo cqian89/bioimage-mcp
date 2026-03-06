@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v0.3
 milestone_name: milestone
 status: in_progress
-stopped_at: Completed 25-07-PLAN.md
-last_updated: "2026-03-06T14:41:36.715Z"
-last_activity: 2026-03-06 - Completed 25-07-PLAN.md
+stopped_at: Completed 25-08-PLAN.md
+last_updated: "2026-03-06T14:54:15.602Z"
+last_activity: 2026-03-06 - Completed 25-08-PLAN.md
 progress:
   total_phases: 6
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 23
-  completed_plans: 22
-  percent: 98
+  completed_plans: 23
+  percent: 100
 ---
 
 # Project State: Bioimage-MCP
@@ -25,11 +25,11 @@ progress:
 ## Current Position
 
 - **Phase:** 25 of 25 (Add missing TTTR methods)
-- **Plan:** 7 of 8 in current phase
-- **Status:** In Progress
-- **Last activity:** 2026-03-06 - Completed 25-07-PLAN.md
+- **Plan:** 8 of 8 in current phase
+- **Status:** Phase 25 Complete
+- **Last activity:** 2026-03-06 - Completed 25-08-PLAN.md
 
-Progress: [██████████] 99%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -45,6 +45,7 @@ Progress: [██████████] 99%
 | Phase 25 P05 | 12 min | 2 tasks | 3 files |
 | Phase 25 P06 | 10 min | 2 tasks | 5 files |
 | Phase 25 P07 | 12 min | 2 tasks | 9 files |
+| Phase 25 P08 | 2 min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -83,6 +84,8 @@ Progress: [██████████] 99%
 - [Phase 25]: Remove write_header, write_hht3v2_events, and write_spc132_events from discovery because the live Python bindings are not filename-safe.
 - [Phase 25]: Keep tttrlib.TTTR.write as a supported subset that must prove file creation before returning a TTTRRef.
 - [Phase 25]: Use coverage metadata to preserve TTTRLIB_UNSUPPORTED_METHOD failures for removed export IDs without re-exposing them in the public surface.
+- [Phase 25]: Exclude only SWIG transport attrs this and thisown during CLSM settings normalization so real domain metadata continues to pass through recursively. — The UAT regression was caused by generic public-attribute traversal on SWIG-backed CLSMSettings proxies. A targeted blocklist removes wrapper transport fields without collapsing legitimate CLSM metadata to a brittle whitelist.
+- [Phase 25]: Guard live CLSM metadata smoke tests with both negative transport-key assertions and positive domain-field checks. — Non-empty JSON alone did not catch the regression. Smoke coverage now proves the payload is both clean and still useful to callers.
 
 ### Roadmap Evolution
 - Phase 25 added: Add missing TTTR methods
@@ -121,6 +124,6 @@ Progress: [██████████] 99%
 
 ## Session Continuity
 
-- **Last Session:** 2026-03-06T14:41:36.692Z
-- **Stopped at:** Completed 25-07-PLAN.md
+- **Last Session:** 2026-03-06T14:54:15.568Z
+- **Stopped at:** Completed 25-08-PLAN.md
 - **Resume file:** None
