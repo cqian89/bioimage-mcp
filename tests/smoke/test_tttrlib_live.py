@@ -278,6 +278,10 @@ class TestTTTRLibSmoke:
             settings_payload = json.load(f)
         assert isinstance(settings_payload, dict)
         assert settings_payload
+        assert "this" not in settings_payload
+        assert "thisown" not in settings_payload
+        assert settings_payload.get("n_lines")
+        assert settings_payload.get("n_pixel_per_line")
 
     @pytest.mark.anyio
     @pytest.mark.skipif(not is_valid_dataset(PTU_FILE), reason="PTU dataset not available or empty")
