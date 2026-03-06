@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v0.3
 milestone_name: milestone
-status: completed
-stopped_at: Completed 25-03-PLAN.md
-last_updated: "2026-03-05T15:15:24.696Z"
-last_activity: 2026-03-05 - Completed 25-03-PLAN.md
+status: in_progress
+stopped_at: Completed 25-04-PLAN.md
+last_updated: "2026-03-06T09:27:10.179Z"
+last_activity: 2026-03-06 - Completed 25-04-PLAN.md
 progress:
   total_phases: 6
-  completed_phases: 5
-  total_plans: 18
-  completed_plans: 18
-  percent: 100
+  completed_phases: 4
+  total_plans: 20
+  completed_plans: 19
+  percent: 99
 ---
 
 # Project State: Bioimage-MCP
@@ -25,11 +25,11 @@ progress:
 ## Current Position
 
 - **Phase:** 25 of 25 (Add missing TTTR methods)
-- **Plan:** 3 of 3 in current phase
-- **Status:** Milestone complete
-- **Last activity:** 2026-03-05 - Completed 25-03-PLAN.md
+- **Plan:** 4 of 5 in current phase
+- **Status:** In progress
+- **Last activity:** 2026-03-06 - Completed 25-04-PLAN.md
 
-Progress: [██████████] 100%
+Progress: [██████████] 99%
 
 ## Performance Metrics
 
@@ -41,6 +41,7 @@ Progress: [██████████] 100%
 | Phase 25 P01 | 4 min | 2 tasks | 5 files |
 | Phase 25 P02 | 15 min | 2 tasks | 7 files |
 | Phase 25 P03 | 11 min | 2 tasks | 7 files |
+| Phase 25 P04 | 17 min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -68,6 +69,9 @@ Progress: [██████████] 100%
 - [Phase 25]: Classified Correlator getter-family methods as supported_subset with constrained constructor arguments.
 - [Phase 25]: Exposed CLSMImage metadata accessors via NativeOutputRef JSON artifacts to preserve artifact boundaries.
 - [Phase 25]: Linked parity closure to smoke_extended representative method IDs in contract tests.
+- [Phase 25]: Expose TTTR selection wrappers with the live tttrlib input/time_window/n_ph_max signatures and keep unsupported branches rejected instead of silently broadening support.
+- [Phase 25]: Persist get_tttr_by_selection outputs as file-backed TTTRRef artifacts under work_dir because core execution currently only registers TTTR outputs that include a path.
+- [Phase 25]: Call specialized write_spc132_events/write_hht3v2_events with the explicit tttr object and keep positive SPC export coverage in smoke to guard the SWIG-specific signature.
 
 ### Roadmap Evolution
 - Phase 25 added: Add missing TTTR methods
@@ -102,10 +106,10 @@ Progress: [██████████] 100%
 | 15 | Use OME-Zarr as default save format in SkimageAdapter | Aligns with project-wide standardization. |
 
 ### Blockers
-- None.
+- Smoke verification is currently blocked by a pre-existing MCP server startup timeout in `tests/smoke`; direct smoke-client initialization times out before handshake with empty stderr while `python -m bioimage_mcp list --json` and `python -m bioimage_mcp doctor --json` still succeed.
 
 ## Session Continuity
 
-- **Last Session:** 2026-03-05T14:58:29.950Z
-- **Stopped at:** Completed 25-03-PLAN.md
+- **Last Session:** 2026-03-06T09:27:10.143Z
+- **Stopped at:** Completed 25-04-PLAN.md
 - **Resume file:** None
