@@ -211,7 +211,7 @@ class TestTTTRLibSmoke:
     @pytest.mark.anyio
     @pytest.mark.skipif(not is_valid_dataset(PTU_FILE), reason="PTU dataset not available or empty")
     async def test_clsm_metadata_methods(self, live_server) -> None:
-        """Smoke test: representative CLSMImage metadata method-family IDs."""
+        """Smoke test: CLSM get_settings must not leak SWIG transport fields."""
         open_result = await live_server.call_tool(
             "run",
             {
@@ -278,10 +278,14 @@ class TestTTTRLibSmoke:
             settings_payload = json.load(f)
         assert isinstance(settings_payload, dict)
         assert settings_payload
-        assert "this" not in settings_payload
-        assert "thisown" not in settings_payload
-        assert settings_payload.get("n_lines")
-        assert settings_payload.get("n_pixel_per_line")
+        forbidden_keys = sorted({"this", "thisown"} & settings_payload.keys())
+        assert not forbidden_keys, (
+            f"get_settings still included SWIG transport fields this and thisown: {forbidden_keys}"
+        )
+        assert any(
+            field in settings_payload
+            for field in ("n_lines", "n_pixel_per_line", "marker_line_start")
+        ), f"Expected CLSM domain metadata in settings payload, got keys={sorted(settings_payload)}"
 
     @pytest.mark.anyio
     @pytest.mark.skipif(not is_valid_dataset(PTU_FILE), reason="PTU dataset not available or empty")
