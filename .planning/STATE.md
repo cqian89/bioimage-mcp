@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v0.3
 milestone_name: milestone
 status: in_progress
-stopped_at: Completed 25-09-PLAN.md
-last_updated: "2026-03-07T07:20:54.866Z"
-last_activity: 2026-03-07 - Completed 25-09-PLAN.md
+stopped_at: Completed 25-10-PLAN.md
+last_updated: "2026-03-07T07:59:02.182Z"
+last_activity: 2026-03-07 - Completed 25-10-PLAN.md
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 26
-  completed_plans: 24
-  percent: 98
+  completed_plans: 25
+  percent: 99
 ---
 
 # Project State: Bioimage-MCP
@@ -25,11 +25,11 @@ progress:
 ## Current Position
 
 - **Phase:** 25 of 25 (Add missing TTTR methods)
-- **Plan:** 9 of 11 in current phase
+- **Plan:** 10 of 11 in current phase
 - **Status:** In progress
-- **Last activity:** 2026-03-07 - Completed 25-09-PLAN.md
+- **Last activity:** 2026-03-07 - Completed 25-10-PLAN.md
 
-Progress: [████████░░] 81%
+Progress: [██████████] 99%
 
 ## Performance Metrics
 
@@ -47,6 +47,7 @@ Progress: [████████░░] 81%
 | Phase 25 P07 | 12 min | 2 tasks | 9 files |
 | Phase 25 P08 | 2 min | 2 tasks | 3 files |
 | Phase 25 P09 | 8 min | 2 tasks | 8 files |
+| Phase 25 P10 | 18 min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -90,6 +91,9 @@ Progress: [████████░░] 81%
 - [Phase 25]: Restore TTTR intensity-trace and selection handlers to the same nested metadata contract already used by _write_table_output instead of adding a TTTR-only preview workaround. — Keeps TTTR outputs aligned with the established TableRef contract and fixes the regression at the authoritative source.
 - [Phase 25]: Merge top-level TableRef columns and row_count into execution import metadata only when nested worker metadata is absent. — Preserves worker metadata as authoritative while keeping import behavior additive for incomplete tool payloads.
 - [Phase 25]: Drive preview dtype fallback from extract_table_metadata so one-column and multi-column CSV previews report real numeric dtypes. — Unifies preview and metadata inference paths so artifact_info no longer relabels numeric TTTR tables as strings.
+- [Phase 25]: Keep removed TTTR export IDs hidden from discovery while routing known denied/deferred IDs to stable unsupported worker errors.
+- [Phase 25]: Map TTTR.write suffixes to canonical TTTRRef formats such as SPC-130 and PHOTON-HDF5.
+- [Phase 25]: Treat generic TTTR.write success as requiring both a non-failing upstream call and a real file under work_dir.
 
 ### Roadmap Evolution
 - Phase 25 added: Add missing TTTR methods
@@ -128,6 +132,6 @@ Progress: [████████░░] 81%
 
 ## Session Continuity
 
-- **Last Session:** 2026-03-07T07:19:20.463Z
-- **Stopped at:** Completed 25-09-PLAN.md
+- **Last Session:** 2026-03-07T07:56:29.011Z
+- **Stopped at:** Completed 25-10-PLAN.md
 - **Resume file:** None

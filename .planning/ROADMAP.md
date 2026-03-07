@@ -66,7 +66,7 @@ Plans:
 **Goal:** Reach near-full MCP-safe parity with the installed `tttrlib` runtime by expanding TTTR/CLSMImage/Correlator callable coverage and explicitly classifying unsupported methods.
 **Requirements**: [TTTR-01, TTTR-02, TTTR-03, TTTR-04, TTTR-05]
 **Depends on:** Phase 24
-**Plans:** 9/11 plans executed
+**Plans:** 10/11 plans executed
 
 Plans:
 - [x] 25-01-PLAN.md — Build runtime parity inventory and stable unsupported-method policy
@@ -78,11 +78,11 @@ Plans:
 - [x] 25-07-PLAN.md — Restore TTTR export guardrails and deferred-method runtime rejection
 - [x] 25-08-PLAN.md — Strip SWIG transport fields from CLSM settings payloads
 - [x] 25-09-PLAN.md — Restore TTTR numeric table schema through import and preview fallbacks
-- [ ] 25-10-PLAN.md — Pending
+- [x] 25-10-PLAN.md — Restore hidden export fallback routing and canonical TTTR.write guardrails
 - [ ] 25-11-PLAN.md — Pending
 
 - **Status:** In progress
-- **Progress:** 81%
+- **Progress:** 90%
 
 ---
 
