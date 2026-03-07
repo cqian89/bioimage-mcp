@@ -102,10 +102,14 @@ class _FakeTTTRWriter:
     def __init__(self) -> None:
         self.paths: list[str] = []
         self.writer_calls: list[tuple[str, str]] = []
+        self.write_return_value: object = None
+        self.create_file_on_write = True
 
-    def write(self, path: str) -> None:
+    def write(self, path: str) -> object:
         self.paths.append(path)
-        Path(path).write_text("tttr")
+        if self.create_file_on_write:
+            Path(path).write_text("tttr")
+        return self.write_return_value
 
     def write_header(self, path: str) -> None:
         self.paths.append(path)
@@ -305,3 +309,80 @@ def test_write_variants_reject_unsupported_format_combinations(monkeypatch, tmp_
 
     assert result["ok"] is False
     assert result["error"]["code"] == "TTTRLIB_UNSUPPORTED_ARGUMENT_PATTERN"
+
+
+def test_write_maps_spc_extension_to_canonical_tttr_format(monkeypatch, tmp_path: Path) -> None:
+    fake = _FakeTTTRWriter()
+    monkeypatch.setattr(entrypoint, "_load_tttr", lambda _key: fake)
+
+    result = entrypoint.handle_tttr_write(
+        inputs={"tttr": {"ref_id": "tttr-1"}},
+        params={"filename": "exports/result.spc"},
+        work_dir=tmp_path,
+    )
+
+    assert result["ok"] is True
+    assert result["outputs"]["tttr_out"]["format"] == "SPC-130"
+
+
+def test_write_maps_hdf5_extension_to_canonical_tttr_format(monkeypatch, tmp_path: Path) -> None:
+    fake = _FakeTTTRWriter()
+    monkeypatch.setattr(entrypoint, "_load_tttr", lambda _key: fake)
+
+    result = entrypoint.handle_tttr_write(
+        inputs={"tttr": {"ref_id": "tttr-1"}},
+        params={"filename": "exports/result.h5"},
+        work_dir=tmp_path,
+    )
+
+    assert result["ok"] is True
+    assert result["outputs"]["tttr_out"]["format"] == "PHOTON-HDF5"
+
+
+def test_write_rejects_unknown_extension_before_building_invalid_tttr_ref(
+    monkeypatch, tmp_path: Path
+) -> None:
+    fake = _FakeTTTRWriter()
+    monkeypatch.setattr(entrypoint, "_load_tttr", lambda _key: fake)
+
+    result = entrypoint.handle_tttr_write(
+        inputs={"tttr": {"ref_id": "tttr-1"}},
+        params={"filename": "exports/result.txt"},
+        work_dir=tmp_path,
+    )
+
+    assert result["ok"] is False
+    assert result["error"]["code"] == "TTTRLIB_UNSUPPORTED_ARGUMENT_PATTERN"
+    assert "extension" in result["error"]["message"]
+
+
+def test_write_fails_when_upstream_returns_false(monkeypatch, tmp_path: Path) -> None:
+    fake = _FakeTTTRWriter()
+    fake.write_return_value = False
+    monkeypatch.setattr(entrypoint, "_load_tttr", lambda _key: fake)
+
+    result = entrypoint.handle_tttr_write(
+        inputs={"tttr": {"ref_id": "tttr-1"}},
+        params={"filename": "exports/result.ptu"},
+        work_dir=tmp_path,
+    )
+
+    assert result["ok"] is False
+    assert result["error"]["code"] == "TTTRLIB_UNSUPPORTED_ARGUMENT_PATTERN"
+    assert "did not produce an export file" in result["error"]["message"]
+
+
+def test_write_fails_when_upstream_does_not_create_file(monkeypatch, tmp_path: Path) -> None:
+    fake = _FakeTTTRWriter()
+    fake.create_file_on_write = False
+    monkeypatch.setattr(entrypoint, "_load_tttr", lambda _key: fake)
+
+    result = entrypoint.handle_tttr_write(
+        inputs={"tttr": {"ref_id": "tttr-1"}},
+        params={"filename": "exports/result.ptu"},
+        work_dir=tmp_path,
+    )
+
+    assert result["ok"] is False
+    assert result["error"]["code"] == "TTTRLIB_UNSUPPORTED_ARGUMENT_PATTERN"
+    assert not (tmp_path / "exports" / "result.ptu").exists()

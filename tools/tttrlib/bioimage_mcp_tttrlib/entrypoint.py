@@ -126,6 +126,19 @@ def _validate_export_extension(
     return None
 
 
+def _tttr_write_subset_error(detail: str) -> dict[str, Any]:
+    """Build deterministic generic-write subset failure payload."""
+    return {
+        "code": "TTTRLIB_UNSUPPORTED_ARGUMENT_PATTERN",
+        "message": f"Unsupported argument pattern for tttrlib.TTTR.write: {detail}",
+        "method_id": "tttrlib.TTTR.write",
+        "remediation": (
+            "The requested TTTR/container combination is unsupported for file export by the "
+            "installed tttrlib runtime."
+        ),
+    }
+
+
 def _write_native_output(payload: Any, stem: str, work_dir: Path) -> dict[str, Any]:
     """Persist JSON payload and return a NativeOutputRef."""
     output_path = work_dir / f"{stem}_{uuid.uuid4().hex[:8]}.json"
@@ -336,6 +349,22 @@ def _build_tttr_file_output(filepath: Path, fmt: str, ref_id: str | None = None)
         "storage_type": "file",
         "created_at": datetime.now(UTC).isoformat(),
     }
+
+
+def _canonical_tttr_write_format(filepath: Path) -> str | None:
+    """Map output suffixes to canonical TTTRRef formats."""
+    suffix = filepath.suffix.lower()
+    suffix_to_format = {
+        ".ptu": "PTU",
+        ".ht3": "HT3",
+        ".spc": "SPC-130",
+        ".h5": "PHOTON-HDF5",
+        ".hdf5": "PHOTON-HDF5",
+        ".hdf": "HDF",
+        ".raw": "CZ-RAW",
+        ".sm": "SM",
+    }
+    return suffix_to_format.get(suffix)
 
 
 def _initialize_worker(session_id: str, env_id: str) -> None:
@@ -1085,15 +1114,25 @@ def handle_tttr_write(
         except ValueError:
             return {"ok": False, "error": _export_path_error(filename)}
 
-        tttr.write(str(filepath))
+        canonical_format = _canonical_tttr_write_format(filepath)
+        if canonical_format is None:
+            return {
+                "ok": False,
+                "error": _tttr_write_subset_error(
+                    f"expected a supported TTTR export extension, got '{filepath.suffix or '<none>'}'"
+                ),
+            }
 
-        ext = filepath.suffix.lower()
-        if ext in {".h5", ".hdf5"}:
-            fmt = "PHOTON-HDF5"
-        else:
-            fmt = filepath.suffix[1:].upper() if filepath.suffix else "auto"
+        write_result = tttr.write(str(filepath))
+        if write_result is False or not filepath.exists():
+            return {
+                "ok": False,
+                "error": _tttr_write_subset_error(
+                    "source TTTR/container combination did not produce an export file"
+                ),
+            }
 
-        output = _build_tttr_file_output(filepath, fmt)
+        output = _build_tttr_file_output(filepath, canonical_format)
 
         return {"ok": True, "outputs": {"tttr_out": output}, "log": f"TTTR written to {filename}"}
 
