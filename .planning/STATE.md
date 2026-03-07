@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v0.3
 milestone_name: milestone
-status: completed
-stopped_at: Verified Phase 25
-last_updated: "2026-03-06T22:50:00Z"
-last_activity: 2026-03-06 - Verified Phase 25
+status: in_progress
+stopped_at: Completed 25-09-PLAN.md
+last_updated: "2026-03-07T07:20:54.866Z"
+last_activity: 2026-03-07 - Completed 25-09-PLAN.md
 progress:
   total_phases: 6
-  completed_phases: 6
-  total_plans: 23
-  completed_plans: 23
-  percent: 100
+  completed_phases: 4
+  total_plans: 26
+  completed_plans: 24
+  percent: 98
 ---
 
 # Project State: Bioimage-MCP
@@ -25,11 +25,11 @@ progress:
 ## Current Position
 
 - **Phase:** 25 of 25 (Add missing TTTR methods)
-- **Plan:** 8 of 8 in current phase
-- **Status:** Phase 25 Complete
-- **Last activity:** 2026-03-06 - Verified Phase 25
+- **Plan:** 9 of 11 in current phase
+- **Status:** In progress
+- **Last activity:** 2026-03-07 - Completed 25-09-PLAN.md
 
-Progress: [██████████] 100%
+Progress: [████████░░] 81%
 
 ## Performance Metrics
 
@@ -46,6 +46,7 @@ Progress: [██████████] 100%
 | Phase 25 P06 | 10 min | 2 tasks | 5 files |
 | Phase 25 P07 | 12 min | 2 tasks | 9 files |
 | Phase 25 P08 | 2 min | 2 tasks | 3 files |
+| Phase 25 P09 | 8 min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -86,6 +87,9 @@ Progress: [██████████] 100%
 - [Phase 25]: Use coverage metadata to preserve TTTRLIB_UNSUPPORTED_METHOD failures for removed export IDs without re-exposing them in the public surface.
 - [Phase 25]: Exclude only SWIG transport attrs this and thisown during CLSM settings normalization so real domain metadata continues to pass through recursively. — The UAT regression was caused by generic public-attribute traversal on SWIG-backed CLSMSettings proxies. A targeted blocklist removes wrapper transport fields without collapsing legitimate CLSM metadata to a brittle whitelist.
 - [Phase 25]: Guard live CLSM metadata smoke tests with both negative transport-key assertions and positive domain-field checks. — Non-empty JSON alone did not catch the regression. Smoke coverage now proves the payload is both clean and still useful to callers.
+- [Phase 25]: Restore TTTR intensity-trace and selection handlers to the same nested metadata contract already used by _write_table_output instead of adding a TTTR-only preview workaround. — Keeps TTTR outputs aligned with the established TableRef contract and fixes the regression at the authoritative source.
+- [Phase 25]: Merge top-level TableRef columns and row_count into execution import metadata only when nested worker metadata is absent. — Preserves worker metadata as authoritative while keeping import behavior additive for incomplete tool payloads.
+- [Phase 25]: Drive preview dtype fallback from extract_table_metadata so one-column and multi-column CSV previews report real numeric dtypes. — Unifies preview and metadata inference paths so artifact_info no longer relabels numeric TTTR tables as strings.
 
 ### Roadmap Evolution
 - Phase 25 added: Add missing TTTR methods
@@ -124,6 +128,6 @@ Progress: [██████████] 100%
 
 ## Session Continuity
 
-- **Last Session:** 2026-03-06T22:50:00Z
-- **Stopped at:** Verified Phase 25
+- **Last Session:** 2026-03-07T07:19:20.463Z
+- **Stopped at:** Completed 25-09-PLAN.md
 - **Resume file:** None
