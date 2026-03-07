@@ -290,3 +290,67 @@ def test_run_workflow_imports_empty_tttr_selection_table_with_numeric_schema(
     assert selection["row_count"] == 0
     assert selection["metadata"]["columns"] == [{"name": "index", "dtype": "int64"}]
     assert selection["metadata"]["row_count"] == 0
+
+
+@pytest.mark.parametrize(
+    "fn_id",
+    [
+        "tttrlib.TTTR.write_header",
+        "tttrlib.TTTR.write_hht3v2_events",
+        "tttrlib.TTTR.write_spc132_events",
+    ],
+)
+def test_run_workflow_routes_removed_tttr_export_methods_to_worker_for_stable_errors(
+    tmp_path: Path, fn_id: str
+) -> None:
+    config = _build_tttrlib_config(tmp_path)
+    worker = _FakeWorker(
+        {
+            "ok": False,
+            "error": {
+                "code": "TTTRLIB_UNSUPPORTED_METHOD",
+                "message": f"{fn_id} is not supported by the MCP runtime",
+            },
+        }
+    )
+    worker_manager = _FakeWorkerManager(worker)
+
+    with ExecutionService(config, worker_manager=worker_manager) as svc:
+        response = svc.run_workflow(
+            {
+                "steps": [
+                    {
+                        "id": fn_id,
+                        "inputs": {"tttr": {"ref_id": "tttr-1", "uri": "file:///tmp/mock.spc"}},
+                        "params": {"filename": "out.spc"},
+                    }
+                ]
+            },
+            skip_validation=True,
+        )
+
+    assert response["status"] == "failed"
+    assert response["error"]["code"] == "TTTRLIB_UNSUPPORTED_METHOD"
+    assert worker_manager.env_requests == [("default-session", "bioimage-mcp-tttrlib")]
+    assert worker.requests[0]["id"] == fn_id
+
+
+def test_run_workflow_keeps_unknown_function_ids_as_not_found(tmp_path: Path) -> None:
+    config = _build_tttrlib_config(tmp_path)
+
+    with ExecutionService(config) as svc:
+        response = svc.run_workflow(
+            {
+                "steps": [
+                    {
+                        "id": "tttrlib.TTTR.definitely_missing",
+                        "inputs": {},
+                        "params": {},
+                    }
+                ]
+            },
+            skip_validation=True,
+        )
+
+    assert response["status"] == "failed"
+    assert response["error"]["code"] == "NOT_FOUND"

@@ -867,28 +867,28 @@
       "revisit_trigger": "Implement in subsequent Phase 25 plans with contract + smoke validation."
     },
     "tttrlib.TTTR.write": {
-      "status": "supported_subset",
+      "status": "supported",
       "owner": "phase-25",
-      "rationale": "Export path stays work_dir-bound, but only upstream TTTR/container combinations that actually materialize a file are supported; silent no-file results fail deterministically.",
-      "revisit_trigger": "Promote only after live runtime coverage proves all surfaced write combinations create real files."
+      "rationale": "Export path is validated against work_dir and output remains artifactized as TTTRRef.",
+      "revisit_trigger": "Expand format-specific smoke validation for supported TTTR container targets."
     },
     "tttrlib.TTTR.write_header": {
       "status": "deferred",
       "owner": "phase-25",
-      "rationale": "The live Python binding rejects normal filename strings at runtime, so this method is not a Python-safe MCP export surface.",
-      "revisit_trigger": "Revisit only if upstream exposes a Python-safe write_header wrapper or a verified bridge for the binding mismatch."
+      "rationale": "Removed from discovery because the live Python binding is not filename-safe for the reduced MCP runtime surface.",
+      "revisit_trigger": "Revisit only if a future worker-side export bridge can guarantee safe file-backed behavior without widening discovery."
     },
     "tttrlib.TTTR.write_hht3v2_events": {
-      "status": "deferred",
+      "status": "denied",
       "owner": "phase-25",
-      "rationale": "The live binding expects a FILE* argument rather than a Python filename path, so MCP cannot safely expose it as a normal file export.",
-      "revisit_trigger": "Revisit only if upstream adds a Python-safe filename wrapper or a tested FILE*-safe bridge is implemented."
+      "rationale": "Removed from discovery because the live Python binding does not safely support the advertised filename export contract.",
+      "revisit_trigger": "Revisit only if upstream exposes a Python-safe file export path that preserves deterministic sandbox behavior."
     },
     "tttrlib.TTTR.write_spc132_events": {
-      "status": "deferred",
+      "status": "denied",
       "owner": "phase-25",
-      "rationale": "The live binding expects a FILE* argument rather than a Python filename path, so MCP cannot safely expose it as a normal file export.",
-      "revisit_trigger": "Revisit only if upstream adds a Python-safe filename wrapper or a tested FILE*-safe bridge is implemented."
+      "rationale": "Removed from discovery because the live Python binding does not safely support the advertised filename export contract.",
+      "revisit_trigger": "Revisit only if upstream exposes a Python-safe file export path that preserves deterministic sandbox behavior."
     }
   }
 }

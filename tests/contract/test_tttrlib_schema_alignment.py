@@ -18,6 +18,9 @@ TTTRLIB_MANIFEST_PATH = Path(__file__).parents[2] / "tools" / "tttrlib" / "manif
 TTTRLIB_SCHEMA_PATH = (
     Path(__file__).parents[2] / "tools" / "tttrlib" / "schema" / "tttrlib_api.json"
 )
+TTTRLIB_COVERAGE_PATH = (
+    Path(__file__).parents[2] / "tools" / "tttrlib" / "schema" / "tttrlib_coverage.json"
+)
 
 
 def _load_manifest_raw() -> dict:
@@ -31,6 +34,11 @@ def _get_manifest_fn(manifest_raw: dict, fn_id: str) -> dict:
 
 def _load_schema_raw() -> dict:
     with open(TTTRLIB_SCHEMA_PATH) as f:
+        return json.load(f)
+
+
+def _load_coverage_raw() -> dict:
+    with open(TTTRLIB_COVERAGE_PATH) as f:
         return json.load(f)
 
 
@@ -99,6 +107,7 @@ class TestTTTRLibSchemaAlignment:
             "tttrlib.TTTR.get_selection_by_channel",
             "tttrlib.TTTR.get_selection_by_count_rate",
             "tttrlib.TTTR.get_tttr_by_selection",
+            "tttrlib.TTTR.write",
         }
 
         manifest_ids = {fn["id"] for fn in manifest_raw.get("functions", [])}
@@ -107,13 +116,32 @@ class TestTTTRLibSchemaAlignment:
         assert required.issubset(manifest_ids)
         assert required.issubset(schema_ids)
 
+    def test_removed_tttr_export_methods_are_excluded_from_manifest_and_schema(self) -> None:
+        manifest_raw = _load_manifest_raw()
+        schema_raw = _load_schema_raw()
+
         removed = {
             "tttrlib.TTTR.write_header",
             "tttrlib.TTTR.write_hht3v2_events",
             "tttrlib.TTTR.write_spc132_events",
         }
-        assert manifest_ids.isdisjoint(removed)
-        assert schema_ids.isdisjoint(removed)
+
+        manifest_ids = {fn["id"] for fn in manifest_raw.get("functions", [])}
+        schema_ids = set(schema_raw.get("functions", {}).keys())
+
+        assert removed.isdisjoint(manifest_ids)
+        assert removed.isdisjoint(schema_ids)
+
+    def test_removed_tttr_export_methods_remain_unsupported_in_coverage(self) -> None:
+        coverage_raw = _load_coverage_raw()
+        coverage = coverage_raw["coverage"]
+
+        for fn_id in (
+            "tttrlib.TTTR.write_header",
+            "tttrlib.TTTR.write_hht3v2_events",
+            "tttrlib.TTTR.write_spc132_events",
+        ):
+            assert coverage[fn_id]["status"] in {"deferred", "denied"}
 
     def test_live_tttr_param_names_match_between_manifest_and_schema(self) -> None:
         manifest_raw = _load_manifest_raw()

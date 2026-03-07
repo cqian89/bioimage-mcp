@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -10,6 +11,9 @@ import yaml
 from bioimage_mcp.registry.manifest_schema import ToolManifest
 
 TTTRLIB_MANIFEST_PATH = Path(__file__).parents[2] / "tools" / "tttrlib" / "manifest.yaml"
+TTTRLIB_COVERAGE_PATH = (
+    Path(__file__).parents[2] / "tools" / "tttrlib" / "schema" / "tttrlib_coverage.json"
+)
 
 
 class TestTTTRLibManifestContract:
@@ -71,14 +75,27 @@ class TestTTTRLibManifestContract:
         for fn_id in expected_functions:
             assert fn_id in fn_ids, f"Manifest must define {fn_id} function"
 
-        for removed_fn_id in [
+    def test_removed_tttr_export_methods_stay_out_of_discovery(self) -> None:
+        with open(TTTRLIB_MANIFEST_PATH) as f:
+            raw = yaml.safe_load(f)
+
+        fn_ids = {f.get("id") for f in raw.get("functions", [])}
+
+        removed_export_ids = {
             "tttrlib.TTTR.write_header",
             "tttrlib.TTTR.write_hht3v2_events",
             "tttrlib.TTTR.write_spc132_events",
-        ]:
-            assert removed_fn_id not in fn_ids, (
-                f"Manifest must not advertise unsupported export method {removed_fn_id}"
-            )
+        }
+
+        assert removed_export_ids.isdisjoint(fn_ids)
+
+    def test_removed_tttr_export_methods_have_unsupported_coverage_entries(self) -> None:
+        with open(TTTRLIB_COVERAGE_PATH) as f:
+            coverage = json.load(f)["coverage"]
+
+        assert coverage["tttrlib.TTTR.write_header"]["status"] in {"deferred", "denied"}
+        assert coverage["tttrlib.TTTR.write_hht3v2_events"]["status"] in {"deferred", "denied"}
+        assert coverage["tttrlib.TTTR.write_spc132_events"]["status"] in {"deferred", "denied"}
 
     def test_tttr_constructor_schema(self) -> None:
         """Test that tttrlib.TTTR has correct input/output schema."""

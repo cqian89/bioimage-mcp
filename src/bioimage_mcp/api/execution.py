@@ -1,5 +1,6 @@
 import copy
 import hashlib
+import json
 import logging
 import platform
 import sys
@@ -28,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 
 CORE_LEGACY_REDIRECTS = {}
+TTTRLIB_UNSUPPORTED_STATUSES = {"deferred", "denied"}
 
 
 def _apply_legacy_redirects(spec: dict) -> tuple[dict, list[str]]:
@@ -165,6 +167,49 @@ def _matches_fn_id(fn_id: str, candidate: str, env_prefix: str | None) -> bool:
     return False
 
 
+def _get_tttrlib_manifest(manifests: list[Any]) -> Any | None:
+    for manifest in manifests:
+        if manifest.tool_id == "tools.tttrlib":
+            return manifest
+    return None
+
+
+def _load_tttrlib_coverage_registry(manifests: list[Any]) -> dict[str, Any]:
+    manifest = _get_tttrlib_manifest(manifests)
+    if manifest is None:
+        return {}
+
+    coverage_path = manifest.manifest_path.parent / "schema" / "tttrlib_coverage.json"
+    try:
+        with open(coverage_path, encoding="utf-8") as f:
+            payload = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+    coverage = payload.get("coverage")
+    return coverage if isinstance(coverage, dict) else {}
+
+
+def _get_known_unsupported_tttrlib_entry(
+    manifests: list[Any], fn_id: str
+) -> tuple[Any, dict[str, Any]] | None:
+    if not fn_id.startswith("tttrlib."):
+        return None
+
+    manifest = _get_tttrlib_manifest(manifests)
+    if manifest is None:
+        return None
+
+    entry = _load_tttrlib_coverage_registry(manifests).get(fn_id)
+    if not isinstance(entry, dict):
+        return None
+
+    if entry.get("status") not in TTTRLIB_UNSUPPORTED_STATUSES:
+        return None
+
+    return manifest, entry
+
+
 def _get_function_metadata(config: Config, fn_id: str) -> tuple[Any, Any] | tuple[None, None]:
     """Find manifest and function definition (or overlay) for a given fn_id."""
     manifests, _ = load_manifests(config.tool_manifest_roots)
@@ -189,6 +234,12 @@ def _get_function_metadata(config: Config, fn_id: str) -> tuple[Any, Any] | tupl
             for ds in manifest.dynamic_sources
         ) or (fn_id.startswith("base.") and manifest.tool_id == "tools.base"):
             return manifest, None
+
+    unsupported_tttrlib = _get_known_unsupported_tttrlib_entry(manifests, fn_id)
+    if unsupported_tttrlib is not None:
+        manifest, _entry = unsupported_tttrlib
+        return manifest, None
+
     return None, None
 
 
