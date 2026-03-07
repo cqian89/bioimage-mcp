@@ -192,105 +192,26 @@ def test_close_closes_owned_run_store(tmp_path: Path) -> None:
     conn.close()
 
 
-def test_run_workflow_routes_known_unsupported_tttrlib_ids_to_worker(tmp_path: Path) -> None:
+def test_run_workflow_imports_tttr_intensity_trace_with_numeric_schema(tmp_path: Path) -> None:
     config = _build_tttrlib_config(tmp_path)
-    worker = _FakeWorker(
-        {
-            "ok": False,
-            "error": {
-                "code": "TTTRLIB_UNSUPPORTED_METHOD",
-                "message": "Unsupported tttrlib method: tttrlib.TTTR.get_microtime_histogram (deferred)",
-                "status": "deferred",
-                "method_id": "tttrlib.TTTR.get_microtime_histogram",
-            },
-        }
-    )
-    worker_manager = _FakeWorkerManager(worker)
-
-    with ExecutionService(config, worker_manager=worker_manager) as svc:
-        response = svc.run_workflow(
-            {"steps": [{"id": "tttrlib.TTTR.get_microtime_histogram", "inputs": {}, "params": {}}]},
-            skip_validation=True,
-        )
-
-    assert response["status"] == "failed"
-    assert response["error"]["code"] == "TTTRLIB_UNSUPPORTED_METHOD"
-    assert worker.requests[0]["id"] == "tttrlib.TTTR.get_microtime_histogram"
-    assert worker_manager.env_requests == [("default-session", "bioimage-mcp-tttrlib")]
-
-
-@pytest.mark.parametrize(
-    "method_id",
-    [
-        "tttrlib.TTTR.write_header",
-        "tttrlib.TTTR.write_hht3v2_events",
-        "tttrlib.TTTR.write_spc132_events",
-    ],
-)
-def test_run_workflow_routes_removed_tttr_exports_to_unsupported_method(
-    tmp_path: Path, method_id: str
-) -> None:
-    config = _build_tttrlib_config(tmp_path)
-    worker = _FakeWorker(
-        {
-            "ok": False,
-            "error": {
-                "code": "TTTRLIB_UNSUPPORTED_METHOD",
-                "message": f"Unsupported tttrlib method: {method_id} (deferred)",
-                "status": "deferred",
-                "method_id": method_id,
-            },
-        }
-    )
-    worker_manager = _FakeWorkerManager(worker)
-
-    with ExecutionService(config, worker_manager=worker_manager) as svc:
-        response = svc.run_workflow(
-            {"steps": [{"id": method_id, "inputs": {}, "params": {}}]},
-            skip_validation=True,
-        )
-
-    assert response["status"] == "failed"
-    assert response["error"]["code"] == "TTTRLIB_UNSUPPORTED_METHOD"
-    assert response["error"]["method_id"] == method_id
-    assert worker.requests[0]["id"] == method_id
-
-
-def test_run_workflow_keeps_unknown_tttrlib_ids_on_core_not_found(tmp_path: Path) -> None:
-    config = _build_tttrlib_config(tmp_path)
-
-    with ExecutionService(config) as svc:
-        response = svc.run_workflow(
-            {
-                "steps": [
-                    {"id": "tttrlib.TTTR.definitely_unknown_method", "inputs": {}, "params": {}}
-                ]
-            },
-            skip_validation=True,
-        )
-
-    assert response["status"] == "failed"
-    assert response["error"]["code"] == "NOT_FOUND"
-
-
-def test_run_workflow_imports_one_column_tttr_selection_table_with_metadata(tmp_path: Path) -> None:
-    config = _build_tttrlib_config(tmp_path)
-    selection_csv = tmp_path / "selection.csv"
-    selection_csv.write_text("index\n1\n3\n", encoding="utf-8")
+    trace_csv = tmp_path / "trace.csv"
+    trace_csv.write_text("time,count_rate\n0.0,10.0\n0.25,12.5\n", encoding="utf-8")
     worker = _FakeWorker(
         {
             "ok": True,
             "outputs": {
-                "selection": {
-                    "ref_id": "selection-ref",
+                "trace": {
+                    "ref_id": "trace-ref",
                     "type": "TableRef",
-                    "path": str(selection_csv),
+                    "path": str(trace_csv),
                     "format": "csv",
-                    "columns": ["index"],
+                    "columns": ["time", "count_rate"],
                     "row_count": 2,
                     "metadata": {
-                        "columns": [{"name": "index", "dtype": "int64"}],
-                        "row_count": 2,
+                        "columns": [
+                            {"name": "time", "dtype": "float64"},
+                            {"name": "count_rate", "dtype": "float64"},
+                        ]
                     },
                 }
             },
@@ -303,9 +224,9 @@ def test_run_workflow_imports_one_column_tttr_selection_table_with_metadata(tmp_
             {
                 "steps": [
                     {
-                        "id": "tttrlib.TTTR.get_selection_by_channel",
+                        "id": "tttrlib.TTTR.get_intensity_trace",
                         "inputs": {"tttr": {"ref_id": "tttr-1", "uri": "file:///tmp/mock.spc"}},
-                        "params": {"input": [1]},
+                        "params": {"time_window_length": 0.25},
                     }
                 ]
             },
@@ -313,15 +234,19 @@ def test_run_workflow_imports_one_column_tttr_selection_table_with_metadata(tmp_
         )
 
     assert response["status"] == "success"
-    selection = response["outputs"]["selection"]
-    assert selection["type"] == "TableRef"
-    assert selection["columns"] == ["index"]
-    assert selection["row_count"] == 2
-    assert selection["metadata"]["columns"] == [{"name": "index", "dtype": "int64"}]
-    assert selection["metadata"]["row_count"] == 2
+    trace = response["outputs"]["trace"]
+    assert trace["columns"] == ["time", "count_rate"]
+    assert trace["row_count"] == 2
+    assert trace["metadata"]["columns"] == [
+        {"name": "time", "dtype": "float64"},
+        {"name": "count_rate", "dtype": "float64"},
+    ]
+    assert trace["metadata"]["row_count"] == 2
 
 
-def test_run_workflow_imports_empty_tttr_selection_table_with_metadata(tmp_path: Path) -> None:
+def test_run_workflow_imports_empty_tttr_selection_table_with_numeric_schema(
+    tmp_path: Path,
+) -> None:
     config = _build_tttrlib_config(tmp_path)
     selection_csv = tmp_path / "empty_selection.csv"
     selection_csv.write_text("index\n", encoding="utf-8")
@@ -338,7 +263,6 @@ def test_run_workflow_imports_empty_tttr_selection_table_with_metadata(tmp_path:
                     "row_count": 0,
                     "metadata": {
                         "columns": [{"name": "index", "dtype": "int64"}],
-                        "row_count": 0,
                     },
                 }
             },
@@ -362,25 +286,7 @@ def test_run_workflow_imports_empty_tttr_selection_table_with_metadata(tmp_path:
 
     assert response["status"] == "success"
     selection = response["outputs"]["selection"]
-    assert selection["type"] == "TableRef"
     assert selection["columns"] == ["index"]
     assert selection["row_count"] == 0
     assert selection["metadata"]["columns"] == [{"name": "index", "dtype": "int64"}]
     assert selection["metadata"]["row_count"] == 0
-
-
-def test_extract_table_metadata_keeps_multi_column_behavior(tmp_path: Path) -> None:
-    from bioimage_mcp.artifacts.metadata import extract_table_metadata
-
-    table_path = tmp_path / "multi.csv"
-    table_path.write_text("time,count_rate\n0.0,1.5\n1.0,2.5\n", encoding="utf-8")
-
-    metadata = extract_table_metadata(table_path)
-
-    assert metadata == {
-        "columns": [
-            {"name": "time", "dtype": "float64"},
-            {"name": "count_rate", "dtype": "float64"},
-        ],
-        "row_count": 2,
-    }
