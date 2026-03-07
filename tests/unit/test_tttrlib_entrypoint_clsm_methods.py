@@ -25,40 +25,36 @@ class _FakeCLSMImage:
 class _FakeVector:
     def __init__(self, values: list[int]) -> None:
         self._values = values
-        self.this = object()
-        self.thisown = True
 
     def __iter__(self):
         return iter(self._values)
 
 
 class _FakeScalarWrapper:
-    def __init__(self, value: float) -> None:
+    def __init__(self, value: int) -> None:
         self._value = value
-        self.this = object()
-        self.thisown = False
 
-    def item(self) -> float:
+    def item(self) -> int:
         return self._value
 
 
 class _FakeNestedSettings:
     def __init__(self) -> None:
-        self.this = object()
-        self.thisown = True
-        self.global_resolution_s = _FakeScalarWrapper(1.25e-8)
-        self.scan_ticks = _FakeVector([1, 2, 3])
+        self.channel = _FakeScalarWrapper(3)
+        self.marker_line_stop = _FakeScalarWrapper(9)
+        self.this = "nested-swig-handle"
+        self.thisown = False
 
 
 class _FakeCLSMSettings:
     def __init__(self) -> None:
-        self.this = object()
-        self.thisown = True
         self.n_lines = 4
         self.n_pixel_per_line = 8
         self.marker_line_start = 2
         self.marker_frame_start = _FakeVector([4, 6])
-        self.nested = _FakeNestedSettings()
+        self.channel_settings = _FakeNestedSettings()
+        self.this = "swig-handle"
+        self.thisown = True
 
 
 class _FakeCorrelator:
@@ -113,16 +109,20 @@ def test_handle_clsm_get_settings_serializes_json_object(monkeypatch, tmp_path: 
     with open(output["path"], encoding="utf-8") as f:
         payload = json.load(f)
 
+    assert payload == {
+        "channel_settings": {
+            "channel": 3,
+            "marker_line_stop": 9,
+        },
+        "marker_frame_start": [4, 6],
+        "marker_line_start": 2,
+        "n_lines": 4,
+        "n_pixel_per_line": 8,
+    }
     assert "this" not in payload
     assert "thisown" not in payload
-    assert payload["marker_frame_start"] == [4, 6]
-    assert payload["marker_line_start"] == 2
-    assert payload["n_lines"] == 4
-    assert payload["n_pixel_per_line"] == 8
-    assert payload["nested"] == {
-        "global_resolution_s": 1.25e-8,
-        "scan_ticks": [1, 2, 3],
-    }
+    assert "this" not in payload["channel_settings"]
+    assert "thisown" not in payload["channel_settings"]
 
 
 def test_handle_correlator_get_curve_returns_table_ref(monkeypatch, tmp_path: Path) -> None:
