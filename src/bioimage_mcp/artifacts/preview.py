@@ -8,6 +8,8 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
+from bioimage_mcp.artifacts.metadata import extract_table_metadata
+
 TAB20_RGB = [
     (31, 119, 180),
     (174, 199, 232),
@@ -342,11 +344,21 @@ def generate_table_preview(
 ) -> dict | None:
     """Generate a markdown preview and dtypes for a CSV table."""
     try:
+        table_metadata = extract_table_metadata(path)
+        if table_metadata is None:
+            return None
+
         with open(path, encoding="utf-8", newline="") as f:
-            reader = csv.reader(f)
+            first_line = f.readline()
+            if not first_line:
+                return None
+            delimiter = "\t" if "\t" in first_line and "," not in first_line else ","
+            f.seek(0)
+            reader = csv.reader(f, delimiter=delimiter)
             header = next(reader, None)
             if not header:
                 return None
+            header = [col.lstrip("\ufeff") for col in header]
 
             # Limit columns
             display_header = header
@@ -372,7 +384,11 @@ def generate_table_preview(
 
         return {
             "table_preview": md,
-            "dtypes": {col: "string" for col in header},
+            "dtypes": {
+                column["name"]: column["dtype"]
+                for column in table_metadata.get("columns", [])
+                if isinstance(column, dict) and "name" in column and "dtype" in column
+            },
         }
     except Exception:
         return None

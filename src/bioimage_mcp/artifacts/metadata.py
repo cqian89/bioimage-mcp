@@ -346,7 +346,10 @@ def extract_table_metadata(path: Path) -> dict | None:
     import csv
 
     def infer_dtype(value: str | None) -> str:
-        if value is None or value == "":
+        if value is None:
+            return "string"
+        value = value.strip()
+        if value == "":
             return "string"
         try:
             int(value)
@@ -358,44 +361,45 @@ def extract_table_metadata(path: Path) -> dict | None:
             except ValueError:
                 return "string"
 
+    def infer_delimiter(header_line: str) -> str:
+        if "\t" in header_line and "," not in header_line:
+            return "\t"
+        return ","
+
     if not path.exists():
         return None
 
     try:
-        text = path.read_text(encoding="utf-8")
-        if not text:
-            return None
-
-        lines = text.splitlines()
-        if not lines:
-            return None
-
-        header_line = lines[0]
-        row_lines = lines[1:]
-
-        single_column = "," not in header_line and "\t" not in header_line
-        if single_column:
-            column_name = header_line.strip()
-            if not column_name:
-                return None
-            first_value = next((line.strip() for line in row_lines if line.strip() != ""), None)
-            return {
-                "columns": [{"name": column_name, "dtype": infer_dtype(first_value)}],
-                "row_count": sum(1 for line in row_lines if line.strip() != ""),
-            }
-
-        sample = text[:4096]
-        dialect = csv.Sniffer().sniff(sample) if sample else None
         with open(path, encoding="utf-8", newline="") as f:
-            reader = csv.DictReader(f, dialect=dialect) if dialect else csv.DictReader(f)
-            fieldnames = reader.fieldnames or []
-            first_row = next(reader, None)
+            first_line = f.readline()
+            if not first_line:
+                return None
 
-            columns = [
-                {"name": name, "dtype": infer_dtype(first_row.get(name) if first_row else None)}
-                for name in fieldnames
-            ]
-            row_count = (1 if first_row else 0) + sum(1 for _ in reader)
+            delimiter = infer_delimiter(first_line)
+            f.seek(0)
+            reader = csv.reader(f, delimiter=delimiter)
+
+            header = next(reader, None)
+            if not header:
+                return None
+
+            header = [name.lstrip("\ufeff").strip() for name in header]
+            columns = [{"name": name, "dtype": "string"} for name in header]
+
+            first_data_row: list[str] | None = None
+            row_count = 0
+            for row in reader:
+                normalized = [cell.strip() for cell in row]
+                if not normalized or all(cell == "" for cell in normalized):
+                    continue
+                row_count += 1
+                if first_data_row is None:
+                    first_data_row = normalized
+
+            if first_data_row is not None:
+                for idx, column in enumerate(columns):
+                    value = first_data_row[idx] if idx < len(first_data_row) else None
+                    column["dtype"] = infer_dtype(value)
 
         return {"columns": columns, "row_count": row_count}
     except Exception:  # noqa: BLE001

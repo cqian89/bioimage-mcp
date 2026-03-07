@@ -63,7 +63,7 @@ def test_generate_table_preview_basic(tmp_path: Path):
     assert result is not None
     assert "| A | B |" in result["table_preview"]
     assert "| 1 | 2 |" in result["table_preview"]
-    assert result["dtypes"]["A"] == "string"
+    assert result["dtypes"] == {"A": "int64", "B": "int64"}
 
 
 def test_generate_table_preview_row_limit(tmp_path: Path):
@@ -93,3 +93,23 @@ def test_generate_table_preview_column_limit(tmp_path: Path):
     assert result is not None
     assert "| A | B |" in result["table_preview"]
     assert "| C |" not in result["table_preview"]
+
+
+def test_generate_table_preview_infers_one_column_numeric_dtype(tmp_path: Path):
+    csv_file = tmp_path / "selection.csv"
+    csv_file.write_text("index\n1\n3\n", encoding="utf-8")
+
+    result = generate_table_preview(csv_file)
+
+    assert result is not None
+    assert result["dtypes"] == {"index": "int64"}
+
+
+def test_generate_table_preview_keeps_float_columns_numeric(tmp_path: Path):
+    csv_file = tmp_path / "trace.csv"
+    csv_file.write_text("time,count_rate\n0.0,1.5\n1.0,2.5\n", encoding="utf-8")
+
+    result = generate_table_preview(csv_file)
+
+    assert result is not None
+    assert result["dtypes"] == {"time": "float64", "count_rate": "float64"}

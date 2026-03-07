@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 import tifffile
 
-from bioimage_mcp.artifacts.metadata import extract_image_metadata
+from bioimage_mcp.artifacts.metadata import extract_image_metadata, extract_table_metadata
 
 
 def test_extract_image_metadata_returns_native_dims(tmp_path: Path) -> None:
@@ -45,10 +45,6 @@ def test_extract_table_metadata_returns_columns(tmp_path: Path) -> None:
         writer.writerow([1, 100.5, 200.0])
         writer.writerow([2, 150.2, 210.5])
 
-    # When extract_table_metadata is called
-    # NOTE: This function likely doesn't exist yet, so this will fail
-    from bioimage_mcp.artifacts.metadata import extract_table_metadata
-
     meta = extract_table_metadata(path)
 
     # Then returns: columns=[{name, dtype}], row_count
@@ -61,3 +57,27 @@ def test_extract_table_metadata_returns_columns(tmp_path: Path) -> None:
     assert len(columns) == 3
     assert columns[0]["name"] == "label"
     assert "dtype" in columns[0]
+
+
+def test_extract_table_metadata_handles_one_column_numeric_csv(tmp_path: Path) -> None:
+    path = tmp_path / "selection.csv"
+    path.write_text("index\n1\n3\n", encoding="utf-8")
+
+    meta = extract_table_metadata(path)
+
+    assert meta == {
+        "columns": [{"name": "index", "dtype": "int64"}],
+        "row_count": 2,
+    }
+
+
+def test_extract_table_metadata_handles_header_only_csv(tmp_path: Path) -> None:
+    path = tmp_path / "empty_selection.csv"
+    path.write_text("index\n", encoding="utf-8")
+
+    meta = extract_table_metadata(path)
+
+    assert meta == {
+        "columns": [{"name": "index", "dtype": "string"}],
+        "row_count": 0,
+    }
