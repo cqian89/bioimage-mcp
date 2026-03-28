@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v0.3
 milestone_name: milestone
-status: in_progress
-stopped_at: Completed 25-10-PLAN.md
-last_updated: "2026-03-07T07:59:02.182Z"
+status: executing
+stopped_at: Completed 25-11-PLAN.md
+last_updated: "2026-03-07T08:25:43.854Z"
 last_activity: 2026-03-07 - Completed 25-10-PLAN.md
 progress:
   total_phases: 6
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 26
-  completed_plans: 25
+  completed_plans: 26
   percent: 99
 ---
 
@@ -48,6 +48,7 @@ Progress: [██████████] 99%
 | Phase 25 P08 | 2 min | 2 tasks | 3 files |
 | Phase 25 P09 | 8 min | 2 tasks | 8 files |
 | Phase 25 P10 | 18 min | 2 tasks | 7 files |
+| Phase 25 P11 | 4 min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -94,6 +95,8 @@ Progress: [██████████] 99%
 - [Phase 25]: Keep removed TTTR export IDs hidden from discovery while routing known denied/deferred IDs to stable unsupported worker errors.
 - [Phase 25]: Map TTTR.write suffixes to canonical TTTRRef formats such as SPC-130 and PHOTON-HDF5.
 - [Phase 25]: Treat generic TTTR.write success as requiring both a non-failing upstream call and a real file under work_dir.
+- [Phase 25]: Restore a narrow SWIG transport-attribute blocklist in recursive CLSM settings normalization instead of replacing the rich metadata serializer. — The regression was caused by wrapper transport attrs leaking during recursive traversal, so a targeted blocklist fixes payload cleanliness without collapsing legitimate CLSM metadata.
+- [Phase 25]: Name the live smoke around the user-observed get_settings leak so CI clearly reports transport-field regressions. — The smoke should surface the exact regression mode in test output so future failures immediately point to leaked SWIG transport keys instead of generic metadata issues.
 
 ### Roadmap Evolution
 - Phase 25 added: Add missing TTTR methods
@@ -132,6 +135,6 @@ Progress: [██████████] 99%
 
 ## Session Continuity
 
-- **Last Session:** 2026-03-07T07:56:29.011Z
-- **Stopped at:** Completed 25-10-PLAN.md
+- **Last Session:** 2026-03-07T08:25:43.773Z
+- **Stopped at:** Completed 25-11-PLAN.md
 - **Resume file:** None
