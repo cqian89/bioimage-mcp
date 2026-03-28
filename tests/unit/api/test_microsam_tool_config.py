@@ -133,3 +133,49 @@ def test_non_microsam_tool_config_no_wiring(tmp_path):
         )
 
     assert "tool_config" not in captured_request
+
+
+def test_microsam_annotator_disables_timeout_without_fn_metadata(tmp_path):
+    from types import SimpleNamespace
+
+    manifest_dir = tmp_path / "tools" / "microsam"
+    manifest_dir.mkdir(parents=True)
+    entrypoint = manifest_dir / "entrypoint.py"
+    entrypoint.touch()
+
+    config = Config(
+        artifact_store_root=tmp_path / "artifacts",
+        tool_manifest_roots=[tmp_path / "tools"],
+    )
+    config.artifact_store_root.mkdir()
+
+    fake_manifest = SimpleNamespace(
+        tool_id="tools.micro_sam",
+        env_id="bioimage-mcp-microsam",
+        entrypoint=str(entrypoint),
+        manifest_path=manifest_dir / "manifest.yaml",
+    )
+
+    captured = {}
+
+    def mock_execute_tool(entrypoint, request, env_id, timeout_seconds):
+        captured["timeout_seconds"] = timeout_seconds
+        captured["request"] = request
+        return {"ok": True}, "log", 0
+
+    with (
+        patch("bioimage_mcp.api.execution.execute_tool", side_effect=mock_execute_tool),
+        patch(
+            "bioimage_mcp.api.execution._get_function_metadata", return_value=(fake_manifest, None)
+        ),
+    ):
+        execute_step(
+            config=config,
+            fn_id="micro_sam.sam_annotator.annotator_2d",
+            params={},
+            inputs={"image": {"type": "BioImageRef", "uri": "file:///tmp/dummy.tif"}},
+            work_dir=tmp_path / "work",
+            timeout_seconds=60,
+        )
+
+    assert captured["timeout_seconds"] is None

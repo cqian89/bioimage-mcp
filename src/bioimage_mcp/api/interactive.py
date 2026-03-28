@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import logging
+import threading
 import uuid
+from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import Any, Callable
+from typing import Any
 
 from bioimage_mcp.api.discovery import DiscoveryService
 from bioimage_mcp.api.errors import execution_error
@@ -13,8 +16,13 @@ from bioimage_mcp.api.sessions import SessionService
 from bioimage_mcp.artifacts.models import ArtifactRef
 from bioimage_mcp.sessions.manager import SessionManager
 
+logger = logging.getLogger(__name__)
+
 
 class InteractiveExecutionService:
+    ASYNC_EARLY_COMPLETION_WAIT_SECONDS = 0.25
+    ASYNC_RUN_CREATION_TIMEOUT_SECONDS = 5.0
+
     def __init__(
         self,
         session_manager: SessionManager,
@@ -30,6 +38,268 @@ class InteractiveExecutionService:
             execution_service=execution,
             discovery_service=discovery,
         )
+
+    @staticmethod
+    def _is_non_blocking_interactive(fn_id: str, dry_run: bool) -> bool:
+        if dry_run:
+            return False
+        return fn_id.startswith("micro_sam.sam_annotator.")
+
+    @staticmethod
+    def _normalize_hints(hints: dict[str, Any] | None) -> dict[str, Any] | None:
+        if not hints:
+            return hints
+        if isinstance(hints.get("suggested_fix"), dict):
+            suggested_fix = dict(hints["suggested_fix"])
+            if suggested_fix.get("fn_id"):
+                suggested_fix["id"] = suggested_fix["fn_id"]
+            suggested_fix.pop("fn_id", None)
+            hints = {**hints, "suggested_fix": suggested_fix}
+        if isinstance(hints.get("next_steps"), list):
+            normalized_next_steps = []
+            for step in hints["next_steps"]:
+                if isinstance(step, dict):
+                    normalized = dict(step)
+                    if normalized.get("fn_id"):
+                        normalized["id"] = normalized["fn_id"]
+                    normalized.pop("fn_id", None)
+                    normalized_next_steps.append(normalized)
+                else:
+                    normalized_next_steps.append(step)
+            hints = {**hints, "next_steps": normalized_next_steps}
+        return hints
+
+    def _finalize_async_step(
+        self,
+        *,
+        session_id: str,
+        step_id: str,
+        ordinal: int,
+        result: dict[str, Any],
+        run_id_hint: str | None,
+    ) -> None:
+        ended_at = datetime.now(UTC).isoformat()
+        run_id = result.get("run_id") or run_id_hint
+
+        if result.get("status") == "validation_failed":
+            self.session_manager.store.update_step_attempt(
+                step_id,
+                status="failed",
+                ended_at=ended_at,
+                error=result.get("error")
+                or execution_error(message="Validation failed").model_dump(),
+                canonical=False,
+            )
+            return
+
+        if not run_id:
+            self.session_manager.store.update_step_attempt(
+                step_id,
+                status="failed",
+                ended_at=ended_at,
+                error=execution_error(
+                    message="Interactive run failed before run_id was created",
+                    hint="Check server logs for background execution failures",
+                ).model_dump(),
+                canonical=False,
+            )
+            return
+
+        run_status = self.execution.get_run_status(run_id)
+        status = run_status.get("status", "failed")
+        outputs = run_status.get("outputs") or {}
+        error = run_status.get("error")
+        log_ref = run_status.get("log_ref")
+        log_ref_id = log_ref.get("ref_id") if isinstance(log_ref, dict) else None
+        canonical = status == "success"
+
+        self.session_manager.store.update_step_attempt(
+            step_id,
+            status=status,
+            ended_at=ended_at,
+            run_id=run_id,
+            outputs=outputs,
+            error=error,
+            log_ref_id=log_ref_id,
+            canonical=canonical,
+        )
+        if canonical:
+            self.session_manager.store.set_canonical(session_id, step_id, ordinal)
+
+    def _start_non_blocking_interactive(
+        self,
+        *,
+        session_id: str,
+        step_id: str,
+        ordinal: int,
+        fn_id: str,
+        inputs: dict[str, Any],
+        params: dict[str, Any],
+        spec: dict[str, Any],
+        started_at: str,
+        dry_run: bool,
+        progress_callback: Callable[[str], None] | None,
+    ) -> dict[str, Any]:
+        run_id_holder: dict[str, str] = {}
+        result_holder: dict[str, Any] = {}
+        error_holder: dict[str, Any] = {}
+        run_created = threading.Event()
+        finished = threading.Event()
+
+        self.session_manager.store.add_step_attempt(
+            session_id=session_id,
+            step_id=step_id,
+            ordinal=ordinal,
+            fn_id=fn_id,
+            inputs=inputs,
+            params=params,
+            status="running",
+            started_at=started_at,
+            ended_at=None,
+            run_id=None,
+            outputs=None,
+            error=None,
+            log_ref_id=None,
+            canonical=False,
+        )
+
+        def on_run_created(run_id: str) -> None:
+            run_id_holder["run_id"] = run_id
+            try:
+                self.session_manager.store.update_step_attempt(step_id, run_id=run_id)
+            except Exception:  # noqa: BLE001
+                logger.exception("Failed updating session step run_id for %s", step_id)
+            run_created.set()
+
+        def _run_in_background() -> None:
+            try:
+                result = self.execution.run_workflow(
+                    spec,
+                    session_id=session_id,
+                    dry_run=dry_run,
+                    progress_callback=progress_callback,
+                    on_run_created=on_run_created,
+                )
+                result_holder["result"] = result
+                self._finalize_async_step(
+                    session_id=session_id,
+                    step_id=step_id,
+                    ordinal=ordinal,
+                    result=result,
+                    run_id_hint=run_id_holder.get("run_id"),
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.exception("Interactive background run crashed for %s", fn_id)
+                error_holder["error"] = exc
+                try:
+                    self.session_manager.store.update_step_attempt(
+                        step_id,
+                        status="failed",
+                        ended_at=datetime.now(UTC).isoformat(),
+                        error=execution_error(
+                            message=f"Background execution failed: {exc}",
+                            hint="Check server logs for traceback details",
+                        ).model_dump(),
+                        canonical=False,
+                    )
+                except Exception:  # noqa: BLE001
+                    logger.exception("Failed updating crashed background step %s", step_id)
+            finally:
+                finished.set()
+
+        thread = threading.Thread(
+            target=_run_in_background, daemon=True, name=f"interactive-{step_id}"
+        )
+        thread.start()
+
+        if finished.wait(timeout=self.ASYNC_EARLY_COMPLETION_WAIT_SECONDS):
+            if error_holder.get("error") is not None:
+                error_payload = execution_error(
+                    message=f"Background execution failed: {error_holder['error']}",
+                    hint="Check server logs for traceback details",
+                ).model_dump()
+                return {
+                    "session_id": session_id,
+                    "step_id": step_id,
+                    "status": "failed",
+                    "run_id": run_id_holder.get("run_id", "none"),
+                    "outputs": {},
+                    "isError": True,
+                    "error": error_payload,
+                }
+
+            result = result_holder.get("result")
+            if isinstance(result, dict) and result.get("status") == "validation_failed":
+                return {
+                    "session_id": session_id,
+                    "step_id": step_id,
+                    "status": "validation_failed",
+                    "dry_run": dry_run,
+                    "id": fn_id,
+                    "error": result.get("error"),
+                    "outputs": {},
+                }
+
+            run_id = run_id_holder.get("run_id") or (
+                result.get("run_id") if isinstance(result, dict) else None
+            )
+            if run_id:
+                run_status = self.execution.get_run_status(run_id)
+                if run_status.get("status") in {"success", "failed"}:
+                    response = {
+                        "session_id": session_id,
+                        "step_id": step_id,
+                        "run_id": run_id,
+                        "status": run_status["status"],
+                        "outputs": run_status.get("outputs") or {},
+                        "warnings": (result.get("warnings") if isinstance(result, dict) else [])
+                        or [],
+                    }
+                    if run_status.get("error"):
+                        response["error"] = run_status["error"]
+                        response["isError"] = True
+                    if run_status.get("log_ref"):
+                        response["log_ref"] = run_status["log_ref"]
+                    hints = self._normalize_hints(
+                        result.get("hints") if isinstance(result, dict) else None
+                    )
+                    if hints:
+                        response["hints"] = hints
+                    return response
+
+        if not run_created.wait(timeout=self.ASYNC_RUN_CREATION_TIMEOUT_SECONDS):
+            error_payload = execution_error(
+                message="Interactive run did not create a run_id in time",
+                hint="The server accepted the request but failed to initialize run tracking",
+            ).model_dump()
+            return {
+                "session_id": session_id,
+                "step_id": step_id,
+                "status": "failed",
+                "run_id": "none",
+                "outputs": {},
+                "isError": True,
+                "error": error_payload,
+            }
+
+        run_id = run_id_holder["run_id"]
+        return {
+            "session_id": session_id,
+            "step_id": step_id,
+            "run_id": run_id,
+            "status": "running",
+            "outputs": {},
+            "warnings": ["INTERACTIVE_RUNNING_IN_BACKGROUND"],
+            "hints": {
+                "diagnosis": "Interactive annotation is running in the background.",
+                "next_steps": [
+                    {
+                        "id": "status",
+                        "params": {"run_id": run_id},
+                    }
+                ],
+            },
+        }
 
     def call_tool(
         self,
@@ -100,6 +370,20 @@ class InteractiveExecutionService:
         # Record start time
         started_at = datetime.now(UTC).isoformat()
 
+        if self._is_non_blocking_interactive(fn_id, dry_run):
+            return self._start_non_blocking_interactive(
+                session_id=session_id,
+                step_id=step_id,
+                ordinal=ordinal,
+                fn_id=fn_id,
+                inputs=inputs,
+                params=params,
+                spec=spec,
+                started_at=started_at,
+                dry_run=dry_run,
+                progress_callback=progress_callback,
+            )
+
         # Run workflow
         # ExecutionService.run_workflow returns dict with run_id, status, etc.
         # It handles DB entries for RunStore and ArtifactStore.
@@ -130,26 +414,7 @@ class InteractiveExecutionService:
                 "outputs": {},
             }
 
-        hints = result.get("hints")
-        if hints:
-            if isinstance(hints.get("suggested_fix"), dict):
-                suggested_fix = dict(hints["suggested_fix"])
-                if suggested_fix.get("fn_id"):
-                    suggested_fix["id"] = suggested_fix["fn_id"]
-                suggested_fix.pop("fn_id", None)
-                hints = {**hints, "suggested_fix": suggested_fix}
-            if isinstance(hints.get("next_steps"), list):
-                normalized_next_steps = []
-                for step in hints["next_steps"]:
-                    if isinstance(step, dict):
-                        normalized = dict(step)
-                        if normalized.get("fn_id"):
-                            normalized["id"] = normalized["fn_id"]
-                        normalized.pop("fn_id", None)
-                        normalized_next_steps.append(normalized)
-                    else:
-                        normalized_next_steps.append(step)
-                hints = {**hints, "next_steps": normalized_next_steps}
+        hints = self._normalize_hints(result.get("hints"))
 
         # Record end time
         ended_at = datetime.now(UTC).isoformat()

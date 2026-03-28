@@ -995,6 +995,25 @@ def _export_png(data: np.ndarray, path: Path):
         data = np.squeeze(data)
     if data.ndim != 2:
         raise ValueError(f"PNG export requires 2D data, got {data.ndim}D")
+
+    if np.issubdtype(data.dtype, np.floating):
+        finite = np.nan_to_num(data.astype(np.float32), nan=0.0, posinf=0.0, neginf=0.0)
+        min_val = float(finite.min()) if finite.size else 0.0
+        max_val = float(finite.max()) if finite.size else 0.0
+
+        if 0.0 <= min_val and max_val <= 1.0:
+            finite = finite * 255.0
+        elif max_val > min_val:
+            finite = ((finite - min_val) / (max_val - min_val)) * 255.0
+        else:
+            finite = np.zeros_like(finite)
+
+        data = np.clip(finite, 0.0, 255.0).astype(np.uint8)
+    elif data.dtype == np.bool_:
+        data = data.astype(np.uint8) * 255
+    elif np.issubdtype(data.dtype, np.integer) and data.dtype not in (np.uint8, np.uint16):
+        data = np.clip(data, 0, 255).astype(np.uint8)
+
     imageio.v3.imwrite(path, data)
 
 

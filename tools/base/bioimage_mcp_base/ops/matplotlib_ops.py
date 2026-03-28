@@ -135,19 +135,12 @@ def imshow(
     if x_val is None:
         raise ValueError("Missing 'X' (image data) for imshow")
 
-    # Load image data
-    if isinstance(x_val, dict) and x_val.get("type") == "BioImageRef":
-        img = BioImage(x_val.get("path"))
-        data = img.reader.data
-        if hasattr(data, "compute"):
-            data = data.compute()
-        # Get 2D slice for display - handle variable dimensions
-        if data.ndim > 2:
-            # Take first slice of all leading dimensions
-            while data.ndim > 2:
-                data = data[0]
-    else:
-        data = x_val
+    data = _resolve_imshow_data(x_val, inputs)
+
+    if isinstance(data, np.ndarray) and data.ndim > 2:
+        # Take first slice of all leading dimensions
+        while data.ndim > 2:
+            data = data[0]
 
     # Handle downsampling
     max_display_size = params.get("max_display_size")
@@ -803,7 +796,10 @@ def _load_image_data(artifact: Any) -> np.ndarray | None:
                 return obj
             # Could be xarray DataArray
             if hasattr(obj, "values"):
-                return obj.values
+                values = obj.values
+                if hasattr(values, "compute"):
+                    values = values.compute()
+                return np.asarray(values)
         raise ValueError(f"ObjectRef with URI '{uri}' not found in cache")
 
     # BioImageRef - load from file
@@ -816,9 +812,68 @@ def _load_image_data(artifact: Any) -> np.ndarray | None:
 
         if path:
             img = BioImage(path)
-            return np.squeeze(img.data)
+            data = img.data
+            if hasattr(data, "compute"):
+                data = data.compute()
+            return np.squeeze(np.asarray(data))
 
     return None
+
+
+def _resolve_imshow_data(x_val: Any, inputs: list[Any]) -> Any:
+    """Resolve imshow X argument into numeric image data when possible."""
+    if isinstance(x_val, (list, tuple)):
+        return np.asarray(x_val)
+
+    if isinstance(x_val, str):
+        if x_val.startswith(("file://", "obj://")):
+            loaded = _load_image_data({"uri": x_val})
+            if loaded is not None:
+                return loaded
+        elif Path(x_val).exists():
+            loaded = _load_image_data({"path": x_val})
+            if loaded is not None:
+                return loaded
+        return x_val
+
+    if isinstance(x_val, dict):
+        if "ref_id" in x_val and "uri" not in x_val and "path" not in x_val:
+            ref_id = x_val["ref_id"]
+            for _name, value in inputs:
+                if isinstance(value, dict) and value.get("ref_id") == ref_id:
+                    merged = dict(value)
+                    merged.update(x_val)
+                    x_val = merged
+                    break
+            else:
+                if ref_id in OBJECT_CACHE:
+                    obj = OBJECT_CACHE[ref_id]
+                    if hasattr(obj, "values"):
+                        obj = obj.values
+                    if hasattr(obj, "compute"):
+                        obj = obj.compute()
+                    return np.squeeze(np.asarray(obj))
+
+                try:
+                    from bioimage_mcp_base.entrypoint import _MEMORY_ARTIFACTS
+
+                    entry = _MEMORY_ARTIFACTS.get(ref_id)
+                    if isinstance(entry, dict) and "data" in entry:
+                        return np.squeeze(np.asarray(entry["data"]))
+                    if entry is not None:
+                        if hasattr(entry, "values"):
+                            entry = entry.values
+                        if hasattr(entry, "compute"):
+                            entry = entry.compute()
+                        return np.squeeze(np.asarray(entry))
+                except Exception:  # noqa: BLE001
+                    pass
+
+        loaded = _load_image_data(x_val)
+        if loaded is not None:
+            return loaded
+
+    return x_val
 
 
 def savefig(

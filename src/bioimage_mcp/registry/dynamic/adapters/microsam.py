@@ -14,7 +14,7 @@ import tempfile
 import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
-from urllib.parse import unquote, urlparse
+import urllib.parse
 
 import numpy as np
 
@@ -961,6 +961,7 @@ class MicrosamAdapter(BaseAdapter):
 
     def _load_image(self, artifact: Artifact) -> np.ndarray | Any:
         """Load image data or resolve ObjectRef from cache."""
+
         if isinstance(artifact, dict):
             uri = artifact.get("uri")
             path = artifact.get("path")
@@ -993,9 +994,9 @@ class MicrosamAdapter(BaseAdapter):
             raise ValueError(f"Artifact missing both URI and path: {artifact}")
 
         if uri and not path:
-            parsed = urlparse(uri)
+            parsed = urllib.parse.urlparse(uri)
             if parsed.scheme == "file":
-                path = unquote(parsed.path)
+                path = urllib.parse.unquote(parsed.path)
                 if path.startswith("/") and len(path) > 2 and path[2] == ":":
                     path = path[1:]
             else:

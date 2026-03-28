@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from pathlib import Path
 
 from bioimage_mcp.api.interactive import InteractiveExecutionService
@@ -9,11 +10,18 @@ from bioimage_mcp.sessions.store import SessionStore
 
 
 class FakeExecutionService:
-    def __init__(self, run_result: dict, run_status: dict, config: Config | None = None) -> None:
+    def __init__(
+        self,
+        run_result: dict,
+        run_status: dict,
+        config: Config | None = None,
+        delay_seconds: float = 0.0,
+    ) -> None:
         self._run_result = run_result
         self._run_status = run_status
         self._config = config
         self.artifact_store = None
+        self._delay_seconds = delay_seconds
 
     def run_workflow(
         self,
@@ -22,8 +30,14 @@ class FakeExecutionService:
         skip_validation: bool = False,
         session_id: str = "default-session",
         dry_run: bool = False,
+        progress_callback=None,
+        on_run_created=None,
     ) -> dict:
         self.last_spec = spec
+        if on_run_created and self._run_result.get("run_id"):
+            on_run_created(self._run_result["run_id"])
+        if self._delay_seconds > 0:
+            time.sleep(self._delay_seconds)
         return self._run_result
 
     def get_run_status(self, run_id: str) -> dict:
@@ -142,4 +156,56 @@ def test_call_tool_passes_timeout_seconds(tmp_path: Path) -> None:
 
     assert result["status"] == "success"
     assert execution.last_spec["run_opts"]["timeout_seconds"] == 123
+    store.close()
+
+
+def test_call_tool_microsam_annotator_runs_in_background(tmp_path: Path, monkeypatch) -> None:
+    execution = FakeExecutionService(
+        run_result={
+            "run_id": "run-interactive-1",
+            "status": "success",
+            "warnings": [],
+        },
+        run_status={"status": "running", "outputs": {}},
+        delay_seconds=0.2,
+    )
+    service, store = _make_service(tmp_path, execution)
+    monkeypatch.setattr(service, "ASYNC_EARLY_COMPLETION_WAIT_SECONDS", 0.01)
+
+    result = service.call_tool(
+        session_id="sess-interactive-1",
+        fn_id="micro_sam.sam_annotator.annotator_2d",
+        inputs={"image": {"ref_id": "r1", "type": "BioImageRef", "uri": "file:///tmp/a.tif"}},
+        params={},
+    )
+
+    assert result["status"] == "running"
+    assert result["run_id"] == "run-interactive-1"
+    assert result["warnings"] == ["INTERACTIVE_RUNNING_IN_BACKGROUND"]
+    time.sleep(0.3)
+    store.close()
+
+
+def test_call_tool_microsam_annotator_immediate_failure_returns_failed(tmp_path: Path) -> None:
+    execution = FakeExecutionService(
+        run_result={"run_id": "run-interactive-2", "status": "failed", "warnings": []},
+        run_status={
+            "status": "failed",
+            "outputs": {},
+            "error": {"code": "HEADLESS_DISPLAY_REQUIRED", "message": "no display"},
+        },
+        delay_seconds=0.0,
+    )
+    service, store = _make_service(tmp_path, execution)
+
+    result = service.call_tool(
+        session_id="sess-interactive-2",
+        fn_id="micro_sam.sam_annotator.annotator_2d",
+        inputs={"image": {"ref_id": "r1", "type": "BioImageRef", "uri": "file:///tmp/a.tif"}},
+        params={},
+    )
+
+    assert result["status"] == "failed"
+    assert result["isError"] is True
+    assert result["error"]["code"] == "HEADLESS_DISPLAY_REQUIRED"
     store.close()

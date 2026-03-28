@@ -297,6 +297,31 @@ def test_export_to_png(tmp_path, monkeypatch):
     assert header == b"\x89PNG\r\n\x1a\n"
 
 
+def test_export_float_to_png(tmp_path, monkeypatch):
+    """Exporting float images to PNG should auto-convert to PNG-compatible dtype."""
+    monkeypatch.setenv("BIOIMAGE_MCP_FS_ALLOWLIST_WRITE", json.dumps([str(tmp_path)]))
+
+    img_path = str(tmp_path / "source_float.ome.tif")
+    from bioio.writers import OmeTiffWriter
+
+    data = np.random.rand(10, 10).astype(np.float32)
+    OmeTiffWriter.save(data, img_path, dim_order="YX")
+
+    image_ref = {"type": "BioImageRef", "uri": f"file://{img_path}"}
+    out_path = str(tmp_path / "exported_float.png")
+
+    export(
+        inputs={"artifact": image_ref},
+        params={"dest_path": out_path, "format": "PNG"},
+        work_dir=tmp_path,
+    )
+
+    assert Path(out_path).exists()
+    with open(out_path, "rb") as f:
+        header = f.read(8)
+    assert header == b"\x89PNG\r\n\x1a\n"
+
+
 def test_export_to_ome_zarr(tmp_path, monkeypatch):
     """T019: Export to OME-Zarr format."""
     monkeypatch.setenv("BIOIMAGE_MCP_FS_ALLOWLIST_WRITE", json.dumps([str(tmp_path)]))

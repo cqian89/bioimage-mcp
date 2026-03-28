@@ -201,6 +201,59 @@ class SessionStore:
 
         return steps
 
+    def update_step_attempt(
+        self,
+        step_id: str,
+        *,
+        status: str | None = None,
+        ended_at: datetime | str | None = None,
+        run_id: str | None = None,
+        outputs: dict[str, Any] | None = None,
+        error: dict[str, Any] | None = None,
+        log_ref_id: str | None = None,
+        canonical: bool | None = None,
+    ) -> None:
+        row = self.conn.execute(
+            "SELECT step_id FROM session_steps WHERE step_id = ?",
+            (step_id,),
+        ).fetchone()
+        if not row:
+            raise KeyError(f"Step {step_id} not found")
+
+        updates: list[str] = []
+        values: list[Any] = []
+
+        if status is not None:
+            updates.append("status = ?")
+            values.append(status)
+        if ended_at is not None:
+            ended_at_str = ended_at.isoformat() if isinstance(ended_at, datetime) else ended_at
+            updates.append("ended_at = ?")
+            values.append(ended_at_str)
+        if run_id is not None:
+            updates.append("run_id = ?")
+            values.append(run_id)
+        if outputs is not None:
+            updates.append("outputs_json = ?")
+            values.append(json.dumps(outputs))
+        if error is not None:
+            updates.append("error_json = ?")
+            values.append(json.dumps(error))
+        if log_ref_id is not None:
+            updates.append("log_ref_id = ?")
+            values.append(log_ref_id)
+        if canonical is not None:
+            updates.append("canonical = ?")
+            values.append(1 if canonical else 0)
+
+        if not updates:
+            return
+
+        values.append(step_id)
+        query = f"UPDATE session_steps SET {', '.join(updates)} WHERE step_id = ?"
+        with self.conn:
+            self.conn.execute(query, values)
+
     def set_canonical(self, session_id: str, step_id: str, ordinal: int) -> None:
         # Check session exists
         self.get_session(session_id)
