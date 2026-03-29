@@ -198,8 +198,8 @@ def test_regionprops_properties_introspection():
         assert "centroid" in enum_values
 
         # Verify description update
-        assert "Valid values include:" in prop_schema.description
-        assert f"({len(enum_values)} total)" in prop_schema.description
+        assert "Properties to compute" in prop_schema.description
+        assert "x-property-groups" in prop_schema.description
 
 
 if __name__ == "__main__":

@@ -975,7 +975,6 @@ class DiscoveryService:
             processed_outputs[port_name] = info
 
         if isinstance(params_schema, dict):
-            params_schema.pop("type", None)
             _sanitize_schema_descriptions(params_schema)
 
         res = {

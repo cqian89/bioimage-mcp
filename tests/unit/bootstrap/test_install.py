@@ -217,4 +217,6 @@ def test_install_microsam_gpu_linux(tmp_path: Path, monkeypatch) -> None:
     result = install(tools=["microsam"], profile="gpu")
 
     assert result == 0
-    assert any("pytorch-cuda=12.1" in cmd for cmd in called_commands)
+    assert any(
+        any("pytorch-cuda=12.1" in str(elem) for elem in cmd) for cmd in called_commands
+    )

@@ -109,7 +109,7 @@ def test_discovery_describe_function_returns_schema() -> None:
     described = service.describe_function(id="base.bioimage_mcp_base.preprocess.gaussian")
     assert {"id", "params_schema", "inputs", "outputs"}.issubset(described.keys())
     assert described["id"] == "base.bioimage_mcp_base.preprocess.gaussian"
-    assert "type" not in described["params_schema"]
+    assert described["params_schema"].get("type") == "object"
     conn.close()
 
 

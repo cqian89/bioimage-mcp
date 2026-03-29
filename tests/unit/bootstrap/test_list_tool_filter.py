@@ -64,7 +64,7 @@ def test_list_tools_filtering_exact(mock_registry_two_tools, monkeypatch, capsys
     assert exit_code == 0
     payload = json.loads(out)
     assert len(payload["tools"]) == 1
-    assert payload["tools"][0]["id"] == "tools.trackpy"
+    assert payload["tools"][0]["id"] == "trackpy"
 
 
 def test_list_tools_filtering_short(mock_registry_two_tools, monkeypatch, capsys):
@@ -76,7 +76,7 @@ def test_list_tools_filtering_short(mock_registry_two_tools, monkeypatch, capsys
     assert exit_code == 0
     payload = json.loads(out)
     assert len(payload["tools"]) == 1
-    assert payload["tools"][0]["id"] == "tools.base"
+    assert payload["tools"][0]["id"] == "base"
 
 
 def test_list_tools_filtering_no_match(mock_registry_two_tools, monkeypatch, capsys):

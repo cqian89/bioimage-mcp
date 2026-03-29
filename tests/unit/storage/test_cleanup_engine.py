@@ -93,7 +93,7 @@ def test_cleanup_quota_down_to_target(db_conn, config):
         art_path.write_text("x" * 100)
 
         # Space out created_at so FIFO is deterministic
-        created_at = (datetime(2026, 2, 2, tzinfo=UTC) - timedelta(hours=10 - i)).isoformat()
+        created_at = (datetime.now(UTC) - timedelta(hours=10 - i)).isoformat()
 
         db_conn.execute(
             """

@@ -64,7 +64,6 @@ ARTIFACT_PORTS = {
     "objects",
     "data_objects",
     "arrays",
-    "x",
     "cond",
 }
 

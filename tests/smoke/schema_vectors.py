@@ -32,7 +32,7 @@ SCHEMA_VECTORS: dict[str, dict[str, Any]] = {
                 "channel_axis": {"type": "string"},
                 "channels": {"type": "array", "items": {"type": "integer"}},
                 "compute_masks": {"type": "boolean"},
-                "diameter": {"type": "string"},
+                "diameter": {"type": "number"},
                 "do_3D": {"type": "boolean"},
                 "flow3D_smooth": {"type": "integer"},
                 "flow_threshold": {"type": "number"},

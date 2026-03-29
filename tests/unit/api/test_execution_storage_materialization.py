@@ -118,7 +118,7 @@ def test_run_workflow_materializes_zarr_temp_input(tmp_path: Path, monkeypatch) 
 
         captured: dict[str, object] = {}
 
-        def _fake_materialize(artifact_ref: dict, work_dir: Path, artifact_store) -> dict:
+        def _fake_materialize(artifact_ref: dict, work_dir: Path, artifact_store, **kwargs) -> dict:
             captured["materialize"] = artifact_ref
             return {
                 "ref_id": "mat1",
