@@ -1,1 +1,0 @@
-{"ok": true, "outputs": {"output": {"type": "BioImageRef", "format": "OME-TIFF", "path": "/mnt/c/Users/meqia/bioimage-mcp/test_store/work/runs/8604102db34648e99d1d95f4f68d1e02/output.ome.tiff", "metadata": {"axes": "YX", "shape": [64, 64], "dtype": "float32"}}}, "log": "ok (dynamic dispatch)"}

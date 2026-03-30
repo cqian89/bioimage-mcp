@@ -29,7 +29,14 @@ tests/                     # unit/contract/integration/smoke
 envs/                      # Conda environment definitions (*.lock.yml)
 .planning/                 # Current specifications and implementation documentation from gsd
 specs/                     # Legacy feature specifications and implementation plans from spec-kit
+.tmp/                      # Sole repo-local scratch space for temporary files (gitignored)
 ```
+
+## Temporary Files
+
+- Use the repository-root `.tmp/` directory for all temporary or one-off local files created during development, debugging, verification, or agent work.
+- Do not create additional root-level scratch directories such as `tmp/`, `.tmp-*`, `temp*`, or `test_*`.
+- Keep temporary work organized under `.tmp/<purpose>/` and remove it when no longer needed. Temporary files must never be committed.
 
 ## Tool Implementation (Introspection Engine)
 
