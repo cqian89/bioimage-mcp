@@ -42,6 +42,8 @@ def test_ci_pr_workflow_matches_expected_shape() -> None:
 
     core_tests = jobs["core-tests"]
     core_steps = _steps_by_name(core_tests)
+    assert core_steps["Checkout repository"]["with"]["lfs"] is True
+    assert core_steps["Fetch LFS datasets"]["run"] == 'git lfs pull --include="datasets/**"'
     assert core_steps["Install core dev dependencies"]["run"] == 'python -m pip install -e ".[dev]"'
     assert core_steps["Run unit tests"]["run"] == "pytest tests/unit -q"
     assert core_steps["Run contract tests"]["run"] == "pytest tests/contract -q"
@@ -58,7 +60,7 @@ def test_ci_pr_workflow_matches_expected_shape() -> None:
         "bioimage-mcp install --profile cpu\nbioimage-mcp install trackpy"
     )
     assert smoke_steps["Capture doctor output"]["run"] == (
-        "mkdir -p .tmp/ci\nbioimage-mcp doctor --json > .tmp/ci/doctor-pr.json"
+        "mkdir -p .tmp/ci\nbioimage-mcp doctor --json > .tmp/ci/doctor-pr.json || true"
     )
     assert (
         smoke_steps["Run PR smoke tests"]["run"]
@@ -94,7 +96,7 @@ def test_smoke_extended_workflow_matches_expected_shape() -> None:
         "bioimage-mcp install --profile cpu\nbioimage-mcp install trackpy stardist tttrlib microsam"
     )
     assert steps["Capture doctor output"]["run"] == (
-        "mkdir -p .tmp/ci\nbioimage-mcp doctor --json > .tmp/ci/doctor-extended.json"
+        "mkdir -p .tmp/ci\nbioimage-mcp doctor --json > .tmp/ci/doctor-extended.json || true"
     )
     assert steps["Run extended smoke tests"]["run"] == (
         "pytest tests/smoke --smoke-extended -q --smoke-record"

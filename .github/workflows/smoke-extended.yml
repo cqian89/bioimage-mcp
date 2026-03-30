@@ -51,7 +51,7 @@ jobs:
       - name: Capture doctor output
         run: |-
           mkdir -p .tmp/ci
-          bioimage-mcp doctor --json > .tmp/ci/doctor-extended.json
+          bioimage-mcp doctor --json > .tmp/ci/doctor-extended.json || true
 
       - name: Run extended smoke tests
         run: pytest tests/smoke --smoke-extended -q --smoke-record

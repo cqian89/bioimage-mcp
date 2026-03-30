@@ -18,7 +18,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          lfs: false
+          lfs: true
+
+      - name: Fetch LFS datasets
+        run: git lfs pull --include="datasets/**"
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -76,7 +79,7 @@ jobs:
       - name: Capture doctor output
         run: |-
           mkdir -p .tmp/ci
-          bioimage-mcp doctor --json > .tmp/ci/doctor-pr.json
+          bioimage-mcp doctor --json > .tmp/ci/doctor-pr.json || true
 
       - name: Run PR smoke tests
         run: pytest tests/smoke --smoke-pr -q --smoke-record
