@@ -94,17 +94,18 @@ class ListToolsCache:
         parts = [f"vkey:{get_cache_version_key()}", f"envs:{envs_hash}"]
         for p in sorted(manifest_paths):
             try:
-                st = p.stat()
-                # Include resolve() to handle symlinks, though usually not needed here
-                parts.append(f"m:{p.resolve()}:{st.st_mtime_ns}:{st.st_size}")
+                # Hash file contents rather than metadata so cache invalidation
+                # is deterministic even when timestamps do not advance reliably.
+                content_hash = hashlib.sha256(p.read_bytes()).hexdigest()
+                parts.append(f"m:{p.resolve()}:{content_hash}")
             except OSError:
                 continue
 
         if lockfile_paths:
             for p in sorted(lockfile_paths):
                 try:
-                    st = p.stat()
-                    parts.append(f"l:{p.resolve()}:{st.st_mtime_ns}:{st.st_size}")
+                    content_hash = hashlib.sha256(p.read_bytes()).hexdigest()
+                    parts.append(f"l:{p.resolve()}:{content_hash}")
                 except OSError:
                     continue
 
