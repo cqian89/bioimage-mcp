@@ -115,6 +115,14 @@ def _install_env_with_lock(
     return result.returncode == 0
 
 
+def _install_env_from_spec(exe: str, manager: str, env_name: str, env_file: Path) -> bool:
+    """Install an env from its source spec and then apply any pip-only deps."""
+    success = _install_env(exe, manager, env_name, env_file)
+    if success:
+        success = _install_pip_deps(exe, env_name, env_file)
+    return success
+
+
 def _collect_pip_deps(env_file: Path) -> list[str]:
     raw = yaml.safe_load(env_file.read_text())
     dependencies = raw.get("dependencies", []) if isinstance(raw, dict) else []
@@ -426,10 +434,13 @@ def install(
         # Microsam always uses the separate flow for extra pip deps + models.
         if conda_lock_exe and lockfile.exists() and (not pip_deps or name == "microsam"):
             success = _install_env_with_lock(conda_lock_exe, env_name, lockfile)
+            if not success:
+                print(
+                    f"Lockfile install failed for {name}; retrying from {env_file.name}..."
+                )
+                success = _install_env_from_spec(exe, manager, env_name, env_file)
         else:
-            success = _install_env(exe, manager, env_name, env_file)
-            if success:
-                success = _install_pip_deps(exe, env_name, env_file)
+            success = _install_env_from_spec(exe, manager, env_name, env_file)
         if not success:
             print(f"Failed to install {name}")
             stats["failed"] += 1
