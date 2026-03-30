@@ -20,6 +20,7 @@ def test_dev_and_test_extras_cover_core_ci_runtime_needs() -> None:
     extras = pyproject["project"]["optional-dependencies"]
     required = {
         "matplotlib",
+        "phasorpy",
         "bioio-czi==2.4.2",
         "aicspylibczi==3.3.1",
         "pylibczirw==5.1.1",
@@ -29,3 +30,11 @@ def test_dev_and_test_extras_cover_core_ci_runtime_needs() -> None:
 
     assert required.issubset(set(extras["dev"]))
     assert required.issubset(set(extras["test"]))
+
+
+def test_dev_and_test_extras_pin_xarray_to_contract_compatible_series() -> None:
+    pyproject = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text())
+    extras = pyproject["project"]["optional-dependencies"]
+
+    assert "xarray<2026" in extras["dev"]
+    assert "xarray<2026" in extras["test"]
