@@ -258,4 +258,22 @@ the global config, or saw no config at all. Verify that:
 ## Project Docs
 
 - [docs/tutorials/mcp-client-setup.md](docs/tutorials/mcp-client-setup.md): client configuration examples
+- [specs/027-smoke-test-expansion/quickstart.md](specs/027-smoke-test-expansion/quickstart.md): smoke tiers, markers, and CI smoke setup
+
+## CI Workflows
+
+GitHub Actions is Linux-first and uses two workflows:
+
+- `.github/workflows/ci-pr.yml`: unit tests, contract tests, and PR-tier smoke on `ubuntu-latest`
+- `.github/workflows/smoke-extended.yml`: scheduled/manual extended smoke on `ubuntu-latest`
+
+Smoke jobs generate a repo-local config with:
+
+```bash
+bioimage-mcp configure
+python scripts/ci/prepare_ci_config.py
+```
+
+This rewrites `.bioimage-mcp/config.yaml` so CI can read repo datasets and write
+artifacts/logs under `.tmp/ci/` without copying config into `~/.bioimage-mcp`.
 - [docs/reference/tools.md](docs/reference/tools.md): tool reference

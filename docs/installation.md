@@ -30,6 +30,16 @@ This will create a configuration file (usually in `~/.bioimage-mcp/config.yaml` 
 *   `filesystem.allowed_read`: Paths the server is allowed to read from.
 *   `filesystem.allowed_write`: Paths the server is allowed to export to.
 
+For CI smoke runs from the repo checkout, use:
+
+```bash
+bioimage-mcp configure
+python scripts/ci/prepare_ci_config.py
+```
+
+This rewrites the repo-local config to allow reading from `datasets/` and
+writing CI artifacts/logs under `.tmp/ci/`.
+
 ## Step 3: Install Tool Environments
 
 Bioimage-MCP uses isolated environments for different tool packs.

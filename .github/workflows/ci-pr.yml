@@ -1,0 +1,92 @@
+name: CI PR
+
+"on":
+  pull_request: {}
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install core dev dependencies
+        run: python -m pip install -e ".[dev]"
+
+      - name: Run unit tests
+        run: pytest tests/unit -q
+
+      - name: Run contract tests
+        run: pytest tests/contract -q
+
+  smoke-pr:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Fetch LFS datasets
+        run: git lfs pull --include="datasets/**"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Set up micromamba
+        uses: mamba-org/setup-micromamba@v2
+        with:
+          init-shell: bash
+          cache-environment: false
+
+      - name: Install core dev dependencies
+        run: python -m pip install -e ".[dev]"
+
+      - name: Write local CI config
+        run: bioimage-mcp configure
+
+      - name: Prepare local CI config
+        run: python scripts/ci/prepare_ci_config.py
+
+      - name: Install PR smoke environments
+        run: |-
+          bioimage-mcp install --profile cpu
+          bioimage-mcp install trackpy
+
+      - name: Capture doctor output
+        run: |-
+          mkdir -p .tmp/ci
+          bioimage-mcp doctor --json > .tmp/ci/doctor-pr.json
+
+      - name: Run PR smoke tests
+        run: pytest tests/smoke --smoke-pr -q --smoke-record
+
+      - name: Upload smoke diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-pr-diagnostics
+          path: |
+            .bioimage-mcp/smoke_logs/
+            .tmp/ci/
+          if-no-files-found: warn

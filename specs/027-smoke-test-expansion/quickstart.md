@@ -10,9 +10,14 @@ This guide shows how to run and extend the smoke test suite with equivalence tes
 pytest tests/smoke/ -m smoke_minimal -v
 ```
 
-### Run full smoke tests (includes equivalence)
+### Run PR-tier smoke tests
 ```bash
-pytest tests/smoke/ -m smoke_full -v
+pytest tests/smoke/ --smoke-pr -v
+```
+
+### Run extended smoke tests (includes extended equivalence/live coverage)
+```bash
+pytest tests/smoke/ --smoke-extended -v
 ```
 
 ### Run schema alignment tests only
@@ -28,9 +33,13 @@ pytest tests/smoke/test_equivalence_skimage.py -v
 ## Prerequisites
 
 ### Required conda environments
-The following environments must be installed for full equivalence testing:
+The following environments are used by the current smoke tiers:
 - `bioimage-mcp-base` - For PhasorPy, scikit-image, scipy, xarray, pandas, matplotlib
 - `bioimage-mcp-cellpose` - For Cellpose segmentation
+- `bioimage-mcp-trackpy` - For PR-tier trackpy smoke/equivalence
+- `bioimage-mcp-stardist` - For extended Stardist smoke
+- `bioimage-mcp-tttrlib` - For extended TTTR smoke
+- `bioimage-mcp-microsam` - For extended microSAM smoke
 
 ### Git LFS datasets
 Some tests require real datasets. Fetch LFS files:
@@ -74,7 +83,7 @@ from pathlib import Path
 from tests.smoke.utils.data_equivalence import DataEquivalenceHelper
 from tests.smoke.utils.native_executor import NativeExecutor
 
-@pytest.mark.smoke_full
+@pytest.mark.smoke_extended
 @pytest.mark.anyio
 async def test_mylib_equivalence(live_server, sample_image):
     helper = DataEquivalenceHelper()
@@ -103,9 +112,24 @@ async def test_mylib_equivalence(live_server, sample_image):
 ### 3. Use appropriate markers
 ```python
 @pytest.mark.smoke_minimal  # Fast, synthetic data
-@pytest.mark.smoke_full     # Slow, real data or heavy computation
+@pytest.mark.smoke_pr       # PR-gating smoke
+@pytest.mark.smoke_extended # Broader nightly/manual smoke
 @pytest.mark.requires_env("bioimage-mcp-cellpose")  # Requires specific env
 ```
+
+## CI Workflows
+
+GitHub Actions uses a generated repo-local config for smoke jobs:
+
+```bash
+bioimage-mcp configure
+python scripts/ci/prepare_ci_config.py
+```
+
+The helper rewrites `.bioimage-mcp/config.yaml` so CI can:
+- read from the repo `datasets/` tree
+- write artifacts and logs under repo-local `.tmp/ci/`
+- run live smoke tests from the checkout without copying config to `~/.bioimage-mcp`
 
 ## Utility Usage Examples
 
