@@ -85,8 +85,14 @@ def test_materializes_zarr_temp_input_to_file(tmp_path: Path, monkeypatch) -> No
 
     captured: dict[str, object] = {}
 
-    def _fake_materialize(artifact_ref: dict, work_dir: Path, artifact_store) -> dict:
+    def _fake_materialize(
+        artifact_ref: dict,
+        work_dir: Path,
+        artifact_store,
+        session_id: str | None = None,
+    ) -> dict:
         captured["materialize"] = artifact_ref
+        captured["session_id"] = session_id
         return {
             "ref_id": "mat1",
             "type": "BioImageRef",
@@ -115,4 +121,5 @@ def test_materializes_zarr_temp_input_to_file(tmp_path: Path, monkeypatch) -> No
 
     assert result["status"] == "success"
     assert captured["materialize"]["storage_type"] == "zarr-temp"
+    assert isinstance(captured["session_id"], str)
     assert captured["inputs"]["image"]["storage_type"] == "file"

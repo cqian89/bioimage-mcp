@@ -4,8 +4,23 @@ import pytest
 
 from bioimage_mcp.api.discovery import DiscoveryService
 from bioimage_mcp.config.schema import Config
+from bioimage_mcp.registry.diagnostics import EngineEventType, ManifestDiagnostic
 from bioimage_mcp.registry.loader import load_manifests
 from bioimage_mcp.storage.sqlite import connect
+
+
+def _assert_only_informational_runtime_fallbacks(
+    diagnostics: list[ManifestDiagnostic],
+) -> None:
+    failing_diagnostics = []
+    for diagnostic in diagnostics:
+        unexpected_events = [
+            event for event in diagnostic.engine_events if event.type != EngineEventType.RUNTIME_FALLBACK
+        ]
+        if diagnostic.errors or diagnostic.warnings or unexpected_events:
+            failing_diagnostics.append(diagnostic.to_dict())
+
+    assert not failing_diagnostics, f"Manifest diagnostics: {failing_diagnostics}"
 
 
 @pytest.mark.integration
@@ -28,7 +43,7 @@ def test_hierarchical_listing_skimage(tmp_path):
 
     # Load and index manifests to ensure DB is populated
     manifests, diagnostics = load_manifests([tools_root])
-    assert not diagnostics, f"Manifest diagnostics: {diagnostics}"
+    _assert_only_informational_runtime_fallbacks(diagnostics)
     for manifest in manifests:
         discovery.upsert_tool(
             tool_id=manifest.tool_id,

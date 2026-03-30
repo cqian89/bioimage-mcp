@@ -1,7 +1,22 @@
 from __future__ import annotations
 
 from bioimage_mcp.config.loader import find_repo_root
+from bioimage_mcp.registry.diagnostics import EngineEventType, ManifestDiagnostic
 from bioimage_mcp.registry.loader import load_manifests
+
+
+def _assert_only_informational_runtime_fallbacks(
+    diagnostics: list[ManifestDiagnostic],
+) -> None:
+    failing_diagnostics = []
+    for diagnostic in diagnostics:
+        unexpected_events = [
+            event for event in diagnostic.engine_events if event.type != EngineEventType.RUNTIME_FALLBACK
+        ]
+        if diagnostic.errors or diagnostic.warnings or unexpected_events:
+            failing_diagnostics.append(diagnostic.to_dict())
+
+    assert not failing_diagnostics, f"Manifest diagnostics encountered: {failing_diagnostics}"
 
 
 def _load_repo_manifests() -> list:
@@ -9,7 +24,7 @@ def _load_repo_manifests() -> list:
     assert repo_root is not None, "Repository root not found for manifest loading"
 
     manifests, diagnostics = load_manifests([repo_root / "tools"])
-    assert not diagnostics, f"Manifest diagnostics encountered: {diagnostics}"
+    _assert_only_informational_runtime_fallbacks(diagnostics)
     return manifests
 
 

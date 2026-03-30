@@ -99,6 +99,24 @@ def mcp_services(tmp_path: Path, request: pytest.FixtureRequest, monkeypatch: py
         from bioimage_mcp.registry.dynamic.xarray_allowlists import XARRAY_DATAARRAY_ALLOWLIST
         from bioimage_mcp.registry.engine import DiscoveryEngine
 
+        def _params_to_schema(params: dict[str, Any]) -> dict[str, Any]:
+            properties: dict[str, Any] = {}
+            required: list[str] = []
+            for param_name, param_info in params.items():
+                if not isinstance(param_info, dict):
+                    continue
+                schema = {
+                    key: value for key, value in param_info.items() if key != "required"
+                }
+                properties[param_name] = schema
+                if param_info.get("required"):
+                    required.append(param_name)
+
+            result: dict[str, Any] = {"type": "object", "properties": properties}
+            if required:
+                result["required"] = required
+            return result
+
         def _mock_runtime_list(_self: DiscoveryEngine, _manifest) -> list[dict[str, Any]]:
             if _manifest.tool_id != "tools.base":
                 return []
@@ -106,6 +124,7 @@ def mcp_services(tmp_path: Path, request: pytest.FixtureRequest, monkeypatch: py
             entries: list[dict[str, Any]] = []
             for name in ("rename", "transpose", "expand_dims", "squeeze"):
                 info = XARRAY_DATAARRAY_ALLOWLIST.get(name, {})
+                params = info.get("params", {})
                 entries.append(
                     {
                         "id": f"base.xarray.DataArray.{name}",
@@ -113,6 +132,7 @@ def mcp_services(tmp_path: Path, request: pytest.FixtureRequest, monkeypatch: py
                         "summary": info.get("summary", ""),
                         "module": "xarray.DataArray",
                         "io_pattern": "object_to_image",
+                        "params_schema": _params_to_schema(params),
                     }
                 )
 

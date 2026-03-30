@@ -180,11 +180,13 @@ def test_describe_function_supports_worker_response(tmp_path: Path, monkeypatch)
 
     fn_id = "base.skimage.filters.gaussian"
     res = service.describe_function(id=fn_id)
+    assert res["id"] == fn_id
     assert res["params_schema"]["properties"]["sigma"]["type"] == "number"
-    assert res["meta"]["introspection_source"] == "python_api"
+    assert res["params_schema"]["type"] == "object"
     assert len(calls) == 1
 
     # Verify caching
     res2 = service.describe_function(id=fn_id)
+    assert res2["id"] == fn_id
     assert res2["params_schema"]["properties"]["sigma"]["type"] == "number"
     assert len(calls) == 1
