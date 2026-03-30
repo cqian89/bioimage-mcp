@@ -1,114 +1,151 @@
 # MCP Client Setup Guide
 
-This guide explains how to configure various AI coding assistants to act as clients for the Bioimage-MCP server.
+This guide explains how to connect common MCP clients to a local Bioimage-MCP
+server.
 
-## Overview
+## Before You Configure A Client
 
-The Bioimage-MCP server runs locally and communicates via the Model Context Protocol (MCP) using standard input/output (stdio).
+Complete the first-time setup in the repository [README](../../README.md) first.
+In particular:
 
-**Key Requirements:**
-*   **Transport**: Stdio (Standard Input/Output)
-*   **Command**: `python -m bioimage_mcp serve --stdio` or `bioimage-mcp serve --stdio`
-*   **Environment**: Ensure you use the correct Python executable if running within a Conda/Micromamba environment.
+1. Install the package from a repo checkout with `python -m pip install -e .`
+2. Run `bioimage-mcp configure` from the repo root
+3. Edit `.bioimage-mcp/config.yaml` for your machine
+4. Run `bioimage-mcp install --profile cpu`
+5. Copy the config to `~/.bioimage-mcp/config.yaml`
 
-Before configuring a client, verifying your installation is recommended:
+That last step matters because `bioimage-mcp configure` writes a repo-local
+config in the current working directory, while MCP clients may launch the server
+from some other directory.
+
+Before wiring a client, verify the install:
+
 ```bash
 bioimage-mcp doctor
 ```
 
----
+## Shared Server Command
 
-## OpenCode Configuration
+All client configurations should use the same stdio server command:
 
-OpenCode uses `~/.config/opencode/opencode.json` (global) or `opencode.json` (project root).
+```bash
+bioimage-mcp serve --stdio
+```
 
-Add the following to the `mcp` section of your configuration file:
+If `bioimage-mcp` is not on `PATH` inside the client environment, use the
+absolute path to the Python interpreter where Bioimage-MCP is installed and run:
 
-### Standard Setup
+```bash
+/absolute/path/to/python -m bioimage_mcp serve --stdio
+```
+
+## OpenCode
+
+OpenCode uses `~/.config/opencode/opencode.json` for global config or
+`opencode.json` in a project directory.
+
+Example:
+
 ```json
 {
   "mcp": {
     "bioimage-mcp": {
       "type": "local",
-      "command": ["python", "-m", "bioimage_mcp", "serve", "--stdio"],
+      "command": ["bioimage-mcp", "serve", "--stdio"],
       "enabled": true
     }
   }
 }
 ```
 
-### Conda/Micromamba Setup (Recommended)
-If you installed Bioimage-MCP in a specific environment, use the absolute path to the Python executable:
+After updating the config, reload OpenCode and verify the server is listed:
 
-```json
-{
-  "mcp": {
-    "bioimage-mcp": {
-      "type": "local",
-      "command": [
-        "/path/to/miniforge3/envs/bioimage-mcp-base/bin/python",
-        "-m",
-        "bioimage_mcp",
-        "serve",
-        "--stdio"
-      ],
-      "enabled": true
-    }
-  }
-}
-```
-
-> **Note**: Replace `/path/to/miniforge3/...` with the actual path to your environment's python executable. You can find this by activating your environment and running `which python`.
-
-After updating the config, reload OpenCode and verify the connection:
 ```bash
 opencode mcp list
 ```
 
----
+## Claude Desktop
 
-## Claude Desktop Configuration
+Claude Desktop uses:
 
-For Claude Desktop, modify the configuration file located at:
-*   **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-*   **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- Windows: `%APPDATA%\\Claude\\claude_desktop_config.json`
 
-Add the server definition to `mcpServers`:
-
-```json
-{
-  "mcpServers": {
-    "bioimage-mcp": {
-      "command": "python",
-      "args": ["-m", "bioimage_mcp", "serve", "--stdio"]
-    }
-  }
-}
-```
-
-As with OpenCode, if using a virtual environment, replace "python" with the full path to your python executable.
-
----
-
-## Cursor Configuration
-
-For Cursor, create or update `.cursor/mcp.json` in your project root:
+Example:
 
 ```json
 {
   "mcpServers": {
     "bioimage-mcp": {
-      "command": "python",
-      "args": ["-m", "bioimage_mcp", "serve", "--stdio"]
+      "command": "bioimage-mcp",
+      "args": ["serve", "--stdio"]
     }
   }
 }
 ```
 
----
+If needed, replace `bioimage-mcp` with the absolute path to the correct Python
+interpreter and pass `-m`, `bioimage_mcp`, `serve`, `--stdio` in `args`.
+
+## Cursor
+
+Create or update `.cursor/mcp.json` in your project root:
+
+```json
+{
+  "mcpServers": {
+    "bioimage-mcp": {
+      "command": "bioimage-mcp",
+      "args": ["serve", "--stdio"]
+    }
+  }
+}
+```
+
+## Generic MCP Clients
+
+For Codex, VS Code, and other MCP clients, use the same stdio command:
+
+```text
+bioimage-mcp serve --stdio
+```
+
+and make sure `~/.bioimage-mcp/config.yaml` exists before launching the client.
 
 ## Troubleshooting
 
-*   **"Command not found"**: Ensure the `python` executable is in your PATH or use the absolute path.
-*   **Connection Refused/Closed**: Run `bioimage-mcp doctor` to ensure all internal tool environments are healthy.
-*   **Stdio issues**: The `--stdio` flag is mandatory. Ensure your client configuration includes this argument.
+### Command Not Found
+
+The client cannot find `bioimage-mcp` or the right Python environment. Use an
+absolute interpreter path instead:
+
+```text
+/absolute/path/to/python -m bioimage_mcp serve --stdio
+```
+
+### Wrong Config Loaded
+
+If the server starts but cannot see your data paths or installed tool manifests,
+it is probably loading a different config than the one you edited. Copy your
+repo-local config to:
+
+```text
+~/.bioimage-mcp/config.yaml
+```
+
+then restart the client.
+
+### Connection Refused Or Closed
+
+Run:
+
+```bash
+bioimage-mcp doctor
+```
+
+and fix any required failures before reconnecting.
+
+### Path Not Allowlisted
+
+If imports or exports fail, update `fs_allowlist_read` or
+`fs_allowlist_write` in `~/.bioimage-mcp/config.yaml`, then restart the client.
