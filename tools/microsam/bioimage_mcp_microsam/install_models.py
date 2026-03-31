@@ -15,16 +15,29 @@ def install_models():
         registry = models()
         cache_dir = get_cache_directory()
 
-        # We ensure vit_b variants for Generalist, LM, and EM
-        required_models = {"generalist": "vit_b", "lm": "vit_b_lm", "em": "vit_b_em_organelles"}
+        required_models = ["vit_b"]
+        optional_models = ["vit_b_lm", "vit_b_em_organelles"]
 
         results = {}
-        for _key, model_id in required_models.items():
-            # fetch() downloads the model if it's not in the cache
+        for model_id in required_models:
             path = registry.fetch(model_id, progressbar=True)
             results[model_id] = str(Path(path).absolute())
 
-        output = {"ok": True, "cache_dir": str(cache_dir.absolute()), "models": results}
+        optional_failures = {}
+        for model_id in optional_models:
+            try:
+                path = registry.fetch(model_id, progressbar=True)
+                results[model_id] = str(Path(path).absolute())
+            except Exception as exc:  # noqa: BLE001
+                optional_failures[model_id] = str(exc)
+
+        output = {
+            "ok": True,
+            "cache_dir": str(cache_dir.absolute()),
+            "cache_path": str(cache_dir.absolute()),
+            "models": results,
+            "optional_failures": optional_failures,
+        }
         print(json.dumps(output))
         sys.exit(0)
 
