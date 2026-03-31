@@ -217,9 +217,7 @@ def test_install_microsam_gpu_linux(tmp_path: Path, monkeypatch) -> None:
     result = install(tools=["microsam"], profile="gpu")
 
     assert result == 0
-    assert any(
-        any("pytorch-cuda=12.1" in str(elem) for elem in cmd) for cmd in called_commands
-    )
+    assert any(any("pytorch-cuda=12.1" in str(elem) for elem in cmd) for cmd in called_commands)
 
 
 def test_install_falls_back_to_env_file_when_lock_install_fails(
@@ -267,3 +265,54 @@ def test_install_falls_back_to_env_file_when_lock_install_fails(
     assert lock_calls == [("conda-lock", "bioimage-mcp-base", base_lock)]
     assert env_calls == [("/usr/bin/micromamba", "micromamba", "bioimage-mcp-base", base_env)]
     assert "Lockfile install failed for base" in out
+
+
+def test_install_falls_back_to_env_file_when_lock_install_does_not_create_env(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    """A successful lockfile install must still produce the named env."""
+    envs_dir = tmp_path / "envs"
+    envs_dir.mkdir()
+    base_env = envs_dir / "bioimage-mcp-base.yaml"
+    base_env.write_text("name: bioimage-mcp-base\n")
+    base_lock = envs_dir / "bioimage-mcp-base.lock.yml"
+    base_lock.write_text("version: 1\n")
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        "bioimage_mcp.bootstrap.install.detect_env_manager",
+        lambda: ("micromamba", "/usr/bin/micromamba", "1.5.0"),
+    )
+    env_exists_calls = iter([False, False])
+    monkeypatch.setattr(
+        "bioimage_mcp.bootstrap.install._env_exists",
+        lambda *_: next(env_exists_calls),
+    )
+    monkeypatch.setattr("bioimage_mcp.bootstrap.install._ensure_tool_manifest_roots", lambda: None)
+    monkeypatch.setattr("bioimage_mcp.bootstrap.install.shutil.which", lambda exe: exe)
+
+    lock_calls: list[tuple[str, str, Path]] = []
+    env_calls: list[tuple[str, str, str, Path]] = []
+
+    def mock_install_with_lock(conda_lock_exe: str, env_name: str, lockfile: Path) -> bool:
+        lock_calls.append((conda_lock_exe, env_name, lockfile))
+        return True
+
+    def mock_install_env(exe: str, manager: str, env_name: str, env_file: Path) -> bool:
+        env_calls.append((exe, manager, env_name, env_file))
+        return True
+
+    monkeypatch.setattr(
+        "bioimage_mcp.bootstrap.install._install_env_with_lock", mock_install_with_lock
+    )
+    monkeypatch.setattr("bioimage_mcp.bootstrap.install._install_env", mock_install_env)
+
+    from bioimage_mcp.bootstrap.install import install
+
+    result = install(profile="minimal")
+    out = capsys.readouterr().out
+
+    assert result == 0
+    assert lock_calls == [("conda-lock", "bioimage-mcp-base", base_lock)]
+    assert env_calls == [("/usr/bin/micromamba", "micromamba", "bioimage-mcp-base", base_env)]
+    assert "did not create the expected environment for base" in out
