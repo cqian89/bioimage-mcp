@@ -8,7 +8,8 @@ from bioimage_mcp.bootstrap.install import _env_exists
 def test_env_exists_handles_mixed_stdout_success(tmp_path):
     """Verify _env_exists correctly identifies env despite warnings."""
     env_path = tmp_path / "my-env"
-    env_path.mkdir()
+    (env_path / "conda-meta").mkdir(parents=True)
+    (env_path / "conda-meta" / "history").write_text("")
     mixed_output = (
         f'Warning: some conda warning\nWarning: another warning\n{{"envs": ["{env_path}"]}}'
     )
@@ -33,6 +34,16 @@ def test_env_exists_returns_false_for_missing_prefix(tmp_path):
     with patch("subprocess.run") as mock_run:
         mock_run.return_value = MagicMock(returncode=0, stdout=mixed_output, stderr="")
         assert _env_exists("conda", "missing-env") is False
+
+
+def test_env_exists_returns_false_for_prefix_without_conda_metadata(tmp_path):
+    """A listed prefix directory without conda metadata is not a usable env."""
+    env_path = tmp_path / "half-created-env"
+    env_path.mkdir()
+    mixed_output = f'{{"envs": ["{env_path}"]}}'
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0, stdout=mixed_output, stderr="")
+        assert _env_exists("conda", "half-created-env") is False
 
 
 def test_env_exists_safe_fail_on_garbage():
