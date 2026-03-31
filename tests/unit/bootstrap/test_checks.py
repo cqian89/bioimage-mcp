@@ -252,6 +252,37 @@ def test_check_microsam_models_passes_when_record_exists(monkeypatch, tmp_path) 
     assert result.ok is True
 
 
+def test_check_microsam_models_passes_with_generalist_only(monkeypatch, tmp_path) -> None:
+    monkeypatch.chdir(tmp_path)
+    state_dir = tmp_path / ".bioimage-mcp" / "state"
+    state_dir.mkdir(parents=True)
+    state_file = state_dir / "microsam_models.json"
+
+    generalist = tmp_path / "vit_b"
+    generalist.touch()
+
+    state_file.write_text(
+        json.dumps(
+            {
+                "ok": True,
+                "models": {"vit_b": str(generalist)},
+                "optional_failures": {
+                    "vit_b_lm": "network timeout",
+                    "vit_b_em_organelles": "network timeout",
+                },
+            }
+        )
+    )
+
+    monkeypatch.setattr(
+        "bioimage_mcp.bootstrap.checks.get_available_envs", lambda: ["bioimage-mcp-microsam"]
+    )
+
+    result = check_microsam_models()
+    assert result.ok is True
+    assert result.details["models"] == ["vit_b"]
+
+
 def test_check_microsam_models_fails_when_record_missing(monkeypatch, tmp_path) -> None:
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(

@@ -280,8 +280,8 @@ def check_microsam_models() -> CheckResult:
             )
 
         models = data.get("models", {})
-        # We require at minimum these vit_b variants
-        required = ["vit_b", "vit_b_lm", "vit_b_em_organelles"]
+        # The default microsam workflows use the generalist vit_b model.
+        required = ["vit_b"]
         missing = []
         corrupt = []
 
@@ -317,7 +317,14 @@ def check_microsam_models() -> CheckResult:
                 },
             )
 
-        return CheckResult(name="microsam_models", ok=True, details={"models": list(models.keys())})
+        return CheckResult(
+            name="microsam_models",
+            ok=True,
+            details={
+                "models": list(models.keys()),
+                "optional_failures": data.get("optional_failures", {}),
+            },
+        )
 
     except Exception as exc:  # noqa: BLE001
         return CheckResult(
