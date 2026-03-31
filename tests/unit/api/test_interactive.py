@@ -209,3 +209,36 @@ def test_call_tool_microsam_annotator_immediate_failure_returns_failed(tmp_path:
     assert result["isError"] is True
     assert result["error"]["code"] == "HEADLESS_DISPLAY_REQUIRED"
     store.close()
+
+
+def test_call_tool_microsam_annotator_preflight_headless_failure(
+    tmp_path: Path, monkeypatch
+) -> None:
+    execution = FakeExecutionService(
+        run_result={"run_id": "run-interactive-3", "status": "success"},
+        run_status={"status": "success", "outputs": {}},
+    )
+    service, store = _make_service(tmp_path, execution)
+
+    from bioimage_mcp.registry.dynamic.adapters.microsam import HeadlessDisplayRequiredError
+
+    def _raise_headless(*_args, **_kwargs):
+        raise HeadlessDisplayRequiredError("no display")
+
+    monkeypatch.setattr(
+        "bioimage_mcp.registry.dynamic.adapters.microsam.MicrosamAdapter._check_gui_available",
+        _raise_headless,
+    )
+
+    result = service.call_tool(
+        session_id="sess-interactive-3",
+        fn_id="micro_sam.sam_annotator.annotator_2d",
+        inputs={"image": {"ref_id": "r1", "type": "BioImageRef", "uri": "file:///tmp/a.tif"}},
+        params={},
+    )
+
+    assert result["status"] == "failed"
+    assert result["run_id"] == "none"
+    assert result["error"]["code"] == "HEADLESS_DISPLAY_REQUIRED"
+    assert not hasattr(execution, "last_spec")
+    store.close()
