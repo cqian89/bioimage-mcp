@@ -93,7 +93,8 @@ def _env_exists(exe: str, env_name: str) -> bool:
         envs = data.get("envs", [])
         for env in envs:
             env_path = Path(env)
-            if env_path.name == env_name and env_path.exists():
+            history_file = env_path / "conda-meta" / "history"
+            if env_path.name == env_name and history_file.exists():
                 return True
         return False
     except Exception:
