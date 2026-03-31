@@ -126,6 +126,42 @@ def test_install_calls_micromamba_without_prune(tmp_path: Path, monkeypatch) -> 
     assert any("install" in cmd and "pytorch-cuda=11.8" in cmd for cmd in called_commands)
 
 
+def test_install_env_with_lock_uses_detected_micromamba(monkeypatch) -> None:
+    """Lockfile installs should use the same micromamba executable as the rest of install flow."""
+    called_commands = []
+
+    def mock_run(cmd, **kwargs):
+        called_commands.append(cmd)
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(subprocess, "run", mock_run)
+
+    from bioimage_mcp.bootstrap.install import _install_env_with_lock
+
+    result = _install_env_with_lock(
+        "conda-lock",
+        "micromamba",
+        "/usr/bin/micromamba",
+        "bioimage-mcp-test",
+        Path("envs/bioimage-mcp-test.lock.yml"),
+    )
+
+    assert result is True
+    assert called_commands == [
+        [
+            "conda-lock",
+            "install",
+            "--conda",
+            "/usr/bin/micromamba",
+            "--micromamba",
+            "--no-mamba",
+            "-n",
+            "bioimage-mcp-test",
+            "envs/bioimage-mcp-test.lock.yml",
+        ]
+    ]
+
+
 def test_install_microsam_orchestration(tmp_path: Path, monkeypatch) -> None:
     """Test that install microsam triggers specialized post-install."""
     import json
@@ -208,11 +244,13 @@ def test_install_microsam_skips_lockfile_path(tmp_path: Path, monkeypatch) -> No
     monkeypatch.setattr("bioimage_mcp.bootstrap.install._ensure_tool_manifest_roots", lambda: None)
     monkeypatch.setattr("bioimage_mcp.bootstrap.install.shutil.which", lambda exe: exe)
 
-    lock_calls: list[tuple[str, str, Path]] = []
+    lock_calls: list[tuple[str, str, str, str, Path]] = []
     env_calls: list[tuple[str, str, str, Path]] = []
 
-    def mock_install_with_lock(conda_lock_exe: str, env_name: str, lockfile: Path) -> bool:
-        lock_calls.append((conda_lock_exe, env_name, lockfile))
+    def mock_install_with_lock(
+        conda_lock_exe: str, manager: str, exe: str, env_name: str, lockfile: Path
+    ) -> bool:
+        lock_calls.append((conda_lock_exe, manager, exe, env_name, lockfile))
         return True
 
     def mock_install_env(exe: str, manager: str, env_name: str, env_file: Path) -> bool:
@@ -229,8 +267,20 @@ def test_install_microsam_skips_lockfile_path(tmp_path: Path, monkeypatch) -> No
     result = install(tools=["microsam"])
 
     assert result == 0
-    assert ("conda-lock", "bioimage-mcp-base", base_lock) in lock_calls
-    assert ("conda-lock", "bioimage-mcp-microsam", microsam_lock) not in lock_calls
+    assert (
+        "conda-lock",
+        "micromamba",
+        "/usr/bin/micromamba",
+        "bioimage-mcp-base",
+        base_lock,
+    ) in lock_calls
+    assert (
+        "conda-lock",
+        "micromamba",
+        "/usr/bin/micromamba",
+        "bioimage-mcp-microsam",
+        microsam_lock,
+    ) not in lock_calls
     assert ("/usr/bin/micromamba", "micromamba", "bioimage-mcp-microsam", microsam_env) in env_calls
 
 
@@ -289,11 +339,13 @@ def test_install_falls_back_to_env_file_when_lock_install_fails(
     monkeypatch.setattr("bioimage_mcp.bootstrap.install._ensure_tool_manifest_roots", lambda: None)
     monkeypatch.setattr("bioimage_mcp.bootstrap.install.shutil.which", lambda exe: exe)
 
-    lock_calls: list[tuple[str, str, Path]] = []
+    lock_calls: list[tuple[str, str, str, str, Path]] = []
     env_calls: list[tuple[str, str, str, Path]] = []
 
-    def mock_install_with_lock(conda_lock_exe: str, env_name: str, lockfile: Path) -> bool:
-        lock_calls.append((conda_lock_exe, env_name, lockfile))
+    def mock_install_with_lock(
+        conda_lock_exe: str, manager: str, exe: str, env_name: str, lockfile: Path
+    ) -> bool:
+        lock_calls.append((conda_lock_exe, manager, exe, env_name, lockfile))
         return False
 
     def mock_install_env(exe: str, manager: str, env_name: str, env_file: Path) -> bool:
@@ -311,7 +363,9 @@ def test_install_falls_back_to_env_file_when_lock_install_fails(
     out = capsys.readouterr().out
 
     assert result == 0
-    assert lock_calls == [("conda-lock", "bioimage-mcp-base", base_lock)]
+    assert lock_calls == [
+        ("conda-lock", "micromamba", "/usr/bin/micromamba", "bioimage-mcp-base", base_lock)
+    ]
     assert env_calls == [("/usr/bin/micromamba", "micromamba", "bioimage-mcp-base", base_env)]
     assert "Lockfile install failed for base" in out
 
@@ -340,11 +394,13 @@ def test_install_falls_back_to_env_file_when_lock_install_does_not_create_env(
     monkeypatch.setattr("bioimage_mcp.bootstrap.install._ensure_tool_manifest_roots", lambda: None)
     monkeypatch.setattr("bioimage_mcp.bootstrap.install.shutil.which", lambda exe: exe)
 
-    lock_calls: list[tuple[str, str, Path]] = []
+    lock_calls: list[tuple[str, str, str, str, Path]] = []
     env_calls: list[tuple[str, str, str, Path]] = []
 
-    def mock_install_with_lock(conda_lock_exe: str, env_name: str, lockfile: Path) -> bool:
-        lock_calls.append((conda_lock_exe, env_name, lockfile))
+    def mock_install_with_lock(
+        conda_lock_exe: str, manager: str, exe: str, env_name: str, lockfile: Path
+    ) -> bool:
+        lock_calls.append((conda_lock_exe, manager, exe, env_name, lockfile))
         return True
 
     def mock_install_env(exe: str, manager: str, env_name: str, env_file: Path) -> bool:
@@ -362,6 +418,8 @@ def test_install_falls_back_to_env_file_when_lock_install_does_not_create_env(
     out = capsys.readouterr().out
 
     assert result == 0
-    assert lock_calls == [("conda-lock", "bioimage-mcp-base", base_lock)]
+    assert lock_calls == [
+        ("conda-lock", "micromamba", "/usr/bin/micromamba", "bioimage-mcp-base", base_lock)
+    ]
     assert env_calls == [("/usr/bin/micromamba", "micromamba", "bioimage-mcp-base", base_env)]
     assert "did not create the expected environment for base" in out

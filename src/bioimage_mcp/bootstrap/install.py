@@ -107,11 +107,22 @@ def _lockfile_for_env(env_file: Path) -> Path:
 
 def _install_env_with_lock(
     conda_lock_exe: str,
+    manager: str,
+    exe: str,
     env_name: str,
     lockfile: Path,
 ) -> bool:
+    cmd = [conda_lock_exe, "install", "--conda", exe]
+    if manager == "micromamba":
+        cmd.extend(["--micromamba", "--no-mamba"])
+    elif manager == "mamba":
+        cmd.extend(["--mamba", "--no-micromamba"])
+    else:
+        cmd.extend(["--no-mamba", "--no-micromamba"])
+    cmd.extend(["-n", env_name, str(lockfile)])
+
     result = subprocess.run(
-        [conda_lock_exe, "install", "-n", env_name, str(lockfile)],
+        cmd,
         check=False,
     )
     return result.returncode == 0
@@ -435,7 +446,7 @@ def install(
         # install conda deps first (without pip) then install pip deps separately.
         # Microsam always uses the separate flow for extra pip deps + models.
         if conda_lock_exe and lockfile.exists() and not pip_deps and name != "microsam":
-            success = _install_env_with_lock(conda_lock_exe, env_name, lockfile)
+            success = _install_env_with_lock(conda_lock_exe, manager, exe, env_name, lockfile)
             if not success:
                 print(f"Lockfile install failed for {name}; retrying from {env_file.name}...")
                 success = _install_env_from_spec(exe, manager, env_name, env_file)
