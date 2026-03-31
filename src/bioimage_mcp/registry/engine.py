@@ -9,9 +9,9 @@ from typing import Any
 
 from bioimage_mcp.bootstrap.env_manager import get_env_paths
 from bioimage_mcp.registry.diagnostics import EngineEvent, EngineEventType
-from bioimage_mcp.registry.dynamic.adapters import ADAPTER_REGISTRY
+from bioimage_mcp.registry.dynamic.adapters import ADAPTER_REGISTRY, KNOWN_ADAPTERS, populate_default_adapters
 from bioimage_mcp.registry.dynamic.meta_list_cache import MetaListCache
-from bioimage_mcp.registry.dynamic.models import IOPattern, ParameterSchema
+from bioimage_mcp.registry.dynamic.models import FunctionMetadata, IOPattern, ParameterSchema
 from bioimage_mcp.registry.manifest_schema import Function, FunctionOverlay, Port, ToolManifest
 from bioimage_mcp.registry.static.inspector import inspect_module
 from bioimage_mcp.registry.static.schema_normalize import normalize_json_schema
@@ -144,10 +144,38 @@ class DiscoveryEngine:
         self._append_env_site_packages(search_paths, manifest.env_id)
 
         adapter = ADAPTER_REGISTRY.get(source.adapter)
+        if adapter is None and source.adapter in KNOWN_ADAPTERS:
+            populate_default_adapters()
+            adapter = ADAPTER_REGISTRY.get(source.adapter)
+
         runtime_map = self._build_runtime_function_map(manifest, source, runtime_functions)
 
-        if not source.modules or source.adapter in {"scipy", "trackpy"}:
+        if source.adapter in {"scipy", "trackpy"}:
             return self._map_runtime_functions(manifest, source, runtime_functions, set())
+
+        if not source.modules:
+            discovered_functions: list[Function] = []
+            existing_ids: set[str] = set()
+
+            if adapter is not None:
+                try:
+                    discovered_metadata = adapter.discover(source.model_dump())
+                    discovered_functions = self._map_adapter_functions(manifest, discovered_metadata)
+                    existing_ids = {fn.fn_id for fn in discovered_functions}
+                except Exception as e:
+                    logger.warning(
+                        "Adapter discovery failed for source %s: %s; falling back to runtime list",
+                        source.prefix,
+                        e,
+                    )
+
+            return self._map_runtime_functions(
+                manifest,
+                source,
+                runtime_functions,
+                existing_ids,
+                discovered_functions,
+            )
 
         discovered_functions: list[Function] = []
         failed_modules: list[str] = []
@@ -189,6 +217,44 @@ class DiscoveryEngine:
             {fn.fn_id for fn in discovered_functions},
             discovered_functions,
         )
+
+        return discovered_functions
+
+    def _map_adapter_functions(
+        self, manifest: ToolManifest, discovered_metadata: list[FunctionMetadata]
+    ) -> list[Function]:
+        discovered_functions: list[Function] = []
+
+        for meta in discovered_metadata:
+            inputs, outputs = self.map_io_pattern_to_ports(meta.io_pattern)
+            params_schema = self.parameters_to_json_schema(meta.parameters)
+
+            port_names = {p.name for p in inputs + outputs}
+            properties = params_schema.get("properties")
+            if isinstance(properties, dict):
+                filtered = {k: v for k, v in properties.items() if k not in port_names}
+                params_schema = {**params_schema, "properties": filtered}
+                if "required" in params_schema:
+                    params_schema["required"] = [
+                        r for r in params_schema["required"] if r in filtered
+                    ]
+
+            discovered_functions.append(
+                Function(
+                    fn_id=meta.fn_id,
+                    tool_id=manifest.tool_id,
+                    name=meta.name,
+                    description=summarize_docstring(meta.description) or meta.name,
+                    tags=list(meta.tags),
+                    inputs=inputs,
+                    outputs=outputs,
+                    params_schema=normalize_json_schema(params_schema),
+                    hints=meta.hints,
+                    introspection_source=f"adapter:{meta.source_adapter}",
+                    module=meta.module,
+                    io_pattern=meta.io_pattern.value,
+                )
+            )
 
         return discovered_functions
 

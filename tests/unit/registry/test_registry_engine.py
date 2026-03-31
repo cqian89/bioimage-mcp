@@ -5,6 +5,7 @@ import unittest.mock as mock
 import pytest
 
 from bioimage_mcp.registry.engine import DiscoveryEngine
+from bioimage_mcp.registry.dynamic.models import FunctionMetadata, IOPattern
 from bioimage_mcp.registry.manifest_schema import DynamicSource, Function, ToolManifest
 from bioimage_mcp.registry.static.inspector import (
     StaticCallable,
@@ -158,3 +159,66 @@ def test_discovery_engine_normalization(manifest):
         assert fn.fn_id == "test.func_static"
         # params_schema should be normalized (sorted keys)
         assert list(fn.params_schema["properties"].keys()) == ["a", "b"]
+
+
+def test_discovery_engine_supplements_incomplete_runtime_list_for_empty_module_sources(tmp_path):
+    manifest_path = tmp_path / "manifest.yaml"
+    manifest_path.write_text("tool_id: tools.base\nenv_id: bioimage-mcp-base")
+    manifest = ToolManifest(
+        manifest_version="1.0.0",
+        tool_id="tools.base",
+        tool_version="0.2.0",
+        env_id="bioimage-mcp-base",
+        entrypoint="tools/base/bioimage_mcp_base/entrypoint.py",
+        manifest_path=manifest_path,
+        manifest_checksum="abc123",
+        dynamic_sources=[DynamicSource(adapter="xarray", prefix="xarray", modules=[])],
+    )
+
+    runtime_functions = [
+        {
+            "id": "base.xarray.DataArray.mean",
+            "name": "mean",
+            "summary": "Mean",
+            "module": "xarray.DataArray",
+            "io_pattern": "objectref_chain",
+            "parameters": {"dim": {"name": "dim", "type": "string", "required": False}},
+        }
+    ]
+
+    class MockAdapter:
+        def discover(self, _config):
+            return [
+                FunctionMetadata(
+                    name="mean",
+                    module="xarray.DataArray",
+                    qualified_name="xarray.DataArray.mean",
+                    fn_id="base.xarray.DataArray.mean",
+                    source_adapter="xarray",
+                    description="Mean",
+                    io_pattern=IOPattern.OBJECTREF_CHAIN,
+                ),
+                FunctionMetadata(
+                    name="rename",
+                    module="xarray.DataArray",
+                    qualified_name="xarray.DataArray.rename",
+                    fn_id="base.xarray.DataArray.rename",
+                    source_adapter="xarray",
+                    description="Rename dimensions",
+                    io_pattern=IOPattern.OBJECT_TO_IMAGE,
+                ),
+            ]
+
+    engine = DiscoveryEngine()
+
+    with (
+        mock.patch.dict(
+            "bioimage_mcp.registry.engine.ADAPTER_REGISTRY", {"xarray": MockAdapter()}, clear=True
+        ),
+        mock.patch.object(engine, "_runtime_list", return_value=runtime_functions),
+    ):
+        functions, _warnings = engine.discover(manifest)
+
+    fn_ids = {fn.fn_id for fn in functions}
+    assert "base.xarray.DataArray.mean" in fn_ids
+    assert "base.xarray.DataArray.rename" in fn_ids
