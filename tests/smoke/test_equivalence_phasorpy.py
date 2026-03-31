@@ -26,7 +26,7 @@ async def test_phasorpy_equivalence(live_server):
     env_name = "bioimage-mcp-base"
 
     # Use a directory that is in the server's allowlist for both read and write
-    test_dir = Path.home() / ".bioimage-mcp" / "artifacts" / "test_tmp"
+    test_dir = Path.cwd() / "datasets" / "smoke_tmp" / "phasorpy"
     test_dir.mkdir(parents=True, exist_ok=True)
 
     try:

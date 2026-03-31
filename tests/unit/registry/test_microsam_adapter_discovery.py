@@ -112,3 +112,47 @@ def test_microsam_io_pattern_resolution():
         == IOPattern.SAM_ANNOTATOR
     )
     assert adapter.resolve_io_pattern("micro_sam.util.something", None) == IOPattern.DYNAMIC
+
+
+def test_microsam_adapter_discovers_known_targets_when_package_walk_misses(monkeypatch):
+    """Known smoke-critical modules should still be exposed if package walking misses them."""
+
+    def segment_from_points(predictor, points, labels):
+        """Segment from points."""
+
+    segment_from_points.__module__ = "micro_sam.prompt_based_segmentation"
+    segment_from_points.__name__ = "segment_from_points"
+
+    def annotator_2d(image):
+        """Annotate a 2D image."""
+
+    annotator_2d.__module__ = "micro_sam.sam_annotator.annotator_2d"
+    annotator_2d.__name__ = "annotator_2d"
+
+    prompt_module = types.ModuleType("micro_sam.prompt_based_segmentation")
+    prompt_module.segment_from_points = segment_from_points
+
+    annotator_module = types.ModuleType("micro_sam.sam_annotator.annotator_2d")
+    annotator_module.annotator_2d = annotator_2d
+
+    def mock_import(name):
+        if name == "micro_sam":
+            root = MagicMock()
+            root.__name__ = "micro_sam"
+            root.__path__ = ["/fake/path"]
+            return root
+        if name == "micro_sam.prompt_based_segmentation":
+            return prompt_module
+        if name == "micro_sam.sam_annotator.annotator_2d":
+            return annotator_module
+        raise ImportError(f"No module named {name}")
+
+    monkeypatch.setattr(importlib, "import_module", mock_import)
+    monkeypatch.setattr(pkgutil, "walk_packages", lambda path, prefix: [])
+
+    adapter = MicrosamAdapter()
+    results = adapter.discover({"prefix": "micro_sam"})
+    fn_ids = {r.fn_id for r in results}
+
+    assert "micro_sam.prompt_based_segmentation.segment_from_points" in fn_ids
+    assert "micro_sam.sam_annotator.annotator_2d" in fn_ids
