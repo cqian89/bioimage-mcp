@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import uuid
 from pathlib import Path
 
@@ -165,6 +164,7 @@ async def test_microsam_instance_segmentation(live_server):
 
 
 @pytest.mark.smoke_extended
+@pytest.mark.requires_env("bioimage-mcp-microsam")
 @pytest.mark.anyio
 async def test_microsam_list_inclusion(live_server):
     """Verify that sam_annotator entrypoints are exposed in list."""

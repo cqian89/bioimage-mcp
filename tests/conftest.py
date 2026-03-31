@@ -6,6 +6,8 @@ import warnings
 
 import pytest
 
+from bioimage_mcp.bootstrap.env_manager import detect_env_manager
+
 # Shared pytest fixtures live here.
 
 
@@ -21,10 +23,16 @@ def _is_env_available(env_name: str, cache: dict) -> bool:
         return cache[env_name]
 
     try:
-        # Do not hard-fail if conda/mamba is not installed; treat env as unavailable.
-        # Use conda run -n env_name python -c "print('ok')" to verify.
+        detected = detect_env_manager()
+        if not detected:
+            cache[env_name] = False
+            return False
+
+        _manager, exe, _version = detected
+        # Do not hard-fail if no conda-like manager is installed; treat env as unavailable.
+        # Use the detected manager to verify the target env can run Python.
         result = subprocess.run(
-            ["conda", "run", "-n", env_name, "python", "-c", "print('ok')"],
+            [exe, "run", "-n", env_name, "python", "-c", "print('ok')"],
             capture_output=True,
             text=True,
             timeout=10,
@@ -64,7 +72,7 @@ def check_required_env(request, _env_availability_cache):
             tool_name = env_name.replace("bioimage-mcp-", "")
             install_cmd = f"bioimage-mcp install {tool_name}"
             msg = f"Environment '{env_name}' not found. To install, run: {install_cmd}"
-            warnings.warn(msg)
+            warnings.warn(msg, stacklevel=2)
             pytest.skip(f"Required environment {env_name} missing.")
 
 

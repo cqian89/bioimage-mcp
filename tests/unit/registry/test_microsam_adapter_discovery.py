@@ -80,8 +80,9 @@ def test_microsam_adapter_discovery_filtering(monkeypatch):
     # Should include prompt_based_segmentation.segment_from_points
     assert "micro_sam.prompt_based_segmentation.segment_from_points" in fn_ids
 
-    # Should INCLUDE sam_annotator.annotator_2d
-    assert "micro_sam.sam_annotator.annotator_2d.annotator_2d" in fn_ids
+    # Interactive annotators should be exposed via their entrypoint ids.
+    assert "micro_sam.sam_annotator.annotator_2d" in fn_ids
+    assert "micro_sam.sam_annotator.annotator_2d.annotator_2d" not in fn_ids
 
     # Verify metadata content
     for r in results:
@@ -90,7 +91,7 @@ def test_microsam_adapter_discovery_filtering(monkeypatch):
             assert r.description == "Segment from points."
             assert "points" in r.parameters
             assert r.fn_id.startswith("micro_sam.")
-        if r.fn_id == "micro_sam.sam_annotator.annotator_2d.annotator_2d":
+        if r.fn_id == "micro_sam.sam_annotator.annotator_2d":
             assert r.io_pattern == IOPattern.SAM_ANNOTATOR
 
 

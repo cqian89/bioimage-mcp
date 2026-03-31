@@ -11,10 +11,10 @@ import os
 import pkgutil
 import sys
 import tempfile
+import urllib.parse
 import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
-import urllib.parse
 
 import numpy as np
 
@@ -55,6 +55,12 @@ ARTIFACT_INPUT_PARAMS = {
 
 # Persistent cache index for predictors across adapter instances
 _CACHE_INDEX: dict[str, dict[str, Any]] = {}
+_INTERACTIVE_ENTRYPOINTS = {
+    "annotator_2d",
+    "annotator_3d",
+    "annotator_tracking",
+    "image_series_annotator",
+}
 
 
 class MicrosamAdapter(BaseAdapter):
@@ -133,6 +139,12 @@ class MicrosamAdapter(BaseAdapter):
             "Run in a desktop session or use remote desktop (VNC/Xvfb)."
         )
 
+    def _canonical_fn_id(self, mod_name: str, name: str) -> str:
+        """Normalize interactive annotators to their stable entrypoint ids."""
+        if mod_name.startswith("micro_sam.sam_annotator") and name in _INTERACTIVE_ENTRYPOINTS:
+            return f"micro_sam.sam_annotator.{name}"
+        return f"{mod_name}.{name}"
+
     def discover(self, module_config: dict[str, Any]) -> list[FunctionMetadata]:
         """Discover functions from micro_sam submodules.
 
@@ -151,6 +163,7 @@ class MicrosamAdapter(BaseAdapter):
             return []
 
         results = []
+        seen_fn_ids: set[str] = set()
 
         # Enumerate all submodules of micro_sam
         # walk_packages needs the path(s) to search in and the prefix for the module names
@@ -211,11 +224,12 @@ class MicrosamAdapter(BaseAdapter):
                     io_pattern=io_pattern,
                 )
 
-                # Set fn_id to the fully qualified upstream id
-                meta.fn_id = f"{mod_name}.{name}"
-                meta.qualified_name = meta.fn_id
+                meta.fn_id = self._canonical_fn_id(mod_name, name)
                 meta.module = mod_name
 
+                if meta.fn_id in seen_fn_ids:
+                    continue
+                seen_fn_ids.add(meta.fn_id)
                 results.append(meta)
 
         return results
@@ -260,10 +274,7 @@ class MicrosamAdapter(BaseAdapter):
 
         if "sam_annotator" in fn_id:
             entrypoints = {
-                "micro_sam.sam_annotator.annotator_2d",
-                "micro_sam.sam_annotator.annotator_3d",
-                "micro_sam.sam_annotator.annotator_tracking",
-                "micro_sam.sam_annotator.image_series_annotator",
+                f"micro_sam.sam_annotator.{name}" for name in _INTERACTIVE_ENTRYPOINTS
             }
             if fn_id in entrypoints:
                 return self._execute_interactive(fn_id, inputs, params, work_dir, hints)
@@ -1075,13 +1086,7 @@ class MicrosamAdapter(BaseAdapter):
                 return IOPattern.SAM_AMG
         if "sam_annotator" in func_name:
             # Entrypoints for interactive annotators
-            entrypoints = {
-                "annotator_2d",
-                "annotator_3d",
-                "annotator_tracking",
-                "image_series_annotator",
-            }
-            if any(ep in func_name for ep in entrypoints):
+            if any(ep in func_name for ep in _INTERACTIVE_ENTRYPOINTS):
                 return IOPattern.SAM_ANNOTATOR
 
         return IOPattern.DYNAMIC
