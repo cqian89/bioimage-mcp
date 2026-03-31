@@ -434,7 +434,7 @@ def install(
         # Note: conda-lock pip integration can be brittle; for envs with pip deps we
         # install conda deps first (without pip) then install pip deps separately.
         # Microsam always uses the separate flow for extra pip deps + models.
-        if conda_lock_exe and lockfile.exists() and (not pip_deps or name == "microsam"):
+        if conda_lock_exe and lockfile.exists() and not pip_deps and name != "microsam":
             success = _install_env_with_lock(conda_lock_exe, env_name, lockfile)
             if not success:
                 print(f"Lockfile install failed for {name}; retrying from {env_file.name}...")
