@@ -435,8 +435,12 @@ def install(
         if conda_lock_exe and lockfile.exists() and (not pip_deps or name == "microsam"):
             success = _install_env_with_lock(conda_lock_exe, env_name, lockfile)
             if not success:
+                print(f"Lockfile install failed for {name}; retrying from {env_file.name}...")
+                success = _install_env_from_spec(exe, manager, env_name, env_file)
+            elif not _env_exists(exe, env_name):
                 print(
-                    f"Lockfile install failed for {name}; retrying from {env_file.name}..."
+                    f"Lockfile install did not create the expected environment for {name}; "
+                    f"retrying from {env_file.name}..."
                 )
                 success = _install_env_from_spec(exe, manager, env_name, env_file)
         else:
