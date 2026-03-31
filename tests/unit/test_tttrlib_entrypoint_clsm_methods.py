@@ -130,6 +130,44 @@ def test_handle_clsm_get_image_info_serializes_swig_like_payload(
     }
 
 
+def test_handle_clsm_get_image_info_falls_back_when_normalization_fails(
+    monkeypatch, tmp_path: Path
+) -> None:
+    class _FallbackImageInfo:
+        def __init__(self) -> None:
+            self.n_frames = 2
+            self.n_lines = 4
+            self.n_pixel_per_line = 8
+
+    class _FakeCLSMImageInfoObject:
+        def get_image_info(self):
+            return _FallbackImageInfo()
+
+    monkeypatch.setattr(entrypoint, "_load_object", lambda _key: _FakeCLSMImageInfoObject())
+
+    def _raise_normalization_error(_value):
+        raise RuntimeError("")
+
+    monkeypatch.setattr(entrypoint, "_normalize_json_safe_value", _raise_normalization_error)
+
+    result = entrypoint.handle_clsm_get_image_info(
+        inputs={"clsm": {"ref_id": "clsm-1"}},
+        params={},
+        work_dir=tmp_path,
+    )
+
+    assert result["ok"] is True
+    output = result["outputs"]["image_info"]
+    with open(output["path"], encoding="utf-8") as f:
+        payload = json.load(f)
+
+    assert payload == {
+        "n_frames": 2,
+        "n_lines": 4,
+        "n_pixel_per_line": 8,
+    }
+
+
 def test_handle_clsm_get_settings_serializes_json_object(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr(entrypoint, "_load_object", lambda _key: _FakeCLSMImage())
 

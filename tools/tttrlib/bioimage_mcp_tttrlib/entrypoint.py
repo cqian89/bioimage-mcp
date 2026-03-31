@@ -222,6 +222,41 @@ def _serialize_clsm_settings(settings: Any) -> dict[str, Any]:
     return payload
 
 
+def _serialize_image_info_payload(image_info: Any) -> dict[str, Any]:
+    """Serialize CLSM image info into a non-empty JSON-safe object."""
+    try:
+        payload = _normalize_json_safe_value(image_info)
+    except Exception:
+        payload = None
+
+    if isinstance(payload, dict) and payload:
+        return payload
+
+    fallback_attrs: dict[str, Any] = {}
+    for attr_name in sorted(name for name in dir(image_info) if not name.startswith("_")):
+        if attr_name in SWIG_TRANSPORT_ATTRS:
+            continue
+        try:
+            attr_value = getattr(image_info, attr_name)
+        except Exception:
+            continue
+        if callable(attr_value):
+            continue
+        try:
+            fallback_attrs[attr_name] = _normalize_json_safe_value(attr_value)
+        except Exception:
+            fallback_attrs[attr_name] = (
+                attr_value if attr_value is None or isinstance(attr_value, str | int | float | bool)
+                else str(attr_value)
+            )
+
+    if fallback_attrs:
+        return fallback_attrs
+
+    fallback_value = str(image_info)
+    return {"value": fallback_value or type(image_info).__name__}
+
+
 def _write_table_output(
     columns: list[str],
     rows: Any,
@@ -732,7 +767,7 @@ def handle_clsm_get_image_info(
     try:
         clsm = _load_object(clsm_key)
         output = _write_native_output(
-            _normalize_json_safe_value(clsm.get_image_info()),
+            _serialize_image_info_payload(clsm.get_image_info()),
             "clsm_image_info",
             work_dir,
         )

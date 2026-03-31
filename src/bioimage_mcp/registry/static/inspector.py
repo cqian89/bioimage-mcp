@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import pathlib
 
-import griffe
 from pydantic import BaseModel, Field
 
 
@@ -30,6 +29,8 @@ def inspect_module(module: str, search_paths: list[pathlib.Path]) -> StaticModul
 
     Extracts fully qualified module path(s) and callable definitions.
     """
+    import griffe
+
     loader = griffe.GriffeLoader(search_paths=[str(p) for p in search_paths])
     griffe_mod = loader.load(module)
 
