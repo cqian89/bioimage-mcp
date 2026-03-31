@@ -92,7 +92,8 @@ def _env_exists(exe: str, env_name: str) -> bool:
         data = json.loads(output[json_start:])
         envs = data.get("envs", [])
         for env in envs:
-            if Path(env).name == env_name:
+            env_path = Path(env)
+            if env_path.name == env_name and env_path.exists():
                 return True
         return False
     except Exception:
