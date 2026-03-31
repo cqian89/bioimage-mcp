@@ -11,7 +11,7 @@ TOOLS_TTTRLIB = REPO_ROOT / "tools" / "tttrlib"
 if str(TOOLS_TTTRLIB) not in sys.path:
     sys.path.insert(0, str(TOOLS_TTTRLIB))
 
-import bioimage_mcp_tttrlib.entrypoint as entrypoint
+import bioimage_mcp_tttrlib.entrypoint as entrypoint  # noqa: E402
 
 
 class _FakeCLSMImage:
@@ -57,6 +57,15 @@ class _FakeCLSMSettings:
         self.thisown = True
 
 
+class _FakeImageInfo:
+    def __init__(self) -> None:
+        self.n_frames = 2
+        self.n_lines = 4
+        self.n_pixel_per_line = 8
+        self.this = "swig-handle"
+        self.thisown = True
+
+
 class _FakeCorrelator:
     x = [1.0, 2.0, 4.0]
     y = [0.5, 0.25, 0.125]
@@ -92,6 +101,33 @@ def test_handle_clsm_get_image_info_returns_native_output(monkeypatch, tmp_path:
     with open(output["path"], encoding="utf-8") as f:
         payload = json.load(f)
     assert payload["n_frames"] == 2
+
+
+def test_handle_clsm_get_image_info_serializes_swig_like_payload(
+    monkeypatch, tmp_path: Path
+) -> None:
+    class _FakeCLSMImageInfoObject:
+        def get_image_info(self):
+            return _FakeImageInfo()
+
+    monkeypatch.setattr(entrypoint, "_load_object", lambda _key: _FakeCLSMImageInfoObject())
+
+    result = entrypoint.handle_clsm_get_image_info(
+        inputs={"clsm": {"ref_id": "clsm-1"}},
+        params={},
+        work_dir=tmp_path,
+    )
+
+    assert result["ok"] is True
+    output = result["outputs"]["image_info"]
+    with open(output["path"], encoding="utf-8") as f:
+        payload = json.load(f)
+
+    assert payload == {
+        "n_frames": 2,
+        "n_lines": 4,
+        "n_pixel_per_line": 8,
+    }
 
 
 def test_handle_clsm_get_settings_serializes_json_object(monkeypatch, tmp_path: Path) -> None:

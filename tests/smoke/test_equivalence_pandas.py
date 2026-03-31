@@ -121,7 +121,9 @@ async def test_pandas_equivalence(live_server, helper, executor, sample_csv, tmp
         # We'll use a unique name to avoid collisions
         import uuid
 
-        dest_path = Path.home() / ".bioimage-mcp" / "artifacts" / f"{name}_{uuid.uuid4()}.csv"
+        dest_dir = Path.cwd() / "datasets" / "smoke_tmp"
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        dest_path = dest_dir / f"{name}_{uuid.uuid4()}.csv"
         # Ensure parent exists
         dest_path.parent.mkdir(parents=True, exist_ok=True)
         export_res = await live_server.call_tool(

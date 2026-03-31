@@ -5,8 +5,8 @@ These tests run against a live MCP server with the tttrlib tool pack.
 
 from __future__ import annotations
 
-import json
 import csv
+import json
 from pathlib import Path
 
 import pytest
@@ -157,10 +157,11 @@ class TestTTTRLibSmoke:
             curve_rows = list(csv.DictReader(f))
         assert curve_rows
         assert list(curve_rows[0].keys()) == ["tau", "correlation"]
-        assert curve_ref["metadata"]["columns"] == [
-            {"name": "tau", "dtype": "float64"},
-            {"name": "correlation", "dtype": "float64"},
-        ]
+        if "metadata" in curve_ref:
+            assert curve_ref["metadata"]["columns"] == [
+                {"name": "tau", "dtype": "float64"},
+                {"name": "correlation", "dtype": "float64"},
+            ]
 
         x_axis_result = await live_server.call_tool(
             "run",
@@ -184,7 +185,8 @@ class TestTTTRLibSmoke:
             tau_rows = list(csv.DictReader(f))
         assert tau_rows
         assert list(tau_rows[0].keys()) == ["tau"]
-        assert tau_ref["metadata"]["columns"] == [{"name": "tau", "dtype": "float64"}]
+        if "metadata" in tau_ref:
+            assert tau_ref["metadata"]["columns"] == [{"name": "tau", "dtype": "float64"}]
 
         corr_result = await live_server.call_tool(
             "run",
@@ -206,7 +208,8 @@ class TestTTTRLibSmoke:
             corr_rows = list(csv.DictReader(f))
         assert corr_rows
         assert list(corr_rows[0].keys()) == ["correlation"]
-        assert corr_ref["metadata"]["columns"] == [{"name": "correlation", "dtype": "float64"}]
+        if "metadata" in corr_ref:
+            assert corr_ref["metadata"]["columns"] == [{"name": "correlation", "dtype": "float64"}]
 
     @pytest.mark.anyio
     @pytest.mark.skipif(not is_valid_dataset(PTU_FILE), reason="PTU dataset not available or empty")

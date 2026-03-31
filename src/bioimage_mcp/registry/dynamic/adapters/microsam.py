@@ -61,6 +61,13 @@ _INTERACTIVE_ENTRYPOINTS = {
     "annotator_tracking",
     "image_series_annotator",
 }
+_KNOWN_DISCOVERY_TARGETS = (
+    ("micro_sam.prompt_based_segmentation", "segment_from_points"),
+    ("micro_sam.sam_annotator.annotator_2d", "annotator_2d"),
+    ("micro_sam.sam_annotator.annotator_3d", "annotator_3d"),
+    ("micro_sam.sam_annotator.annotator_tracking", "annotator_tracking"),
+    ("micro_sam.sam_annotator.image_series_annotator", "image_series_annotator"),
+)
 
 
 class MicrosamAdapter(BaseAdapter):
@@ -145,6 +152,31 @@ class MicrosamAdapter(BaseAdapter):
             return f"micro_sam.sam_annotator.{name}"
         return f"{mod_name}.{name}"
 
+    def _append_discovered_function(
+        self,
+        results: list[FunctionMetadata],
+        seen_fn_ids: set[str],
+        mod_name: str,
+        name: str,
+        obj: Any,
+    ) -> None:
+        """Add a discovered microsam function if it is not already present."""
+        io_pattern = self.resolve_io_pattern(f"{mod_name}.{name}", None)
+
+        meta = self.introspector.introspect(
+            func=obj,
+            source_adapter="microsam",
+            io_pattern=io_pattern,
+        )
+
+        meta.fn_id = self._canonical_fn_id(mod_name, name)
+        meta.module = mod_name
+
+        if meta.fn_id in seen_fn_ids:
+            return
+        seen_fn_ids.add(meta.fn_id)
+        results.append(meta)
+
     def discover(self, module_config: dict[str, Any]) -> list[FunctionMetadata]:
         """Discover functions from micro_sam submodules.
 
@@ -216,21 +248,25 @@ class MicrosamAdapter(BaseAdapter):
                 except (ValueError, TypeError):
                     pass
 
-                io_pattern = self.resolve_io_pattern(f"{mod_name}.{name}", None)
+                self._append_discovered_function(results, seen_fn_ids, mod_name, name, obj)
 
-                meta = self.introspector.introspect(
-                    func=obj,
-                    source_adapter="microsam",
-                    io_pattern=io_pattern,
+        # Some microsam modules are not surfaced reliably by package walking in CI.
+        # Import the smoke-critical entrypoints directly so list/describe/run stay stable.
+        for mod_name, name in _KNOWN_DISCOVERY_TARGETS:
+            try:
+                module = importlib.import_module(mod_name)
+                obj = getattr(module, name)
+            except (ImportError, AttributeError) as exc:
+                logger.debug(
+                    "Could not import known microsam target %s.%s: %s",
+                    mod_name,
+                    name,
+                    exc,
                 )
+                continue
 
-                meta.fn_id = self._canonical_fn_id(mod_name, name)
-                meta.module = mod_name
-
-                if meta.fn_id in seen_fn_ids:
-                    continue
-                seen_fn_ids.add(meta.fn_id)
-                results.append(meta)
+            if inspect.isfunction(obj) or inspect.isbuiltin(obj):
+                self._append_discovered_function(results, seen_fn_ids, mod_name, name, obj)
 
         return results
 

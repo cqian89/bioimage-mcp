@@ -731,7 +731,11 @@ def handle_clsm_get_image_info(
 
     try:
         clsm = _load_object(clsm_key)
-        output = _write_native_output(clsm.get_image_info(), "clsm_image_info", work_dir)
+        output = _write_native_output(
+            _normalize_json_safe_value(clsm.get_image_info()),
+            "clsm_image_info",
+            work_dir,
+        )
         return {"ok": True, "outputs": {"image_info": output}, "log": "CLSM image info extracted"}
     except Exception as e:
         return {"ok": False, "error": {"message": str(e)}}
@@ -976,7 +980,6 @@ def handle_get_selection_by_channel(
     inputs: dict[str, Any], params: dict[str, Any], work_dir: Path
 ) -> dict[str, Any]:
     """Handle tttrlib.TTTR.get_selection_by_channel with a strict supported subset."""
-    import numpy as np
 
     tttr_ref = inputs.get("tttr", {})
     tttr_key = tttr_ref.get("uri") or tttr_ref.get("ref_id") or ""
@@ -1013,7 +1016,6 @@ def handle_get_selection_by_count_rate(
     inputs: dict[str, Any], params: dict[str, Any], work_dir: Path
 ) -> dict[str, Any]:
     """Handle tttrlib.TTTR.get_selection_by_count_rate with a strict supported subset."""
-    import numpy as np
 
     tttr_ref = inputs.get("tttr", {})
     tttr_key = tttr_ref.get("uri") or tttr_ref.get("ref_id") or ""
@@ -1122,7 +1124,8 @@ def handle_tttr_write(
             return {
                 "ok": False,
                 "error": _tttr_write_subset_error(
-                    f"expected a supported TTTR export extension, got '{filepath.suffix or '<none>'}'"
+                    "expected a supported TTTR export extension, "
+                    f"got '{filepath.suffix or '<none>'}'"
                 ),
             }
 
