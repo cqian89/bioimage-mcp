@@ -69,6 +69,35 @@ class InteractiveExecutionService:
             hints = {**hints, "next_steps": normalized_next_steps}
         return hints
 
+    def _preflight_non_blocking_interactive_error(self, fn_id: str) -> dict[str, Any] | None:
+        if not fn_id.startswith("micro_sam.sam_annotator."):
+            return None
+
+        try:
+            from bioimage_mcp.registry.dynamic.adapters.microsam import (
+                HeadlessDisplayRequiredError,
+                MicrosamAdapter,
+            )
+        except ImportError:
+            return None
+
+        try:
+            MicrosamAdapter()._check_gui_available()
+        except HeadlessDisplayRequiredError as exc:
+            details = exc.details or [
+                {
+                    "path": "",
+                    "hint": "Run in a desktop session or use remote desktop (VNC/Xvfb).",
+                }
+            ]
+            return {
+                "code": exc.code,
+                "message": str(exc),
+                "details": details,
+            }
+
+        return None
+
     def _finalize_async_step(
         self,
         *,
@@ -140,6 +169,35 @@ class InteractiveExecutionService:
         dry_run: bool,
         progress_callback: Callable[[str], None] | None,
     ) -> dict[str, Any]:
+        preflight_error = self._preflight_non_blocking_interactive_error(fn_id)
+        if preflight_error is not None:
+            ended_at = datetime.now(UTC).isoformat()
+            self.session_manager.store.add_step_attempt(
+                session_id=session_id,
+                step_id=step_id,
+                ordinal=ordinal,
+                fn_id=fn_id,
+                inputs=inputs,
+                params=params,
+                status="failed",
+                started_at=started_at,
+                ended_at=ended_at,
+                run_id=None,
+                outputs={},
+                error=preflight_error,
+                log_ref_id=None,
+                canonical=False,
+            )
+            return {
+                "session_id": session_id,
+                "step_id": step_id,
+                "status": "failed",
+                "run_id": "none",
+                "outputs": {},
+                "isError": True,
+                "error": preflight_error,
+            }
+
         run_id_holder: dict[str, str] = {}
         result_holder: dict[str, Any] = {}
         error_holder: dict[str, Any] = {}
