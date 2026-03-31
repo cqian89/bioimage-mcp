@@ -185,6 +185,55 @@ def test_install_microsam_orchestration(tmp_path: Path, monkeypatch) -> None:
     assert data["cache_path"] == "/tmp/models"
 
 
+def test_install_microsam_skips_lockfile_path(tmp_path: Path, monkeypatch) -> None:
+    """Microsam should install from the source spec, not conda-lock."""
+    envs_dir = tmp_path / "envs"
+    envs_dir.mkdir()
+    microsam_env = envs_dir / "bioimage-mcp-microsam.yaml"
+    microsam_env.write_text("name: microsam\n")
+    microsam_lock = envs_dir / "bioimage-mcp-microsam.lock.yml"
+    microsam_lock.write_text("version: 1\n")
+    base_env = envs_dir / "bioimage-mcp-base.yaml"
+    base_env.write_text("name: base\n")
+    base_lock = envs_dir / "bioimage-mcp-base.lock.yml"
+    base_lock.write_text("version: 1\n")
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        "bioimage_mcp.bootstrap.install.detect_env_manager",
+        lambda: ("micromamba", "/usr/bin/micromamba", "1.5.0"),
+    )
+    monkeypatch.setattr("bioimage_mcp.bootstrap.install._env_exists", lambda *_: False)
+    monkeypatch.setattr("bioimage_mcp.bootstrap.install._microsam_post_install", lambda *_: True)
+    monkeypatch.setattr("bioimage_mcp.bootstrap.install._ensure_tool_manifest_roots", lambda: None)
+    monkeypatch.setattr("bioimage_mcp.bootstrap.install.shutil.which", lambda exe: exe)
+
+    lock_calls: list[tuple[str, str, Path]] = []
+    env_calls: list[tuple[str, str, str, Path]] = []
+
+    def mock_install_with_lock(conda_lock_exe: str, env_name: str, lockfile: Path) -> bool:
+        lock_calls.append((conda_lock_exe, env_name, lockfile))
+        return True
+
+    def mock_install_env(exe: str, manager: str, env_name: str, env_file: Path) -> bool:
+        env_calls.append((exe, manager, env_name, env_file))
+        return True
+
+    monkeypatch.setattr(
+        "bioimage_mcp.bootstrap.install._install_env_with_lock", mock_install_with_lock
+    )
+    monkeypatch.setattr("bioimage_mcp.bootstrap.install._install_env", mock_install_env)
+
+    from bioimage_mcp.bootstrap.install import install
+
+    result = install(tools=["microsam"])
+
+    assert result == 0
+    assert ("conda-lock", "bioimage-mcp-base", base_lock) in lock_calls
+    assert ("conda-lock", "bioimage-mcp-microsam", microsam_lock) not in lock_calls
+    assert ("/usr/bin/micromamba", "micromamba", "bioimage-mcp-microsam", microsam_env) in env_calls
+
+
 def test_install_microsam_gpu_linux(tmp_path: Path, monkeypatch) -> None:
     """Test that install microsam --profile gpu triggers GPU setup on Linux."""
     envs_dir = tmp_path / "envs"
