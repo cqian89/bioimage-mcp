@@ -57,8 +57,30 @@ class TestTTTRLibEnvContract:
             if isinstance(dep, str) and "tttrlib" in dep:
                 tttrlib_found = True
                 break
+            if isinstance(dep, dict) and isinstance(dep.get("pip"), list):
+                if any(isinstance(item, str) and item.startswith("tttrlib") for item in dep["pip"]):
+                    tttrlib_found = True
+                    break
 
         assert tttrlib_found, "tttrlib not found in environment dependencies"
+
+    def test_env_pins_current_tttrlib_release_via_pip(self) -> None:
+        """The install flow should pin the current PyPI tttrlib release explicitly."""
+        if not TTTRLIB_ENV_PATH.exists():
+            pytest.skip("tttrlib env file not yet created")
+
+        with open(TTTRLIB_ENV_PATH) as f:
+            env_def = yaml.safe_load(f)
+
+        dependencies = env_def.get("dependencies", [])
+        pip_items: list[str] = []
+        for dep in dependencies:
+            if isinstance(dep, dict) and isinstance(dep.get("pip"), list):
+                pip_items.extend(item for item in dep["pip"] if isinstance(item, str))
+
+        assert "tttrlib==0.26.2" in pip_items, (
+            "tttrlib should be pinned from PyPI at 0.26.2 to match the latest released build"
+        )
 
     def test_env_includes_bioio_ome_zarr(self) -> None:
         """Test that bioio-ome-zarr is included for OME-Zarr writing support."""

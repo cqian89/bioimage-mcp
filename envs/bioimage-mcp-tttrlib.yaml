@@ -18,7 +18,8 @@ dependencies:
   - bioio
   - bioio-ome-tiff
   - bioio-ome-zarr  # Required for OME-Zarr output in FLIM decay functions
-  # TTTR analysis library (C++ with SWIG bindings)
-  - tttrlib
   # For table output
   - pandas
+  - pip:
+    # PyPI is ahead of the tpeulen conda channel; install the current release explicitly.
+    - tttrlib==0.26.2

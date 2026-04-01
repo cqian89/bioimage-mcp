@@ -19,6 +19,11 @@ PROFILES = {
     "minimal": ["base"],  # Just the base
 }
 
+# Tools that must install from their source spec rather than conda-lock.
+# tttrlib currently needs a pip-managed release because PyPI is ahead of the
+# tpeulen conda channel used by the existing lockfile.
+LOCKFILE_BYPASS_TOOLS = {"microsam", "tttrlib"}
+
 
 def discover_available_tools() -> dict[str, Path]:
     """Return {tool_name: env_yaml_path} for all tools in envs/ directory."""
@@ -444,8 +449,9 @@ def install(
         # Install logic
         # Note: conda-lock pip integration can be brittle; for envs with pip deps we
         # install conda deps first (without pip) then install pip deps separately.
-        # Microsam always uses the separate flow for extra pip deps + models.
-        if conda_lock_exe and lockfile.exists() and not pip_deps and name != "microsam":
+        # Some tools also bypass the lockfile entirely because their supported
+        # runtime is intentionally pip-managed inside the conda env.
+        if conda_lock_exe and lockfile.exists() and not pip_deps and name not in LOCKFILE_BYPASS_TOOLS:
             success = _install_env_with_lock(conda_lock_exe, manager, exe, env_name, lockfile)
             if not success:
                 print(f"Lockfile install failed for {name}; retrying from {env_file.name}...")

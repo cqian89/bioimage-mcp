@@ -284,6 +284,87 @@ def test_install_microsam_skips_lockfile_path(tmp_path: Path, monkeypatch) -> No
     assert ("/usr/bin/micromamba", "micromamba", "bioimage-mcp-microsam", microsam_env) in env_calls
 
 
+def test_install_tttrlib_skips_lockfile_path_for_pypi_release(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """tttrlib should install from the source spec so pip can provide the latest release."""
+    envs_dir = tmp_path / "envs"
+    envs_dir.mkdir()
+    tttrlib_env = envs_dir / "bioimage-mcp-tttrlib.yaml"
+    tttrlib_env.write_text(
+        "\n".join(
+            [
+                "name: bioimage-mcp-tttrlib",
+                "dependencies:",
+                "  - python=3.12",
+                "  - pip",
+                "",
+            ]
+        )
+    )
+    tttrlib_lock = envs_dir / "bioimage-mcp-tttrlib.lock.yml"
+    tttrlib_lock.write_text("version: 1\n")
+    base_env = envs_dir / "bioimage-mcp-base.yaml"
+    base_env.write_text("name: base\n")
+    base_lock = envs_dir / "bioimage-mcp-base.lock.yml"
+    base_lock.write_text("version: 1\n")
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        "bioimage_mcp.bootstrap.install.detect_env_manager",
+        lambda: ("micromamba", "/usr/bin/micromamba", "1.5.0"),
+    )
+    monkeypatch.setattr("bioimage_mcp.bootstrap.install._env_exists", lambda *_: False)
+    monkeypatch.setattr("bioimage_mcp.bootstrap.install._ensure_tool_manifest_roots", lambda: None)
+    monkeypatch.setattr("bioimage_mcp.bootstrap.install.shutil.which", lambda exe: exe)
+
+    lock_calls: list[tuple[str, str, str, str, Path]] = []
+    env_calls: list[tuple[str, str, str, Path]] = []
+    pip_calls: list[tuple[str, str, Path]] = []
+
+    def mock_install_with_lock(
+        conda_lock_exe: str, manager: str, exe: str, env_name: str, lockfile: Path
+    ) -> bool:
+        lock_calls.append((conda_lock_exe, manager, exe, env_name, lockfile))
+        return True
+
+    def mock_install_env(exe: str, manager: str, env_name: str, env_file: Path) -> bool:
+        env_calls.append((exe, manager, env_name, env_file))
+        return True
+
+    def mock_install_pip_deps(exe: str, env_name: str, env_file: Path) -> bool:
+        pip_calls.append((exe, env_name, env_file))
+        return True
+
+    monkeypatch.setattr(
+        "bioimage_mcp.bootstrap.install._install_env_with_lock", mock_install_with_lock
+    )
+    monkeypatch.setattr("bioimage_mcp.bootstrap.install._install_env", mock_install_env)
+    monkeypatch.setattr("bioimage_mcp.bootstrap.install._install_pip_deps", mock_install_pip_deps)
+
+    from bioimage_mcp.bootstrap.install import install
+
+    result = install(tools=["tttrlib"])
+
+    assert result == 0
+    assert (
+        "conda-lock",
+        "micromamba",
+        "/usr/bin/micromamba",
+        "bioimage-mcp-base",
+        base_lock,
+    ) in lock_calls
+    assert (
+        "conda-lock",
+        "micromamba",
+        "/usr/bin/micromamba",
+        "bioimage-mcp-tttrlib",
+        tttrlib_lock,
+    ) not in lock_calls
+    assert ("/usr/bin/micromamba", "micromamba", "bioimage-mcp-tttrlib", tttrlib_env) in env_calls
+    assert ("/usr/bin/micromamba", "bioimage-mcp-tttrlib", tttrlib_env) in pip_calls
+
+
 def test_install_microsam_gpu_linux(tmp_path: Path, monkeypatch) -> None:
     """Test that install microsam --profile gpu triggers GPU setup on Linux."""
     envs_dir = tmp_path / "envs"
