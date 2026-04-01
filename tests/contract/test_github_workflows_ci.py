@@ -18,6 +18,7 @@ PR_SMOKE_LFS_PATHS = [
     "datasets/trackpy-examples/bulk_water/frame000_green.ome.tiff",
 ]
 EXTENDED_LFS_PATHS = [
+    "datasets/synthetic/test.tif",
     "datasets/FLUTE_FLIM_data_tif/hMSC control.tif",
     "datasets/trackpy-examples/bulk_water/frame000_green.ome.tiff",
     "datasets/tttr-data/bh/bh_spc132.spc",
@@ -74,10 +75,14 @@ def test_pr_smoke_bundle_covers_curated_dataset_usage() -> None:
     trackpy_equivalence = (
         REPO_ROOT / "tests" / "smoke" / "test_equivalence_trackpy.py"
     ).read_text(encoding="utf-8")
+    cellpose_pipeline = (
+        REPO_ROOT / "tests" / "smoke" / "test_cellpose_pipeline_live.py"
+    ).read_text(encoding="utf-8")
 
     assert 'path = Path("datasets/FLUTE_FLIM_data_tif/hMSC control.tif")' in sample_image_source
     assert '"params": {"path": "datasets/synthetic/test.tif"}' in scipy_helpers
     assert '"trackpy-examples" / "bulk_water" / "frame000_green.ome.tiff"' in trackpy_equivalence
+    assert 'SYNTHETIC_IMAGE = Path("datasets/synthetic/test.tif")' in cellpose_pipeline
 
 
 def test_ci_pr_workflow_matches_expected_shape() -> None:
