@@ -7,6 +7,7 @@ import pytest
 
 from bioimage_mcp.artifacts.models import ArtifactRef, PlotMetadata, PlotRef
 from bioimage_mcp.registry.dynamic.adapters.phasorpy import PhasorPyAdapter
+from tests.fixtures.lfs_helpers import skip_if_lfs_pointer
 
 
 def test_plot_phasor_serialization():
@@ -108,6 +109,7 @@ def test_load_image_fallback():
     test_file = Path("datasets/FLUTE_FLIM_data_tif/Fluorescein_Embryo.tif")
     if not test_file.exists():
         pytest.skip(f"Test file not found: {test_file}")
+    skip_if_lfs_pointer(test_file)
 
     # Mock artifact with OME-TIFF format
     artifact = {"uri": f"file://{test_file.absolute()}", "format": "OME-TIFF", "metadata": {}}

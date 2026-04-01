@@ -4,6 +4,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.fixtures.lfs_helpers import skip_if_lfs_pointer
+
 FLIM_DATASET = Path("datasets/FLUTE_FLIM_data_tif")
 FLIM_IMAGE = FLIM_DATASET / "hMSC control.tif"
 
@@ -26,6 +28,7 @@ def flim_image():
     """Provide FLIM test image path."""
     if not FLIM_IMAGE.exists():
         pytest.skip(f"FLIM dataset missing: {FLIM_IMAGE}")
+    skip_if_lfs_pointer(FLIM_IMAGE)
     return FLIM_IMAGE
 
 

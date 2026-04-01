@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from tests.fixtures.lfs_helpers import skip_if_lfs_pointer
 from tests.smoke.utils.data_equivalence import DataEquivalenceHelper
 from tests.smoke.utils.native_executor import NativeExecutor
 
@@ -26,6 +27,7 @@ def vendored_trackpy_image():
     path = Path.cwd() / "datasets" / "trackpy-examples" / "bulk_water" / "frame000_green.ome.tiff"
     if not path.exists():
         pytest.skip(f"Vendored trackpy data not found at {path}")
+    skip_if_lfs_pointer(path)
     return path
 
 

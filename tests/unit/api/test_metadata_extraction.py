@@ -11,6 +11,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from tests.fixtures.lfs_helpers import skip_if_lfs_pointer
+
 FIXTURE_CZI = (
     Path(__file__).parent.parent.parent.parent
     / "datasets"
@@ -19,11 +21,17 @@ FIXTURE_CZI = (
 )
 
 
-@pytest.mark.skipif(not FIXTURE_CZI.exists(), reason="CZI fixture not available")
+def _require_czi_fixture() -> Path:
+    if not FIXTURE_CZI.exists():
+        pytest.skip("CZI fixture not available")
+    skip_if_lfs_pointer(FIXTURE_CZI)
+    return FIXTURE_CZI
+
+
 def test_extract_physical_pixel_sizes():
     from bioio import BioImage
 
-    img = BioImage(FIXTURE_CZI)
+    img = BioImage(_require_czi_fixture())
     pps = img.physical_pixel_sizes
 
     # physical_pixel_sizes is a namedtuple with Z, Y, X
@@ -35,11 +43,10 @@ def test_extract_physical_pixel_sizes():
     assert pps.X > 0 or pps.Y > 0 or pps.Z > 0
 
 
-@pytest.mark.skipif(not FIXTURE_CZI.exists(), reason="CZI fixture not available")
 def test_extract_channel_names():
     from bioio import BioImage
 
-    img = BioImage(FIXTURE_CZI)
+    img = BioImage(_require_czi_fixture())
     channels = img.channel_names
 
     # Should return a list (may be empty for some images)
@@ -49,12 +56,11 @@ def test_extract_channel_names():
         assert all(isinstance(c, str) for c in channels)
 
 
-@pytest.mark.skipif(not FIXTURE_CZI.exists(), reason="CZI fixture not available")
 def test_extract_image_metadata_helper():
     """Test the internal metadata extraction helper used by the server."""
     from bioimage_mcp.artifacts.metadata import extract_image_metadata
 
-    meta = extract_image_metadata(FIXTURE_CZI)
+    meta = extract_image_metadata(_require_czi_fixture())
 
     assert "physical_pixel_sizes" in meta
     assert "channel_names" in meta

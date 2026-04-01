@@ -5,6 +5,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from tests.fixtures.lfs_helpers import skip_if_lfs_pointer
+
 # Path to the CZI fixture relative to this test file
 FIXTURE_CZI = (
     Path(__file__).parent.parent.parent.parent
@@ -14,11 +16,17 @@ FIXTURE_CZI = (
 )
 
 
-@pytest.mark.skipif(not FIXTURE_CZI.exists(), reason="CZI fixture not available")
+def _require_czi_fixture() -> Path:
+    if not FIXTURE_CZI.exists():
+        pytest.skip("CZI fixture not available")
+    skip_if_lfs_pointer(FIXTURE_CZI)
+    return FIXTURE_CZI
+
+
 def test_bioimage_loads_czi_fixture():
     from bioio import BioImage
 
-    img = BioImage(FIXTURE_CZI)
+    img = BioImage(_require_czi_fixture())
 
     # Verify 5D TCZYX
     assert len(img.data.shape) == 5
@@ -29,11 +37,10 @@ def test_bioimage_loads_czi_fixture():
     assert all(d >= 1 for d in shape)
 
 
-@pytest.mark.skipif(not FIXTURE_CZI.exists(), reason="CZI fixture not available")
 def test_bioimage_shape_consistency():
     from bioio import BioImage
 
-    img = BioImage(FIXTURE_CZI)
+    img = BioImage(_require_czi_fixture())
 
     # Verify shape matches dims
     assert img.data.shape[0] == img.dims.T
@@ -43,11 +50,10 @@ def test_bioimage_shape_consistency():
     assert img.data.shape[4] == img.dims.X
 
 
-@pytest.mark.skipif(not FIXTURE_CZI.exists(), reason="CZI fixture not available")
 def test_bioimage_data_access():
     from bioio import BioImage
 
-    img = BioImage(FIXTURE_CZI)
+    img = BioImage(_require_czi_fixture())
 
     # Access a small slice (first pixel of first T, C, Z)
     # TCZYX order

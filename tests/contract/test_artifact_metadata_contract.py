@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
+import jsonschema
 import pytest
 
 from bioimage_mcp.artifacts.models import ArtifactRef
 from bioimage_mcp.artifacts.store import ArtifactStore
 from bioimage_mcp.config.schema import Config
+from tests.fixtures.lfs_helpers import skip_if_lfs_pointer
 
 
 def _repo_root() -> Path:
@@ -20,6 +23,8 @@ def _load_image_artifact(tmp_path: Path) -> ArtifactRef:
         src = repo_root / "test_xr.ome.tiff"
     if not src.exists() or src.stat().st_size == 0:
         pytest.skip("No valid test image available")
+    if src.name == "Embryo.tif":
+        skip_if_lfs_pointer(src)
 
     config = Config(
         artifact_store_root=tmp_path / "artifacts",
@@ -76,12 +81,6 @@ def test_artifact_metadata_has_physical_pixel_sizes(tmp_path: Path) -> None:
 
     assert "physical_pixel_sizes" in metadata
     assert isinstance(metadata["physical_pixel_sizes"], dict)
-
-
-import json
-
-import jsonschema
-
 
 def test_artifact_metadata_schema_compliance(tmp_path: Path) -> None:
     ref = _load_image_artifact(tmp_path)

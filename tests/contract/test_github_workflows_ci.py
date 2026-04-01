@@ -7,6 +7,20 @@ import yaml
 REPO_ROOT = Path(__file__).resolve().parents[2]
 WORKFLOWS_DIR = REPO_ROOT / ".github" / "workflows"
 
+CORE_LFS_PATHS = [
+    "datasets/sample_czi/Plate1-Blue-A-02-Scene-1-P2-E1-01.czi",
+    "datasets/FLUTE_FLIM_data_tif/Embryo.tif",
+    "datasets/FLUTE_FLIM_data_tif/Fluorescein_Embryo.tif",
+]
+TRACKPY_LFS_PATHS = ["datasets/trackpy-examples/bulk_water/frame000_green.ome.tiff"]
+EXTENDED_LFS_PATHS = [
+    "datasets/FLUTE_FLIM_data_tif/hMSC control.tif",
+    *TRACKPY_LFS_PATHS,
+    "datasets/tttr-data/bh/bh_spc132.spc",
+    "datasets/tttr-data/imaging/leica/sp5/LSM_1.ptu",
+    "datasets/tttr-data/hdf/1a_1b_Mix.hdf5",
+]
+
 
 def _load_workflow(name: str) -> dict:
     path = WORKFLOWS_DIR / name
@@ -27,6 +41,27 @@ def _steps_by_name(job: dict) -> dict[str, dict]:
     return result
 
 
+def _bundle_multiline(paths: list[str]) -> str:
+    return "\n".join(paths)
+
+
+def _define_bundle_run(paths: list[str]) -> str:
+    lines = ['echo "LFS_INCLUDE<<EOF" >> "$GITHUB_ENV"']
+    lines.extend(f'echo "{path}" >> "$GITHUB_ENV"' for path in paths)
+    lines.append('echo "EOF" >> "$GITHUB_ENV"')
+    return "\n".join(lines)
+
+
+def _cache_key_expr(bundle_name: str, paths: list[str]) -> str:
+    quoted = "', '".join(paths + [".gitattributes"])
+    return "${{ runner.os }}-" + bundle_name + "-${{ hashFiles('" + quoted + "') }}"
+
+
+def _restore_keys(bundle_name: str) -> list[str]:
+    prefix = "${{ runner.os }}-" + bundle_name + "-"
+    return [prefix, "${{ runner.os }}-"]
+
+
 def test_ci_pr_workflow_matches_expected_shape() -> None:
     workflow = _load_workflow("ci-pr.yml")
 
@@ -42,15 +77,40 @@ def test_ci_pr_workflow_matches_expected_shape() -> None:
 
     core_tests = jobs["core-tests"]
     core_steps = _steps_by_name(core_tests)
-    assert core_steps["Checkout repository"]["with"]["lfs"] is True
-    assert core_steps["Fetch LFS datasets"]["run"] == 'git lfs pull --include="datasets/**"'
+    assert core_steps["Checkout repository"]["with"]["lfs"] is False
+    assert core_steps["Define LFS bundle"]["run"] == _define_bundle_run(CORE_LFS_PATHS)
+    core_cache = core_steps["Restore LFS bundle cache"]
+    assert core_cache["uses"] == "actions/cache@v4"
+    assert core_cache["with"]["path"] == _bundle_multiline(CORE_LFS_PATHS)
+    assert core_cache["with"]["key"] == _cache_key_expr("lfs-core", CORE_LFS_PATHS)
+    assert core_cache["with"]["restore-keys"] == _bundle_multiline(_restore_keys("lfs-core"))
+    assert core_steps["Fetch LFS datasets on cache miss"]["if"] == (
+        "steps.lfs-cache.outputs.cache-hit != 'true'"
+    )
+    assert core_steps["Fetch LFS datasets on cache miss"]["run"] == (
+        'git lfs pull --include="${LFS_INCLUDE//$\'\\n\'/,}" --exclude=""'
+    )
     assert core_steps["Install core dev dependencies"]["run"] == 'python -m pip install -e ".[dev]"'
     assert core_steps["Run unit tests"]["run"] == "pytest tests/unit -q"
     assert core_steps["Run contract tests"]["run"] == "pytest tests/contract -q"
 
     smoke_pr = jobs["smoke-pr"]
     smoke_steps = _steps_by_name(smoke_pr)
-    assert smoke_steps["Fetch LFS datasets"]["run"] == 'git lfs pull --include="datasets/**"'
+    assert smoke_steps["Checkout repository"]["with"]["lfs"] is False
+    assert smoke_steps["Define LFS bundle"]["run"] == _define_bundle_run(TRACKPY_LFS_PATHS)
+    smoke_cache = smoke_steps["Restore LFS bundle cache"]
+    assert smoke_cache["uses"] == "actions/cache@v4"
+    assert smoke_cache["with"]["path"] == _bundle_multiline(TRACKPY_LFS_PATHS)
+    assert smoke_cache["with"]["key"] == _cache_key_expr("lfs-trackpy", TRACKPY_LFS_PATHS)
+    assert smoke_cache["with"]["restore-keys"] == _bundle_multiline(
+        _restore_keys("lfs-trackpy")
+    )
+    assert smoke_steps["Fetch LFS datasets on cache miss"]["if"] == (
+        "steps.lfs-cache.outputs.cache-hit != 'true'"
+    )
+    assert smoke_steps["Fetch LFS datasets on cache miss"]["run"] == (
+        'git lfs pull --include="${LFS_INCLUDE//$\'\\n\'/,}" --exclude=""'
+    )
     assert (
         smoke_steps["Install core dev dependencies"]["run"] == 'python -m pip install -e ".[dev]"'
     )
@@ -89,7 +149,21 @@ def test_smoke_extended_workflow_matches_expected_shape() -> None:
     smoke_extended = jobs["smoke-extended"]
     steps = _steps_by_name(smoke_extended)
 
-    assert steps["Fetch LFS datasets"]["run"] == 'git lfs pull --include="datasets/**"'
+    assert steps["Checkout repository"]["with"]["lfs"] is False
+    assert steps["Define LFS bundle"]["run"] == _define_bundle_run(EXTENDED_LFS_PATHS)
+    extended_cache = steps["Restore LFS bundle cache"]
+    assert extended_cache["uses"] == "actions/cache@v4"
+    assert extended_cache["with"]["path"] == _bundle_multiline(EXTENDED_LFS_PATHS)
+    assert extended_cache["with"]["key"] == _cache_key_expr("lfs-extended", EXTENDED_LFS_PATHS)
+    assert extended_cache["with"]["restore-keys"] == _bundle_multiline(
+        _restore_keys("lfs-extended")
+    )
+    assert steps["Fetch LFS datasets on cache miss"]["if"] == (
+        "steps.lfs-cache.outputs.cache-hit != 'true'"
+    )
+    assert steps["Fetch LFS datasets on cache miss"]["run"] == (
+        'git lfs pull --include="${LFS_INCLUDE//$\'\\n\'/,}" --exclude=""'
+    )
     assert steps["Write local CI config"]["run"] == "bioimage-mcp configure"
     assert steps["Prepare local CI config"]["run"] == "python scripts/ci/prepare_ci_config.py"
     assert steps["Install extended smoke environments"]["run"] == (

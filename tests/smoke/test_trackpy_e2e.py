@@ -4,6 +4,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.fixtures.lfs_helpers import skip_if_lfs_pointer
+
 
 def assert_valid_artifact_ref(ref: dict, name: str = "output"):
     """Assert ref is a valid artifact reference."""
@@ -21,6 +23,7 @@ def trackpy_image():
     path = Path.cwd() / "datasets" / "trackpy-examples" / "bulk_water" / "frame000_green.ome.tiff"
     if not path.exists():
         pytest.skip(f"Vendored trackpy data not found at {path}")
+    skip_if_lfs_pointer(path)
     return path
 
 

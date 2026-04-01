@@ -18,10 +18,32 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          lfs: true
+          lfs: false
 
-      - name: Fetch LFS datasets
-        run: git lfs pull --include="datasets/**"
+      - name: Define LFS bundle
+        run: |-
+          echo "LFS_INCLUDE<<EOF" >> "$GITHUB_ENV"
+          echo "datasets/sample_czi/Plate1-Blue-A-02-Scene-1-P2-E1-01.czi" >> "$GITHUB_ENV"
+          echo "datasets/FLUTE_FLIM_data_tif/Embryo.tif" >> "$GITHUB_ENV"
+          echo "datasets/FLUTE_FLIM_data_tif/Fluorescein_Embryo.tif" >> "$GITHUB_ENV"
+          echo "EOF" >> "$GITHUB_ENV"
+
+      - name: Restore LFS bundle cache
+        id: lfs-cache
+        uses: actions/cache@v4
+        with:
+          path: |-
+            datasets/sample_czi/Plate1-Blue-A-02-Scene-1-P2-E1-01.czi
+            datasets/FLUTE_FLIM_data_tif/Embryo.tif
+            datasets/FLUTE_FLIM_data_tif/Fluorescein_Embryo.tif
+          key: ${{ runner.os }}-lfs-core-${{ hashFiles('datasets/sample_czi/Plate1-Blue-A-02-Scene-1-P2-E1-01.czi', 'datasets/FLUTE_FLIM_data_tif/Embryo.tif', 'datasets/FLUTE_FLIM_data_tif/Fluorescein_Embryo.tif', '.gitattributes') }}
+          restore-keys: |-
+            ${{ runner.os }}-lfs-core-
+            ${{ runner.os }}-
+
+      - name: Fetch LFS datasets on cache miss
+        if: steps.lfs-cache.outputs.cache-hit != 'true'
+        run: git lfs pull --include="${LFS_INCLUDE//$'\n'/,}" --exclude=""
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -45,10 +67,27 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          lfs: true
+          lfs: false
 
-      - name: Fetch LFS datasets
-        run: git lfs pull --include="datasets/**"
+      - name: Define LFS bundle
+        run: |-
+          echo "LFS_INCLUDE<<EOF" >> "$GITHUB_ENV"
+          echo "datasets/trackpy-examples/bulk_water/frame000_green.ome.tiff" >> "$GITHUB_ENV"
+          echo "EOF" >> "$GITHUB_ENV"
+
+      - name: Restore LFS bundle cache
+        id: lfs-cache
+        uses: actions/cache@v4
+        with:
+          path: datasets/trackpy-examples/bulk_water/frame000_green.ome.tiff
+          key: ${{ runner.os }}-lfs-trackpy-${{ hashFiles('datasets/trackpy-examples/bulk_water/frame000_green.ome.tiff', '.gitattributes') }}
+          restore-keys: |-
+            ${{ runner.os }}-lfs-trackpy-
+            ${{ runner.os }}-
+
+      - name: Fetch LFS datasets on cache miss
+        if: steps.lfs-cache.outputs.cache-hit != 'true'
+        run: git lfs pull --include="${LFS_INCLUDE//$'\n'/,}" --exclude=""
 
       - name: Set up Python
         uses: actions/setup-python@v5
