@@ -49,6 +49,30 @@ def _is_smoke_item(item: pytest.Item) -> bool:
     return "tests" in item_path.parts and "smoke" in item_path.parts
 
 
+def _resolve_log_outcome(
+    rep_setup: object | None, rep_call: object | None, rep_teardown: object | None
+) -> tuple[str, str | None, str | None]:
+    """Map pytest reports to interaction-log status and optional summaries."""
+    if rep_teardown is not None and getattr(rep_teardown, "failed", False):
+        return "failed", str(rep_teardown.longrepr), None
+
+    if rep_call is not None:
+        if getattr(rep_call, "passed", False):
+            return "passed", None, None
+        if getattr(rep_call, "skipped", False):
+            return "skipped", None, str(rep_call.longrepr)
+        if getattr(rep_call, "failed", False):
+            return "failed", str(rep_call.longrepr), None
+
+    if rep_setup is not None:
+        if getattr(rep_setup, "skipped", False):
+            return "skipped", None, str(rep_setup.longrepr)
+        if getattr(rep_setup, "failed", False):
+            return "failed", str(rep_setup.longrepr), None
+
+    return "passed", None, None
+
+
 def pytest_addoption(parser):
     """Add smoke test specific options."""
     parser.addoption(
@@ -122,6 +146,11 @@ def interaction_logger(request, log_dir, smoke_record):
         live_server._logger = None
         test_name = request.node.name
         timestamp = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d_%H%M%S")
+        status, error_summary, skip_reason = _resolve_log_outcome(
+            getattr(request.node, "rep_setup", None),
+            getattr(request.node, "rep_call", None),
+            getattr(request.node, "rep_teardown", None),
+        )
 
         # Get server stderr from live_server
         server_stderr = None
@@ -134,20 +163,15 @@ def interaction_logger(request, log_dir, smoke_record):
             test_run_id=f"smoke_{timestamp}",
             scenario=test_name,
             started_at=datetime.datetime.now(datetime.UTC).isoformat(),
-            status="passed"
-            if not getattr(request.node, "rep_call", None) or request.node.rep_call.passed
-            else "failed",
+            status=status,
             interactions=logger.interactions,
             server_stderr=server_stderr,
         )
 
-        # Error summary population on failure (T023)
-        if not (getattr(request.node, "rep_call", None) and request.node.rep_call.passed):
-            log.error_summary = (
-                str(request.node.rep_call.longrepr)
-                if getattr(request.node, "rep_call", None)
-                else "Unknown error"
-            )
+        if error_summary is not None:
+            log.error_summary = error_summary
+        if skip_reason is not None:
+            log.skip_reason = skip_reason
 
         log_path = log_dir / f"{test_name}_{timestamp}.json"
         logger.save_log(log, log_path)

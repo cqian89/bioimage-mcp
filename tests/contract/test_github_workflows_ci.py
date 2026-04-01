@@ -12,10 +12,14 @@ CORE_LFS_PATHS = [
     "datasets/FLUTE_FLIM_data_tif/Embryo.tif",
     "datasets/FLUTE_FLIM_data_tif/Fluorescein_Embryo.tif",
 ]
-TRACKPY_LFS_PATHS = ["datasets/trackpy-examples/bulk_water/frame000_green.ome.tiff"]
+PR_SMOKE_LFS_PATHS = [
+    "datasets/synthetic/test.tif",
+    "datasets/FLUTE_FLIM_data_tif/hMSC control.tif",
+    "datasets/trackpy-examples/bulk_water/frame000_green.ome.tiff",
+]
 EXTENDED_LFS_PATHS = [
     "datasets/FLUTE_FLIM_data_tif/hMSC control.tif",
-    *TRACKPY_LFS_PATHS,
+    "datasets/trackpy-examples/bulk_water/frame000_green.ome.tiff",
     "datasets/tttr-data/bh/bh_spc132.spc",
     "datasets/tttr-data/imaging/leica/sp5/LSM_1.ptu",
     "datasets/tttr-data/hdf/1a_1b_Mix.hdf5",
@@ -62,6 +66,20 @@ def _restore_keys(bundle_name: str) -> list[str]:
     return [prefix, "${{ runner.os }}-"]
 
 
+def test_pr_smoke_bundle_covers_curated_dataset_usage() -> None:
+    sample_image_source = (REPO_ROOT / "tests" / "smoke" / "conftest.py").read_text(encoding="utf-8")
+    scipy_helpers = (
+        REPO_ROOT / "tests" / "smoke" / "test_smoke_scipy_submodules.py"
+    ).read_text(encoding="utf-8")
+    trackpy_equivalence = (
+        REPO_ROOT / "tests" / "smoke" / "test_equivalence_trackpy.py"
+    ).read_text(encoding="utf-8")
+
+    assert 'path = Path("datasets/FLUTE_FLIM_data_tif/hMSC control.tif")' in sample_image_source
+    assert '"params": {"path": "datasets/synthetic/test.tif"}' in scipy_helpers
+    assert '"trackpy-examples" / "bulk_water" / "frame000_green.ome.tiff"' in trackpy_equivalence
+
+
 def test_ci_pr_workflow_matches_expected_shape() -> None:
     workflow = _load_workflow("ci-pr.yml")
 
@@ -97,13 +115,13 @@ def test_ci_pr_workflow_matches_expected_shape() -> None:
     smoke_pr = jobs["smoke-pr"]
     smoke_steps = _steps_by_name(smoke_pr)
     assert smoke_steps["Checkout repository"]["with"]["lfs"] is False
-    assert smoke_steps["Define LFS bundle"]["run"] == _define_bundle_run(TRACKPY_LFS_PATHS)
+    assert smoke_steps["Define LFS bundle"]["run"] == _define_bundle_run(PR_SMOKE_LFS_PATHS)
     smoke_cache = smoke_steps["Restore LFS bundle cache"]
     assert smoke_cache["uses"] == "actions/cache@v4"
-    assert smoke_cache["with"]["path"] == _bundle_multiline(TRACKPY_LFS_PATHS)
-    assert smoke_cache["with"]["key"] == _cache_key_expr("lfs-trackpy", TRACKPY_LFS_PATHS)
+    assert smoke_cache["with"]["path"] == _bundle_multiline(PR_SMOKE_LFS_PATHS)
+    assert smoke_cache["with"]["key"] == _cache_key_expr("lfs-pr-smoke", PR_SMOKE_LFS_PATHS)
     assert smoke_cache["with"]["restore-keys"] == _bundle_multiline(
-        _restore_keys("lfs-trackpy")
+        _restore_keys("lfs-pr-smoke")
     )
     assert smoke_steps["Fetch LFS datasets on cache miss"]["if"] == (
         "steps.lfs-cache.outputs.cache-hit != 'true'"

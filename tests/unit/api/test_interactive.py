@@ -171,6 +171,7 @@ def test_call_tool_microsam_annotator_runs_in_background(tmp_path: Path, monkeyp
     )
     service, store = _make_service(tmp_path, execution)
     monkeypatch.setattr(service, "ASYNC_EARLY_COMPLETION_WAIT_SECONDS", 0.01)
+    monkeypatch.setattr(service, "_preflight_non_blocking_interactive_error", lambda _fn_id: None)
 
     result = service.call_tool(
         session_id="sess-interactive-1",
@@ -182,6 +183,7 @@ def test_call_tool_microsam_annotator_runs_in_background(tmp_path: Path, monkeyp
     assert result["status"] == "running"
     assert result["run_id"] == "run-interactive-1"
     assert result["warnings"] == ["INTERACTIVE_RUNNING_IN_BACKGROUND"]
+    assert execution.last_spec["steps"][0]["id"] == "micro_sam.sam_annotator.annotator_2d"
     time.sleep(0.3)
     store.close()
 

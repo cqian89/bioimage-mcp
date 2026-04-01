@@ -22,10 +22,11 @@ class InteractionLog(BaseModel):
     scenario: str  # Scenario name
     started_at: str  # ISO 8601 timestamp
     completed_at: str | None = None
-    status: Literal["running", "passed", "failed", "error"] = "running"
+    status: Literal["running", "passed", "failed", "error", "skipped"] = "running"
     interactions: list[Interaction] = Field(default_factory=list)
     server_stderr: str | None = None
     error_summary: str | None = None
+    skip_reason: str | None = None
 
 
 MAX_LOG_SIZE_BYTES = 10 * 1024 * 1024  # 10MB
