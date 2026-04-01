@@ -26,7 +26,7 @@ def native_executor():
 @pytest.mark.uses_minimal_data
 @pytest.mark.requires_env("bioimage-mcp-stardist")
 @pytest.mark.anyio
-async def test_stardist_equivalence(live_server, helper, native_executor, tmp_path):
+async def test_stardist_equivalence(live_server, helper, native_executor, tmp_path, smoke_tmp_dir):
     """Test that MCP StarDist matches native StarDist (IoU > 0.95)."""
     model_name = "2D_versatile_fluo"
 
@@ -34,7 +34,7 @@ async def test_stardist_equivalence(live_server, helper, native_executor, tmp_pa
     baseline_script = Path(__file__).parent / "reference_scripts" / "stardist_baseline.py"
     # StarDist baseline generates its own input image from stardist.data
     # Use an allowed path for input (FR-016)
-    allowed_tmp = Path.cwd() / "datasets" / "smoke_tmp"
+    allowed_tmp = smoke_tmp_dir / "stardist"
     allowed_tmp.mkdir(parents=True, exist_ok=True)
     import uuid
 

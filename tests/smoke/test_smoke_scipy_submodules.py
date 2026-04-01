@@ -37,19 +37,6 @@ async def get_test_image(live_server):
     return img_ref
 
 
-@pytest.fixture(scope="module")
-def smoke_tmp_dir():
-    """Fixture to provide a temporary directory within datasets for smoke tests."""
-    tmp_dir = Path.cwd() / "datasets" / "smoke_tmp"
-    tmp_dir.mkdir(parents=True, exist_ok=True)
-    yield tmp_dir
-    # Cleanup after module tests
-    import shutil
-
-    if tmp_dir.exists():
-        shutil.rmtree(tmp_dir)
-
-
 async def get_test_table(live_server, tmp_dir, name="test", data=None):
     """Helper to obtain a TableRef from a dynamically created CSV."""
     if data is None:
@@ -59,11 +46,8 @@ async def get_test_table(live_server, tmp_dir, name="test", data=None):
     csv_path = tmp_dir / f"{name}.csv"
     df.to_csv(csv_path, index=False)
 
-    # Use relative path to ensure the live server has read access
-    rel_path = csv_path.relative_to(Path.cwd())
-
     res = await live_server.call_tool_checked(
-        "run", {"id": "base.io.table.load", "inputs": {}, "params": {"path": str(rel_path)}}
+        "run", {"id": "base.io.table.load", "inputs": {}, "params": {"path": str(csv_path)}}
     )
     assert res.get("status") == "success"
     assert "outputs" in res

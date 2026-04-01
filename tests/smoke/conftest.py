@@ -1,11 +1,14 @@
 import datetime
+import shutil
 import time
+import uuid
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 
 import pytest
 
+from bioimage_mcp.config.loader import load_config
 from tests.smoke.utils.interaction_logger import InteractionLog, InteractionLogger
 from tests.smoke.utils.mcp_client import TestMCPClient
 
@@ -129,6 +132,16 @@ def log_dir(smoke_config, smoke_record):
     if smoke_record:
         smoke_config.log_dir.mkdir(parents=True, exist_ok=True)
     return smoke_config.log_dir
+
+
+@pytest.fixture(scope="session")
+def smoke_tmp_dir() -> Path:
+    """Provide a shared smoke temp root under artifact_store_root/work."""
+    config = load_config()
+    tmp_dir = config.artifact_store_root / "work" / "smoke_tmp" / uuid.uuid4().hex
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    yield tmp_dir
+    shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
 @pytest.fixture(autouse=True)

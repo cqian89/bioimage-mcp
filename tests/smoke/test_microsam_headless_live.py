@@ -13,7 +13,7 @@ from bioio import BioImage
 @pytest.mark.uses_minimal_data
 @pytest.mark.requires_env("bioimage-mcp-microsam")
 @pytest.mark.anyio
-async def test_microsam_prompt_based_segmentation(live_server):
+async def test_microsam_prompt_based_segmentation(live_server, smoke_tmp_dir):
     """Test prompt-based segmentation with micro_sam."""
     # 1. Create a tiny synthetic 2D image (bright disk on dark background)
     img_data = np.zeros((64, 64), dtype=np.uint8)
@@ -22,7 +22,7 @@ async def test_microsam_prompt_based_segmentation(live_server):
     img_data[mask] = 255
 
     # Use an allowed path for input (FR-016)
-    allowed_tmp = Path.cwd() / "datasets" / "smoke_tmp"
+    allowed_tmp = smoke_tmp_dir / "microsam"
     allowed_tmp.mkdir(parents=True, exist_ok=True)
     img_path = allowed_tmp / f"microsam_test_prompt_{uuid.uuid4().hex[:8]}.tif"
     tifffile.imwrite(img_path, img_data)
@@ -110,7 +110,7 @@ async def test_microsam_prompt_based_segmentation(live_server):
 @pytest.mark.smoke_extended
 @pytest.mark.requires_env("bioimage-mcp-microsam")
 @pytest.mark.anyio
-async def test_microsam_instance_segmentation(live_server):
+async def test_microsam_instance_segmentation(live_server, smoke_tmp_dir):
     """Test automatic/instance segmentation with micro_sam."""
     # Create tiny synthetic image
     img_data = np.zeros((16, 16), dtype=np.uint8)
@@ -118,7 +118,7 @@ async def test_microsam_instance_segmentation(live_server):
     mask = (y - 8) ** 2 + (x - 8) ** 2 <= 3**2
     img_data[mask] = 255
 
-    allowed_tmp = Path.cwd() / "datasets" / "smoke_tmp"
+    allowed_tmp = smoke_tmp_dir / "microsam"
     allowed_tmp.mkdir(parents=True, exist_ok=True)
     img_path = allowed_tmp / f"microsam_test_inst_{uuid.uuid4().hex[:8]}.tif"
     tifffile.imwrite(img_path, img_data)

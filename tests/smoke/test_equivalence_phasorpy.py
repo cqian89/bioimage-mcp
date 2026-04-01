@@ -15,7 +15,7 @@ from tests.smoke.utils.native_executor import NativeExecutor
 @pytest.mark.uses_minimal_data
 @pytest.mark.requires_env("bioimage-mcp-base")
 @pytest.mark.anyio
-async def test_phasorpy_equivalence(live_server):
+async def test_phasorpy_equivalence(live_server, smoke_tmp_dir):
     """Test that MCP phasorpy.phasor.phasor_from_signal matches native execution.
 
     Note: This test is expected to fail initially as it uncovers integration
@@ -26,7 +26,7 @@ async def test_phasorpy_equivalence(live_server):
     env_name = "bioimage-mcp-base"
 
     # Use a directory that is in the server's allowlist for both read and write
-    test_dir = Path.cwd() / "datasets" / "smoke_tmp" / "phasorpy"
+    test_dir = smoke_tmp_dir / "phasorpy"
     test_dir.mkdir(parents=True, exist_ok=True)
 
     try:
