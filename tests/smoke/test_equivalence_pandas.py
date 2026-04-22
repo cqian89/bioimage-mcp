@@ -5,6 +5,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+from tests.fixtures.lfs_helpers import skip_if_lfs_pointer
 from tests.smoke.utils.data_equivalence import DataEquivalenceHelper
 from tests.smoke.utils.native_executor import NativeExecutor
 
@@ -25,11 +26,12 @@ def sample_csv():
     path = Path("datasets/sample_data/measurements.csv")
     if not path.exists():
         pytest.skip(f"Dataset missing: {path}")
+    skip_if_lfs_pointer(path)
     return path
 
 
 @pytest.mark.smoke_extended
-@pytest.mark.uses_minimal_data
+@pytest.mark.requires_lfs_dataset
 @pytest.mark.requires_env("bioimage-mcp-base")
 @pytest.mark.anyio
 async def test_pandas_equivalence(live_server, helper, executor, sample_csv, smoke_tmp_dir):

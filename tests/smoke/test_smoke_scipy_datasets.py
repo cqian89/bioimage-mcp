@@ -11,7 +11,6 @@ def test_dataset_presence():
     """Assert that required datasets for reproducible smoke tests exist."""
     required_files = [
         "datasets/synthetic/test.tif",
-        "datasets/sample_data/measurements.csv",
     ]
 
     # Assume running from repo root

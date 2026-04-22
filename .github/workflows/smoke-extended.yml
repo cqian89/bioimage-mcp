@@ -25,6 +25,7 @@ jobs:
           echo "datasets/synthetic/test.tif" >> "$GITHUB_ENV"
           echo "datasets/FLUTE_FLIM_data_tif/hMSC control.tif" >> "$GITHUB_ENV"
           echo "datasets/trackpy-examples/bulk_water/frame000_green.ome.tiff" >> "$GITHUB_ENV"
+          echo "datasets/sample_data/measurements.csv" >> "$GITHUB_ENV"
           echo "datasets/tttr-data/bh/bh_spc132.spc" >> "$GITHUB_ENV"
           echo "datasets/tttr-data/imaging/leica/sp5/LSM_1.ptu" >> "$GITHUB_ENV"
           echo "datasets/tttr-data/hdf/1a_1b_Mix.hdf5" >> "$GITHUB_ENV"
@@ -38,10 +39,11 @@ jobs:
             datasets/synthetic/test.tif
             datasets/FLUTE_FLIM_data_tif/hMSC control.tif
             datasets/trackpy-examples/bulk_water/frame000_green.ome.tiff
+            datasets/sample_data/measurements.csv
             datasets/tttr-data/bh/bh_spc132.spc
             datasets/tttr-data/imaging/leica/sp5/LSM_1.ptu
             datasets/tttr-data/hdf/1a_1b_Mix.hdf5
-          key: ${{ runner.os }}-lfs-extended-${{ hashFiles('datasets/synthetic/test.tif', 'datasets/FLUTE_FLIM_data_tif/hMSC control.tif', 'datasets/trackpy-examples/bulk_water/frame000_green.ome.tiff', 'datasets/tttr-data/bh/bh_spc132.spc', 'datasets/tttr-data/imaging/leica/sp5/LSM_1.ptu', 'datasets/tttr-data/hdf/1a_1b_Mix.hdf5', '.gitattributes') }}
+          key: ${{ runner.os }}-lfs-extended-${{ hashFiles('datasets/synthetic/test.tif', 'datasets/FLUTE_FLIM_data_tif/hMSC control.tif', 'datasets/trackpy-examples/bulk_water/frame000_green.ome.tiff', 'datasets/sample_data/measurements.csv', 'datasets/tttr-data/bh/bh_spc132.spc', 'datasets/tttr-data/imaging/leica/sp5/LSM_1.ptu', 'datasets/tttr-data/hdf/1a_1b_Mix.hdf5', '.gitattributes') }}
           restore-keys: |-
             ${{ runner.os }}-lfs-extended-
             ${{ runner.os }}-

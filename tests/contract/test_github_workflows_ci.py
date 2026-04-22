@@ -21,6 +21,7 @@ EXTENDED_LFS_PATHS = [
     "datasets/synthetic/test.tif",
     "datasets/FLUTE_FLIM_data_tif/hMSC control.tif",
     "datasets/trackpy-examples/bulk_water/frame000_green.ome.tiff",
+    "datasets/sample_data/measurements.csv",
     "datasets/tttr-data/bh/bh_spc132.spc",
     "datasets/tttr-data/imaging/leica/sp5/LSM_1.ptu",
     "datasets/tttr-data/hdf/1a_1b_Mix.hdf5",
@@ -83,6 +84,15 @@ def test_pr_smoke_bundle_covers_curated_dataset_usage() -> None:
     assert '"params": {"path": "datasets/synthetic/test.tif"}' in scipy_helpers
     assert '"trackpy-examples" / "bulk_water" / "frame000_green.ome.tiff"' in trackpy_equivalence
     assert 'SYNTHETIC_IMAGE = Path("datasets/synthetic/test.tif")' in cellpose_pipeline
+
+
+def test_smoke_extended_bundle_covers_curated_dataset_usage() -> None:
+    pandas_equivalence = (
+        REPO_ROOT / "tests" / "smoke" / "test_equivalence_pandas.py"
+    ).read_text(encoding="utf-8")
+
+    assert 'path = Path("datasets/sample_data/measurements.csv")' in pandas_equivalence
+    assert "datasets/sample_data/measurements.csv" in EXTENDED_LFS_PATHS
 
 
 def test_ci_pr_workflow_matches_expected_shape() -> None:
